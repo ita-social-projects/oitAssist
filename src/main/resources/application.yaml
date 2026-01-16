@@ -1,0 +1,15 @@
+spring:
+
+  datasource:
+    url: ${DATASOURCE_URL}
+    username: ${DATASOURCE_USERNAME}
+    password: ${DATASOURCE_PASSWORD}
+
+  jpa:
+    show-sql: ${JPA_SHOW_SQL}
+    open-in-view: false
+    hibernate:
+      ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:validate}
+
+server:
+  port: 8080

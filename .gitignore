@@ -1,9 +1,15 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+/.idea
 logs/
+!dao/src/main/resources/db/changelog/logs/
+
 HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**
-!**/src/test/**
+!**/src/main/**/target/
+!**/src/test/**/target/
 
 ### STS ###
 .apt_generated
@@ -27,9 +33,8 @@ target/
 /nbdist/
 /.nb-gradle/
 build/
+!**/src/main/**/build/
+!**/src/test/**/build/
 
 ### VS Code ###
 .vscode/
-src/main/resources/static/
-src/main/resources/application.yaml
-**/.DS_Store
