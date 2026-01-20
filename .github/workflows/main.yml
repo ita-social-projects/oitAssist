@@ -47,7 +47,15 @@ jobs:
           reporter: java-junit
 
       - name: Rename user jar to app
-        run: mv **/target/*.jar **/target/$onbootJarName
+        run: |
+          JAR_FILE=$(find . -path "*/target/*.jar" -type f | head -n 1)
+  
+          if [ -z "$JAR_FILE" ]; then
+            echo "❌ JAR file not found"
+            exit 1
+          fi
+          
+          mv "$JAR_FILE" "$(dirname "$JAR_FILE")/$onbootJarName"
 
       - name: Set outputs
         run: echo "GITHUB_SHA_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
