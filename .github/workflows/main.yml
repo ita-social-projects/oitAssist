@@ -49,13 +49,20 @@ jobs:
       - name: Rename user jar to app
         run: |
           JAR_FILE=$(find . -path "*/target/*.jar" -type f | head -n 1)
-  
+          
           if [ -z "$JAR_FILE" ]; then
             echo "❌ JAR file not found"
             exit 1
           fi
           
-          mv "$JAR_FILE" "$(dirname "$JAR_FILE")/$onbootJarName"
+          TARGET_PATH="$(dirname "$JAR_FILE")/$onbootJarName"
+          
+          if [ "$JAR_FILE" = "$TARGET_PATH" ]; then
+            echo "ℹ️ JAR already has correct name: $onbootJarName"
+            exit 0
+          fi
+          
+          mv "$JAR_FILE" "$TARGET_PATH"
 
       - name: Set outputs
         run: echo "GITHUB_SHA_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
