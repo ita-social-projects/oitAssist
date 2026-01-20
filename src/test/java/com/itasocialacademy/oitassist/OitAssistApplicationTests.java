@@ -9,7 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class OitAssistApplicationTests {
 
     @Test
-    void test () {
+    void test() {
         boolean a = true;
         boolean b = true;
 
