@@ -45,9 +45,3 @@ jobs:
           name: Tests Report
           path: '**/target/surefire-reports/*.xml'
           reporter: java-junit
-
-      - name: Rename user jar to app
-        run: mv $userRepoName/target/*.jar $userRepoName/target/$onbootJarName
-
-      - name: Set outputs
-        run: echo "GITHUB_SHA_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
