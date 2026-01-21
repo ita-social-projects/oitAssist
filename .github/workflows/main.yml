@@ -51,7 +51,7 @@ jobs:
 
   build-and-push-backend-image:
     needs: build
-    #if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     permissions:
       packages: write
