@@ -1,11 +1,9 @@
-package com.itasocialacademy.oitassist.core.exception;
+package com.itasocialacademy.oitassist.core.exception.exceptions.users;
 
 import org.springframework.modulith.NamedInterface;
 
 @NamedInterface("UserValidationException")
 public class UserValidationException extends RuntimeException{
-    private static final long serialVersionUID = 1L;
-
     public UserValidationException(String message) {
         super(message);
     }

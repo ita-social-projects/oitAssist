@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.core.exception;
 
+import com.itasocialacademy.oitassist.core.exception.exceptions.users.UserValidationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
