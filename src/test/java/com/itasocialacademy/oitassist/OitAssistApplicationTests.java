@@ -1,18 +1,13 @@
 package com.itasocialacademy.oitassist;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.modulith.core.ApplicationModules;
 
-@ExtendWith(MockitoExtension.class)
 class OitAssistApplicationTests {
+    ApplicationModules modules = ApplicationModules.of(OitAssistApplication.class);
 
     @Test
-    void test() {
-        boolean a = true;
-        boolean b = true;
-
-        Assertions.assertEquals(a, b);
+    void shouldBeCompliant() {
+        modules.verify();
     }
 }

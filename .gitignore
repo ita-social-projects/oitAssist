@@ -3,6 +3,7 @@
 /workspace.xml
 /.idea
 logs/
+!src/main/resources/db/changelog/logs
 !dao/src/main/resources/db/changelog/logs/
 
 HELP.md
