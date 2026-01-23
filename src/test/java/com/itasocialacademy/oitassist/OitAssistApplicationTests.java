@@ -1,8 +1,15 @@
 package com.itasocialacademy.oitassist;
 
 
-import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.Test;
+import org.springframework.modulith.core.ApplicationModules;
 
-@SpringBootTest
-public class OitAssistApplicationTests {
+
+class OitAssistApplicationTests {
+    ApplicationModules modules = ApplicationModules.of(OitAssistApplication.class);
+
+    @Test
+    void shouldBeCompliant() {
+        modules.verify();
+    }
 }
