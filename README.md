@@ -5,6 +5,6 @@
 
 ## Setup Checkstyle and Formatter
 
-Here you can read more about [how to set up checkstyle and formatetr](https://github.com/ita-social-projects/oitAssist/wiki/Setup-CheckStyle-and-Formatter-to-your-IDE);
+Here you can read more about [how to set up checkstyle and formatter](https://github.com/ita-social-projects/oitAssist/wiki/Setup-CheckStyle-and-Formatter-to-your-IDE);
 
 Here you can read more about [SonarLint](https://plugins.jetbrains.com/plugin/7973-sonarlint);
