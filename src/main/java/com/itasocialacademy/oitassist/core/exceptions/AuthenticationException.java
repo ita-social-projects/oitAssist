@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.core.exceptions;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import org.springframework.modulith.NamedInterface;
 
 /**
  * Represents authentication failures.
@@ -34,6 +35,8 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
  * @see AppException
  * @see ErrorCode
  */
+
+@NamedInterface("AuthenticationException")
 public class AuthenticationException extends SecurityException {
     public AuthenticationException(String message, ErrorCode errorCode) {
         super(message, errorCode);
