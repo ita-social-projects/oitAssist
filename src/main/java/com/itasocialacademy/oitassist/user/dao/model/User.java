@@ -32,7 +32,7 @@ import org.springframework.modulith.NamedInterface;
 @NamedInterface("UserEntity")
 public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column( name = "email", nullable = false, unique = true)
@@ -44,8 +44,8 @@ public class User {
     @Column(name = "first_name", nullable = false)
     private String firstName;
 
-    @Column(name = "last_name", nullable = false)
-    private String lastName;
+    @Column(name = "surname", nullable = false)
+    private String surname;
 
     @Column(name = "middle_name", nullable = false)
     private String middleName;

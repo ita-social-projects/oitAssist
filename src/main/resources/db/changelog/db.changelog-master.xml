@@ -4,4 +4,7 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                    https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 <!--    <include file="db/changelog/logs/2025-01-21-ch-add-user-table-example-Pohranychnyi.txt"-->
+    <include file="/db/changelog/logs/2026-01-23-ch-create-enums-Shumeyko.xml"/>
+    <include file="/db/changelog/logs/2026-01-23-ch-create-tables-Shumeyko.xml"/>
+    <include file="/db/changelog/logs/2026-01-23-ch-insert-sample-data-Shumeyko.xml"/>
 </databaseChangeLog>
