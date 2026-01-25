@@ -6,6 +6,7 @@ import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface UpdateUserRequestMapper {
-    User toEntity (UpdateUserRequest request);
-    UpdateUserRequest toDto (User user);
+    User toEntity(UpdateUserRequest request);
+
+    UpdateUserRequest toDto(User user);
 }

@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
-
     @ExceptionHandler(UserValidationException.class)
     public ResponseEntity<ErrorDetails> handleUserValidationException(UserValidationException exception) {
         ErrorDetails errorDetails = new ErrorDetails(exception.getMessage(), HttpStatus.BAD_REQUEST.value());

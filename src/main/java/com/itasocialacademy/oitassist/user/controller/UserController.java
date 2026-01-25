@@ -16,7 +16,7 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserVO> getUserById (@PathVariable Long id) {
+    public ResponseEntity<UserVO> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok().body(userService.getUserById(id));
     }
 }

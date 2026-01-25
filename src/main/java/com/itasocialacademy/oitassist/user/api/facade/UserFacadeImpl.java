@@ -10,8 +10,8 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class UserFacadeImpl implements UserFacade {
-    //    private final ClearUserRepository userRepository
-    //    private final UserService userService
+    // private final ClearUserRepository userRepository
+    // private final UserService userService
 
     @Override
     public UserDto createUser(CreateUserCommand command) {
@@ -35,7 +35,5 @@ public class UserFacadeImpl implements UserFacade {
 
     @Override
     public void disableUser(UUID userId) {
-
     }
-
 }
