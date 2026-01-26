@@ -1,4 +1,101 @@
+##################################
+####### Profile Default ##########
+##################################
+server:
+  port: 8080
+
 spring:
+  profiles:
+    active: ${PROFILE}
+    # dont use SPRING_PROFILES_ACTIVE
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/oitassist
+    username: postgres
+    password: postgres
+    driver: org.postgresql.Driver
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    drop-first: false
+
+  jpa:
+    show-sql: false
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_batch_fetch_size: 20
+        jdbc:
+          batch_size: 10
+
+########## Hardest example
+oit:
+  count: 42
+  price: 19.92
+  enabled: true
+  value: null
+  value2: ~
+  colors: [red, green, blue]
+  colors2:
+    - red
+    - green
+    - blue
+  routes:
+    - path: /api/*
+      methods: [GET, POST]
+    - path: /admin
+  person:
+    name: Olexandr
+    age: 30
+  description: |
+    First Line
+    Second Line
+  message: >
+    this is a long
+    message,
+    that
+    will be collapsed
+    into a single line
+  number: !!int "123"
+  code: !!str "007"
+  timeout: 150m
+  cache: 45s
+  created: 2025-01-15
+  event: 2025-03-20T14:30:00Z
+
+oit2:
+  default-settings: &defaults
+  timeout: 30s
+  cache: 5m
+  retries: 3
+
+
+  service-a:
+  <<: *defaults
+  timeout-1: 60s
+
+
+  service-b:
+  <<: *defaults
+  retries-2: 5
+
+  routes: [{path: /api, methods: [GET,POST]}, {path: /admin, methods: [GET]}]
+
+  "this is a weird key!@#": value
+
+
+---
+################################
+######## Profile Dev ###########
+################################
+spring:
+  config:
+    activate:
+      on-profile: dev
+
   datasource:
     url: ${DATASOURCE_URL}
     username: ${DATASOURCE_USERNAME}
@@ -8,7 +105,6 @@ spring:
   liquibase:
     enabled: ${LIQUIBASE_ENABLED}
     change-log: ${LIQUIBASE_CHANGE_LOG}
-    drop-first: ${LIQUIBASE_DROP_FIRST:false}
 
   jpa:
     show-sql: ${JPA_SHOW_SQL}
@@ -16,5 +112,38 @@ spring:
     hibernate:
       ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:validate}
 
-server:
-  port: 8080
+
+
+
+---
+################################
+######## Profile Stage #########
+################################
+spring:
+  config:
+    activate:
+      on-profile: stage
+
+  datasource:
+    url: ${DATASOURCE_URL}
+    username: ${DATASOURCE_USERNAME}
+    password: ${DATASOURCE_PASSWORD}
+    driver: ${DATASOURCE_DRIVER}
+
+  liquibase:
+    enabled: ${LIQUIBASE_ENABLED}
+    change-log: ${LIQUIBASE_CHANGE_LOG}
+
+  jpa:
+    show-sql: ${JPA_SHOW_SQL}
+    hibernate:
+      ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:validate}
+
+---
+################################
+######## Profile Prod ##########
+################################
+spring:
+  config:
+    activate:
+      on-profile: prod
