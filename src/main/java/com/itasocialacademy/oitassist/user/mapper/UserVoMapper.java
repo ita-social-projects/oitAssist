@@ -6,6 +6,7 @@ import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface UserVoMapper {
-    User toEntity (UserVO vo);
-    UserVO toDto (User user);
+    User toEntity(UserVO vo);
+
+    UserVO toDto(User user);
 }

@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class UserEvents {
-
 //    @Transactional
 //    @TransactionalEventListener
 //    void onNewOrganizationEvent(UserAddEvent event) {
@@ -18,11 +17,11 @@ public class UserEvents {
 
     // private final ApplicationEventPublisher events;
 
-    //  @Transactional
-    //  public void complete(Task task) {
+    // @Transactional
+    // public void complete(Task task) {
     //
-    //    // State transition on the order aggregate go here
+    // // State transition on the order aggregate go here
     //
-    //    events.publishEvent(new UserAddEvent(task.getId()));
-    //  }
+    // events.publishEvent(new UserAddEvent(task.getId()));
+    // }
 }

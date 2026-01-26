@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="insert-initial-data" author="Mykola Shumeyko">
+
+        <insert tableName="users">
+            <column name="email" value="admin@platform.com"/>
+            <column name="first_name" value="Олександр"/>
+            <column name="surname" value="Головенко"/>
+            <column name="middle_name" value="Олегович"/>
+            <column name="password" value="$2a$10$8.UnVuG9HHgffUDAlk8qfOuMYyJDdXT9m9OBwSNOS2ZTP666S666"/>
+            <column name="role" value="ADMIN"/>
+            <column name="user_status" value="VERIFIED"/>
+        </insert>
+
+        <insert tableName="users">
+            <column name="email" value="student@univ.edu.ua"/>
+            <column name="first_name" value="Іван"/>
+            <column name="surname" value="Квач"/>
+            <column name="middle_name" value="Петренко"/>
+            <column name="password" value="$2a$10$8.UnVuG9HHgffUDAlk8qfOuMYyJDdXT9m9OBwSNOS2ZTP666S666"/>
+            <column name="role" value="USER"/>
+            <column name="user_status" value="ACTIVATED"/>
+        </insert>
+
+        <insert tableName="competitions">
+            <column name="name" value="Всеукраїнська Олімпіада з Java"/>
+            <column name="year" valueNumeric="2026"/>
+            <column name="level" value="NATIONAL"/>
+            <column name="competition_status" value="INPROGRESS"/>
+            <column name="start_at" value="2026-01-20T09:00:00Z"/>
+            <column name="end_at" value="2026-02-20T18:00:00Z"/>
+        </insert>
+
+        <insert tableName="user_competition">
+            <column name="author_id" valueNumeric="1"/>
+            <column name="competition_id" valueNumeric="1"/>
+        </insert>
+
+        <insert tableName="tasks">
+            <column name="title" value="Реалізація алгоритму Дейкстри"/>
+            <column name="description" value="Необхідно знайти найкоротший шлях у зваженому графі..."/>
+            <column name="competition_id" valueNumeric="1"/>
+        </insert>
+
+        <insert tableName="news">
+            <column name="title" value="Змагання розпочато!"/>
+            <column name="text" value="Бажаємо успіхів усім учасникам. Не забудьте перевірити умови завдань."/>
+            <column name="author_id" valueNumeric="1"/>
+        </insert>
+
+        <insert tableName="chats">
+            <column name="id" value="1"/>
+        </insert>
+
+        <insert tableName="messages">
+        <column name="text" value="Чи можна використовувати зовнішні бібліотеки?"/>
+        <column name="user_id" valueNumeric="2"/>
+        <column name="chat_id" valueNumeric="1"/>
+    </insert>
+
+        <insert tableName="messages">
+            <column name="text" value="Ні, тільки стандартну бібліотеку Java (JDK 21)."/>
+            <column name="user_id" valueNumeric="1"/>
+            <column name="chat_id" valueNumeric="1"/>
+        </insert>
+
+        <insert tableName="submissions">
+            <column name="comment" value="Мій варіант рішення через PriorityQueue."/>
+            <column name="user_id" valueNumeric="2"/>
+            <column name="task_id" valueNumeric="1"/>
+        </insert>
+
+        <insert tableName="evaluations">
+            <column name="score" valueNumeric="95"/>
+            <column name="comment" value="Чудова реалізація, але зверніть увагу на обробку від'ємних ваг."/>
+            <column name="submission_id" valueNumeric="1"/>
+        </insert>
+
+    </changeSet>
+</databaseChangeLog>

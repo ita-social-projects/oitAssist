@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-table" author="Mykola Shumeyko">
+        <createTable tableName="users">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="first_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="surname" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="middle_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="password" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="phone_number" type="VARCHAR(20)"/>
+            <column name="role" type="user_role">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_status" type="user_status">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-competitions-table" author="Mykola Shumeyko">
+        <createTable tableName="competitions">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="year" type="INT"/>
+            <column name="level" type="competition_level"/>
+            <column name="competition_status" type="competition_status"/>
+            <column name="start_at" type="TIMESTAMPTZ"/>
+            <column name="end_at" type="TIMESTAMPTZ"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-user-competition-table" author="Mykola Shumeyko">
+        <createTable tableName="user_competition">
+            <column name="author_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_uc_user"
+                             referencedTableName="users"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+            <column name="competition_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_uc_competition"
+                             referencedTableName="competitions"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey tableName="user_competition"
+                       columnNames="author_id, competition_id"
+                       constraintName="pk_user_competition"/>
+    </changeSet>
+
+    <changeSet id="create-tasks-table" author="Mykola Shumeyko">
+        <createTable tableName="tasks">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="title" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="competition_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_task_competition" referencedTableName="competitions" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-chats-and-news" author="Mykola Shumeyko">
+        <createTable tableName="chats">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="news">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="title" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="text" type="TEXT"/>
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="author_id" type="BIGINT">
+                <constraints foreignKeyName="fk_news_author" referencedTableName="users" referencedColumnNames="id" deleteCascade="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-messages-table" author="Mykola Shumeyko">
+        <createTable tableName="messages">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="text" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="user_id" type="BIGINT">
+                <constraints foreignKeyName="fk_message_user" referencedTableName="users" referencedColumnNames="id"/>
+            </column>
+            <column name="chat_id" type="BIGINT">
+                <constraints foreignKeyName="fk_message_chat" referencedTableName="chats" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-submissions-table" author="Mykola Shumeyko">
+        <createTable tableName="submissions">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="comment" type="TEXT"/>
+            <column name="submitted_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="user_id" type="BIGINT">
+                <constraints foreignKeyName="fk_submission_user" referencedTableName="users" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="task_id" type="BIGINT">
+                <constraints foreignKeyName="fk_submission_task" referencedTableName="tasks" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-evaluations-table" author="Mykola Shumeyko">
+        <createTable tableName="evaluations">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="score" type="INT"/>
+            <column name="comment" type="TEXT"/>
+            <column name="submission_id" type="BIGINT">
+                <constraints unique="true" foreignKeyName="fk_evaluation_submission" referencedTableName="submissions" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

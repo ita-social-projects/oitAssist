@@ -1,20 +1,18 @@
 spring:
-
   datasource:
     url: ${DATASOURCE_URL}
     username: ${DATASOURCE_USERNAME}
     password: ${DATASOURCE_PASSWORD}
+    driver: ${DATASOURCE_DRIVER}
 
   liquibase:
-    url: ${DATASOURCE_URL}
-    user: ${DATASOURCE_USERNAME}
-    password: ${DATASOURCE_PASSWORD}
     enabled: ${LIQUIBASE_ENABLED}
     change-log: ${LIQUIBASE_CHANGE_LOG}
+    drop-first: ${LIQUIBASE_DROP_FIRST:false}
 
   jpa:
     show-sql: ${JPA_SHOW_SQL}
-    open-in-view: false
+    open-in-view: ${JPA_OPEN_IN_VIEW:false}
     hibernate:
       ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:validate}
 

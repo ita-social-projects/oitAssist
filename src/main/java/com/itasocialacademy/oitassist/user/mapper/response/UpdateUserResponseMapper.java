@@ -6,6 +6,7 @@ import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface UpdateUserResponseMapper {
-    User toEntity (UpdateUserResponse response);
-    UpdateUserResponse toDto (User user);
+    User toEntity(UpdateUserResponse response);
+
+    UpdateUserResponse toDto(User user);
 }
