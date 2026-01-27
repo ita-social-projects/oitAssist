@@ -50,7 +50,6 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
  * @see ErrorCode
  */
 public class ValidationException extends BusinessException {
-
     /**
      * Constructs a new domain validation exception.
      *

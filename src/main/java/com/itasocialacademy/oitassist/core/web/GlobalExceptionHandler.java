@@ -77,14 +77,14 @@ import java.util.stream.Collectors;
 @ControllerAdvice
 @RequiredArgsConstructor
 public class GlobalExceptionHandler {
-
     private final AppExceptionHttpStatusMapper statusMapper;
     private static final String TRACE_ID_MDC = "traceId";
 
     private String traceIdFromRequestOrMdc(HttpServletRequest request) {
         String fromHeader = request.getHeader("X-Request-ID");
-        if (fromHeader != null && !fromHeader.isBlank())
+        if (fromHeader != null && !fromHeader.isBlank()) {
             return fromHeader;
+        }
         String fromMdc = MDC.get(TRACE_ID_MDC);
         return (fromMdc != null && !fromMdc.isBlank()) ? fromMdc : null;
     }

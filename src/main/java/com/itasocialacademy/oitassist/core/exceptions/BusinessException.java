@@ -49,7 +49,6 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
  * @see ErrorCode
  */
 public class BusinessException extends AppException {
-
     /**
      * Constructs a new business exception with the given message and error code.
      *

@@ -3,7 +3,6 @@ package com.itasocialacademy.oitassist.core.web;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
-
 import java.time.Instant;
 import java.util.Map;
 
