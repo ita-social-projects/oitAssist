@@ -36,7 +36,7 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
  * @see ErrorCode
  */
 public class MissingHeaderException extends WebException {
-    protected MissingHeaderException(String message, ErrorCode errorCode) {
+    public MissingHeaderException(String message, ErrorCode errorCode) {
         super(message, errorCode);
     }
 }

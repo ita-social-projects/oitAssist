@@ -36,8 +36,8 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
  * @see AppException
  * @see ErrorCode
  */
-public class BadRequestException extends WebException{
-    protected BadRequestException(String message, ErrorCode errorCode) {
+public class BadRequestException extends WebException {
+    public BadRequestException(String message, ErrorCode errorCode) {
         super(message, errorCode);
     }
 }
