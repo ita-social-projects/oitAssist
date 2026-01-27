@@ -7,16 +7,19 @@ import lombok.Getter;
  * Base class for all application-specific runtime exceptions.
  * <p>
  * {@code AppException} represents a logical failure that occurred during
- * application execution and is part of the application's error contract.
- * All custom exceptions that are intended to be handled and converted into
+ * application execution and is part of the application's error contract. All
+ * custom exceptions that are intended to be handled and converted into
  * structured API error responses must extend this class.
  * </p>
  *
  * <h2>Architectural role</h2>
  * <ul>
- *   <li>Located in the <b>core</b> module to be accessible across all application layers.</li>
- *   <li>Does <b>not</b> depend on any web or transport-level concerns (e.g. HTTP).</li>
- *   <li>Acts as a stable boundary between business logic and error representation.</li>
+ * <li>Located in the <b>core</b> module to be accessible across all application
+ * layers.</li>
+ * <li>Does <b>not</b> depend on any web or transport-level concerns (e.g.
+ * HTTP).</li>
+ * <li>Acts as a stable boundary between business logic and error
+ * representation.</li>
  * </ul>
  *
  * <h2>ErrorCode contract</h2>
@@ -25,9 +28,9 @@ import lombok.Getter;
  * uniquely identifies the error scenario. This code is used for:
  * </p>
  * <ul>
- *   <li>API error responses</li>
- *   <li>Client-side error handling</li>
- *   <li>Logging and monitoring</li>
+ * <li>API error responses</li>
+ * <li>Client-side error handling</li>
+ * <li>Logging and monitoring</li>
  * </ul>
  *
  * <p>
@@ -37,9 +40,10 @@ import lombok.Getter;
  *
  * <h2>Usage guidelines</h2>
  * <ul>
- *   <li>Extend this class for all domain or technical exceptions.</li>
- *   <li>Do not throw {@code AppException} directly; always use a meaningful subclass.</li>
- *   <li>Do not embed HTTP status codes or transport-level logic here.</li>
+ * <li>Extend this class for all domain or technical exceptions.</li>
+ * <li>Do not throw {@code AppException} directly; always use a meaningful
+ * subclass.</li>
+ * <li>Do not embed HTTP status codes or transport-level logic here.</li>
  * </ul>
  *
  * @see ErrorCode
@@ -53,10 +57,11 @@ public abstract class AppException extends RuntimeException {
     private final ErrorCode errorCode;
 
     /**
-     * Constructs a new application exception with a human-readable message
-     * and a corresponding {@link ErrorCode}.
+     * Constructs a new application exception with a human-readable message and a
+     * corresponding {@link ErrorCode}.
      *
-     * @param message   human-readable error description (for logs and API responses)
+     * @param message   human-readable error description (for logs and API
+     *                  responses)
      * @param errorCode application-specific error identifier
      */
     protected AppException(String message, ErrorCode errorCode) {

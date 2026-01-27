@@ -6,23 +6,24 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
  * Base class for all technical (infrastructure-level) failures.
  * <p>
  * {@code TechnicalException} represents unexpected errors caused by
- * infrastructure, system, or integration problems rather than
- * business rule violations.
+ * infrastructure, system, or integration problems rather than business rule
+ * violations.
  * </p>
  *
  * <h2>Examples</h2>
  * <ul>
- *   <li>Database connectivity failures</li>
- *   <li>External service timeouts</li>
- *   <li>Serialization or deserialization errors</li>
- *   <li>Unexpected runtime failures</li>
+ * <li>Database connectivity failures</li>
+ * <li>External service timeouts</li>
+ * <li>Serialization or deserialization errors</li>
+ * <li>Unexpected runtime failures</li>
  * </ul>
  *
  * <h2>Architectural role</h2>
  * <ul>
- *   <li>Thrown from infrastructure or service layers.</li>
- *   <li>Indicates <b>non-recoverable</b> errors from a business perspective.</li>
- *   <li>Signals that the request could not be processed due to a system failure.</li>
+ * <li>Thrown from infrastructure or service layers.</li>
+ * <li>Indicates <b>non-recoverable</b> errors from a business perspective.</li>
+ * <li>Signals that the request could not be processed due to a system
+ * failure.</li>
  * </ul>
  *
  * <h2>HTTP mapping</h2>
@@ -32,15 +33,15 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
  * </p>
  *
  * <p>
- * The mapping to HTTP status codes is handled in the web layer and must not
- * be defined at this level.
+ * The mapping to HTTP status codes is handled in the web layer and must not be
+ * defined at this level.
  * </p>
  *
  * <h2>Usage guidelines</h2>
  * <ul>
- *   <li>Extend this class for infrastructure or system-related failures.</li>
- *   <li>Do <b>not</b> use this exception for business rule violations.</li>
- *   <li>Always log technical exceptions with full stack trace.</li>
+ * <li>Extend this class for infrastructure or system-related failures.</li>
+ * <li>Do <b>not</b> use this exception for business rule violations.</li>
+ * <li>Always log technical exceptions with full stack trace.</li>
  * </ul>
  *
  * @see AppException

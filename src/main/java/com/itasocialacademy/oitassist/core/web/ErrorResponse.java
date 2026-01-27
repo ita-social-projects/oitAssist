@@ -16,16 +16,20 @@ import java.util.Map;
  *
  * <h2>Fields</h2>
  * <ul>
- *   <li>{@code timestamp} – the time when the error occurred (UTC).</li>
- *   <li>{@code status} – the HTTP status code corresponding to the error.</li>
- *   <li>{@code message} – a human-readable description of the error.</li>
- *   <li>{@code code} – a machine-readable error code from {@link com.itasocialacademy.oitassist.core.enums.ErrorCode}.</li>
- *   <li>{@code path} – the request URI that caused the error.</li>
- *   <li>{@code traceId} – a unique identifier for tracing the request through logs (optional).</li>
- *   <li>{@code details} – a map containing additional error details, e.g., field-specific validation errors (optional).</li>
+ * <li>{@code timestamp} – the time when the error occurred (UTC).</li>
+ * <li>{@code status} – the HTTP status code corresponding to the error.</li>
+ * <li>{@code message} – a human-readable description of the error.</li>
+ * <li>{@code code} – a machine-readable error code from
+ * {@link com.itasocialacademy.oitassist.core.enums.ErrorCode}.</li>
+ * <li>{@code path} – the request URI that caused the error.</li>
+ * <li>{@code traceId} – a unique identifier for tracing the request through
+ * logs (optional).</li>
+ * <li>{@code details} – a map containing additional error details, e.g.,
+ * field-specific validation errors (optional).</li>
  * </ul>
  *
  * <h2>Usage</h2>
+ *
  * <pre>{@code
  * ErrorResponse response = ErrorResponse.builder()
  *     .timestamp(Instant.now())
@@ -40,7 +44,8 @@ import java.util.Map;
  *
  * <h2>Serialization</h2>
  * <p>
- * Uses Jackson annotations to include only non-null fields in the JSON response.
+ * Uses Jackson annotations to include only non-null fields in the JSON
+ * response.
  * </p>
  */
 @Getter

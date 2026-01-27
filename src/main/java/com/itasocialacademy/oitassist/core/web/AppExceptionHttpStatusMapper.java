@@ -5,14 +5,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 /**
- * Maps {@link ErrorCode} values to their corresponding {@link HttpStatus} codes.
+ * Maps {@link ErrorCode} values to their corresponding {@link HttpStatus}
+ * codes.
  * <p>
- * This class serves as a bridge between the business-level error codes and the HTTP layer.
- * It allows service and business layers to remain agnostic of HTTP while still providing
- * consistent responses in the web layer.
+ * This class serves as a bridge between the business-level error codes and the
+ * HTTP layer. It allows service and business layers to remain agnostic of HTTP
+ * while still providing consistent responses in the web layer.
  * </p>
  *
  * <h2>Usage</h2>
+ *
  * <pre>{@code
  * HttpStatus status = appExceptionHttpStatusMapper.map(errorCode);
  * return ResponseEntity.status(status).body(errorResponse);
@@ -20,8 +22,9 @@ import org.springframework.stereotype.Component;
  *
  * <h2>Architectural role</h2>
  * <ul>
- *   <li>Used by {@code ControllerAdvice} or web-layer components to map business exceptions to HTTP responses.</li>
- *   <li>Keeps service and business layers decoupled from web concerns.</li>
+ * <li>Used by {@code ControllerAdvice} or web-layer components to map business
+ * exceptions to HTTP responses.</li>
+ * <li>Keeps service and business layers decoupled from web concerns.</li>
  * </ul>
  *
  * @see ErrorCode
