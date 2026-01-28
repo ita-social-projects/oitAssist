@@ -51,7 +51,7 @@ jobs:
           reporter: java-junit
 
       - name: Rename user jar to app
-        run: mv $userRepoName/target/*.jar $userRepoName/target/$onbootJarName
+        run: mv target/*.jar target/app.jar
 
   build-and-push-backend-image:
     needs: build
