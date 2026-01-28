@@ -1,0 +1,9 @@
+# Ігноруємо все зайве
+.git
+.github
+.idea
+.vscode
+node_modules
+
+# Дозволяємо jar
+!target/OITAssist-0.0.1-SNAPSHOT.jar
