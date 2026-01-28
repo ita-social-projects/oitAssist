@@ -9,12 +9,12 @@ COPY frontend/ ./
 RUN pnpm run build
 
 # STAGE 2: Build the Backend (Java 25)
-FROM eclipse-temurin:25-jdk AS backend-build
+# Change this line:
+FROM maven:3.9.9-eclipse-temurin-25 AS backend-build
 WORKDIR /app
 COPY . .
-# Copy the built frontend from STAGE 1 into the Spring Boot static resources
 COPY --from=frontend-build /frontend/dist/ src/main/resources/static/
-# Build the JAR
+# Now 'mvn' will work
 RUN mvn clean package -DskipTests
 
 # STAGE 3: Final Runtime
