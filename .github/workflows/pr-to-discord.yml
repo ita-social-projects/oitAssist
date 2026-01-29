@@ -2,7 +2,7 @@ name: PR to Discord (dev only)
 
 on:
   pull_request:
-    types: [opened, reopened, closed, review_requested, review_request_removed]
+    types: [opened, review_requested, review_request_removed]
   pull_request_review:
     types: [submitted]
 
@@ -23,54 +23,30 @@ jobs:
         if: github.event.action != 'closed'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REVIEWERS_JSON: ${{ toJson(github.event.pull_request.requested_reviewers) }}
         run: |
-          REVIEWERS=$(echo '${{ toJson(github.event.pull_request.requested_reviewers) }}' | \
-          jq -r '.[].login' | paste -sd ", " -)
-
+          REVIEWERS=$(echo "$REVIEWERS_JSON" | jq -r '.[].login' | paste -sd ", " -)
           [ -z "$REVIEWERS" ] && REVIEWERS="—"
+
+          PAYLOAD=$(jq -n \
+          --arg title "$PR_TITLE" \
+          --arg author "$PR_AUTHOR" \
+          --arg reviewers "$REVIEWERS" \
+          --arg url "$PR_URL" \
+          '{
+          content: "🚀 **PR to dev**\n" +
+                     "**Title:** \($title)\n" +
+                     "**Author:** \($author)\n" +
+                     "**Reviewers:** \($reviewers)\n" +
+                     "🔗 \($url)"
+          }')
 
           RESPONSE=$(curl -s -X POST "$DISCORD_WEBHOOK_URL?wait=true" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"content\": \"🚀 **PR to dev**\\n\
-              **Title:** ${{ github.event.pull_request.title }}\\n\
-              **Author:** ${{ github.event.pull_request.user.login }}\\n\
-              **Reviewers:** ${REVIEWERS}\\n\
-              🔗 ${{ github.event.pull_request.html_url }}\"
-            }")
+            -d "$PAYLOAD")
 
           MESSAGE_ID=$(echo "$RESPONSE" | jq -r '.id')
-          echo "MESSAGE_ID=$MESSAGE_ID" >> $GITHUB_ENV
-
-      - name: Save message id to PR comment
-        if: github.event.action != 'closed'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              body: `<!-- discord_message_id:${process.env.MESSAGE_ID} -->`
-            });
-
-      - name: Delete Discord message after merge
-        if: github.event.action == 'closed' && github.event.pull_request.merged == true
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          COMMENTS=$(gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments)
-
-          MESSAGE_ID=$(echo "$COMMENTS" | jq -r '.[] | select(.body | contains("discord_message_id")) | .body' | sed -E 's/.*discord_message_id:([0-9]+).*/\1/')
-
-          if [ -z "$MESSAGE_ID" ]; then
-            echo "No message id found"
-            exit 0
-          fi
-
-          WEBHOOK_BASE=$(echo "$DISCORD_WEBHOOK_URL" | sed 's|/webhooks/.*|/webhooks|')
-
-          curl -X DELETE "$DISCORD_WEBHOOK_URL/messages/$MESSAGE_ID"
-
-          echo "Deleted Discord message $MESSAGE_ID"
+          echo "MESSAGE_ID=$MESSAGE_ID" >> "$GITHUB_ENV"
