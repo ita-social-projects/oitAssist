@@ -29,21 +29,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-            git fetch --unshallow
-            mvn clean install sonar:sonar \
+          git fetch --unshallow
+          mvn clean install sonar:sonar \
             -Dsonar.projectKey=ita-social-projects_oitAssist \
             -Dsonar.organization=ita-social-projects \
             -Dsonar.host.url=https://sonarcloud.io \
 
-            - name: Test Reporter
-              #v1.5.0
-              uses: dorny/test-reporter@0d00bb14cb0cc2c9b8985df6e81dd333188224e1
-              
-              if: success() || failure()
-              with:
-                name: Tests Report
-                path: '**/target/surefire-reports/*.xml'
-                reporter: java-junit
+      - name: Test Reporter
+        #v1.5.0
+        uses: dorny/test-reporter@0d00bb14cb0cc2c9b8985df6e81dd333188224e1
+        if: success() || failure()
+        with:
+          name: Tests Report
+          path: '**/target/surefire-reports/*.xml'
+          reporter: java-junit
 
   build-and-push-backend-image:
     needs: build
