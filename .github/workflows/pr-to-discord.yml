@@ -1,21 +1,64 @@
-name: PR to Discord (dev only)
+name: PR to Discord
 
 on:
   pull_request:
-    types: [opened, review_requested]
-  pull_request_review:
-    types: [submitted]
+    types: [opened, closed]
+    branches: [ main ]
+
+permissions:
+  pull-requests: write
+  contents: read
 
 jobs:
-  discord:
+  manage_discord:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.base.ref == 'dev'
     steps:
-      - name: Notify Discord about PR
+      - uses: actions/checkout@v4
+
+      # --- STEP 1: OPENED ---
+      - name: Notify and Label
+        if: github.event.action == 'opened'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCORD_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          curl -H "Content-Type: application/json" \
-          -d '{
-            "content": "🔔 **New Pull Request**\n👤 Author: **${{ github.event.pull_request.user.login }}**\n
-          📌 Title: ${{ github.event.pull_request.title }}\n🔗 ${{ github.event.pull_request.html_url }}"
-          }' \
-          ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RESPONSE=$(curl -s -X POST "${DISCORD_URL}?wait=true" \
+            -H "Content-Type: application/json" \
+            -d @- <<EOF
+          {
+            "content": "🚀 **New PR #${{ github.event.pull_request.number }}**\n👀**Title:** ${{ github.event.pull_request.title }}\n👤**Author:** ${{ github.event.pull_request.user.login }}\n🔗**Link:** ${{ github.event.pull_request.html_url }}"
+          }
+          EOF
+          )
+          
+          MSG_ID=$(echo $RESPONSE | jq -r '.id')
+          
+          if [ "$MSG_ID" == "null" ] || [ -z "$MSG_ID" ]; then
+            echo "Error: Discord did not return a Message ID. Response was: $RESPONSE"
+            exit 1
+          fi
+
+          LABEL_NAME="discord-$MSG_ID"
+          
+          gh label create "$LABEL_NAME" --color "7289da" --repo ${{ github.repository }} || echo "Label exists"
+          gh pr edit ${{ github.event.pull_request.number }} --add-label "$LABEL_NAME" --repo ${{ github.repository }}
+
+      # --- STEP 2: CLOSED ---
+      - name: Delete Discord Message
+        if: github.event.action == 'closed' || github.event.action == 'merged'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCORD_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          LABELS=$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json labels -q '.labels[].name')
+          
+          MSG_ID=$(echo "$LABELS" | grep -oP '(?<=discord-)\d+' || echo "")
+          
+          if [ ! -z "$MSG_ID" ]; then
+            echo "Deleting message $MSG_ID..."
+            curl -s -X DELETE "${DISCORD_URL}/messages/$MSG_ID"
+          
+            gh label delete "discord-$MSG_ID" --repo ${{ github.repository }} --yes
+          else
+            echo "No valid Discord ID label found (found: $LABELS)"
+          fi
