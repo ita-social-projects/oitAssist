@@ -82,6 +82,7 @@ jobs:
 
       - name: Copy frontend into backend
         run: |
+          mkdir -p src/main/resources/static
           rm -rf src/main/resources/static/*
           cp -r frontend/dist/* src/main/resources/static/
 
