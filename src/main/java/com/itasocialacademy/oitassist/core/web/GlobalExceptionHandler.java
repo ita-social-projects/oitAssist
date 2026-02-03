@@ -106,9 +106,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex, HttpServletRequest request) {
         log.warn(
-            "BusinessException [{}] type={} traceId={}",
+            "BusinessException [{}] type={} message={} traceId={}",
             ex.getErrorCode(),
             ex.getClass().getSimpleName(),
+            ex.getMessage(),
             MDC.get("traceId"));
         HttpStatus status = statusMapper.map(ex.getErrorCode());
         return ResponseEntity.status(status)
