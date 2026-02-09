@@ -3,10 +3,9 @@ spring:
     url: ${DATASOURCE_URL}
     username: ${DATASOURCE_USERNAME}
     password: ${DATASOURCE_PASSWORD}
-    driver: ${DATASOURCE_DRIVER}
 
   liquibase:
-    enabled: ${LIQUIBASE_ENABLED}
+    enabled: ${LIQUIBASE_ENABLED:false}
     change-log: ${LIQUIBASE_CHANGE_LOG}
     drop-first: ${LIQUIBASE_DROP_FIRST:false}
 
@@ -18,3 +17,8 @@ spring:
 
 server:
   port: 8080
+
+jwt:
+  encrypted-key: ${JWT_ENCRYPTED_KEY}
+  sign-key: ${JWT_SIGN_KEY}
+  validity: ${JWT_VALIDITY}

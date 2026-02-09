@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.user.api.interfaces;
 
 import com.itasocialacademy.oitassist.user.api.dto.CreateUserCommand;
+import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.user.api.dto.UserDto;
 import com.itasocialacademy.oitassist.user.api.dto.UserPublicDto;
 import java.util.Optional;
@@ -23,6 +24,12 @@ public interface UserFacade {
      * Checks whether a user exists by email. Used for cross-module validation.
      */
     boolean existsByEmail(String email);
+
+    /**
+     * Returns user by email with fields for security. Read-only operation for other
+     * modules.
+     */
+    UserDetailsImpl getUserByEmail(String email);
 
     /**
      * Returns public user info (safe for sharing). Should not expose internal

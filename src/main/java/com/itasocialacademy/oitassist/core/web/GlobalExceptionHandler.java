@@ -1,14 +1,14 @@
 package com.itasocialacademy.oitassist.core.web;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
-import com.itasocialacademy.oitassist.core.exceptions.BusinessException;
+import com.itasocialacademy.oitassist.core.exceptions.*;
 import com.itasocialacademy.oitassist.core.exceptions.SecurityException;
-import com.itasocialacademy.oitassist.core.exceptions.TechnicalException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.modulith.NamedInterface;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -76,6 +76,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @ControllerAdvice
 @RequiredArgsConstructor
+@NamedInterface("GlobalExceptionHandler")
 public class GlobalExceptionHandler {
     private final AppExceptionHttpStatusMapper statusMapper;
     private static final String TRACE_ID_MDC = "traceId";
@@ -116,7 +117,7 @@ public class GlobalExceptionHandler {
             .body(buildResponse(request, ex.getErrorCode(), ex.getMessage(), status.value(), null));
     }
 
-    @ExceptionHandler(SecurityException.class)
+    @ExceptionHandler(value = {SecurityException.class, AuthenticationException.class})
     public ResponseEntity<ErrorResponse> handleSecurityException(SecurityException ex, HttpServletRequest request) {
         log.warn(
             "SecurityException [{}] userId={} ip={} traceId={}",
