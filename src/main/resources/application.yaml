@@ -5,13 +5,13 @@ spring:
     password: ${DATASOURCE_PASSWORD}
 
   liquibase:
-    enabled: ${LIQUIBASE_ENABLED:false}
-    change-log: ${LIQUIBASE_CHANGE_LOG}
-    drop-first: ${LIQUIBASE_DROP_FIRST:false}
+    enabled: ${SPRING_LIQUIBASE_ENABLED:false}
+    change-log: ${SPRING_LIQUIBASE_CHANGE_LOG}
+    drop-first: ${SPRING_LIQUIBASE_DROP_FIRST:false}
 
   jpa:
     show-sql: ${JPA_SHOW_SQL}
-    open-in-view: ${JPA_OPEN_IN_VIEW:false}
+    open-in-view: false
     hibernate:
       ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:validate}
 
