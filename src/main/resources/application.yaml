@@ -1,3 +1,6 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: ${APP_NAME:oit-assist}
@@ -18,14 +21,10 @@ spring:
     hibernate:
       ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:validate}
 
-server:
-  port: 8080
-
 jwt:
   encrypted-key: ${JWT_ENCRYPTED_KEY}
   sign-key: ${JWT_SIGN_KEY}
   validity: ${JWT_VALIDITY}
-
 
 logging:
   level:
@@ -42,9 +41,3 @@ logging:
 logbook:
   format:
     style: json
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "health, info, metrics, prometheus"
