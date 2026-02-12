@@ -24,14 +24,14 @@ jobs:
           java-version: 25
           distribution: temurin
 
-      - name: Test Reporter
-        #v1.5.0
-        uses: dorny/test-reporter@0d00bb14cb0cc2c9b8985df6e81dd333188224e1
-        if: success() || failure()
-        with:
-          name: Tests Report
-          path: '**/target/surefire-reports/*.xml'
-          reporter: java-junit
+      #- name: Test Reporter
+       # #v1.5.0
+        #uses: dorny/test-reporter@0d00bb14cb0cc2c9b8985df6e81dd333188224e1
+        #if: success() || failure()
+        #with:
+         # name: Tests Report
+          #path: '**/target/surefire-reports/*.xml'
+          #reporter: java-junit
 
   build-and-push-backend-image:
     needs: build
