@@ -32,9 +32,9 @@
         <mupstruct-version>1.6.3</mupstruct-version>
         <checkstyle-maven-plugin.version>3.6.0</checkstyle-maven-plugin.version>
         <org.eclipse.jgit.version>7.5.0.202512021534-r</org.eclipse.jgit.version>
-        <sonar.coverage.jacoco.xmlReportPaths>
-            **/target/site/jacoco/jacoco.xml
-        </sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.jacoco.xmlReportPaths>**/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <springdoc-openapi-version>3.0.1</springdoc-openapi-version>
+        <jjwt-version>0.13.0</jjwt-version>
     </properties>
     <dependencies>
         <dependency>
@@ -65,18 +65,18 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
-            <version>0.13.0</version>
+            <version>${jjwt-version}</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
-            <version>0.13.0</version>
+            <version>${jjwt-version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.13.0</version>
+            <version>${jjwt-version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
@@ -118,6 +118,13 @@
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
             <version>${mupstruct-version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <!-- Source: https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-starter-webmvc-ui -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc-openapi-version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
