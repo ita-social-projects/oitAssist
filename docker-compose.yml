@@ -1,12 +1,11 @@
 services:
   postgres:
     image: postgres:16
-    container_name: oitassist-postgres
-    restart: unless-stopped
+    container_name: oitassist-db
     environment:
       POSTGRES_DB: oitassist
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${DATASOURCE_USER}
+      POSTGRES_PASSWORD: ${DATASOURCE_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -18,25 +17,9 @@ services:
     depends_on:
       - postgres
     ports:
-      - "8080:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: local
-
-      # --- DATABASE ---
-      DATASOURCE_URL: jdbc:postgresql://postgres:5432/oitassist
-      DATASOURCE_USERNAME: postgres
-      DATASOURCE_PASSWORD: postgres
-      DATASOURCE_DRIVER: org.postgresql.Driver
-
-      # --- LIQUIBASE ---
-      LIQUIBASE_ENABLED: true
-      LIQUIBASE_CHANGE_LOG: classpath:db/changelog/db.changelog-master.xml
-      LIQUIBASE_DROP_FIRST: false
-
-      # --- JPA ---
-      JPA_SHOW_SQL: true
-      JPA_OPEN_IN_VIEW: false
-      JPA_HIBERNATE_DDL_AUTO: update
+      - "80:80"
+    env_file:
+      - environment.env
 
 volumes:
   postgres_data:
