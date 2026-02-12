@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <springProperty scope="context" name="appName" source="spring.application.name"/>
+    <springProperty scope="context" name="consolePattern" source="logging.pattern.console"/>
+    <springProperty scope="context" name="filePattern"    source="logging.pattern.file"/>
+    <springProperty scope="context" name="rootLevel"      source="logging.level.root"/>
+
+    <property name="LOG_FILE" value="${LOG_FILE:-logs/app.log}"/>
+    <property name="LOG_MAX_HISTORY" value="${LOG_MAX_HISTORY:-14}"/>
+    <property name="LOG_TOTAL_SIZE_CAP" value="${LOG_TOTAL_SIZE_CAP:-2GB}"/>
+    <property name="LOG_ASYNC_QUEUE_SIZE" value="${LOG_ASYNC_QUEUE_SIZE:-2048}"/>
+    <property name="CONSOLE_PATTERN" value="${consolePattern}"/>
+    <property name="FILE_PATTERN" value="${filePattern}"/>
+
+    <!-- CONSOLE -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- FILE -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_FILE}.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>${LOG_MAX_HISTORY}</maxHistory>
+            <totalSizeCap>${LOG_TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>${LOG_ASYNC_QUEUE_SIZE}</queueSize>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="FILE"/>
+    </appender>
+
+    <root level="${rootLevel}">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC_FILE"/>
+    </root>
+
+</configuration>

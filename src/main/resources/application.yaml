@@ -1,4 +1,7 @@
 spring:
+  application:
+    name: ${APP_NAME:oit-assist}
+
   datasource:
     url: ${DATASOURCE_URL}
     username: ${DATASOURCE_USERNAME}
@@ -22,3 +25,26 @@ jwt:
   encrypted-key: ${JWT_ENCRYPTED_KEY}
   sign-key: ${JWT_SIGN_KEY}
   validity: ${JWT_VALIDITY}
+
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.itasocialacademy.oitassist: ${LOG_LEVEL_APP:DEBUG}
+    org.springframework: ${LOG_LEVEL_SPRING:INFO}
+    org.zalando.logbook: ${LOG_LEVEL_LOGBOOK:TRACE}
+  file:
+    name: ${LOG_FILE:logs/app.log}
+  pattern:
+    console: ${LOG_CONSOLE_PATTERN:%green(%d{yyyy-MM-dd HH:mm:ss.SSS}) %highlight(%-5level) %yellow([%thread]) %cyan(%logger{28}) %yellow([%X{traceId:-}]) - %msg%n}
+    file: ${LOG_FILE_PATTERN:%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} [%X{traceId:-}] - %msg%n}
+
+logbook:
+  format:
+    style: json
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health, info, metrics, prometheus"
