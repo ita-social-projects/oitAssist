@@ -98,7 +98,7 @@ jobs:
     #if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     steps:
       - name: Deploy to Azure VM via SSH
-        uses: appleboy/scp-action@master
+        uses: appleboy/ssh-action@v1.0.3
         env:
           DATASOURCE_URL: ${{secrets.DATASOURCE_URL}}
           DATASOURCE_USERNAME: ${{ secrets.DATASOURCE_USERNAME }}

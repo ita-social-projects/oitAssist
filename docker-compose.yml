@@ -4,7 +4,7 @@ services:
     container_name: oitassist-db
     environment:
       POSTGRES_DB: oitassist
-      POSTGRES_USER: ${DATASOURCE_USER}
+      POSTGRES_USER: ${DATASOURCE_USERNAME}
       POSTGRES_PASSWORD: ${DATASOURCE_PASSWORD}
     ports:
       - "5432:5432"
@@ -17,9 +17,20 @@ services:
     depends_on:
       - postgres
     ports:
-      - "80:80"
-    env_file:
-      - environment.env
-
+      - "80:8080"
+    environment:
+      DATASOURCE_URL: ${DATASOURCE_URL}
+      DATASOURCE_USERNAME: ${DATASOURCE_USERNAME}
+      DATASOURCE_PASSWORD: ${DATASOURCE_PASSWORD}
+      DATASOURCE_DRIVER: ${DATASOURCE_DRIVER}
+      LIQUIBASE_ENABLED: ${LIQUIBASE_ENABLED}
+      LIQUIBASE_CHANGE_LOG: ${LIQUIBASE_CHANGE_LOG}
+      LIQUIBASE_DROP_FIRST: ${LIQUIBASE_DROP_FIRST}
+      JPA_SHOW_SQL: ${JPA_SHOW_SQL}
+      JPA_OPEN_IN_VIEW: ${JPA_OPEN_IN_VIEW}
+      JPA_HIBERNATE_DDL_AUTO: ${JPA_HIBERNATE_DDL_AUTO}
+      JWT_ENCRYPTED_KEY: ${JWT_ENCRYPTED_KEY}
+      JWT_SIGN_KEY: ${JWT_SIGN_KEY}
+      JWT_VALIDITY: ${JWT_VALIDITY}
 volumes:
   postgres_data:
