@@ -35,11 +35,9 @@ public class UpdateUserDTO implements UpdateEntityDTO<Long> {
     @NotBlank
     @Schema(description = "User Phone Number", example = "380931111111")
     private String phoneNumber;
-    @NotBlank
     @NotNull
     @Schema(description = "User Role", example = "USER")
     private Role role;
-    @NotBlank
     @NotNull
     @Schema(description = "User Status", example = "ACTIVATED")
     private UserStatus status;

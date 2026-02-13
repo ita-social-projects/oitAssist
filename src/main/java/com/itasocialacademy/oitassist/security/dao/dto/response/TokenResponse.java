@@ -10,6 +10,6 @@ import lombok.*;
 @Setter
 @Schema(description = "Token Response to return token")
 public class TokenResponse {
-    @Schema(description = "token", examples = "very-long-token")
+    @Schema(description = "token", example = "very-long-token")
     private String token;
 }

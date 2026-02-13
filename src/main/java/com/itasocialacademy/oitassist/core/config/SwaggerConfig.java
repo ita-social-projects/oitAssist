@@ -40,7 +40,6 @@ public class SwaggerConfig {
                 .title("OITAssist API")
                 .version("1.0.0"))
             .servers(servers)
-            .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
             .components(new Components()
                 .addSecuritySchemes(securitySchemeName,
                     new SecurityScheme()

@@ -10,8 +10,8 @@ import lombok.*;
 @Builder
 @Schema(description = "Token Request dto")
 public class TokenRequest {
-    @Schema(description = "User Email", examples = "mail@gmail.com")
+    @Schema(description = "User Email", example = "mail@gmail.com")
     private String username;
-    @Schema(description = "User Password", examples = "password")
+    @Schema(description = "User Password", example = "password")
     private String password;
 }
