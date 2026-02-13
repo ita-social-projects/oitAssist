@@ -91,3 +91,34 @@ jobs:
           context: .
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/oitassist/build:latest
+
+  deploy:
+    needs: build-and-push-backend-image
+    runs-on: ubuntu-latest
+    #if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    steps:
+      - name: Deploy to Azure VM via SSH
+        uses: appleboy/scp-action@master
+        env:
+          DATASOURCE_URL: ${{secrets.DATASOURCE_URL}}
+          DATASOURCE_USERNAME: ${{ secrets.DATASOURCE_USERNAME }}
+          DATASOURCE_PASSWORD: ${{ secrets.DATASOURCE_PASSWORD }}
+          DATASOURCE_DRIVER: ${{secrets.DATASOURCE_DRIVER}}
+          SPRING_PROFILES_ACTIVE: ${{secrets.SPRING_PROFILES_ACTIVE}}
+          LIQUIBASE_ENABLED: ${{secrets.LIQUIBASE_ENABLED}}
+          LIQUIBASE_CHANGE_LOG: ${{secrets.LIQUIBASE_CHANGE_LOG}}
+          LIQUIBASE_DROP_FIRST: ${{secrets.LIQUIBASE_DROP_FIRST}}
+          JPA_SHOW_SQL: ${{secrets.JPA_SHOW_SQL}}
+          JPA_OPEN_IN_VIEW: ${{secrets.JPA_OPEN_IN_VIEW}}
+          JPA_HIBERNATE_DDL_AUTO: ${{secrets.JPA_HIBERNATE_DDL_AUTO}}
+          JWT_VALIDITY: ${{secrets.JWT_VALIDITY}}
+          JWT_SIGN_KEY: ${{secrets.JWT_SIGN_KEY}}
+          JWT_ENCRYPTED_KEY: ${{secrets.JWT_ENCRYPTED_KEY}}
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          strip_components: |
+            cd /home/azureoit/oitassist
+            sudo docker compose pull
+            sudo docker compose up -d
