@@ -114,7 +114,7 @@ jobs:
           JWT_VALIDITY: ${{secrets.JWT_VALIDITY}}
           JWT_SIGN_KEY: ${{secrets.JWT_SIGN_KEY}}
           JWT_ENCRYPTED_KEY: ${{secrets.JWT_ENCRYPTED_KEY}}
-          LOG_LEVEL_LOGBOOK: ${{LOG_LEVEL_LOGBOOK}}
+          LOG_LEVEL_LOGBOOK: ${{secrets.LOG_LEVEL_LOGBOOK}}
         with:
           host: ${{ secrets.AZURE_VM_HOST }}
           username: ${{ secrets.AZURE_VM_USER }}
