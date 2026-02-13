@@ -33,5 +33,6 @@ services:
       JWT_ENCRYPTED_KEY: ${JWT_ENCRYPTED_KEY}
       JWT_SIGN_KEY: ${JWT_SIGN_KEY}
       JWT_VALIDITY: ${JWT_VALIDITY}
+      LOG_LEVEL_LOGBOOK: ${LOG_LEVEL_LOGBOOK}
 volumes:
   postgres_data:
