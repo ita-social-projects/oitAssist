@@ -118,7 +118,7 @@ jobs:
           host: ${{ secrets.AZURE_VM_HOST }}
           username: ${{ secrets.AZURE_VM_USER }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
-          strip_components: |
+          script: |
             cd /home/azureoit/oitassist
             sudo docker compose pull
             sudo docker compose up -d
