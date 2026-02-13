@@ -21,6 +21,16 @@ spring:
     hibernate:
       ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:validate}
 
+oit:
+  swagger:
+    servers:
+      - url: ${LOCALHOST_SWAGGER_SERVER:http://localhost:8080}
+        description: Local
+      - url: ${STAGE_SWAGGER_SERVER:https://stage.myapp.com}
+        description: Stage
+      - url: ${PROD_SWAGGER_SERVER:https://api.myapp.com}
+        description: Production
+
 jwt:
   encrypted-key: ${JWT_ENCRYPTED_KEY}
   sign-key: ${JWT_SIGN_KEY}
@@ -31,7 +41,7 @@ logging:
     root: ${LOG_LEVEL_ROOT:INFO}
     com.itasocialacademy.oitassist: ${LOG_LEVEL_APP:DEBUG}
     org.springframework: ${LOG_LEVEL_SPRING:INFO}
-    org.zalando.logbook: ${LOG_LEVEL_LOGBOOK:TRACE}
+    org.zalando.logbook: ${LOG_LEVEL_LOGBOOK:INFO}
   file:
     name: ${LOG_FILE:logs/app.log}
   pattern:
@@ -41,3 +51,10 @@ logging:
 logbook:
   format:
     style: json
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
+  swagger-ui:
+    enabled: ${SWAGGER_UI_ENABLED:true}
+    path: /docs
