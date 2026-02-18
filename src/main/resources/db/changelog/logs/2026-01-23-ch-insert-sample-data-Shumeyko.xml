@@ -11,7 +11,7 @@
             <column name="first_name" value="Олександр"/>
             <column name="surname" value="Головенко"/>
             <column name="middle_name" value="Олегович"/>
-            <column name="password" value="$2a$10$8.UnVuG9HHgffUDAlk8qfOuMYyJDdXT9m9OBwSNOS2ZTP666S666"/>
+            <column name="password" value="$2a$10$ohGnznEwIkq/G7uEmpuP5eS8xTEqgcyq6qDxGUmnJqCLfFRHAVZ1q"/>
             <column name="role" value="ADMIN"/>
             <column name="user_status" value="VERIFIED"/>
         </insert>
@@ -21,7 +21,7 @@
             <column name="first_name" value="Іван"/>
             <column name="surname" value="Квач"/>
             <column name="middle_name" value="Петренко"/>
-            <column name="password" value="$2a$10$8.UnVuG9HHgffUDAlk8qfOuMYyJDdXT9m9OBwSNOS2ZTP666S666"/>
+            <column name="password" value="$2a$10$ohGnznEwIkq/G7uEmpuP5eS8xTEqgcyq6qDxGUmnJqCLfFRHAVZ1q"/>
             <column name="role" value="USER"/>
             <column name="user_status" value="ACTIVATED"/>
         </insert>
@@ -48,7 +48,8 @@
 
         <insert tableName="news">
             <column name="title" value="Змагання розпочато!"/>
-            <column name="text" value="Бажаємо успіхів усім учасникам. Не забудьте перевірити умови завдань."/>
+            <column name="content" value="Бажаємо успіхів усім учасникам. Не забудьте перевірити умови завдань."/>
+            <column name="status" value="DRAFT"/>
             <column name="author_id" valueNumeric="1"/>
         </insert>
 

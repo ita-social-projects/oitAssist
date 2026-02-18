@@ -9,6 +9,8 @@ import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.modulith.NamedInterface;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -171,5 +173,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(buildResponse(request, ErrorCode.COMMON_INTERNAL_ERROR, "An unexpected error occurred",
                 HttpStatus.INTERNAL_SERVER_ERROR.value(), null));
+    }
+
+    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+        Exception ex,
+        HttpServletRequest request) {
+        log.warn("Access denied: traceId={}", MDC.get("traceId"));
+
+        HttpStatus status = HttpStatus.FORBIDDEN;
+
+        return ResponseEntity.status(status)
+            .body(buildResponse(
+                request,
+                ErrorCode.ACCESS_DENIED,
+                "Access denied",
+                status.value(),
+                null));
     }
 }

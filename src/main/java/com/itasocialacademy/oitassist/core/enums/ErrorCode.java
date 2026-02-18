@@ -31,8 +31,8 @@ public enum ErrorCode {
     TASK_NOT_FOUND(ErrorCategory.NOT_FOUND),
     TASK_ALREADY_COMPLETED(ErrorCategory.CONFLICT),
     TASK_ACCESS_RESTRICTED(ErrorCategory.AUTHORIZATION),
-
     USER_NOT_FOUND(ErrorCategory.NOT_FOUND),
+    ACCESS_DENIED(ErrorCategory.AUTHORIZATION),
     USER_ALREADY_EXISTS(ErrorCategory.CONFLICT);
 
     private final ErrorCategory category;
