@@ -104,10 +104,14 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/oitassist/build:latest
 
   deploy:
+
     needs: build-and-push-backend-image
     runs-on: ubuntu-latest
     #if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Copy docker-compose.yml to VM
         uses: appleboy/scp-action@v0.1.7
         with:
