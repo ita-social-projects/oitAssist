@@ -168,12 +168,13 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+        HttpServletRequest request) {
         log.warn("Validation failed: traceId={}", MDC.get("traceId"));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, "Request body is missing or malformed",
-                        HttpStatus.BAD_REQUEST.value(), null));
+            .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, "Request body is missing or malformed",
+                HttpStatus.BAD_REQUEST.value(), null));
     }
 
     @ExceptionHandler(Exception.class)
