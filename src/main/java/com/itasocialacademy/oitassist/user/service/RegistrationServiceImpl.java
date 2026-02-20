@@ -12,6 +12,7 @@ import com.itasocialacademy.oitassist.user.mapper.request.CreateUserRequestMappe
 import com.itasocialacademy.oitassist.user.service.interfaces.RegistrationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -31,6 +32,8 @@ public class RegistrationServiceImpl implements RegistrationService {
 
     private final CreateUserRequestMapper createUserRequestMapper;
 
+    private final PasswordEncoder passwordEncoder;
+
     /**
      * {@inheritDoc}
      */
@@ -44,8 +47,7 @@ public class RegistrationServiceImpl implements RegistrationService {
         }
 
         User newUser = createUserRequestMapper.toEntity(request);
-        newUser.setPassword(request.getPassword());
-        // newUser.setPassword(passwordEncoder.encode(request.getPassword()));
+        newUser.setPassword(passwordEncoder.encode(request.getPassword()));
 
         String token = UUID.randomUUID().toString();
 
