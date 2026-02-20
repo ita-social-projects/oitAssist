@@ -3,13 +3,12 @@ package com.itasocialacademy.oitassist.core.config;
 import freemarker.template.Configuration;
 import freemarker.template.TemplateExceptionHandler;
 import org.springframework.context.annotation.Bean;
-import java.io.IOException;
 import java.util.TimeZone;
 
 @org.springframework.context.annotation.Configuration
 public class FreeMakerConfig {
     @Bean
-    Configuration freemarkerConfiguration() throws IOException {
+    Configuration freemarkerConfiguration() {
         Configuration cfg = new Configuration(Configuration.VERSION_2_3_34);
         cfg.setClassLoaderForTemplateLoading(
             getClass().getClassLoader(),
