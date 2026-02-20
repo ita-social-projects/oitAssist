@@ -26,7 +26,8 @@ public enum ErrorCode {
     TASK_ACCESS_RESTRICTED(ErrorCategory.AUTHORIZATION),
 
     USER_NOT_FOUND(ErrorCategory.NOT_FOUND),
-    USER_ALREADY_EXISTS(ErrorCategory.CONFLICT);
+    USER_ALREADY_EXISTS(ErrorCategory.CONFLICT),
+    USER_NOT_ACTIVATED(ErrorCategory.CONFLICT);
 
     private final ErrorCategory category;
 }

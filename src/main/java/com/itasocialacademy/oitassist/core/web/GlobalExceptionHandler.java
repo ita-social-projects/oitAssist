@@ -4,16 +4,17 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.BusinessException;
 import com.itasocialacademy.oitassist.core.exceptions.SecurityException;
 import com.itasocialacademy.oitassist.core.exceptions.TechnicalException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
@@ -162,6 +163,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, "Validation failed",
                 HttpStatus.BAD_REQUEST.value(), Map.of("errors", fieldErrors)));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        log.warn("Validation failed: traceId={}", MDC.get("traceId"));
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, "Request body is missing or malformed",
+                        HttpStatus.BAD_REQUEST.value(), null));
     }
 
     @ExceptionHandler(Exception.class)

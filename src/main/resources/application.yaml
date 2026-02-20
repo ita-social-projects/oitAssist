@@ -16,5 +16,24 @@ spring:
     hibernate:
       ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:validate}
 
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
 server:
   port: 8080
+
+web_client:
+  origin: ${WEB_CLIENT_ORIGIN}
