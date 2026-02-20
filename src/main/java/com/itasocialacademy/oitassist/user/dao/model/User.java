@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.user.dao.model;
 
+import com.itasocialacademy.oitassist.core.rest.entity.LongEntity;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import jakarta.persistence.CascadeType;
@@ -33,7 +34,7 @@ import java.time.Instant;
 @EqualsAndHashCode()
 @Builder
 @NamedInterface("UserEntity")
-public class User {
+public class User implements LongEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

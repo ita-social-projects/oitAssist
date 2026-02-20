@@ -1,16 +1,13 @@
 name: CI/CD OITAssist
 
-# Controls when the action will run.
 on:
-
-  # Triggers the workflow on push or pull request events for dev and prod
   push:
     branches: [ dev ]
   pull_request:
     branches: [ dev ]
   workflow_dispatch:
-
-concurrency: Testing
+  repository_dispatch:
+    types: [ frontend-built ]
 
 env:
   REGISTRY: ghcr.io
@@ -18,7 +15,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v6
 
@@ -26,28 +22,27 @@ jobs:
         uses: actions/setup-java@v5
         with:
           java-version: 25
-          distribution: 'temurin'
+          distribution: temurin
 
-      - name: Run a multi-line script
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          git fetch --unshallow
-          mvn clean install sonar:sonar \
-            -Dsonar.projectKey=ita-social-projects_oitAssist \
-            -Dsonar.organization=ita-social-projects \
-            -Dsonar.host.url=https://sonarcloud.io \
+          #- name: Run a multi-line script
+          #  env:
+          #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          #    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          #  run: |
+          #      git fetch --unshallow
+          #      mvn clean install sonar:sonar \
+          #        -Dsonar.projectKey=ita-social-projects_oitAssist \
+          #        -Dsonar.organization=ita-social-projects \
+          #        -Dsonar.host.url=https://sonarcloud.io \
 
-      - name: Test Reporter
-        #v1.5.0
-        uses: dorny/test-reporter@0d00bb14cb0cc2c9b8985df6e81dd333188224e1
-
-        if: success() || failure()
-        with:
-          name: Tests Report
-          path: '**/target/surefire-reports/*.xml'
-          reporter: java-junit
+          #- name: Test Reporter
+          # #v1.5.0
+          #uses: dorny/test-reporter@0d00bb14cb0cc2c9b8985df6e81dd333188224e1
+          #if: success() || failure()
+          #with:
+          # name: Tests Report
+          #path: '**/target/surefire-reports/*.xml'
+          #reporter: java-junit
 
   build-and-push-backend-image:
     needs: build
@@ -60,6 +55,40 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: 25
+          distribution: temurin
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Checkout frontend repo
+        uses: actions/checkout@v4
+        with:
+          repository: ita-social-projects/oitClient
+          ref: dev
+          path: frontend
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm install -g pnpm
+          pnpm install
+          pnpm run build
+
+      - name: Copy frontend into backend
+        run: |
+          mkdir -p src/main/resources/static
+          rm -rf src/main/resources/static/*
+          cp -r frontend/dist/* src/main/resources/static/
+
+      - name: Build backend jar
+        run: mvn clean package -DskipTests
+
       - name: Login to GitHub Packages
         uses: docker/login-action@v3
         with:
@@ -68,8 +97,54 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image for backend
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/oitassist:latest
+          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/oitassist/build:latest
+
+  deploy:
+
+    needs: build-and-push-backend-image
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "/home/azureoit/oitassist"
+
+      - name: Deploy to Azure VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DATASOURCE_URL: ${{secrets.DATASOURCE_URL}}
+          DATASOURCE_USERNAME: ${{ secrets.DATASOURCE_USERNAME }}
+          DATASOURCE_PASSWORD: ${{ secrets.DATASOURCE_PASSWORD }}
+          DATASOURCE_DRIVER: ${{secrets.DATASOURCE_DRIVER}}
+          SPRING_PROFILES_ACTIVE: ${{secrets.SPRING_PROFILES_ACTIVE}}
+          SPRING_LIQUIBASE_ENABLED: ${{secrets.LIQUIBASE_ENABLED}}
+          SPRING_LIQUIBASE_CHANGE_LOG: ${{secrets.LIQUIBASE_CHANGE_LOG}}
+          SPRING_LIQUIBASE_DROP_FIRST: ${{secrets.LIQUIBASE_DROP_FIRST}}
+          JPA_SHOW_SQL: ${{secrets.JPA_SHOW_SQL}}
+          JPA_OPEN_IN_VIEW: ${{secrets.JPA_OPEN_IN_VIEW}}
+          JPA_HIBERNATE_DDL_AUTO: ${{secrets.JPA_HIBERNATE_DDL_AUTO}}
+          JWT_VALIDITY: ${{secrets.JWT_VALIDITY}}
+          JWT_SIGN_KEY: ${{secrets.JWT_SIGN_KEY}}
+          JWT_ENCRYPTED_KEY: ${{secrets.JWT_ENCRYPTED_KEY}}
+          LOG_LEVEL_LOGBOOK: ${{secrets.LOG_LEVEL_LOGBOOK}}
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          envs: DATASOURCE_URL,DATASOURCE_USERNAME,DATASOURCE_PASSWORD,DATASOURCE_DRIVER,SPRING_PROFILES_ACTIVE,SPRING_LIQUIBASE_ENABLED,SPRING_LIQUIBASE_CHANGE_LOG,SPRING_LIQUIBASE_DROP_FIRST,JPA_SHOW_SQL,JPA_OPEN_IN_VIEW,JPA_HIBERNATE_DDL_AUTO,JWT_VALIDITY,JWT_SIGN_KEY,JWT_ENCRYPTED_KEY,LOG_LEVEL_LOGBOOK
+          script: |
+            cd /home/azureoit/oitassist
+            docker compose pull
+            docker compose up -d

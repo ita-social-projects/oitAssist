@@ -1,33 +1,30 @@
 package com.itasocialacademy.oitassist.user.service;
 
-import com.itasocialacademy.oitassist.user.dao.dto.UserVO;
+import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
+import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
+import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
+import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
+import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.model.User;
-import com.itasocialacademy.oitassist.user.mapper.UserVoMapper;
-import com.itasocialacademy.oitassist.user.mapper.request.CreateUserRequestMapper;
-import com.itasocialacademy.oitassist.user.mapper.request.UpdateUserRequestMapper;
-import com.itasocialacademy.oitassist.user.mapper.response.CreateUserResponseMapper;
-import com.itasocialacademy.oitassist.user.mapper.response.UpdateUserResponseMapper;
+import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
-import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
-    private final UserRepository repository;
-    private final CreateUserRequestMapper createUserRequestMapper;
-    private final CreateUserResponseMapper createUserResponseMapper;
-    private final UpdateUserRequestMapper updateUserRequestMapper;
-    private final UpdateUserResponseMapper updateUserResponseMapper;
-    private final UserVoMapper userVoMapper;
-    private final UserRepository userRepository;
+public class UserServiceImpl
+    extends AbstractServiceImpl<Long, User, CreateUserDTO, UpdateUserDTO, ResponseUserDTO, UserRepository, UserMapper>
+    implements UserService {
+    protected UserServiceImpl(UserRepository repository, UserMapper mapper) {
+        super(repository, mapper);
+    }
 
-    @Override
-    @Transactional(readOnly = true)
-    public UserVO getUserById(Long id) {
-        User user = userRepository.findUserById(id);
-        return userVoMapper.toDto(user);
+    public UserDetailsImpl loadUserByUsername(@NonNull String username) {
+        User user = repository.findUserByEmail(username);
+        if (user == null) {
+            return null;
+        }
+        return mapper.toUserDetails(user);
     }
 }
