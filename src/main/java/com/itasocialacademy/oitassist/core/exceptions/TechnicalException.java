@@ -58,4 +58,8 @@ public class TechnicalException extends AppException {
     protected TechnicalException(String message, ErrorCode errorCode) {
         super(message, errorCode);
     }
+
+    protected TechnicalException(String message, ErrorCode errorCode, Throwable cause) {
+        super(message, errorCode, cause);
+    }
 }

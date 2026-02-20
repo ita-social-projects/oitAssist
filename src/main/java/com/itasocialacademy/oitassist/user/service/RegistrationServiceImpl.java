@@ -73,6 +73,10 @@ public class RegistrationServiceImpl implements RegistrationService {
         Map<String, Object> root = new HashMap<>();
         root.put("name", request.getFirstName());
         root.put("link", activationLink);
-        emailService.sendHtmlEmail(request.getEmail(), "registration-confirmation.html", root);
+        emailService.sendHtmlEmail(
+            request.getEmail(),
+            "registration-confirmation.html",
+            "Підтвердження реєстрації",
+            root);
     }
 }

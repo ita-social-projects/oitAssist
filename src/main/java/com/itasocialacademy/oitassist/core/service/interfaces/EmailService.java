@@ -19,5 +19,5 @@ public interface EmailService {
      *
      * @throws RuntimeException if email sending fails
      */
-    void sendHtmlEmail(String to, String templatePath, Map<String, Object> root);
+    void sendHtmlEmail(String to, String templatePath, String subject, Map<String, Object> root);
 }

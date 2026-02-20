@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Bean;
 import java.util.TimeZone;
 
 @org.springframework.context.annotation.Configuration
-public class FreeMakerConfig {
+public class FreeMarkerConfig {
     @Bean
     Configuration freemarkerConfiguration() {
         Configuration cfg = new Configuration(Configuration.VERSION_2_3_34);

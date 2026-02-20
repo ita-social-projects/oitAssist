@@ -37,6 +37,7 @@ class EmailServiceImplTest {
         // given
         String to = "test@mail.com";
         String templatePath = "registration-confirmation.html";
+        String subject = "Registration Confirmation";
         Map<String, Object> root = Map.of("name", "Test");
         MimeMessage message = mock(MimeMessage.class);
         Template template = mock(Template.class);
@@ -45,7 +46,7 @@ class EmailServiceImplTest {
         when(javaMailSender.createMimeMessage()).thenReturn(message);
         when(configuration.getTemplate(templatePath)).thenReturn(template);
 
-        emailService.sendHtmlEmail(to, templatePath, root);
+        emailService.sendHtmlEmail(to, templatePath, subject, root);
 
         verify(javaMailSender, times(1)).send(message);
     }
@@ -56,12 +57,13 @@ class EmailServiceImplTest {
         String to = "test@mail.com";
         String templatePath = "registration-confirmation.html";
         Map<String, Object> root = Map.of("name", "Test");
+        String subject = "Registration Confirmation";
         MimeMessage message = mock(MimeMessage.class);
 
         // when + then
         when(javaMailSender.createMimeMessage()).thenReturn(message);
         doThrow(new IOException()).when(configuration).getTemplate(templatePath);
 
-        assertThrows(EmailSendingException.class, () -> emailService.sendHtmlEmail(to, templatePath, root));
+        assertThrows(EmailSendingException.class, () -> emailService.sendHtmlEmail(to, templatePath, subject, root));
     }
 }

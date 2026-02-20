@@ -34,9 +34,9 @@ public class SecurityConfig {
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         final DaoAuthenticationProvider daoAuthenticationProvider =
-                new DaoAuthenticationProvider(authUserDetailsService);
+            new DaoAuthenticationProvider(authUserDetailsService);
         daoAuthenticationProvider.setPasswordEncoder(
-                passwordEncoder());
+            passwordEncoder());
         return daoAuthenticationProvider;
     }
 
@@ -48,24 +48,24 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(HttpSecurity httpSecurity) {
         return httpSecurity.getSharedObject(AuthenticationManagerBuilder.class)
-                .authenticationProvider(authenticationProvider())
-                .build();
+            .authenticationProvider(authenticationProvider())
+            .build();
     }
 
     @Bean
     public SecurityFilterChain configure(HttpSecurity http) {
         return http.csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/v1/registration"
-                        ).permitAll()
-                        .requestMatchers("/api", "/api/**")
-                        .authenticated()
-                        .anyRequest()
-                        .permitAll())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtFilter,
-                        UsernamePasswordAuthenticationFilter.class)
-                .build();
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.POST,
+                    "/api/v1/registration")
+                .permitAll()
+                .requestMatchers("/api", "/api/**")
+                .authenticated()
+                .anyRequest()
+                .permitAll())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .addFilterBefore(jwtFilter,
+                UsernamePasswordAuthenticationFilter.class)
+            .build();
     }
 }

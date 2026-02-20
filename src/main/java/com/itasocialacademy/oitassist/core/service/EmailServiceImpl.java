@@ -27,7 +27,7 @@ public class EmailServiceImpl implements EmailService {
      */
     @Async
     @Override
-    public void sendHtmlEmail(String to, String templatePath, Map<String, Object> root) {
+    public void sendHtmlEmail(String to, String templatePath, String subject, Map<String, Object> root) {
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message);
@@ -35,11 +35,12 @@ public class EmailServiceImpl implements EmailService {
             Template t = configuration.getTemplate(templatePath);
 
             helper.setTo(to);
+            helper.setSubject(subject);
             helper.setText(FreeMarkerTemplateUtils.processTemplateIntoString(t, root), true);
 
             javaMailSender.send(message);
         } catch (MessagingException | IOException | TemplateException e) {
-            throw new EmailSendingException();
+            throw new EmailSendingException(e);
         }
     }
 }

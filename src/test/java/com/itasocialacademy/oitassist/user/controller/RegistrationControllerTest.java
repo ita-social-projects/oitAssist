@@ -79,7 +79,6 @@ class RegistrationControllerTest {
         mockMvc.perform(post(path)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
-            .andDo(result -> System.out.println(result.getResponse().getContentAsString()))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.details.errors").isMap())
             .andExpect(jsonPath("$.details.errors.firstName").isString())

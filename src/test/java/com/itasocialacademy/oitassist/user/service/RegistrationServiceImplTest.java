@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,6 +38,9 @@ class RegistrationServiceImplTest {
     @Mock
     private CreateUserRequestMapper createUserRequestMapper;
 
+    @Mock
+    PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private RegistrationServiceImpl registrationService;
 
@@ -54,7 +58,7 @@ class RegistrationServiceImplTest {
             .thenReturn(Optional.of(user));
 
         assertThrows(UserNotActivatedException.class, () -> registrationService.createUser(request));
-        verify(emailService, never()).sendHtmlEmail(any(), any(), any());
+        verify(emailService, never()).sendHtmlEmail(any(), any(), any(), any());
         verify(userRepository, never()).save(any());
     }
 
@@ -72,7 +76,7 @@ class RegistrationServiceImplTest {
             .thenReturn(Optional.of(user));
 
         assertThrows(UserAlreadyExistsException.class, () -> registrationService.createUser(request));
-        verify(emailService, never()).sendHtmlEmail(any(), any(), any());
+        verify(emailService, never()).sendHtmlEmail(any(), any(), any(), any());
         verify(userRepository, never()).save(any());
     }
 
@@ -80,6 +84,7 @@ class RegistrationServiceImplTest {
     void createUser_userNotFound_newUserCreated() {
         // given
         String email = "test@mail.com";
+        String subject = "Підтвердження реєстрації";
         CreateUserRequest request = new CreateUserRequest();
         request.setEmail(email);
         request.setFirstName("Test");
@@ -91,11 +96,12 @@ class RegistrationServiceImplTest {
         // when + then
         when(userRepository.findUserByEmail(request.getEmail())).thenReturn(Optional.empty());
         when(createUserRequestMapper.toEntity(request)).thenReturn(new User());
-        doNothing().when(emailService).sendHtmlEmail(eq(request.getEmail()), anyString(), anyMap());
+        when(passwordEncoder.encode(request.getPassword())).thenReturn("encodedPassword");
+        doNothing().when(emailService).sendHtmlEmail(eq(request.getEmail()), anyString(), eq(subject), anyMap());
 
         registrationService.createUser(request);
 
         verify(userRepository, times(1)).save(any(User.class));
-        verify(emailService, times(1)).sendHtmlEmail(eq(request.getEmail()), anyString(), anyMap());
+        verify(emailService, times(1)).sendHtmlEmail(eq(request.getEmail()), anyString(), anyString(), anyMap());
     }
 }
