@@ -34,5 +34,30 @@ services:
       JWT_SIGN_KEY: ${JWT_SIGN_KEY}
       JWT_VALIDITY: ${JWT_VALIDITY}
       LOG_LEVEL_LOGBOOK: ${LOG_LEVEL_LOGBOOK}
+
+  prometheus:
+    image: prom/prometheus
+    container_name: oitassist-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  node-exporter:
+    image: prom/node-exporter
+    container_name: oitassist-node-exporter
+    ports:
+      - "9100:9100"
+
 volumes:
   postgres_data:

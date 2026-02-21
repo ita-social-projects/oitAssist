@@ -58,3 +58,16 @@ springdoc:
   swagger-ui:
     enabled: ${SWAGGER_UI_ENABLED:true}
     path: /docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    prometheus:
+      access: unrestricted
+  prometheus:
+    metrics:
+      export:
+        enabled: true
