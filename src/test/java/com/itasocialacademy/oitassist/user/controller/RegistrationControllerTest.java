@@ -47,7 +47,7 @@ class RegistrationControllerTest {
     }
 
     @Test
-    void createUser_shouldReturn204_andCallService() throws Exception {
+    void createUser_shouldReturn201_andCallService() throws Exception {
         // given
         CreateUserRequest request = new CreateUserRequest();
         request.setEmail("test@test.com");
@@ -63,7 +63,7 @@ class RegistrationControllerTest {
         mockMvc.perform(post("/api/v1/registration")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isNoContent());
+            .andExpect(status().isCreated());
 
         verify(registrationService, times(1))
             .createUser(any(CreateUserRequest.class));

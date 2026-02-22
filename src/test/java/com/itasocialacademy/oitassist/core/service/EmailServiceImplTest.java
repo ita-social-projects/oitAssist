@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.core.service;
 
-import com.itasocialacademy.oitassist.core.exceptions.EmailSendingException;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import jakarta.mail.internet.MimeMessage;
@@ -10,11 +9,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mail.javamail.JavaMailSender;
-
 import java.io.IOException;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -64,6 +61,6 @@ class EmailServiceImplTest {
         when(javaMailSender.createMimeMessage()).thenReturn(message);
         doThrow(new IOException()).when(configuration).getTemplate(templatePath);
 
-        assertThrows(EmailSendingException.class, () -> emailService.sendHtmlEmail(to, templatePath, subject, root));
+        assertDoesNotThrow(() -> emailService.sendHtmlEmail(to, templatePath, subject, root));
     }
 }

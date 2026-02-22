@@ -30,15 +30,18 @@ import java.time.Instant;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString()
-@EqualsAndHashCode()
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 @Builder
 @NamedInterface("UserEntity")
 public class User implements LongEntity {
     @Id
+    @ToString.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @EqualsAndHashCode.Include
+    @ToString.Include
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
@@ -73,7 +76,14 @@ public class User implements LongEntity {
     private RegistrationToken registrationToken;
 
     public void setRegistrationToken(RegistrationToken token) {
+        if (this.registrationToken != null) {
+            this.registrationToken.setUser(null);
+        }
+
         this.registrationToken = token;
-        token.setUser(this);
+
+        if (token != null) {
+            token.setUser(this);
+        }
     }
 }
