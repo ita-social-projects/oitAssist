@@ -58,7 +58,8 @@ public class SecurityConfig {
                 .requestMatchers("/api", "/api/**")
                 .authenticated()
                 .anyRequest()
-                .permitAll())
+                .permitAll()
+                .requestMatchers("/actuator/prometheus").permitAll())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilterBefore(jwtFilter,
                 UsernamePasswordAuthenticationFilter.class)
