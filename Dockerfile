@@ -1,4 +1,5 @@
-FROM eclipse-temurin:25 as runner
-WORKDIR runner
-COPY **/target/app.jar runner/
-CMD java -jar runner/app.jar
+FROM eclipse-temurin:25-jre
+WORKDIR /app
+COPY target/*.jar app.jar
+EXPOSE 80
+ENTRYPOINT ["java", "-jar", "app.jar"]

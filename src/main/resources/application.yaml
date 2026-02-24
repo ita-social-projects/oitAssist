@@ -1,24 +1,60 @@
+server:
+  port: 8080
+
 spring:
+  application:
+    name: ${APP_NAME:oit-assist}
+
   datasource:
     url: ${DATASOURCE_URL}
     username: ${DATASOURCE_USERNAME}
     password: ${DATASOURCE_PASSWORD}
 
   liquibase:
-    enabled: ${LIQUIBASE_ENABLED:false}
-    change-log: ${LIQUIBASE_CHANGE_LOG}
-    drop-first: ${LIQUIBASE_DROP_FIRST:false}
+    enabled: ${SPRING_LIQUIBASE_ENABLED:false}
+    change-log: ${SPRING_LIQUIBASE_CHANGE_LOG}
+    drop-first: ${SPRING_LIQUIBASE_DROP_FIRST:false}
 
   jpa:
     show-sql: ${JPA_SHOW_SQL}
-    open-in-view: ${JPA_OPEN_IN_VIEW:false}
+    open-in-view: false
     hibernate:
       ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:validate}
 
-server:
-  port: 8080
+oit:
+  swagger:
+    servers:
+      - url: ${LOCALHOST_SWAGGER_SERVER:http://localhost:8080}
+        description: Local
+      - url: ${STAGE_SWAGGER_SERVER:https://stage.myapp.com}
+        description: Stage
+      - url: ${PROD_SWAGGER_SERVER:https://api.myapp.com}
+        description: Production
 
 jwt:
   encrypted-key: ${JWT_ENCRYPTED_KEY}
   sign-key: ${JWT_SIGN_KEY}
   validity: ${JWT_VALIDITY}
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.itasocialacademy.oitassist: ${LOG_LEVEL_APP:DEBUG}
+    org.springframework: ${LOG_LEVEL_SPRING:INFO}
+    org.zalando.logbook: ${LOG_LEVEL_LOGBOOK:INFO}
+  file:
+    name: ${LOG_FILE:logs/app.log}
+  pattern:
+    console: ${LOG_CONSOLE_PATTERN:%green(%d{yyyy-MM-dd HH:mm:ss.SSS}) %highlight(%-5level) %yellow([%thread]) %cyan(%logger{28}) %yellow([%X{traceId:-}]) - %msg%n}
+    file: ${LOG_FILE_PATTERN:%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} [%X{traceId:-}] - %msg%n}
+
+logbook:
+  format:
+    style: json
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
+  swagger-ui:
+    enabled: ${SWAGGER_UI_ENABLED:true}
+    path: /docs
