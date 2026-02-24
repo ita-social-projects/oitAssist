@@ -1,0 +1,32 @@
+package com.itasocialacademy.oitassist.auth.service.interfaces;
+
+import com.itasocialacademy.oitassist.auth.exceptions.UserAlreadyActivatedException;
+import com.itasocialacademy.oitassist.user.exceptions.ActivationTokenSendingTimeoutException;
+import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
+
+/**
+ * Application service responsible for user account activation workflows.
+ * Provides operations related to activation email resending and activation
+ * token generation. This service orchestrates activation-related use cases and
+ * coordinates domain logic and persistence.
+ */
+public interface UserActivationService {
+    /**
+     * Resends the account activation email to a user whose account has not yet been
+     * activated. If the current activation token is expired or missing, a new token
+     * will be generated. If the resend request is performed before the allowed
+     * timeout period, an exception is thrown.
+     *
+     * @param email the email address of the user
+     *
+     * @throws UserNotFoundException                  if no user exists with the
+     *                                                provided email
+     * @throws UserAlreadyActivatedException          if the user account is already
+     *                                                activated
+     * @throws ActivationTokenSendingTimeoutException if the resend request is made
+     *                                                before the timeout expires
+     */
+    void resendVerificationEmail(String email);
+
+    void publishActivationEvent(String email, String firstName, String token);
+}

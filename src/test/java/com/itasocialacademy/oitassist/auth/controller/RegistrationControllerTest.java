@@ -1,10 +1,11 @@
-package com.itasocialacademy.oitassist.user.controller;
+package com.itasocialacademy.oitassist.auth.controller;
 
+import com.itasocialacademy.oitassist.auth.controller.RegistrationController;
+import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.web.AppExceptionHttpStatusMapper;
 import com.itasocialacademy.oitassist.core.web.GlobalExceptionHandler;
-import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserRequest;
-import com.itasocialacademy.oitassist.user.service.interfaces.RegistrationService;
+import com.itasocialacademy.oitassist.auth.service.interfaces.RegistrationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,7 +50,7 @@ class RegistrationControllerTest {
     @Test
     void createUser_shouldReturn201_andCallService() throws Exception {
         // given
-        CreateUserRequest request = new CreateUserRequest();
+        RegisterRequest request = new RegisterRequest();
         request.setEmail("test@test.com");
         request.setFirstName("Test");
         request.setLastName("Test");
@@ -57,7 +58,7 @@ class RegistrationControllerTest {
         request.setPhoneNumber("+380991234567");
         request.setPassword("password123");
 
-        doNothing().when(registrationService).createUser(any(CreateUserRequest.class));
+        doNothing().when(registrationService).createUser(any(RegisterRequest.class));
 
         // when + then
         mockMvc.perform(post("/api/v1/registration")
@@ -66,13 +67,13 @@ class RegistrationControllerTest {
             .andExpect(status().isCreated());
 
         verify(registrationService, times(1))
-            .createUser(any(CreateUserRequest.class));
+            .createUser(any(RegisterRequest.class));
     }
 
     @Test
     void createUser_shouldReturn400_whenInvalidRequest() throws Exception {
         // given
-        CreateUserRequest request = new CreateUserRequest();
+        RegisterRequest request = new RegisterRequest();
         String path = "/api/v1/registration";
 
         // when + then

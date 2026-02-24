@@ -1,8 +1,8 @@
-package com.itasocialacademy.oitassist.user.listener;
+package com.itasocialacademy.oitassist.auth.listener;
 
 import com.itasocialacademy.oitassist.core.properties.WebClientProperties;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
-import com.itasocialacademy.oitassist.user.dao.dto.event.UserRegisteredEvent;
+import com.itasocialacademy.oitassist.auth.dao.dto.event.ActivationAccountEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -15,14 +15,14 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UserRegistrationListener {
+public class ActivationAccountListener {
     private final EmailService emailService;
 
     private final WebClientProperties webClientProperties;
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handleUserRegistered(UserRegisteredEvent event) {
+    public void handleUserRegistered(ActivationAccountEvent event) {
         log.info("Handling UserRegisteredEvent for email={}", event.email());
 
         String activationLink =

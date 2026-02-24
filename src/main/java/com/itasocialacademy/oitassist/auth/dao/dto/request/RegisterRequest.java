@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.user.dao.dto.request;
+package com.itasocialacademy.oitassist.auth.dao.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -16,7 +16,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "Request object for user registration")
-public class CreateUserRequest {
+public class RegisterRequest {
     @Schema(
         description = "User email address",
         example = "test@mail.com",

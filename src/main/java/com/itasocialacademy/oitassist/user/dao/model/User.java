@@ -73,14 +73,14 @@ public class User implements LongEntity {
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @PrimaryKeyJoinColumn
-    private RegistrationToken registrationToken;
+    private UserActivationToken userActivationToken;
 
-    public void setRegistrationToken(RegistrationToken token) {
-        if (this.registrationToken != null) {
-            this.registrationToken.setUser(null);
+    public void setUserActivationToken(UserActivationToken token) {
+        if (this.userActivationToken != null) {
+            this.userActivationToken.setUser(null);
         }
 
-        this.registrationToken = token;
+        this.userActivationToken = token;
 
         if (token != null) {
             token.setUser(this);

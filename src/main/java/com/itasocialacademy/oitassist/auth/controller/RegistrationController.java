@@ -1,8 +1,8 @@
-package com.itasocialacademy.oitassist.user.controller;
+package com.itasocialacademy.oitassist.auth.controller;
 
+import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
+import com.itasocialacademy.oitassist.auth.service.interfaces.RegistrationService;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
-import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserRequest;
-import com.itasocialacademy.oitassist.user.service.interfaces.RegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -59,7 +59,7 @@ public class RegistrationController {
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public void createUser(@RequestBody @Valid CreateUserRequest request) {
+    public void createUser(@RequestBody @Valid RegisterRequest request) {
         registrationService.createUser(request);
     }
 }

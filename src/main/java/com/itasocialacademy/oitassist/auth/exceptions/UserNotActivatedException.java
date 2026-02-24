@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.user.exceptions;
+package com.itasocialacademy.oitassist.auth.exceptions;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.BusinessException;

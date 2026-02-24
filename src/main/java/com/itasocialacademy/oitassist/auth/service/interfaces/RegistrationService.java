@@ -1,6 +1,6 @@
-package com.itasocialacademy.oitassist.user.service.interfaces;
+package com.itasocialacademy.oitassist.auth.service.interfaces;
 
-import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserRequest;
+import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
 
 /**
  * Service responsible for handling user registration workflow. Defines
@@ -22,5 +22,5 @@ public interface RegistrationService {
      *                and credentials
      * @throws RuntimeException if user creation fails
      */
-    void createUser(CreateUserRequest request);
+    void createUser(RegisterRequest request);
 }

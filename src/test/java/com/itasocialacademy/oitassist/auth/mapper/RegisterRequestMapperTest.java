@@ -1,6 +1,7 @@
-package com.itasocialacademy.oitassist.user.mapper.request;
+package com.itasocialacademy.oitassist.auth.mapper;
 
-import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserRequest;
+import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
+import com.itasocialacademy.oitassist.auth.mapper.RegisterRequestMapper;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import com.itasocialacademy.oitassist.user.dao.model.User;
@@ -12,12 +13,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @ExtendWith(MockitoExtension.class)
-class CreateUserRequestMapperTest {
-    private final CreateUserRequestMapper mapper = Mappers.getMapper(CreateUserRequestMapper.class);
+class RegisterRequestMapperTest {
+    private final RegisterRequestMapper mapper = Mappers.getMapper(RegisterRequestMapper.class);
 
     @Test
     void shouldMapRequestToEntity() {
-        CreateUserRequest request = new CreateUserRequest();
+        RegisterRequest request = new RegisterRequest();
         request.setEmail("test@mail.com");
         request.setPassword("1234");
         request.setFirstName("John");

@@ -1,13 +1,14 @@
-package com.itasocialacademy.oitassist.user.service;
+package com.itasocialacademy.oitassist.auth.service;
 
+import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
+import com.itasocialacademy.oitassist.auth.exceptions.UserNotActivatedException;
+import com.itasocialacademy.oitassist.auth.mapper.RegisterRequestMapper;
+import com.itasocialacademy.oitassist.auth.service.interfaces.UserActivationService;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
-import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserRequest;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import com.itasocialacademy.oitassist.user.dao.model.User;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.exceptions.UserAlreadyExistsException;
-import com.itasocialacademy.oitassist.user.exceptions.UserNotActivatedException;
-import com.itasocialacademy.oitassist.user.mapper.request.CreateUserRequestMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,7 +18,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -36,10 +36,13 @@ class RegistrationServiceImplTest {
     private EmailService emailService;
 
     @Mock
-    private CreateUserRequestMapper createUserRequestMapper;
+    private RegisterRequestMapper registerRequestMapper;
 
     @Mock
-    PasswordEncoder passwordEncoder;
+    private UserActivationService userActivationService;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private RegistrationServiceImpl registrationService;
@@ -49,7 +52,7 @@ class RegistrationServiceImplTest {
         // given
         String email = "test@mail.com";
         User user = mock(User.class);
-        CreateUserRequest request = mock(CreateUserRequest.class);
+        RegisterRequest request = mock(RegisterRequest.class);
 
         // when + then
         when(user.getUserStatus()).thenReturn(UserStatus.NOT_ACTIVATED);
@@ -67,7 +70,7 @@ class RegistrationServiceImplTest {
         // given
         String email = "test@mail.com";
         User user = mock(User.class);
-        CreateUserRequest request = mock(CreateUserRequest.class);
+        RegisterRequest request = mock(RegisterRequest.class);
 
         // when + then
         when(user.getUserStatus()).thenReturn(UserStatus.ACTIVATED);
@@ -84,8 +87,7 @@ class RegistrationServiceImplTest {
     void createUser_userNotFound_newUserCreated() {
         // given
         String email = "test@mail.com";
-        String subject = "Підтвердження реєстрації";
-        CreateUserRequest request = new CreateUserRequest();
+        RegisterRequest request = new RegisterRequest();
         request.setEmail(email);
         request.setFirstName("Test");
         request.setLastName("Test");
@@ -95,13 +97,19 @@ class RegistrationServiceImplTest {
 
         // when + then
         when(userRepository.findUserByEmail(request.getEmail())).thenReturn(Optional.empty());
-        when(createUserRequestMapper.toEntity(request)).thenReturn(new User());
+        when(registerRequestMapper.toEntity(request)).thenReturn(new User());
         when(passwordEncoder.encode(request.getPassword())).thenReturn("encodedPassword");
-        doNothing().when(emailService).sendHtmlEmail(eq(request.getEmail()), anyString(), eq(subject), anyMap());
+        doNothing().when(userActivationService).publishActivationEvent(eq(request.getEmail()),
+            eq(request.getFirstName()),
+            anyString());
 
         registrationService.createUser(request);
 
         verify(userRepository, times(1)).save(any(User.class));
-        verify(emailService, times(1)).sendHtmlEmail(eq(request.getEmail()), anyString(), anyString(), anyMap());
+        verify(registerRequestMapper, times(1)).toEntity(eq(request));
+        verify(passwordEncoder, times(1)).encode(request.getPassword());
+        verify(userActivationService, times(1)).publishActivationEvent(eq(request.getEmail()),
+            eq(request.getFirstName()),
+            anyString());
     }
 }

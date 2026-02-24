@@ -34,6 +34,8 @@ public enum ErrorCode {
 
     USER_NOT_FOUND(ErrorCategory.NOT_FOUND),
     USER_ALREADY_EXISTS(ErrorCategory.CONFLICT),
+    ACTIVATION_EMAIL_SENDING_TIMEOUT(ErrorCategory.VALIDATION),
+    USER_ALREADY_ACTIVATED(ErrorCategory.CONFLICT),
     USER_NOT_ACTIVATED(ErrorCategory.CONFLICT);
 
     private final ErrorCategory category;

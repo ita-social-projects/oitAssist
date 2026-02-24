@@ -116,7 +116,7 @@ public class GlobalExceptionHandler {
             MDC.get("traceId"));
         HttpStatus status = statusMapper.map(ex.getErrorCode());
         return ResponseEntity.status(status)
-            .body(buildResponse(request, ex.getErrorCode(), ex.getMessage(), status.value(), null));
+            .body(buildResponse(request, ex.getErrorCode(), ex.getMessage(), status.value(), ex.getDetails()));
     }
 
     @ExceptionHandler(value = {SecurityException.class, AuthenticationException.class})

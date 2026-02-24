@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.core.exceptions;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import java.util.Map;
 
 /**
  * Base class for all business-rule violations.
@@ -57,5 +58,9 @@ public class BusinessException extends AppException {
      */
     protected BusinessException(String message, ErrorCode errorCode) {
         super(message, errorCode);
+    }
+
+    protected BusinessException(String message, ErrorCode errorCode, Map<String, Object> details) {
+        super(message, errorCode, details);
     }
 }
