@@ -1,8 +1,8 @@
 package com.itasocialacademy.oitassist.news.dao.model;
 
+import jakarta.persistence.*;
 import com.itasocialacademy.oitassist.core.rest.entity.LongEntity;
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
-import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
