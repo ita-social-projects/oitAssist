@@ -109,6 +109,7 @@
                 <constraints nullable="false"/>
             </column>
             <column name="status" type="VARCHAR(50)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
             </column>
             <column name="created_at"
                     type="TIMESTAMPTZ"

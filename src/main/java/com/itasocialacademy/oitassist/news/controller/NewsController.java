@@ -1,29 +1,52 @@
 package com.itasocialacademy.oitassist.news.controller;
 
-import com.itasocialacademy.oitassist.news.api.interfaces.NewsFacade;
+import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
+import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
+import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/news")
-@RequiredArgsConstructor
-public class NewsController {
-    private final NewsFacade newsFacade;
+@RequestMapping("/api/v1/news")
+
+public class NewsController
+    extends AbstractRestControllerImpl<Long, CreateNewsDTO, UpdateNewsDto, ResponseNewsDto, NewsService> {
+    protected NewsController(NewsService service) {
+        super(service);
+    }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_ORG')")
-    public ResponseEntity<Void> createNews(@Valid @RequestBody CreateNewsDTO dto,
-                                           @AuthenticationPrincipal(expression = "id") Long userId) {
-        newsFacade.createNews(dto, userId);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+    @PreAuthorize("hasAnyRole('ADMIN','ORG')")
+    @Override
+    public ResponseEntity<ResponseNewsDto> save(
+        @Valid @RequestBody CreateNewsDTO dto) {
+        return super.save(dto);
+    }
+
+    @PutMapping
+    @PreAuthorize("hasAnyRole('ADMIN','ORG')")
+    @Override
+    public ResponseEntity<ResponseNewsDto> update(
+        @Valid @RequestBody UpdateNewsDto dto) {
+        return super.update(dto);
+    }
+
+    @GetMapping("/{id}")
+    @Override
+    public ResponseEntity<ResponseNewsDto> getById(
+        @PathVariable Long id) {
+        return super.getById(id);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','ORG')")
+    @Override
+    public ResponseEntity<Void> delete(
+        @PathVariable Long id) {
+        return super.delete(id);
     }
 }

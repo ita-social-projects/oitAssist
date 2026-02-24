@@ -17,15 +17,11 @@ import java.io.Serializable;
 @NamedInterface("RestController")
 public interface RestController<I extends Serializable, C extends CreateEntityDTO<I>, //
     U extends UpdateEntityDTO<I>, R extends EntityDTO<I>> {
-    @PostMapping
     ResponseEntity<R> save(@RequestBody C dto);
 
-    @PutMapping
     ResponseEntity<R> update(@RequestBody U dto);
 
-    @DeleteMapping("/{id}")
     ResponseEntity<Void> delete(@PathVariable I id);
 
-    @GetMapping("/{id}")
     ResponseEntity<R> getById(@PathVariable I id);
 }
