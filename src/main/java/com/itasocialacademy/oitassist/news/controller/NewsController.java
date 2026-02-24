@@ -5,28 +5,46 @@ import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "News v1", description = "Operations related to news")
 @RestController
 @RequestMapping("/api/v1/news")
-
 public class NewsController
     extends AbstractRestControllerImpl<Long, CreateNewsDTO, UpdateNewsDto, ResponseNewsDto, NewsService> {
     protected NewsController(NewsService service) {
         super(service);
     }
 
+    @Operation(summary = "Create news", description = "Creates a new news item")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "News created successfully"),
+        @ApiResponse(responseCode = "400", description = "Validation error"),
+        @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
+
     @Override
     public ResponseEntity<ResponseNewsDto> save(
         @Valid @RequestBody CreateNewsDTO dto) {
         return super.save(dto);
     }
 
+    @Operation(summary = "Update news", description = "Updates existing news")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "News updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Validation error"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "News not found")
+    })
     @PutMapping
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
     @Override
@@ -35,6 +53,11 @@ public class NewsController
         return super.update(dto);
     }
 
+    @Operation(summary = "Get news by id", description = "Returns news by its identifier")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "News found"),
+        @ApiResponse(responseCode = "404", description = "News not found")
+    })
     @GetMapping("/{id}")
     @Override
     public ResponseEntity<ResponseNewsDto> getById(
@@ -42,6 +65,12 @@ public class NewsController
         return super.getById(id);
     }
 
+    @Operation(summary = "Delete news", description = "Deletes news by id")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "News deleted successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "News not found")
+    })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
     @Override

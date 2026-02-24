@@ -1,11 +1,14 @@
 package com.itasocialacademy.oitassist.news.service;
 
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
+import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.dao.model.News;
 import com.itasocialacademy.oitassist.news.dao.repository.NewsRepository;
 import com.itasocialacademy.oitassist.news.mapper.request.NewsMapper;
 import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
+import java.time.OffsetDateTime;
+import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,6 +67,67 @@ class NewsServiceImplTest {
         assertNotNull(news.getPublishedAt());
 
         verify(newsRepository).save(news);
+    }
+
+    @Test
+    void shouldReturnPublishedNewsToDraftOnUpdate() {
+
+        UpdateNewsDto dto = new UpdateNewsDto(1L, "Title", "Content", false);
+
+        News existing = new News();
+        existing.setId(1L);
+        existing.setStatus(NewsStatus.PUBLISHED);
+        existing.setPublishedAt(OffsetDateTime.now());
+
+        when(newsRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        newsService.update(dto);
+
+        assertEquals(NewsStatus.DRAFT, existing.getStatus());
+        assertNull(existing.getPublishedAt());
+
+        verify(newsRepository).save(existing);
+    }
+
+    @Test
+    void shouldPublishDraftNewsOnUpdate() {
+
+        UpdateNewsDto dto = new UpdateNewsDto(1L, "Title", "Content", true);
+
+        News existing = new News();
+        existing.setId(1L);
+        existing.setStatus(NewsStatus.DRAFT);
+
+        when(newsRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        newsService.update(dto);
+
+        assertEquals(NewsStatus.PUBLISHED, existing.getStatus());
+        assertNotNull(existing.getPublishedAt());
+
+        verify(newsRepository).save(existing);
+    }
+
+    @Test
+    void shouldNotOverwritePublishedDateIfAlreadyPublished() {
+
+        OffsetDateTime originalDate = OffsetDateTime.now().minusDays(1);
+
+        UpdateNewsDto dto = new UpdateNewsDto(1L, "Title", "Content", true);
+
+        News existing = new News();
+        existing.setId(1L);
+        existing.setStatus(NewsStatus.PUBLISHED);
+        existing.setPublishedAt(originalDate);
+
+        when(newsRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        newsService.update(dto);
+
+        assertEquals(NewsStatus.PUBLISHED, existing.getStatus());
+        assertEquals(originalDate, existing.getPublishedAt());
+
+        verify(newsRepository).save(existing);
     }
 
     private void mockAuthenticatedUser(Long userId) {

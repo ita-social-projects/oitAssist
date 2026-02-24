@@ -11,9 +11,11 @@ import com.itasocialacademy.oitassist.news.mapper.request.NewsMapper;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
 import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
 import java.time.OffsetDateTime;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class NewsServiceImpl
     extends AbstractServiceImpl<Long, News, CreateNewsDTO, UpdateNewsDto, ResponseNewsDto, NewsRepository, NewsMapper>
@@ -23,21 +25,38 @@ public class NewsServiceImpl
     }
 
     @Override
-    public ResponseNewsDto save(CreateNewsDTO newsDTO) {
-        News news = mapper.toEntity(newsDTO);
+    protected void beforeSave(News news, CreateNewsDTO newsDTO) {
+        log.info("Creating news with title='{}'", newsDTO.getTitle());
         Long authorId = ((UserDetailsImpl) SecurityContextHolder
             .getContext()
             .getAuthentication()
             .getPrincipal())
             .getId();
+
         news.setAuthorId(authorId);
-        if (newsDTO.isPublishNow()) {
-            news.setStatus(NewsStatus.PUBLISHED);
-            news.setPublishedAt(OffsetDateTime.now());
+        news.setCreatedAt(OffsetDateTime.now());
+        applyPublishLogic(news, newsDTO.isPublishNow());
+    }
+
+    @Override
+    protected void beforeUpdate(News entity, UpdateNewsDto dto) {
+        log.info("Updating news id={}", entity.getId());
+        applyPublishLogic(entity, dto.isPublishNow());
+    }
+
+    private void applyPublishLogic(News news, boolean publishNow) {
+        if (publishNow) {
+            if (news.getStatus() != NewsStatus.PUBLISHED) {
+                log.debug("Publishing news id={}", news.getId());
+                news.setStatus(NewsStatus.PUBLISHED);
+                news.setPublishedAt(OffsetDateTime.now());
+            }
         } else {
-            news.setStatus(NewsStatus.DRAFT);
-            news.setPublishedAt(null);
+            if (news.getStatus() == null || news.getStatus() == NewsStatus.PUBLISHED) {
+                log.debug("Returning news id={} to draft", news.getId());
+                news.setStatus(NewsStatus.DRAFT);
+                news.setPublishedAt(null);
+            }
         }
-        return mapper.toDTO(repository.save(news));
     }
 }
