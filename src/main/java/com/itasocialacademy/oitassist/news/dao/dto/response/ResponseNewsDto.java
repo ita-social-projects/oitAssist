@@ -38,7 +38,7 @@ public class ResponseNewsDto implements EntityDTO<Long> {
     @Schema(
         description = "Current status of the news",
         example = "PUBLISHED",
-        allowableValues = {"DRAFT", "PUBLISHED"})
+        allowableValues = {"DRAFT", "PUBLISHED","ARCHIVED"})
     @NotNull
     private NewsStatus status;
     @Schema(

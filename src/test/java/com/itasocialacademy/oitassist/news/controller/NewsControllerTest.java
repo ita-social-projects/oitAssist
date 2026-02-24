@@ -1,5 +1,8 @@
 package com.itasocialacademy.oitassist.news.controller;
 
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
@@ -18,9 +21,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class NewsControllerTest {
 
@@ -111,10 +111,10 @@ class NewsControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void testDeleteNews() throws Exception {
-        doNothing().when(newsService).delete(1L); // Симулюємо видалення новини
+        doNothing().when(newsService).delete(1L);
 
         mockMvc.perform(delete("/api/v1/news/1"))
-            .andExpect(status().isOk()); // Очікуємо 200 статус
+            .andExpect(status().isOk());
 
         verify(newsService).delete(1L);
     }
@@ -122,11 +122,11 @@ class NewsControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void testCreateNewsValidationError() throws Exception {
-        CreateNewsDTO createNewsDTO = new CreateNewsDTO("", "", false); // Порожні значення
+        CreateNewsDTO createNewsDTO = new CreateNewsDTO("", "", false);
 
         mockMvc.perform(post("/api/v1/news")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(createNewsDTO)))
-            .andExpect(status().isBadRequest()); // Очікуємо статус 400 Bad Request
+            .andExpect(status().isBadRequest());
     }
 }

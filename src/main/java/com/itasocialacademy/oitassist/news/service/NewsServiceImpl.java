@@ -34,7 +34,6 @@ public class NewsServiceImpl
             .getId();
 
         news.setAuthorId(authorId);
-        news.setCreatedAt(OffsetDateTime.now());
         applyPublishLogic(news, newsDTO.isPublishNow());
     }
 

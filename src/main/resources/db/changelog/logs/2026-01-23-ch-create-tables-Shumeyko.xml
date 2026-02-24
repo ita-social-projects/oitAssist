@@ -119,7 +119,7 @@
             <column name="published_at"
                     type="TIMESTAMPTZ"/>
             <column name="author_id" type="BIGINT">
-                <constraints foreignKeyName="fk_news_author" referencedTableName="users" referencedColumnNames="id" deleteCascade="false"/>
+                <constraints nullable="false" foreignKeyName="fk_news_author" referencedTableName="users" referencedColumnNames="id" deleteCascade="false"/>
             </column>
         </createTable>
 
