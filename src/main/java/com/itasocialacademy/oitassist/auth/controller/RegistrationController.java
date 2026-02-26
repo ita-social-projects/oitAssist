@@ -54,7 +54,7 @@ public class RegistrationController {
                 schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "409",
-            description = "User already created",
+            description = "User already exists or account is not yet activated",
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
