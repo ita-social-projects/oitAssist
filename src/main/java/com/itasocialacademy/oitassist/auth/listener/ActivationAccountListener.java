@@ -1,14 +1,15 @@
 package com.itasocialacademy.oitassist.auth.listener;
 
+import com.itasocialacademy.oitassist.auth.dao.dto.event.ActivationAccountEvent;
 import com.itasocialacademy.oitassist.core.properties.WebClientProperties;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
-import com.itasocialacademy.oitassist.auth.dao.dto.event.ActivationAccountEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.web.util.UriComponentsBuilder;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,8 +26,12 @@ public class ActivationAccountListener {
     public void handleUserRegistered(ActivationAccountEvent event) {
         log.info("Handling UserRegisteredEvent for email={}", event.email());
 
-        String activationLink =
-            webClientProperties.origin() + "/confirm_registration?token=" + event.token();
+        String activationLink = UriComponentsBuilder
+            .fromPath(webClientProperties.origin())
+            .path("/confirm_registration")
+            .queryParam("token", event.token())
+            .build()
+            .toUriString();
 
         Map<String, Object> root = new HashMap<>();
         root.put("name", event.firstName());

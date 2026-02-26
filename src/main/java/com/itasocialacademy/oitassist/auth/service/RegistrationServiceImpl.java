@@ -49,12 +49,12 @@ public class RegistrationServiceImpl implements RegistrationService {
 
             userRepository.save(user);
 
-            log.info("Activation account event published with email={}", request.getEmail());
-
             userActivationService.publishActivationEvent(
                 request.getEmail(),
                 request.getFirstName(),
                 userActivationToken.getToken());
+
+            log.info("Activation account event published with email={}", request.getEmail());
 
             log.info("User successfully created with email={}", request.getEmail());
         } catch (DataIntegrityViolationException e) {

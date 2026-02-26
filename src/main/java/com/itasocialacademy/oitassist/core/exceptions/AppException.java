@@ -56,7 +56,7 @@ public abstract class AppException extends RuntimeException {
      */
     private final ErrorCode errorCode;
 
-    private Map<String, Object> details;
+    private transient Map<String, Object> details;
 
     /**
      * Constructs a new application exception with a human-readable message and a

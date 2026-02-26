@@ -63,8 +63,9 @@ public class UserActivationToken {
     }
 
     public static UserActivationToken generateActivationToken() {
-        return UserActivationToken.builder().createdAt(Instant.now())
-            .expiresAt(Instant.now().plus(15, ChronoUnit.MINUTES)).token(UUID.randomUUID().toString())
-            .lastSentAt(Instant.now()).build();
+        Instant now = Instant.now();
+        return UserActivationToken.builder().createdAt(now)
+            .expiresAt(now.plus(15, ChronoUnit.MINUTES)).token(UUID.randomUUID().toString())
+            .lastSentAt(now).build();
     }
 }

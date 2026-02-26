@@ -1,7 +1,6 @@
 package com.itasocialacademy.oitassist.auth.mapper;
 
 import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
-import com.itasocialacademy.oitassist.auth.mapper.RegisterRequestMapper;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import com.itasocialacademy.oitassist.user.dao.model.User;
@@ -17,13 +16,15 @@ class RegisterRequestMapperTest {
     private final RegisterRequestMapper mapper = Mappers.getMapper(RegisterRequestMapper.class);
 
     @Test
-    void shouldMapRequestToEntity() {
+    void toEntity_shouldMapRequestToEntity() {
+        // given
         RegisterRequest request = new RegisterRequest();
         request.setEmail("test@mail.com");
         request.setPassword("1234");
         request.setFirstName("John");
         request.setLastName("Doe");
 
+        // when + then
         User user = mapper.toEntity(request);
 
         assertEquals("test@mail.com", user.getEmail());

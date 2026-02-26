@@ -1,21 +1,15 @@
 package com.itasocialacademy.oitassist.auth.controller;
 
-import com.itasocialacademy.oitassist.auth.controller.RegistrationController;
+import com.itasocialacademy.oitassist.ControllerUnitTest;
+import com.itasocialacademy.oitassist.auth.AuthTestDataFactory;
 import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
-import com.itasocialacademy.oitassist.core.enums.ErrorCode;
-import com.itasocialacademy.oitassist.core.web.AppExceptionHttpStatusMapper;
-import com.itasocialacademy.oitassist.core.web.GlobalExceptionHandler;
 import com.itasocialacademy.oitassist.auth.service.interfaces.RegistrationService;
-import org.junit.jupiter.api.BeforeEach;
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import tools.jackson.databind.ObjectMapper;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
@@ -25,64 +19,51 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ExtendWith(MockitoExtension.class)
-class RegistrationControllerTest {
-    private MockMvc mockMvc;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    private final AppExceptionHttpStatusMapper mapper = new AppExceptionHttpStatusMapper();
-
+@DisplayName("Unit tests for Registration Controller")
+class RegistrationControllerTest extends ControllerUnitTest {
     @Mock
     private RegistrationService registrationService;
 
     @InjectMocks
-    private RegistrationController registrationController;
+    private RegistrationController controller;
 
-    @BeforeEach
-    void setup() {
-        this.mockMvc = MockMvcBuilders
-            .standaloneSetup(registrationController)
-            .setControllerAdvice(new GlobalExceptionHandler(mapper))
-            .build();
+    @Override
+    protected Object getController() {
+        return controller;
     }
 
     @Test
-    void createUser_shouldReturn201_andCallService() throws Exception {
+    @DisplayName("Request with valid data")
+    void createUser_validData_shouldReturn201() throws Exception {
         // given
-        RegisterRequest request = new RegisterRequest();
-        request.setEmail("test@test.com");
-        request.setFirstName("Test");
-        request.setLastName("Test");
-        request.setMiddleName("Test");
-        request.setPhoneNumber("+380991234567");
-        request.setPassword("password123");
+        RegisterRequest request = AuthTestDataFactory.validRegisterRequest();
 
+        // when
         doNothing().when(registrationService).createUser(any(RegisterRequest.class));
 
-        // when + then
-        mockMvc.perform(post("/api/v1/registration")
+        mockMvc.perform(post(AuthTestDataFactory.REGISTRATION_PATH)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated());
 
+        // then
         verify(registrationService, times(1))
             .createUser(any(RegisterRequest.class));
     }
 
     @Test
-    void createUser_shouldReturn400_whenInvalidRequest() throws Exception {
+    @DisplayName("Request with invalid data")
+    void createUser_invalidRequest_shouldReturn400() throws Exception {
         // given
-        RegisterRequest request = new RegisterRequest();
-        String path = "/api/v1/registration";
+        RegisterRequest request = AuthTestDataFactory.invalidRegisterRequest();
 
-        // when + then
-        mockMvc.perform(post(path)
+        // when
+        mockMvc.perform(post(AuthTestDataFactory.REGISTRATION_PATH)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.details.errors").isMap())
-            .andExpect(jsonPath("$.details.errors.firstName").isString())
+            .andExpect(jsonPath("$.details.errors.firstName").doesNotExist())
             .andExpect(jsonPath("$.details.errors.lastName").isString())
             .andExpect(jsonPath("$.details.errors.password").isString())
             .andExpect(jsonPath("$.details.errors.phoneNumber").isString())
@@ -92,9 +73,9 @@ class RegistrationControllerTest {
             .andExpect(jsonPath("$.message").value("Validation failed"))
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.timestamp").isNotEmpty())
-            .andExpect(jsonPath("$.path").value(path));
+            .andExpect(jsonPath("$.path").value(AuthTestDataFactory.REGISTRATION_PATH));
 
-        verify(registrationService, never())
-            .createUser(any());
+        // then
+        verify(registrationService, never()).createUser(any());
     }
 }
