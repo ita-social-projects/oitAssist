@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.core.rest.dto.EntityDTO;
 import com.itasocialacademy.oitassist.core.rest.dto.UpdateEntityDTO;
 import com.itasocialacademy.oitassist.core.rest.service.interfaces.BaseService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.modulith.NamedInterface;
 import java.io.Serializable;
@@ -33,7 +34,8 @@ public abstract class AbstractRestControllerImpl<I extends Serializable, //
 
     public ResponseEntity<D> save(C createDto) {
         log.debug("save<{}>(entity={})", createDtoType, createDto);
-        return ResponseEntity.ok().body(service.save(createDto));
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(service.save(createDto));
     }
 
     public ResponseEntity<D> update(U updateDTO) {

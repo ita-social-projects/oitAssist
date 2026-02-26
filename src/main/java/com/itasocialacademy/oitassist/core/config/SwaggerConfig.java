@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.properties.SwaggerProperties;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import java.util.List;
@@ -39,10 +40,11 @@ public class SwaggerConfig {
                 .title("OITAssist API")
                 .version("1.0.0"))
             .servers(servers)
+            .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
             .components(new Components()
                 .addSecuritySchemes(securitySchemeName,
                     new SecurityScheme()
-                        .name(securitySchemeName)
+                        .name("Authorization")
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
                         .bearerFormat("JWT")));

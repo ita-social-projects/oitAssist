@@ -102,15 +102,32 @@
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="title" type="VARCHAR(255)">
+            <column name="title" type="VARCHAR(170)">
                 <constraints nullable="false"/>
             </column>
-            <column name="text" type="TEXT"/>
-            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="content" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at"
+                    type="TIMESTAMPTZ"
+                    defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="published_at"
+                    type="TIMESTAMPTZ"/>
             <column name="author_id" type="BIGINT">
-                <constraints foreignKeyName="fk_news_author" referencedTableName="users" referencedColumnNames="id" deleteCascade="false"/>
+                <constraints nullable="false" foreignKeyName="fk_news_author" referencedTableName="users" referencedColumnNames="id" deleteCascade="false"/>
             </column>
         </createTable>
+
+        <sql>
+            ALTER TABLE news
+                ADD CONSTRAINT chk_news_status
+                    CHECK (status IN ('DRAFT','PUBLISHED','ARCHIVED'));
+        </sql>
     </changeSet>
 
     <changeSet id="create-messages-table" author="Mykola Shumeyko">

@@ -49,6 +49,7 @@ public abstract class AbstractServiceImpl<I extends Serializable, E extends Enti
     public D save(C dto) {
         log.debug("save<{}>(dto={})", createDtoType, dto);
         E entity = mapper.toEntity(dto);
+        beforeSave(entity, dto);
         return mapper.toDTO(repository.save(entity));
     }
 
@@ -57,7 +58,7 @@ public abstract class AbstractServiceImpl<I extends Serializable, E extends Enti
         log.debug("update<{}>(dto={})", updateDtoType, dto);
         E entity = repository.findById(dto.getId())
             .orElseThrow(() -> new NotFoundException("Entity " + entityType, ErrorCode.ENTITY_NOT_FOUND));
-
+        beforeUpdate(entity, dto);
         mapper.merge(dto, entity);
 
         return mapper.toDTO(repository.save(entity));
@@ -69,5 +70,11 @@ public abstract class AbstractServiceImpl<I extends Serializable, E extends Enti
         repository.findById(id)
             .orElseThrow(() -> new NotFoundException("Entity " + entityType, ErrorCode.ENTITY_NOT_FOUND));
         repository.deleteById(id);
+    }
+
+    protected void beforeSave(E entity, C dto) {
+    }
+
+    protected void beforeUpdate(E entity, U dto) {
     }
 }
