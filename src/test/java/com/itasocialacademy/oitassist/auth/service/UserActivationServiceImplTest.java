@@ -49,14 +49,15 @@ class UserActivationServiceImplTest {
     void resendVerificationEmail_userNotFound_shouldThrow() {
         // given
         ResendVerificationMailRequest request = AuthTestDataFactory.validResendVerificationMailRequest();
+        String email = request.getEmail();
 
         // when
-        when(userRepository.findUserByEmail(request.getEmail())).thenReturn(Optional.empty());
+        when(userRepository.findUserByEmail(email)).thenReturn(Optional.empty());
 
         // then
         assertThrows(UserNotFoundException.class,
-            () -> userActivationService.resendVerificationEmail(request.getEmail()));
-        verify(userRepository, times(1)).findUserByEmail(request.getEmail());
+            () -> userActivationService.resendVerificationEmail(email));
+        verify(userRepository, times(1)).findUserByEmail(email);
         verify(userRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any());
     }
@@ -66,16 +67,17 @@ class UserActivationServiceImplTest {
     void resendVerificationEmail_userActivated_shouldThrow() {
         // given
         User user = mock(User.class);
+        String email = user.getEmail();
         ResendVerificationMailRequest request = AuthTestDataFactory.validResendVerificationMailRequest();
 
         // when
-        when(userRepository.findUserByEmail(request.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findUserByEmail(email)).thenReturn(Optional.of(user));
         when(user.getUserStatus()).thenReturn(UserStatus.ACTIVATED);
 
         // then
         assertThrows(UserAlreadyActivatedException.class,
-            () -> userActivationService.resendVerificationEmail(request.getEmail()));
-        verify(userRepository, times(1)).findUserByEmail(request.getEmail());
+            () -> userActivationService.resendVerificationEmail(email));
+        verify(userRepository, times(1)).findUserByEmail(email);
         verify(userRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any());
     }
@@ -153,24 +155,24 @@ class UserActivationServiceImplTest {
     void resendVerificationEmail_resendTimeoutNotExceeded_shouldThrow() {
         // given
         ResendVerificationMailRequest request = AuthTestDataFactory.validResendVerificationMailRequest();
-
+        String email = request.getEmail();
         UserActivationToken activationToken = UserActivationToken.generateActivationToken();
 
         User user = User.builder()
-            .email(request.getEmail())
+            .email(email)
             .userActivationToken(activationToken)
             .userStatus(UserStatus.NOT_ACTIVATED)
             .build();
 
         try (MockedStatic<UserActivationToken> mocked = mockStatic(UserActivationToken.class)) {
             // when
-            when(userRepository.findUserByEmail(request.getEmail())).thenReturn(Optional.of(user));
+            when(userRepository.findUserByEmail(email)).thenReturn(Optional.of(user));
             mocked.when(UserActivationToken::generateActivationToken).thenReturn(activationToken);
 
             // then
             assertThrows(ActivationTokenSendingTimeoutException.class,
-                () -> userActivationService.resendVerificationEmail(request.getEmail()));
-            verify(userRepository, times(1)).findUserByEmail(request.getEmail());
+                () -> userActivationService.resendVerificationEmail(email));
+            verify(userRepository, times(1)).findUserByEmail(email);
             verify(userRepository, never()).save(user);
             verify(eventPublisher, never()).publishEvent(any());
             assertNotNull(user.getUserActivationToken());

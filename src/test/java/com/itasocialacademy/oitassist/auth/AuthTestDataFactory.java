@@ -4,14 +4,14 @@ import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
 import com.itasocialacademy.oitassist.auth.dao.dto.request.ResendVerificationMailRequest;
 
 public class AuthTestDataFactory {
-    public final static String REGISTRATION_PATH = "/api/v1/registration";
-    public final static String ACTIVATION_RESEND_PATH = "/api/v1/user-activation/resend";
-    private final static String FIRST_NAME = "First name";
-    private final static String LAST_NAME = "Last name";
-    private final static String MIDDLE_NAME = "Middle name";
-    private final static String PHONE_NUMBER = "+380991234567";
-    private final static String PASSWORD = "password123";
-    public final static String EMAIL = "test@test.com";
+    public static final String REGISTRATION_PATH = "/api/v1/registration";
+    public static final String ACTIVATION_RESEND_PATH = "/api/v1/user-activation/resend";
+    private static final String FIRST_NAME = "First name";
+    private static final String LAST_NAME = "Last name";
+    private static final String MIDDLE_NAME = "Middle name";
+    private static final String PHONE_NUMBER = "+380991234567";
+    private static final String PASSWORD = "password123";
+    public static final String EMAIL = "test@test.com";
 
     public static RegisterRequest validRegisterRequest() {
         return RegisterRequest.builder()
