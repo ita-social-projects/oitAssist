@@ -67,8 +67,8 @@ class UserActivationServiceImplTest {
     void resendVerificationEmail_userActivated_shouldThrow() {
         // given
         User user = mock(User.class);
-        String email = user.getEmail();
         ResendVerificationMailRequest request = AuthTestDataFactory.validResendVerificationMailRequest();
+        String email = request.getEmail();
 
         // when
         when(userRepository.findUserByEmail(email)).thenReturn(Optional.of(user));
