@@ -59,6 +59,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/registration",
                     "/api/v1/registration/resend-email")
+                .requestMatchers(HttpMethod.GET, "/api/v1/news/{id}")
                 .permitAll()
                 .requestMatchers("/api", "/api/**")
                 .authenticated()
