@@ -33,7 +33,6 @@ class NewsControllerTest {
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
@@ -51,14 +50,13 @@ class NewsControllerTest {
             "Content",
             NewsStatus.DRAFT,
             OffsetDateTime.now(),
-            null
-        );
+            null);
 
         when(newsService.save(any())).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/news")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(dto)))
             .andExpect(status().isCreated());
 
         verify(newsService).save(any());
@@ -80,8 +78,8 @@ class NewsControllerTest {
         when(newsService.update(any(UpdateNewsDto.class))).thenReturn(responseNewsDto);
 
         mockMvc.perform(put("/api/v1/news")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateNewsDto)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(updateNewsDto)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.title").value("Updated News Title"))
@@ -89,6 +87,7 @@ class NewsControllerTest {
 
         verify(newsService).update(any(UpdateNewsDto.class));
     }
+
     @Test
     @WithMockUser(roles = "ADMIN")
     void testGetNewsById() throws Exception {
@@ -125,8 +124,8 @@ class NewsControllerTest {
         CreateNewsDTO createNewsDTO = new CreateNewsDTO("", "", false);
 
         mockMvc.perform(post("/api/v1/news")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(createNewsDTO)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(createNewsDTO)))
             .andExpect(status().isBadRequest());
     }
 }
