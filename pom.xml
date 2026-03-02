@@ -130,6 +130,16 @@
             <artifactId>logbook-spring-boot-starter</artifactId>
             <version>4.0.2</version>
         </dependency>
+        <!-- Source: https://mvnrepository.com/artifact/org.freemarker/freemarker -->
+        <dependency>
+            <groupId>org.freemarker</groupId>
+            <artifactId>freemarker</artifactId>
+        </dependency>
+        <!-- Source: https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>

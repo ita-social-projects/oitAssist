@@ -56,6 +56,10 @@ public class SecurityConfig {
     public SecurityFilterChain configure(HttpSecurity http) {
         return http.csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.POST,
+                    "/api/v1/registration",
+                    "/api/v1/registration/resend-email")
+                .permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/news/{id}")
                 .permitAll()
                 .requestMatchers("/api", "/api/**")
