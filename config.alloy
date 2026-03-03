@@ -12,7 +12,6 @@ prometheus.exporter.unix "integrations_unix" {}
 prometheus.scrape "integrations_unix" {
   targets    = prometheus.exporter.unix.integrations_unix.targets
   job_name   = "integrations/unix"
-  refresh_interval = "10s"
   forward_to = [prometheus.remote_write.demo.receiver]
 }
 
