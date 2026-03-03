@@ -1,11 +1,11 @@
 name: grafana-alloy.yml
 on:
+  push:
+    branches: [ dev ]
   workflow_dispatch:
-    inputs:
-      branch:
-        description: "Branch to deploy"
-        required: true
-        default: "main"
+
+env:
+  REGISTRY: ghcr.io
 
 jobs:
   deploy-grafana-alloy:
