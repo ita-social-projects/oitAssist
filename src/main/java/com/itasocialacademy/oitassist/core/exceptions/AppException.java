@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.core.exceptions;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import lombok.Getter;
+import java.util.Map;
 
 /**
  * Base class for all application-specific runtime exceptions.
@@ -55,6 +56,8 @@ public abstract class AppException extends RuntimeException {
      */
     private final ErrorCode errorCode;
 
+    private transient Map<String, Object> details;
+
     /**
      * Constructs a new application exception with a human-readable message and a
      * corresponding {@link ErrorCode}.
@@ -66,5 +69,22 @@ public abstract class AppException extends RuntimeException {
     protected AppException(String message, ErrorCode errorCode) {
         super(message);
         this.errorCode = errorCode;
+    }
+
+    protected AppException(String message, ErrorCode errorCode, Map<String, Object> details) {
+        super(message);
+        this.errorCode = errorCode;
+        this.details = details;
+    }
+
+    protected AppException(String message, ErrorCode errorCode, Throwable cause) {
+        super(message, cause);
+        this.errorCode = errorCode;
+    }
+
+    protected AppException(String message, ErrorCode errorCode, Map<String, Object> details, Throwable cause) {
+        super(message, cause);
+        this.errorCode = errorCode;
+        this.details = details;
     }
 }

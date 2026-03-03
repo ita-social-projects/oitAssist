@@ -1,0 +1,48 @@
+package com.itasocialacademy.oitassist.auth.listener;
+
+import com.itasocialacademy.oitassist.auth.dao.dto.event.ActivationAccountEvent;
+import com.itasocialacademy.oitassist.core.properties.WebClientProperties;
+import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.web.util.UriComponentsBuilder;
+import java.util.HashMap;
+import java.util.Map;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class ActivationAccountListener {
+    private final EmailService emailService;
+
+    private final WebClientProperties webClientProperties;
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleUserRegistered(ActivationAccountEvent event) {
+        log.info("Handling UserRegisteredEvent for email={}", event.email());
+
+        String activationLink = UriComponentsBuilder
+            .fromPath(webClientProperties.origin())
+            .path("/confirm_registration")
+            .queryParam("token", event.token())
+            .build()
+            .toUriString();
+
+        Map<String, Object> root = new HashMap<>();
+        root.put("name", event.firstName());
+        root.put("link", activationLink);
+
+        emailService.sendHtmlEmail(
+            event.email(),
+            "registration-confirmation.html",
+            "Підтвердження реєстрації",
+            root);
+
+        log.info("Activation email sent to email={}", event.email());
+    }
+}

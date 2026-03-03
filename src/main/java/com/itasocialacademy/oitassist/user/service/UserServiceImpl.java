@@ -11,6 +11,7 @@ import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
+import java.util.Optional;
 
 @Service
 public class UserServiceImpl
@@ -21,10 +22,7 @@ public class UserServiceImpl
     }
 
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {
-        User user = repository.findUserByEmail(username);
-        if (user == null) {
-            return null;
-        }
-        return mapper.toUserDetails(user);
+        Optional<User> user = repository.findUserByEmail(username);
+        return user.map(mapper::toUserDetails).orElse(null);
     }
 }
