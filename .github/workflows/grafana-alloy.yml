@@ -15,7 +15,7 @@ jobs:
           host: ${{ secrets.AZURE_VM_HOST }}
           username: ${{ secrets.AZURE_VM_USER }}
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
-          source: "docker-compose-grafana.yml"
+          source: "docker-compose-grafana.yml,config.alloy"
           target: "/home/azureoit/oitassist"
 
       - name: Deploy to Azure VM via SSH

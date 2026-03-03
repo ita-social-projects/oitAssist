@@ -34,6 +34,8 @@ services:
       JWT_SIGN_KEY: ${JWT_SIGN_KEY}
       JWT_VALIDITY: ${JWT_VALIDITY}
       LOG_LEVEL_LOGBOOK: ${LOG_LEVEL_LOGBOOK}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
 
 volumes:
   postgres_data:
