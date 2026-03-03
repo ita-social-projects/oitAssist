@@ -54,7 +54,6 @@ loki.source.docker "default" {
   targets    = discovery.relabel.logs_integrations_docker.output
   labels     = {"platform" = "docker"}
   forward_to = [loki.write.grafanacloud.receiver]
-  refresh_interval = "5s"
 }
 
 loki.write "grafanacloud" {
