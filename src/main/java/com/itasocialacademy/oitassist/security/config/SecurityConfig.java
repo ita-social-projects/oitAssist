@@ -55,7 +55,7 @@ public class SecurityConfig {
     public SecurityFilterChain configure(HttpSecurity http) {
         return http.csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/prometheus").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/api", "/api/**")
                 .authenticated()
                 .anyRequest()

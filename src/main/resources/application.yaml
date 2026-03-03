@@ -63,10 +63,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: '*'
   endpoint:
-    prometheus:
-      access: read_only
+    health:
+      show-details: always
   prometheus:
     metrics:
       export:
