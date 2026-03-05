@@ -25,16 +25,25 @@
                 <constraints nullable="false"/>
             </column>
             <column name="phone_number" type="VARCHAR(20)"/>
-            <column name="role" type="user_role">
+            <column name="role" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
-            <column name="user_status" type="user_status">
+            <column name="user_status" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
             <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <sql>
+            ALTER TABLE users
+                ADD CONSTRAINT chk_users_role
+                    CHECK (role IN ('USER', 'AUTHOR', 'JURY', 'ORG', 'ADMIN'));
+
+            ALTER TABLE users
+                ADD CONSTRAINT chk_users_status
+                    CHECK (user_status IN ('BLOCKED', 'DEACTIVATED', 'ACTIVATED', 'DELETED', 'VERIFIED', 'NOT_ACTIVATED'));
+        </sql>
     </changeSet>
 
     <changeSet id="create-competitions-table" author="Mykola Shumeyko">
