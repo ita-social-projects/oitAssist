@@ -5,5 +5,8 @@ import org.springframework.modulith.NamedInterface;
 @NamedInterface("Role")
 public enum Role {
     USER,
-    ADMIN
+    ADMIN,
+    AUTHOR,
+    JURY,
+    ORG
 }
