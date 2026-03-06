@@ -25,16 +25,25 @@
                 <constraints nullable="false"/>
             </column>
             <column name="phone_number" type="VARCHAR(20)"/>
-            <column name="role" type="user_role">
+            <column name="role" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
-            <column name="user_status" type="user_status">
+            <column name="user_status" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
             <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <sql>
+            ALTER TABLE users
+                ADD CONSTRAINT chk_users_role
+                    CHECK (role IN ('USER', 'AUTHOR', 'JURY', 'ORG', 'ADMIN'));
+
+            ALTER TABLE users
+                ADD CONSTRAINT chk_users_status
+                    CHECK (user_status IN ('BLOCKED', 'DEACTIVATED', 'ACTIVATED', 'DELETED', 'VERIFIED', 'NOT_ACTIVATED'));
+        </sql>
     </changeSet>
 
     <changeSet id="create-competitions-table" author="Mykola Shumeyko">
@@ -176,4 +185,40 @@
             </column>
         </createTable>
     </changeSet>
+
+    <changeSet id="create-user-activation-tokens" author="Pavlo Cherniavskyi">
+        <createTable tableName="user_activation_tokens">
+            <column name="user_id" type="BIGINT">
+                <constraints primaryKey="true"
+                             primaryKeyName="pk_user_activation_tokens"
+                             nullable="false"/>
+            </column>
+
+            <column name="token" type="VARCHAR(255)">
+                <constraints nullable="false"
+                             unique="true"
+                             uniqueConstraintName="uk_user_activation_tokens_token"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="last_sent_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="expires_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="user_activation_tokens"
+                                 baseColumnNames="user_id"
+                                 referencedTableName="users"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_user_activation_tokens_user_id_users"
+                                 onDelete="CASCADE"/>
+    </changeSet>
+
 </databaseChangeLog>

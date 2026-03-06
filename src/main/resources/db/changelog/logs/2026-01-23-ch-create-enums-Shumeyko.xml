@@ -8,15 +8,11 @@
         <sql dbms="postgresql">
             CREATE TYPE competition_level AS ENUM ('CITY', 'REGION', 'NATIONAL', 'OPEN');
             CREATE TYPE competition_status AS ENUM ('INCOMING', 'INPROGRESS', 'FINISHED', 'ARCHIVED');
-            CREATE TYPE user_role AS ENUM ('USER', 'AUTHOR', 'JURY', 'ORG', 'ADMIN');
-            CREATE TYPE user_status AS ENUM ('BLOCKED', 'DEACTIVATED', 'ACTIVATED', 'DELETED', 'VERIFIED');
         </sql>
         <rollback>
             <sql>
                 DROP TYPE IF EXISTS competition_level;
                 DROP TYPE IF EXISTS competition_status;
-                DROP TYPE IF EXISTS user_role;
-                DROP TYPE IF EXISTS user_status;
             </sql>
         </rollback>
     </changeSet>
