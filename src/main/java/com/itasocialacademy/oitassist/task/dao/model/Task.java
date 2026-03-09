@@ -23,6 +23,9 @@ public class Task implements LongEntity {
     @Column(name = "description")
     private String description;
 
+    @Column(name = "file_url")
+    private String fileUrl;
+
     @Column(name = "competition_id")
     private Long competitionId;
 }

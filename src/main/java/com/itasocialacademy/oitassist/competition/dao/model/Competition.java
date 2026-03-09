@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.competition.dao.model;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionLevel;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
+import com.itasocialacademy.oitassist.core.rest.entity.LongEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -27,10 +28,9 @@ import org.springframework.modulith.NamedInterface;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@ToString(exclude = {"users", "tasks"})
-@EqualsAndHashCode(exclude = {"users", "tasks"})
-@NamedInterface("CompetitionEntity")
-public class Competition {
+@ToString()
+@EqualsAndHashCode()
+public class Competition implements LongEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
