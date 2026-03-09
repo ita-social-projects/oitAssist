@@ -29,7 +29,7 @@ class RegisterRequestMapperTest {
 
         assertEquals("test@mail.com", user.getEmail());
         assertEquals("1234", user.getPassword());
-        assertEquals(request.getLastName(), user.getSurname());
+        assertEquals(request.getLastName(), user.getLastName());
         assertEquals(Role.USER, user.getRole());
         assertEquals(UserStatus.NOT_ACTIVATED, user.getUserStatus());
         assertNotNull(user.getCreatedAt());

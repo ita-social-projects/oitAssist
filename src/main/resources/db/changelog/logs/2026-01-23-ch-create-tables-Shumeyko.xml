@@ -113,10 +113,6 @@
                 referencedTableName="competitions"
                 referencedColumnNames="id"
                 onDelete="CASCADE"/>
-
-        <addPrimaryKey tableName="user_competition"
-                       columnNames="author_id, competition_id"
-                       constraintName="pk_user_competition"/>
     </changeSet>
 
     <changeSet id="create-tasks-table" author="Mykola Shumeyko">

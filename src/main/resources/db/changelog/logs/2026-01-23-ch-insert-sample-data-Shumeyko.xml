@@ -9,7 +9,7 @@
         <insert tableName="users">
             <column name="email" value="admin@platform.com"/>
             <column name="first_name" value="Олександр"/>
-            <column name="surname" value="Головенко"/>
+            <column name="last_name" value="Головенко"/>
             <column name="middle_name" value="Олегович"/>
             <column name="password" value="$2a$10$ohGnznEwIkq/G7uEmpuP5eS8xTEqgcyq6qDxGUmnJqCLfFRHAVZ1q"/>
             <column name="role" value="ADMIN"/>
@@ -19,7 +19,7 @@
         <insert tableName="users">
             <column name="email" value="student@univ.edu.ua"/>
             <column name="first_name" value="Іван"/>
-            <column name="surname" value="Квач"/>
+            <column name="last_name" value="Квач"/>
             <column name="middle_name" value="Петренко"/>
             <column name="password" value="$2a$10$ohGnznEwIkq/G7uEmpuP5eS8xTEqgcyq6qDxGUmnJqCLfFRHAVZ1q"/>
             <column name="role" value="USER"/>
@@ -36,13 +36,14 @@
         </insert>
 
         <insert tableName="user_competition">
-            <column name="author_id" valueNumeric="1"/>
+            <column name="user_id" valueNumeric="1"/>
             <column name="competition_id" valueNumeric="1"/>
         </insert>
 
         <insert tableName="tasks">
             <column name="title" value="Реалізація алгоритму Дейкстри"/>
             <column name="description" value="Необхідно знайти найкоротший шлях у зваженому графі..."/>
+            <column name="file_url" value="http://sharepoint/folder1/folder2/file.txt"/>
             <column name="competition_id" valueNumeric="1"/>
         </insert>
 

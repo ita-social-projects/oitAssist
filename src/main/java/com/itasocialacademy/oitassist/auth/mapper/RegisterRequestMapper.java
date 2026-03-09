@@ -11,6 +11,5 @@ public interface RegisterRequestMapper {
     @Mapping(target = "role", constant = "USER")
     @Mapping(target = "userStatus", constant = "NOT_ACTIVATED")
     @Mapping(target = "createdAt", expression = "java(Instant.now())")
-    @Mapping(source = "lastName", target = "surname")
     User toEntity(RegisterRequest request);
 }
