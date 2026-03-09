@@ -39,6 +39,7 @@ public abstract class AbstractServiceImpl<I extends Serializable, E extends Enti
     }
 
     @Override
+    @Transactional(readOnly = true)
     public D getById(I id) {
         log.debug("getById<{}>(id={})", entityType, id);
         return repository.findById(id).map(mapper::toDTO)
