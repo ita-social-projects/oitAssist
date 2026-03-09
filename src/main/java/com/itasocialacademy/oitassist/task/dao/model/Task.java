@@ -17,15 +17,15 @@ public class Task implements LongEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "title")
+    @Column(name = "title", nullable = false)
     private String title;
 
     @Column(name = "description")
     private String description;
 
-    @Column(name = "file_url")
+    @Column(name = "file_url", nullable = false)
     private String fileUrl;
 
-    @Column(name = "competition_id")
+    @Column(name = "competition_id", nullable = false)
     private Long competitionId;
 }

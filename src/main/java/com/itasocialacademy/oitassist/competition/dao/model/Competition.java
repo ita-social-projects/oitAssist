@@ -43,7 +43,7 @@ public class Competition implements LongEntity {
     private CompetitionLevel level;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "competition_status")
+    @Column(name = "competition_status", nullable = false)
     private CompetitionStatus competitionStatus;
 
     @Column(name = "year", nullable = false)

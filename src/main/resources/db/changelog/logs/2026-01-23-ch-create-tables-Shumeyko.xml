@@ -15,7 +15,7 @@
             <column name="first_name" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
-            <column name="surname" type="VARCHAR(100)">
+            <column name="last_name" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
             <column name="middle_name" type="VARCHAR(100)">
@@ -54,31 +54,65 @@
             <column name="name" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
-            <column name="year" type="INT"/>
-            <column name="level" type="competition_level"/>
-            <column name="competition_status" type="competition_status"/>
-            <column name="start_at" type="TIMESTAMPTZ"/>
+            <column name="year" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="level" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="competition_status" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="start_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
             <column name="end_at" type="TIMESTAMPTZ"/>
         </createTable>
+
+        <sql>
+            ALTER TABLE competitions
+                ADD CONSTRAINT chk_competition_level
+                    CHECK (level IN ('CITY', 'REGION', 'NATIONAL', 'OPEN'));
+
+            ALTER TABLE competitions
+                ADD CONSTRAINT chk_competition_status
+                    CHECK (competition_status IN ('INCOMING', 'INPROGRESS', 'FINISHED', 'ARCHIVED'));
+        </sql>
     </changeSet>
 
     <changeSet id="create-user-competition-table" author="Mykola Shumeyko">
         <createTable tableName="user_competition">
-            <column name="author_id" type="BIGINT">
-                <constraints nullable="false"
-                             foreignKeyName="fk_uc_user"
-                             referencedTableName="users"
-                             referencedColumnNames="id"
-                             deleteCascade="true"/>
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
             </column>
             <column name="competition_id" type="BIGINT">
-                <constraints nullable="false"
-                             foreignKeyName="fk_uc_competition"
-                             referencedTableName="competitions"
-                             referencedColumnNames="id"
-                             deleteCascade="true"/>
+                <constraints nullable="false"/>
             </column>
         </createTable>
+        
+        <addUniqueConstraint
+                tableName="user_competition"
+                columnNames="user_id, competition_id"
+                constraintName="uk_user_competition"/>
+
+        <addForeignKeyConstraint
+                baseTableName="user_competition"
+                baseColumnNames="user_id"
+                constraintName="fk_uc_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="user_competition"
+                baseColumnNames="competition_id"
+                constraintName="fk_uc_competition"
+                referencedTableName="competitions"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
 
         <addPrimaryKey tableName="user_competition"
                        columnNames="author_id, competition_id"
@@ -90,14 +124,25 @@
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="title" type="VARCHAR(255)">
+            <column name="title" type="VARCHAR(170)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_url" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
             <column name="description" type="TEXT"/>
             <column name="competition_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_task_competition" referencedTableName="competitions" referencedColumnNames="id" deleteCascade="true"/>
+                <constraints nullable="false"/>
             </column>
         </createTable>
+        
+        <addForeignKeyConstraint
+                baseTableName="tasks"
+                baseColumnNames="competition_id"
+                constraintName="fk_task_competition"
+                referencedTableName="competitions"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
     </changeSet>
 
     <changeSet id="create-chats-and-news" author="Mykola Shumeyko">
