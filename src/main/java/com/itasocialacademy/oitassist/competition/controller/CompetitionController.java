@@ -2,7 +2,8 @@ package com.itasocialacademy.oitassist.competition.controller;
 
 import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.request.UpdateCompetitionDto;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.CompetitionResponseDto;
+import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionDto;
+import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionTasksDto;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,7 +21,7 @@ public class CompetitionController
         Long,
         CreateCompetitionDto,
         UpdateCompetitionDto,
-        CompetitionResponseDto,
+    ResponseCompetitionDto,
         CompetitionService> {
 
     protected CompetitionController(CompetitionService service) {
@@ -30,7 +31,7 @@ public class CompetitionController
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
     @Override
-    public ResponseEntity<CompetitionResponseDto> save(
+    public ResponseEntity<ResponseCompetitionDto> save(
         @Valid @RequestBody CreateCompetitionDto createDto) {
         return super.save(createDto);
     }
@@ -38,7 +39,7 @@ public class CompetitionController
     @PutMapping
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
     @Override
-    public ResponseEntity<CompetitionResponseDto> update(
+    public ResponseEntity<ResponseCompetitionDto> update(
         @Valid @RequestBody UpdateCompetitionDto updateDTO) {
         return super.update(updateDTO);
     }
@@ -53,18 +54,18 @@ public class CompetitionController
 
     @GetMapping("/{id}")
     @Override
-    public ResponseEntity<CompetitionResponseDto> getById(
+    public ResponseEntity<ResponseCompetitionDto> getById(
         @PathVariable Long id) {
         return super.getById(id);
     }
 
     @GetMapping()
-    public ResponseEntity<List<CompetitionResponseDto>> getAllCompetitions () {
+    public ResponseEntity<List<ResponseCompetitionDto>> getAllCompetitions () {
         return null;
     }
 
     @GetMapping("/{id}/tasks")
-    public ResponseEntity<List<CompetitionResponseDto>> getCompetitionTasks (
+    public ResponseEntity<List<ResponseCompetitionTasksDto>> getCompetitionTasks (
         @PathVariable Long id) {
         return null;
     }

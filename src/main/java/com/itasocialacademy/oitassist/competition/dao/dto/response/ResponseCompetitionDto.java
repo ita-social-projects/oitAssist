@@ -15,7 +15,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Schema(description = "DTO representing competition response")
-public class CompetitionResponseDto implements EntityDTO<Long> {
+public class ResponseCompetitionDto implements EntityDTO<Long> {
     private Long id;
     private String name;
     private CompetitionLevel level;

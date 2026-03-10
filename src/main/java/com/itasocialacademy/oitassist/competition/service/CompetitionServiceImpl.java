@@ -2,7 +2,7 @@ package com.itasocialacademy.oitassist.competition.service;
 
 import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.request.UpdateCompetitionDto;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.CompetitionResponseDto;
+import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
 import com.itasocialacademy.oitassist.competition.mapper.CompetitionMapper;
@@ -19,7 +19,7 @@ public class CompetitionServiceImpl
         Competition,
         CreateCompetitionDto,
         UpdateCompetitionDto,
-        CompetitionResponseDto,
+    ResponseCompetitionDto,
         CompetitionRepository,
         CompetitionMapper
     >
