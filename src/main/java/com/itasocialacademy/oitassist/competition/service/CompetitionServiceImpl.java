@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetit
 import com.itasocialacademy.oitassist.competition.dao.dto.request.UpdateCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionTasksDto;
+import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionLevel;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
 import com.itasocialacademy.oitassist.competition.mapper.CompetitionMapper;
@@ -25,7 +26,7 @@ public class CompetitionServiceImpl
         Competition,
         CreateCompetitionDto,
         UpdateCompetitionDto,
-    ResponseCompetitionDto,
+        ResponseCompetitionDto,
         CompetitionRepository,
         CompetitionMapper
     >
@@ -42,7 +43,10 @@ public class CompetitionServiceImpl
 
     @Override
     public CompetitionFiltersDto getFilters() {
-        return null;
+        return CompetitionFiltersDto.builder()
+            .levels(List.of(CompetitionLevel.values()))
+            .years(repository.getYears())
+            .build();
     }
 
     @Override
