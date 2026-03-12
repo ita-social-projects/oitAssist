@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.dao.model.News;
 import com.itasocialacademy.oitassist.news.dao.repository.NewsRepository;
@@ -12,6 +13,8 @@ import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
 import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
 import java.time.OffsetDateTime;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +26,8 @@ public class NewsServiceImpl
     protected NewsServiceImpl(NewsRepository repository, NewsMapper mapper) {
         super(repository, mapper);
     }
+
+    private static final int PREVIEWS_LENGTH = 300;
 
     @Override
     protected void beforeSave(News news, CreateNewsDTO newsDTO) {
@@ -57,5 +62,25 @@ public class NewsServiceImpl
                 news.setPublishedAt(null);
             }
         }
+    }
+
+    @Override
+    public Page<ResponseNewsListItemDto> getPublishedNews(Pageable pageable) {
+        return repository.findAllByStatus(NewsStatus.PUBLISHED, pageable).map(this::toNewsListItemDto);
+    }
+
+    private ResponseNewsListItemDto toNewsListItemDto(News news) {
+        return new ResponseNewsListItemDto(
+            news.getId(),
+            news.getTitle(),
+            buildPreview(news.getContent()),
+            news.getPublishedAt());
+    }
+
+    private String buildPreview(String content) {
+        if (content == null) {
+            return null;
+        }
+        return content.length() > PREVIEWS_LENGTH ? content.substring(0, PREVIEWS_LENGTH) + "..." : content;
     }
 }
