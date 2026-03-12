@@ -5,7 +5,6 @@ import com.itasocialacademy.oitassist.competition.dao.dto.CompetitionFiltersDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.request.UpdateCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionDto;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionTasksDto;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionLevel;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
@@ -13,6 +12,8 @@ import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionSpec
 import com.itasocialacademy.oitassist.competition.mapper.CompetitionMapper;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
+import com.itasocialacademy.oitassist.task.api.interfaces.TaskFacade;
+import com.itasocialacademy.oitassist.task.dao.dto.response.ResponseTaskDTO;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,9 +27,12 @@ public class CompetitionServiceImpl
     extends
     AbstractServiceImpl<Long, Competition, CreateCompetitionDto, UpdateCompetitionDto, ResponseCompetitionDto, CompetitionRepository, CompetitionMapper>
     implements CompetitionService {
+    private TaskFacade taskFacade;
 
-    protected CompetitionServiceImpl(CompetitionRepository repository, CompetitionMapper mapper) {
+    protected CompetitionServiceImpl(CompetitionRepository repository, CompetitionMapper mapper,
+        TaskFacade taskFacade) {
         super(repository, mapper);
+        this.taskFacade = taskFacade;
     }
 
     @Transactional(readOnly = true)
@@ -48,7 +52,7 @@ public class CompetitionServiceImpl
     }
 
     @Override
-    public List<ResponseCompetitionTasksDto> getAllCompetitionTasks(Long id) {
-        return List.of();
+    public List<ResponseTaskDTO> getAllCompetitionTasks(Long id) {
+        return taskFacade.getTasksByCompetitionId(id);
     }
 }

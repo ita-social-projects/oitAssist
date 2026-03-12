@@ -5,8 +5,8 @@ import com.itasocialacademy.oitassist.competition.dao.dto.CompetitionFiltersDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.request.UpdateCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionDto;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionTasksDto;
 import com.itasocialacademy.oitassist.core.rest.service.interfaces.BaseService;
+import com.itasocialacademy.oitassist.task.dao.dto.response.ResponseTaskDTO;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,5 +17,5 @@ public interface CompetitionService
 
     CompetitionFiltersDto getFilters();
 
-    List<ResponseCompetitionTasksDto> getAllCompetitionTasks(Long id);
+    List<ResponseTaskDTO> getAllCompetitionTasks(Long id);
 }

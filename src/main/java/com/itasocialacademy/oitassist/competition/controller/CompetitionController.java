@@ -5,9 +5,9 @@ import com.itasocialacademy.oitassist.competition.dao.dto.CompetitionFiltersDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.request.UpdateCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionDto;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionTasksDto;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
+import com.itasocialacademy.oitassist.task.dao.dto.response.ResponseTaskDTO;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -62,8 +62,6 @@ public class CompetitionController
         return super.getById(id);
     }
 
-    ///
-
     @GetMapping()
     public ResponseEntity<Page<ResponseCompetitionDto>> getAllCompetitions(
         CompetitionFilter filter,
@@ -77,7 +75,7 @@ public class CompetitionController
     }
 
     @GetMapping("/{id}/tasks")
-    public ResponseEntity<List<ResponseCompetitionTasksDto>> getCompetitionTasks(
+    public ResponseEntity<List<ResponseTaskDTO>> getCompetitionTasks(
         @PathVariable Long id) {
         return ResponseEntity.ok(competitionService.getAllCompetitionTasks(id));
     }
