@@ -9,7 +9,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
-public interface CompetitionMapper extends GeneralMapper<Competition, CreateCompetitionDto, UpdateCompetitionDto, ResponseCompetitionDto> {
+public interface CompetitionMapper
+    extends GeneralMapper<Competition, CreateCompetitionDto, UpdateCompetitionDto, ResponseCompetitionDto> {
     @Override
     ResponseCompetitionDto toDTO(Competition competition);
 

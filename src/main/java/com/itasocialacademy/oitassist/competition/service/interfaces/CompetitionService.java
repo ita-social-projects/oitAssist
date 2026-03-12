@@ -11,7 +11,8 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-public interface CompetitionService extends BaseService<Long, CreateCompetitionDto, UpdateCompetitionDto, ResponseCompetitionDto> {
+public interface CompetitionService
+    extends BaseService<Long, CreateCompetitionDto, UpdateCompetitionDto, ResponseCompetitionDto> {
     Page<ResponseCompetitionDto> getAllCompetitions(CompetitionFilter filter, Pageable pageable);
 
     CompetitionFiltersDto getFilters();

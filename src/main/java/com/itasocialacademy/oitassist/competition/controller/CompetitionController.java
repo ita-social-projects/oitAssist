@@ -6,7 +6,6 @@ import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetit
 import com.itasocialacademy.oitassist.competition.dao.dto.request.UpdateCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionDto;
 import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompetitionTasksDto;
-import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionLevel;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,12 +21,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("api/v1/competitions")
 public class CompetitionController
-    extends AbstractRestControllerImpl<
-        Long,
-        CreateCompetitionDto,
-        UpdateCompetitionDto,
-    ResponseCompetitionDto,
-        CompetitionService> {
+    extends
+    AbstractRestControllerImpl<Long, CreateCompetitionDto, UpdateCompetitionDto, ResponseCompetitionDto, CompetitionService> {
 
     private final CompetitionService competitionService;
 
@@ -67,21 +62,22 @@ public class CompetitionController
         return super.getById(id);
     }
 
+    ///
+
     @GetMapping()
-    public ResponseEntity<Page<ResponseCompetitionDto>> getAllCompetitions (
+    public ResponseEntity<Page<ResponseCompetitionDto>> getAllCompetitions(
         CompetitionFilter filter,
-        Pageable pageable
-    ) {
+        Pageable pageable) {
         return ResponseEntity.ok(competitionService.getAllCompetitions(filter, pageable));
     }
 
     @GetMapping("/filters")
-    public ResponseEntity<CompetitionFiltersDto> getFilters () {
+    public ResponseEntity<CompetitionFiltersDto> getFilters() {
         return ResponseEntity.ok(competitionService.getFilters());
     }
 
     @GetMapping("/{id}/tasks")
-    public ResponseEntity<List<ResponseCompetitionTasksDto>> getCompetitionTasks (
+    public ResponseEntity<List<ResponseCompetitionTasksDto>> getCompetitionTasks(
         @PathVariable Long id) {
         return ResponseEntity.ok(competitionService.getAllCompetitionTasks(id));
     }

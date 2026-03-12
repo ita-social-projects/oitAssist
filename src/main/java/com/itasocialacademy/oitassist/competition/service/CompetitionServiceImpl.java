@@ -9,6 +9,7 @@ import com.itasocialacademy.oitassist.competition.dao.dto.response.ResponseCompe
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionLevel;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
+import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionSpecification;
 import com.itasocialacademy.oitassist.competition.mapper.CompetitionMapper;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
@@ -17,30 +18,27 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
 public class CompetitionServiceImpl
-    extends AbstractServiceImpl<
-        Long,
-        Competition,
-        CreateCompetitionDto,
-        UpdateCompetitionDto,
-        ResponseCompetitionDto,
-        CompetitionRepository,
-        CompetitionMapper
-    >
+    extends
+    AbstractServiceImpl<Long, Competition, CreateCompetitionDto, UpdateCompetitionDto, ResponseCompetitionDto, CompetitionRepository, CompetitionMapper>
     implements CompetitionService {
 
     protected CompetitionServiceImpl(CompetitionRepository repository, CompetitionMapper mapper) {
         super(repository, mapper);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public Page<ResponseCompetitionDto> getAllCompetitions(CompetitionFilter filter, Pageable pageable) {
-        return null;
+        Page<Competition> page = repository.findAll(CompetitionSpecification.filter(filter), pageable);
+        return page.map(mapper::toDTO);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public CompetitionFiltersDto getFilters() {
         return CompetitionFiltersDto.builder()

@@ -5,15 +5,13 @@ import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.rest.dto.EntityDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.ZonedDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
+@Builder
 @Schema(description = "DTO representing competition response")
 public class ResponseCompetitionDto implements EntityDTO<Long> {
     private Long id;
