@@ -2,7 +2,6 @@
 
 
 
-
 ## Setup Checkstyle and Formatter
 
 Here you can read more about [how to set up checkstyle and formatter](https://github.com/ita-social-projects/oitAssist/wiki/Setup-CheckStyle-and-Formatter-to-your-IDE);
