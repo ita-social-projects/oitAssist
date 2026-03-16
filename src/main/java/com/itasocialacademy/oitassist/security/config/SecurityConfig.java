@@ -60,7 +60,7 @@ public class SecurityConfig {
                     "/api/v1/registration",
                     "/api/v1/registration/resend-email")
                 .permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/news/{id}")
+                .requestMatchers(HttpMethod.GET, "/api/v1/news/{id}", "/api/v1/news")
                 .permitAll()
                 .requestMatchers("/api", "/api/**")
                 .authenticated()

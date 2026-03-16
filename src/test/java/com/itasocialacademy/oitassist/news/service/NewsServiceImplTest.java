@@ -2,12 +2,14 @@ package com.itasocialacademy.oitassist.news.service;
 
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.dao.model.News;
 import com.itasocialacademy.oitassist.news.dao.repository.NewsRepository;
 import com.itasocialacademy.oitassist.news.mapper.request.NewsMapper;
 import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -15,10 +17,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -128,6 +135,90 @@ class NewsServiceImplTest {
         assertEquals(originalDate, existing.getPublishedAt());
 
         verify(newsRepository).save(existing);
+    }
+
+    @Test
+    void shouldReturnMappedPublishedNewsPage() {
+        Pageable pageable = PageRequest.of(0, 5);
+
+        News news = new News();
+        news.setId(1L);
+        news.setTitle("Published news title");
+        news.setContent("Short content");
+        news.setStatus(NewsStatus.PUBLISHED);
+        news.setPublishedAt(OffsetDateTime.parse("2026-03-12T13:44:56Z"));
+
+        Page<News> newsPage = new PageImpl<>(List.of(news), pageable, 1);
+
+        when(newsRepository.findAllByStatus(NewsStatus.PUBLISHED, pageable)).thenReturn(newsPage);
+
+        Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+
+        ResponseNewsListItemDto item = result.getContent().getFirst();
+        assertThat(item.getId()).isEqualTo(1L);
+        assertThat(item.getTitle()).isEqualTo("Published news title");
+        assertThat(item.getContentPreview()).isEqualTo("Short content");
+        assertThat(item.getPublishedAt()).isEqualTo(OffsetDateTime.parse("2026-03-12T13:44:56Z"));
+
+        assertThat(result.getNumber()).isEqualTo(0);
+        assertThat(result.getSize()).isEqualTo(5);
+        assertThat(result.getTotalElements()).isEqualTo(1);
+
+        verify(newsRepository).findAllByStatus(NewsStatus.PUBLISHED, pageable);
+    }
+
+    @Test
+    void shouldTrimContentPreviewWhenContentIsLong() {
+        Pageable pageable = PageRequest.of(0, 5);
+
+        String longContent = "a".repeat(350);
+
+        News news = new News();
+        news.setId(2L);
+        news.setTitle("Long content news");
+        news.setContent(longContent);
+        news.setStatus(NewsStatus.PUBLISHED);
+        news.setPublishedAt(OffsetDateTime.parse("2026-03-12T13:44:56Z"));
+
+        Page<News> newsPage = new PageImpl<>(List.of(news), pageable, 1);
+
+        when(newsRepository.findAllByStatus(NewsStatus.PUBLISHED, pageable)).thenReturn(newsPage);
+
+        Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable);
+
+        ResponseNewsListItemDto item = result.getContent().getFirst();
+
+        assertThat(item.getContentPreview())
+            .hasSize(303)
+            .isEqualTo(longContent.substring(0, 300) + "...");
+
+        verify(newsRepository).findAllByStatus(NewsStatus.PUBLISHED, pageable);
+    }
+
+    @Test
+    void shouldReturnNullPreviewWhenContentIsNull() {
+        Pageable pageable = PageRequest.of(0, 5);
+
+        News news = new News();
+        news.setId(3L);
+        news.setTitle("Null content news");
+        news.setContent(null);
+        news.setStatus(NewsStatus.PUBLISHED);
+        news.setPublishedAt(OffsetDateTime.parse("2026-03-12T13:44:56Z"));
+
+        Page<News> newsPage = new PageImpl<>(List.of(news), pageable, 1);
+
+        when(newsRepository.findAllByStatus(NewsStatus.PUBLISHED, pageable)).thenReturn(newsPage);
+
+        Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable);
+
+        ResponseNewsListItemDto item = result.getContent().getFirst();
+
+        assertThat(item.getContentPreview()).isNull();
+
+        verify(newsRepository).findAllByStatus(NewsStatus.PUBLISHED, pageable);
     }
 
     private void mockAuthenticatedUser(Long userId) {

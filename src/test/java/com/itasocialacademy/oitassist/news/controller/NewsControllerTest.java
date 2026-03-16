@@ -6,14 +6,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,7 +42,9 @@ class NewsControllerTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        mockMvc = MockMvcBuilders.standaloneSetup(newsController).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(newsController)
+            .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
+            .build();
     }
 
     @Test
@@ -127,5 +135,53 @@ class NewsControllerTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(createNewsDTO)))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testGetPublishedNews_shouldReturnPagedResponse() throws Exception {
+        ResponseNewsListItemDto newsItem = new ResponseNewsListItemDto(
+            1L,
+            "Published news title",
+            "Short preview text...",
+            OffsetDateTime.parse("2026-03-12T13:44:56Z"));
+
+        Page<ResponseNewsListItemDto> page = new PageImpl<>(
+            List.of(newsItem),
+            PageRequest.of(0, 5),
+            1);
+
+        when(newsService.getPublishedNews(any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/news"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(1))
+            .andExpect(jsonPath("$.content[0].title").value("Published news title"))
+            .andExpect(jsonPath("$.content[0].contentPreview").value("Short preview text..."))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.pageSize").value(5))
+            .andExpect(jsonPath("$.totalPages").value(1))
+            .andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.first").value(true))
+            .andExpect(jsonPath("$.last").value(true));
+
+        verify(newsService).getPublishedNews(any());
+    }
+
+    @Test
+    void testGetPublishedNews_withoutParams_shouldUseDefaultPageable() throws Exception {
+        Page<ResponseNewsListItemDto> page = new PageImpl<>(
+            List.of(),
+            PageRequest.of(0, 5),
+            0);
+
+        when(newsService.getPublishedNews(any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/news"))
+            .andExpect(status().isOk());
+
+        verify(newsService).getPublishedNews(argThat(pageable -> pageable.getPageNumber() == 0 &&
+            pageable.getPageSize() == 5 &&
+            pageable.getSort().getOrderFor("publishedAt") != null &&
+            pageable.getSort().getOrderFor("publishedAt").isDescending()));
     }
 }
