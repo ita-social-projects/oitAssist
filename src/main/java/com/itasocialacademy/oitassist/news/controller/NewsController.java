@@ -1,5 +1,11 @@
 package com.itasocialacademy.oitassist.news.controller;
 
+import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
@@ -13,6 +19,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import static org.springframework.data.domain.Sort.Direction.DESC;
 
 @Tag(name = "News v1", description = "Operations related to news")
 @RestController
@@ -77,5 +84,25 @@ public class NewsController
     public ResponseEntity<Void> delete(
         @PathVariable Long id) {
         return super.delete(id);
+    }
+
+    @Operation(
+        summary = "Get published news",
+        description = "Returns paginated list of published news sorted by publishedAt descending")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Published news retrieved successfully")
+    })
+    @Parameters({
+        @Parameter(name = "page", description = "Zero-based page index", example = "0"),
+        @Parameter(name = "size", description = "Page size", example = "5"),
+        @Parameter(name = "sort", description = "Sorting criteria", example = "publishedAt,desc")
+    })
+    @GetMapping
+    public ResponseEntity<PageResponse<ResponseNewsListItemDto>> getPublishedNews(
+        @Parameter(hidden = true) @PageableDefault(
+            size = 5,
+            sort = "publishedAt",
+            direction = DESC) Pageable pageable) {
+        return ResponseEntity.ok(PageResponse.from(service.getPublishedNews(pageable)));
     }
 }
