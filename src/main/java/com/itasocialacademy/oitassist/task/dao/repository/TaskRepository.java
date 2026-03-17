@@ -8,8 +8,18 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+/**
+ * Repository for managing Task entities. Provides methods to retrieve tasks
+ * related to competitions.
+ */
 @Repository
 public interface TaskRepository extends EntityRepository<Task, Long> {
+    /**
+     * Retrieves all tasks for a specific competition as DTOs.
+     *
+     * @param competitionId the competition identifier
+     * @return list of ResponseTaskDTO for the given competition
+     */
     @Query("""
         SELECT new com.itasocialacademy.oitassist.task.dao.dto.response.ResponseTaskDTO(
             t.id,

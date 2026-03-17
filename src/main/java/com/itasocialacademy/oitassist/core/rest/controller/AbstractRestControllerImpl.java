@@ -46,7 +46,7 @@ public abstract class AbstractRestControllerImpl<I extends Serializable, //
     public ResponseEntity<Void> delete(I id) {
         log.debug("delete<{}>(id={})", dtoType, id);
         service.delete(id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     public ResponseEntity<D> getById(I id) {
