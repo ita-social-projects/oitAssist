@@ -1,8 +1,6 @@
 package com.itasocialacademy.oitassist.news.controller;
 
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
@@ -24,9 +22,12 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class NewsControllerTest {
 
@@ -63,8 +64,8 @@ class NewsControllerTest {
         when(newsService.save(any())).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/news")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(dto)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
             .andExpect(status().isCreated());
 
         verify(newsService).save(any());
@@ -86,8 +87,8 @@ class NewsControllerTest {
         when(newsService.update(any(UpdateNewsDto.class))).thenReturn(responseNewsDto);
 
         mockMvc.perform(put("/api/v1/news")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(updateNewsDto)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateNewsDto)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.title").value("Updated News Title"))
@@ -132,8 +133,8 @@ class NewsControllerTest {
         CreateNewsDTO createNewsDTO = new CreateNewsDTO("", "", false);
 
         mockMvc.perform(post("/api/v1/news")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(createNewsDTO)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createNewsDTO)))
             .andExpect(status().isBadRequest());
     }
 
@@ -150,7 +151,7 @@ class NewsControllerTest {
             PageRequest.of(0, 5),
             1);
 
-        when(newsService.getPublishedNews(any())).thenReturn(page);
+        when(newsService.getPublishedNews(any(), eq(null), eq(null))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/news"))
             .andExpect(status().isOk())
@@ -164,7 +165,7 @@ class NewsControllerTest {
             .andExpect(jsonPath("$.first").value(true))
             .andExpect(jsonPath("$.last").value(true));
 
-        verify(newsService).getPublishedNews(any());
+        verify(newsService).getPublishedNews(any(), eq(null), eq(null));
     }
 
     @Test
@@ -174,14 +175,19 @@ class NewsControllerTest {
             PageRequest.of(0, 5),
             0);
 
-        when(newsService.getPublishedNews(any())).thenReturn(page);
+        when(newsService.getPublishedNews(any(), eq(null), eq(null))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/news"))
             .andExpect(status().isOk());
 
-        verify(newsService).getPublishedNews(argThat(pageable -> pageable.getPageNumber() == 0 &&
-            pageable.getPageSize() == 5 &&
-            pageable.getSort().getOrderFor("publishedAt") != null &&
-            pageable.getSort().getOrderFor("publishedAt").isDescending()));
+        verify(newsService).getPublishedNews(
+            argThat(pageable ->
+                pageable.getPageNumber() == 0 &&
+                    pageable.getPageSize() == 5 &&
+                    pageable.getSort().getOrderFor("publishedAt") != null &&
+                    pageable.getSort().getOrderFor("publishedAt").isDescending()),
+            eq(null),
+            eq(null)
+        );
     }
 }
