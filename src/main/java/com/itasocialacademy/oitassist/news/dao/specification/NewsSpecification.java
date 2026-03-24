@@ -7,8 +7,11 @@ import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class NewsSpecification {
     public static Specification<News> withFilters(NewsStatus status, String search, LocalDate date) {
         return (root, query, cb) -> {
