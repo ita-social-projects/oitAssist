@@ -190,4 +190,50 @@ class NewsControllerTest {
             eq(null)
         );
     }
+
+    @Test
+    void testGetPublishedNews_withSearchParam_returnsMatchingResults() throws Exception {
+        String search = "tech";
+        ResponseNewsListItemDto item = new ResponseNewsListItemDto(
+            10L,
+            "Tech News",
+            "Latest on technology...",
+            OffsetDateTime.parse("2026-03-20T15:30:00Z"));
+
+        Page<ResponseNewsListItemDto> page = new PageImpl<>(
+            List.of(item),
+            PageRequest.of(0, 5),
+            1);
+
+        when(newsService.getPublishedNews(any(), eq(search), eq(null))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/news")
+                .param("search", search))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(10))
+            .andExpect(jsonPath("$.content[0].title").value("Tech News"))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(newsService).getPublishedNews(any(), eq(search), eq(null));
+    }
+
+    @Test
+    void testGetPublishedNews_withSearchParam_noResults() throws Exception {
+        String search = "nonexistent";
+        Page<ResponseNewsListItemDto> page = new PageImpl<>(
+            List.of(),
+            PageRequest.of(0, 5),
+            0);
+
+        when(newsService.getPublishedNews(any(), eq(search), eq(null))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/news")
+                .param("search", search))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content.length()").value(0))
+            .andExpect(jsonPath("$.totalElements").value(0));
+
+        verify(newsService).getPublishedNews(any(), eq(search), eq(null));
+    }
 }
