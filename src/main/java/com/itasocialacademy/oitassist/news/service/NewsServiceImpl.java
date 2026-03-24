@@ -72,8 +72,7 @@ public class NewsServiceImpl
         Specification<News> spec = NewsSpecification.withFilters(
             NewsStatus.PUBLISHED,
             search,
-            date
-        );
+            date);
         return repository.findAll(spec, pageable).map(this::toNewsListItemDto);
     }
 

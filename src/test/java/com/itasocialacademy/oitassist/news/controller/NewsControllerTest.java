@@ -64,8 +64,8 @@ class NewsControllerTest {
         when(newsService.save(any())).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/news")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(dto)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(dto)))
             .andExpect(status().isCreated());
 
         verify(newsService).save(any());
@@ -87,8 +87,8 @@ class NewsControllerTest {
         when(newsService.update(any(UpdateNewsDto.class))).thenReturn(responseNewsDto);
 
         mockMvc.perform(put("/api/v1/news")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateNewsDto)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(updateNewsDto)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.title").value("Updated News Title"))
@@ -133,8 +133,8 @@ class NewsControllerTest {
         CreateNewsDTO createNewsDTO = new CreateNewsDTO("", "", false);
 
         mockMvc.perform(post("/api/v1/news")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(createNewsDTO)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(createNewsDTO)))
             .andExpect(status().isBadRequest());
     }
 
@@ -181,14 +181,12 @@ class NewsControllerTest {
             .andExpect(status().isOk());
 
         verify(newsService).getPublishedNews(
-            argThat(pageable ->
-                pageable.getPageNumber() == 0 &&
-                    pageable.getPageSize() == 5 &&
-                    pageable.getSort().getOrderFor("publishedAt") != null &&
-                    pageable.getSort().getOrderFor("publishedAt").isDescending()),
+            argThat(pageable -> pageable.getPageNumber() == 0 &&
+                pageable.getPageSize() == 5 &&
+                pageable.getSort().getOrderFor("publishedAt") != null &&
+                pageable.getSort().getOrderFor("publishedAt").isDescending()),
             eq(null),
-            eq(null)
-        );
+            eq(null));
     }
 
     @Test
@@ -208,7 +206,7 @@ class NewsControllerTest {
         when(newsService.getPublishedNews(any(), eq(search), eq(null))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/news")
-                .param("search", search))
+            .param("search", search))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content[0].id").value(10))
             .andExpect(jsonPath("$.content[0].title").value("Tech News"))
@@ -228,7 +226,7 @@ class NewsControllerTest {
         when(newsService.getPublishedNews(any(), eq(search), eq(null))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/news")
-                .param("search", search))
+            .param("search", search))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content.length()").value(0))
