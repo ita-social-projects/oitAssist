@@ -7,4 +7,5 @@
     <include file="/db/changelog/logs/2026-01-23-ch-create-enums-Shumeyko.xml"/>
     <include file="/db/changelog/logs/2026-01-23-ch-create-tables-Shumeyko.xml"/>
     <include file="/db/changelog/logs/2026-01-23-ch-insert-sample-data-Shumeyko.xml"/>
+    <include file="db/changelog/logs/2026-03-27-ch-create-file-assets-table-Huz.xml"/>
 </databaseChangeLog>
