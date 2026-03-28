@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-file-assets-table" author="Maryna Huz">
+        <createTable tableName="file_assets">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="related_entity_id" type="BIGINT"/>
+
+            <column name="related_entity_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="storage_provider" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="original_filename" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="stored_filename" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="storage_key" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="mime_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="size" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="deleted_at" type="TIMESTAMPTZ"/>
+        </createTable>
+
+        <sql>
+            ALTER TABLE file_assets
+                ADD CONSTRAINT chk_file_assets_status
+                    CHECK (status IN ('TEMPORARY', 'ATTACHED', 'FAILED', 'SOFT_DELETED', 'HARD_DELETED'));
+
+            ALTER TABLE file_assets
+                ADD CONSTRAINT chk_file_assets_related_entity_type
+                    CHECK (related_entity_type IN ('NEWS', 'TASK', 'COMPETITION', 'SUBMISSION'));
+
+            ALTER TABLE file_assets
+                ADD CONSTRAINT chk_file_assets_storage_provider
+                    CHECK (storage_provider IN ('LOCAL', 'SHAREPOINT'));
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
