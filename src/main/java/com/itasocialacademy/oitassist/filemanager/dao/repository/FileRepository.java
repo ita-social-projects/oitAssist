@@ -1,4 +1,8 @@
 package com.itasocialacademy.oitassist.filemanager.dao.repository;
 
-public interface FileRepository {
+import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
+public interface FileRepository extends JpaRepository<FileAsset, Long>, JpaSpecificationExecutor<FileAsset> {
 }

@@ -10,8 +10,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 @Slf4j
+@Component
 public class LocalStorageProvider implements StorageProvider {
     // For testing purposes AND may be used in upload()
     private final String rootPath;
@@ -22,7 +24,7 @@ public class LocalStorageProvider implements StorageProvider {
 
     @Override
     public boolean supports(StorageProviderType source) {
-        return source == StorageProviderType.LOCAL;
+        return StorageProviderType.LOCAL.equals(source);
     }
 
     @Override
@@ -32,6 +34,11 @@ public class LocalStorageProvider implements StorageProvider {
 
     @Override
     public void deletePhysical(String fileFullPath) {
+        if (fileFullPath == null || fileFullPath.isBlank()) {
+            log.warn("Attempted to delete physical file, but path was null or empty.");
+            return;
+        }
+
         try {
             Path path = Paths.get(fileFullPath);
 
