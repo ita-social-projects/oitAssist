@@ -20,4 +20,5 @@ jobs:
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
           script: |
             docker stop oitassist-db
+            docker rm oitassist-db
             docker volume rm oitassist_postgres_data
