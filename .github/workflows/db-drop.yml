@@ -1,12 +1,9 @@
 name: Workflow for DB drop
 on:
   workflow_dispatch:
-  pull_request:
-    types: [ labeled ]
 
 jobs:
   drop-db-volume:
-    if: contains(github.event.pull_request.labels.*.name, 'drop-db')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
