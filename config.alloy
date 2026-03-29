@@ -1,0 +1,67 @@
+prometheus.scrape "oitAssist" {
+  targets = [
+    {__address__ = "backend:8080"},
+  ]
+  forward_to = [prometheus.remote_write.grafanacloud.receiver]
+  scrape_interval = "10s"
+  metrics_path = "/actuator/prometheus"
+}
+
+prometheus.exporter.unix "integrations_unix" {}
+
+prometheus.scrape "integrations_unix" {
+  targets    = prometheus.exporter.unix.integrations_unix.targets
+  job_name   = "integrations/unix"
+  forward_to = [prometheus.remote_write.demo.receiver]
+}
+
+prometheus.remote_write "demo" {
+  endpoint {
+    url = "https://prometheus-prod-65-prod-eu-west-2.grafana.net/api/prom/push"
+
+    basic_auth {
+      username = env("GRAFANA_PROM_USERNAME")
+      password = env("GRAFANA_PROM_PASSWORD")
+    }
+  }
+}
+
+prometheus.remote_write "grafanacloud" {
+  endpoint {
+    url = "https://prometheus-prod-65-prod-eu-west-2.grafana.net/api/prom/push"
+    basic_auth {
+      username = env("GRAFANA_PROM_USERNAME")
+      password = env("GRAFANA_PROM_PASSWORD")
+    }
+  }
+}
+
+discovery.docker "linux" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "logs_integrations_docker" {
+  targets = discovery.docker.linux.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex = "/(.*)"
+    target_label = "service_name"
+    }
+}
+
+loki.source.docker "default" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.logs_integrations_docker.output
+  labels     = {"platform" = "docker"}
+  forward_to = [loki.write.grafanacloud.receiver]
+}
+
+loki.write "grafanacloud" {
+  endpoint {
+    url = "https://logs-prod-012.grafana.net/loki/api/v1/push"
+    basic_auth {
+      username = env("GRAFANA_LOKI_USERNAME")
+      password = env("GRAFANA_LOKI_PASSWORD")
+    }
+  }
+}

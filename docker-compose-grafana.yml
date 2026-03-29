@@ -1,0 +1,20 @@
+services:
+  alloy:
+    image: grafana/alloy:latest
+    container_name: oitassist-alloy
+    ports:
+      - "12345:12345"
+    environment:
+      GRAFANA_PROM_USERNAME: ${GRAFANA_PROM_USERNAME}
+      GRAFANA_PROM_PASSWORD: ${GRAFANA_PROM_PASSWORD}
+      GRAFANA_LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME}
+      GRAFANA_LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD}
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
