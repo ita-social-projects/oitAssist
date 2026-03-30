@@ -5,9 +5,10 @@ import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
+import java.time.LocalDate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface NewsService extends BaseService<Long, CreateNewsDTO, UpdateNewsDto, ResponseNewsDto> {
-    Page<ResponseNewsListItemDto> getPublishedNews(Pageable pageable);
+    Page<ResponseNewsListItemDto> getPublishedNews(Pageable pageable, String search, LocalDate date);
 }

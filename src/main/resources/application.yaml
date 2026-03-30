@@ -77,3 +77,17 @@ springdoc:
 
 web_client:
   origin: ${WEB_CLIENT_ORIGIN}
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true

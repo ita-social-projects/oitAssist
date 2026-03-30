@@ -1,14 +1,12 @@
 package com.itasocialacademy.oitassist.news.dao.repository;
 
 import com.itasocialacademy.oitassist.core.rest.repository.EntityRepository;
-import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.dao.model.News;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface NewsRepository extends JpaRepository<News, Long>, EntityRepository<News, Long> {
-    Page<News> findAllByStatus(NewsStatus status, Pageable pageable);
+public interface NewsRepository
+    extends JpaRepository<News, Long>, EntityRepository<News, Long>, JpaSpecificationExecutor<News> {
 }

@@ -1,0 +1,39 @@
+name: grafana-alloy.yml
+on:
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  deploy-grafana-alloy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose-grafana.yml to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          source: "docker-compose-grafana.yml,config.alloy"
+          target: "/home/azureoit/oitassist"
+
+      - name: Deploy to Azure VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GRAFANA_PROM_USERNAME: ${{secrets.GRAFANA_PROM_USERNAME}}
+          GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}
+          GRAFANA_LOKI_USERNAME: ${{ secrets.GRAFANA_LOKI_USERNAME }}
+          GRAFANA_LOKI_PASSWORD: ${{secrets.GRAFANA_LOKI_PASSWORD}}
+        with:
+          host: ${{ secrets.AZURE_VM_HOST }}
+          username: ${{ secrets.AZURE_VM_USER }}
+          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          envs: GRAFANA_PROM_USERNAME, GRAFANA_PROM_PASSWORD, GRAFANA_LOKI_USERNAME, GRAFANA_LOKI_PASSWORD
+          script: |
+            cd /home/azureoit/oitassist
+            docker compose -f docker-compose-grafana.yml pull
+            docker compose -f docker-compose-grafana.yml up -d
