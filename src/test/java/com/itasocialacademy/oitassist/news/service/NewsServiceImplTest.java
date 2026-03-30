@@ -21,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -150,9 +151,9 @@ class NewsServiceImplTest {
 
         Page<News> newsPage = new PageImpl<>(List.of(news), pageable, 1);
 
-        when(newsRepository.findAllByStatus(NewsStatus.PUBLISHED, pageable)).thenReturn(newsPage);
+        when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(newsPage);
 
-        Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable);
+        Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable, null, null);
 
         assertThat(result.getContent()).hasSize(1);
 
@@ -166,7 +167,7 @@ class NewsServiceImplTest {
         assertThat(result.getSize()).isEqualTo(5);
         assertThat(result.getTotalElements()).isEqualTo(1);
 
-        verify(newsRepository).findAllByStatus(NewsStatus.PUBLISHED, pageable);
+        verify(newsRepository).findAll(any(Specification.class), eq(pageable));
     }
 
     @Test
@@ -184,9 +185,9 @@ class NewsServiceImplTest {
 
         Page<News> newsPage = new PageImpl<>(List.of(news), pageable, 1);
 
-        when(newsRepository.findAllByStatus(NewsStatus.PUBLISHED, pageable)).thenReturn(newsPage);
+        when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(newsPage);
 
-        Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable);
+        Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable, null, null);
 
         ResponseNewsListItemDto item = result.getContent().getFirst();
 
@@ -194,7 +195,7 @@ class NewsServiceImplTest {
             .hasSize(303)
             .isEqualTo(longContent.substring(0, 300) + "...");
 
-        verify(newsRepository).findAllByStatus(NewsStatus.PUBLISHED, pageable);
+        verify(newsRepository).findAll(any(Specification.class), eq(pageable));
     }
 
     @Test
@@ -210,15 +211,15 @@ class NewsServiceImplTest {
 
         Page<News> newsPage = new PageImpl<>(List.of(news), pageable, 1);
 
-        when(newsRepository.findAllByStatus(NewsStatus.PUBLISHED, pageable)).thenReturn(newsPage);
+        when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(newsPage);
 
-        Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable);
+        Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable, null, null);
 
         ResponseNewsListItemDto item = result.getContent().getFirst();
 
         assertThat(item.getContentPreview()).isNull();
 
-        verify(newsRepository).findAllByStatus(NewsStatus.PUBLISHED, pageable);
+        verify(newsRepository).findAll(any(Specification.class), eq(pageable));
     }
 
     private void mockAuthenticatedUser(Long userId) {
