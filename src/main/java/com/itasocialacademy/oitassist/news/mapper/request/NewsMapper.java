@@ -11,7 +11,7 @@ import org.mapstruct.MappingTarget;
 @Mapper(componentModel = "spring")
 public interface NewsMapper extends GeneralMapper<News, CreateNewsDTO, UpdateNewsDto, ResponseNewsDto> {
     @Override
-    ResponseNewsDto toDTO(News news);
+    ResponseNewsDto toDto(News news);
 
     @Override
     News toEntity(CreateNewsDTO newsDTO);
