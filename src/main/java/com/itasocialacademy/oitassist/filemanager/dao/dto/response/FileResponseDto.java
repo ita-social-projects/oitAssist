@@ -8,7 +8,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ResponseFileDto implements EntityDTO<Long> {
+public class FileResponseDto implements EntityDTO<Long> {
     private Long id;
     private String storageKey;
     private String mimeType;
