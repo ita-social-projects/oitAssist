@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.filemanager.dao.dto.request;
+package com.itasocialacademy.oitassist.filemanager.dto.request;
 
 import com.itasocialacademy.oitassist.core.rest.dto.CreateEntityDTO;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
