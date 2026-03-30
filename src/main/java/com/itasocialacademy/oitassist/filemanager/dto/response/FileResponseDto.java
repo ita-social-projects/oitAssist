@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.filemanager.dao.dto.response;
+package com.itasocialacademy.oitassist.filemanager.dto.response;
 
 import com.itasocialacademy.oitassist.core.rest.dto.EntityDTO;
 import lombok.*;
