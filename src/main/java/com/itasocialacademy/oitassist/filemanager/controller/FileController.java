@@ -7,5 +7,5 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(value = "/api/v1/file")
 @Tag(name = "File Manager V1", description = "Operations related to file management")
-public class FileManagerController {
+public class FileController {
 }

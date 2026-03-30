@@ -9,7 +9,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UploadFileDTO implements CreateEntityDTO<Long> {
+public class FileUploadRequestDto implements CreateEntityDTO<Long> {
     private RelatedEntityType relatedEntityType;
     private Long relatedEntityId;
 }
