@@ -41,7 +41,7 @@ public abstract class AbstractServiceImpl<I extends Serializable, E extends Enti
     @Override
     public D getById(I id) {
         log.debug("getById<{}>(id={})", entityType, id);
-        return repository.findById(id).map(mapper::toDTO)
+        return repository.findById(id).map(mapper::toDto)
             .orElseThrow(() -> new NotFoundException("Entity " + entityType, ErrorCode.ENTITY_NOT_FOUND));
     }
 
@@ -50,7 +50,7 @@ public abstract class AbstractServiceImpl<I extends Serializable, E extends Enti
         log.debug("save<{}>(dto={})", createDtoType, dto);
         E entity = mapper.toEntity(dto);
         beforeSave(entity, dto);
-        return mapper.toDTO(repository.save(entity));
+        return mapper.toDto(repository.save(entity));
     }
 
     @Override
@@ -61,7 +61,7 @@ public abstract class AbstractServiceImpl<I extends Serializable, E extends Enti
         beforeUpdate(entity, dto);
         mapper.merge(dto, entity);
 
-        return mapper.toDTO(repository.save(entity));
+        return mapper.toDto(repository.save(entity));
     }
 
     @Override

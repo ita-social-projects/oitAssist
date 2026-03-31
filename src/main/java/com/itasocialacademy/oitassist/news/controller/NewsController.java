@@ -1,24 +1,26 @@
 package com.itasocialacademy.oitassist.news.controller;
 
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
-import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
-import org.springframework.web.bind.annotation.*;
 import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 import static org.springframework.data.domain.Sort.Direction.DESC;
 
 @Tag(name = "News v1", description = "Operations related to news")
@@ -102,7 +104,9 @@ public class NewsController
         @Parameter(hidden = true) @PageableDefault(
             size = 5,
             sort = "publishedAt",
-            direction = DESC) Pageable pageable) {
-        return ResponseEntity.ok(PageResponse.from(service.getPublishedNews(pageable)));
+            direction = DESC) Pageable pageable,
+        @RequestParam(required = false) String search,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(PageResponse.from(service.getPublishedNews(pageable, search, date)));
     }
 }

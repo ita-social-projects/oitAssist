@@ -8,13 +8,16 @@ import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItem
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.dao.model.News;
 import com.itasocialacademy.oitassist.news.dao.repository.NewsRepository;
+import com.itasocialacademy.oitassist.news.dao.specification.NewsSpecification;
 import com.itasocialacademy.oitassist.news.mapper.request.NewsMapper;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
 import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -65,8 +68,12 @@ public class NewsServiceImpl
     }
 
     @Override
-    public Page<ResponseNewsListItemDto> getPublishedNews(Pageable pageable) {
-        return repository.findAllByStatus(NewsStatus.PUBLISHED, pageable).map(this::toNewsListItemDto);
+    public Page<ResponseNewsListItemDto> getPublishedNews(Pageable pageable, String search, LocalDate date) {
+        Specification<News> spec = NewsSpecification.withFilters(
+            NewsStatus.PUBLISHED,
+            search,
+            date);
+        return repository.findAll(spec, pageable).map(this::toNewsListItemDto);
     }
 
     private ResponseNewsListItemDto toNewsListItemDto(News news) {
