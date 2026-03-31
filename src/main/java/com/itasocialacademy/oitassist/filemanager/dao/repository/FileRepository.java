@@ -1,4 +1,9 @@
 package com.itasocialacademy.oitassist.filemanager.dao.repository;
 
-public interface FileRepository {
+import com.itasocialacademy.oitassist.core.rest.repository.EntityRepository;
+import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface FileRepository extends EntityRepository<FileAsset, Long> {
 }

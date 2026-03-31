@@ -11,7 +11,7 @@ import org.mapstruct.MappingTarget;
 @Mapper(componentModel = "spring")
 public interface TaskMapper extends GeneralMapper<Task, CreateTaskDTO, UpdateTaskDTO, ResponseTaskDTO> {
     @Override
-    ResponseTaskDTO toDTO(Task task);
+    ResponseTaskDTO toDto(Task task);
 
     @Override
     Task toEntity(CreateTaskDTO taskDTO);

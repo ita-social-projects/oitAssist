@@ -1,8 +1,6 @@
 package com.itasocialacademy.oitassist.news.controller;
 
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
@@ -24,9 +22,12 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class NewsControllerTest {
 
@@ -150,7 +151,7 @@ class NewsControllerTest {
             PageRequest.of(0, 5),
             1);
 
-        when(newsService.getPublishedNews(any())).thenReturn(page);
+        when(newsService.getPublishedNews(any(), eq(null), eq(null))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/news"))
             .andExpect(status().isOk())
@@ -164,7 +165,7 @@ class NewsControllerTest {
             .andExpect(jsonPath("$.first").value(true))
             .andExpect(jsonPath("$.last").value(true));
 
-        verify(newsService).getPublishedNews(any());
+        verify(newsService).getPublishedNews(any(), eq(null), eq(null));
     }
 
     @Test
@@ -174,14 +175,63 @@ class NewsControllerTest {
             PageRequest.of(0, 5),
             0);
 
-        when(newsService.getPublishedNews(any())).thenReturn(page);
+        when(newsService.getPublishedNews(any(), eq(null), eq(null))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/news"))
             .andExpect(status().isOk());
 
-        verify(newsService).getPublishedNews(argThat(pageable -> pageable.getPageNumber() == 0 &&
-            pageable.getPageSize() == 5 &&
-            pageable.getSort().getOrderFor("publishedAt") != null &&
-            pageable.getSort().getOrderFor("publishedAt").isDescending()));
+        verify(newsService).getPublishedNews(
+            argThat(pageable -> pageable.getPageNumber() == 0 &&
+                pageable.getPageSize() == 5 &&
+                pageable.getSort().getOrderFor("publishedAt") != null &&
+                pageable.getSort().getOrderFor("publishedAt").isDescending()),
+            eq(null),
+            eq(null));
+    }
+
+    @Test
+    void testGetPublishedNews_withSearchParam_returnsMatchingResults() throws Exception {
+        String search = "tech";
+        ResponseNewsListItemDto item = new ResponseNewsListItemDto(
+            10L,
+            "Tech News",
+            "Latest on technology...",
+            OffsetDateTime.parse("2026-03-20T15:30:00Z"));
+
+        Page<ResponseNewsListItemDto> page = new PageImpl<>(
+            List.of(item),
+            PageRequest.of(0, 5),
+            1);
+
+        when(newsService.getPublishedNews(any(), eq(search), eq(null))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/news")
+            .param("search", search))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(10))
+            .andExpect(jsonPath("$.content[0].title").value("Tech News"))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(newsService).getPublishedNews(any(), eq(search), eq(null));
+    }
+
+    @Test
+    void testGetPublishedNews_withSearchParam_noResults() throws Exception {
+        String search = "nonexistent";
+        Page<ResponseNewsListItemDto> page = new PageImpl<>(
+            List.of(),
+            PageRequest.of(0, 5),
+            0);
+
+        when(newsService.getPublishedNews(any(), eq(search), eq(null))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/news")
+            .param("search", search))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content.length()").value(0))
+            .andExpect(jsonPath("$.totalElements").value(0));
+
+        verify(newsService).getPublishedNews(any(), eq(search), eq(null));
     }
 }
