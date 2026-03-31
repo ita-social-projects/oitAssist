@@ -99,7 +99,8 @@ class FileServiceImplTest {
 
         FileAsset result = captor.getValue();
         assertEquals(FileStatus.HARD_DELETED, result.getStatus());
-        // todo: change the expected storage_key below, when it is changed in the service!
+        // todo: change the expected storage_key below, when it is changed in the
+        // service!
         assertEquals("DELETED " + existingFile.getId(), result.getStorageKey());
 
         verify(localStorageProvider, times(1)).deletePhysical(testPath);
