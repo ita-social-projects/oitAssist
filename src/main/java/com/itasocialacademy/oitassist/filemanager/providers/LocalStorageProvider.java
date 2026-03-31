@@ -12,8 +12,10 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 @Slf4j
+@Component
 public class LocalStorageProvider implements StorageProvider {
     // For testing purposes AND may be used in upload() directory constructing
     private final String rootPath;
