@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadFailureException;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,12 +9,13 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 
 @Slf4j
 public class LocalStorageProvider implements StorageProvider {
-    // For testing purposes AND may be used in upload()
+    // For testing purposes AND may be used in upload() directory constructing
     private final String rootPath;
 
     public LocalStorageProvider(@Value("${app.storage.local.root}") String rootPath) {
@@ -27,7 +29,20 @@ public class LocalStorageProvider implements StorageProvider {
 
     @Override
     public String upload(InputStream inputStream, String morphedName, String path) {
-        return "";
+        try {
+            Path directoryPath = Paths.get(rootPath, path).toAbsolutePath().normalize();
+            Files.createDirectories(directoryPath);
+            Path filePath = directoryPath.resolve(morphedName);
+
+            Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            log.info("File successfully uploaded to: {}", filePath);
+
+            return filePath.toString();
+        } catch (IOException e) {
+            log.error("Failed to upload file {} to path {}", morphedName, path, e);
+            throw new FileUploadFailureException("Could not store file locally", e);
+        }
     }
 
     @Override

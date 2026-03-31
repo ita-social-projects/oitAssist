@@ -1,9 +1,13 @@
 package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadFailureException;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.MockedStatic;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
@@ -11,6 +15,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockStatic;
 
 class LocalStorageProviderTest {
 
@@ -54,5 +62,53 @@ class LocalStorageProviderTest {
 
         assertDoesNotThrow(() -> localStorageProvider.deletePhysical(nonExistentPath),
             "Should handle non-existent files gracefully without throwing exceptions");
+    }
+
+    @Test
+    void upload_ShouldSaveFileAndReturnPath_WhenInputIsValid() throws IOException {
+        String fileName = "test-image.png";
+        String subPath = "uploads/avatars";
+        String content = "fake-image-content";
+        InputStream inputStream = new ByteArrayInputStream(content.getBytes());
+
+        String resultPath = localStorageProvider.upload(inputStream, fileName, subPath);
+
+        Path expectedFile = tempDir.resolve(subPath).resolve(fileName);
+
+        assertThat(resultPath).isEqualTo(expectedFile.toString());
+        assertThat(Files.exists(expectedFile)).isTrue();
+        assertThat(Files.readString(expectedFile)).isEqualTo(content);
+    }
+
+    @Test
+    void upload_ShouldOverwrite_WhenFileAlreadyExists() throws IOException {
+        String fileName = "overwrite.txt";
+        String subPath = "docs";
+        Path dir = tempDir.resolve(subPath);
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve(fileName), "old content");
+
+        InputStream newContent = new ByteArrayInputStream("new content".getBytes());
+
+        localStorageProvider.upload(newContent, fileName, subPath);
+
+        assertThat(Files.readString(dir.resolve(fileName))).isEqualTo("new content");
+    }
+
+    @Test
+    void upload_ShouldThrowException_WhenIOExceptionOccurs() {
+        InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+
+        try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
+            mockedFiles.when(() -> Files.createDirectories(any(Path.class)))
+                .thenThrow(new IOException("Disk Full"));
+
+            assertThatThrownBy(() ->
+                localStorageProvider.upload(inputStream, "fail.txt", "any/path")
+            )
+                .isInstanceOf(FileUploadFailureException.class)
+                .hasMessageContaining("Could not store file locally")
+                .hasCauseInstanceOf(IOException.class);
+        }
     }
 }
