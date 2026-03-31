@@ -1,7 +1,10 @@
 package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
-import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadFailureException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalDeleteFailureException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalNotFoundException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalUploadFailureException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidLocalFilePathException;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,7 +40,7 @@ public class LocalStorageProvider implements StorageProvider {
             Path normalizedFile = normalizedDirectory.resolve(morphedName).normalize();
 
             if (!normalizedDirectory.startsWith(root) || !normalizedFile.startsWith(root)) {
-                throw new FileUploadFailureException("Invalid upload path outside configured storage root",
+                throw new FileLocalUploadFailureException("Invalid upload path outside configured storage root",
                     new IllegalArgumentException(path));
             }
             Files.createDirectories(normalizedDirectory);
@@ -50,16 +53,20 @@ public class LocalStorageProvider implements StorageProvider {
             return normalizedFile.toString();
         } catch (IOException e) {
             log.error("Failed to upload file {} to path {}", morphedName, path, e);
-            throw new FileUploadFailureException("Could not store file locally", e);
+            throw new FileLocalUploadFailureException("Could not store file locally", e);
         }
     }
 
     @Override
     public void deletePhysical(String fileFullPath) {
         try {
-            Path path = Paths.get(fileFullPath);
-
-            boolean deleted = Files.deleteIfExists(path);
+            Path root = Paths.get(rootPath).toAbsolutePath().normalize();
+            Path target = root.resolve(fileFullPath).normalize();
+            if (!target.startsWith(root)) {
+                throw new InvalidLocalFilePathException("Invalid delete path outside configured storage root: "
+                    + fileFullPath);
+            }
+            boolean deleted = Files.deleteIfExists(target);
 
             if (deleted) {
                 log.info("Physically deleted file: {}", fileFullPath);
@@ -68,9 +75,10 @@ public class LocalStorageProvider implements StorageProvider {
             }
         } catch (NoSuchFileException e) {
             log.error("File deletion failed. No file found: {}", fileFullPath, e);
+            throw new FileLocalNotFoundException("File deletion failed. No file found: " + fileFullPath, e);
         } catch (IOException e) {
             log.error("Could not delete physical file at: {}", fileFullPath, e);
-            throw new IllegalStateException("Could not delete physical file: " + fileFullPath, e);
+            throw new FileLocalDeleteFailureException("Could not delete physical file: " + fileFullPath, e);
         }
     }
 }

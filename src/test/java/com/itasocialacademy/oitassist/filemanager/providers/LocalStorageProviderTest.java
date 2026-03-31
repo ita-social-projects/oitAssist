@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
-import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadFailureException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalUploadFailureException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import org.junit.jupiter.api.BeforeEach;
@@ -106,7 +106,7 @@ class LocalStorageProviderTest {
             assertThatThrownBy(() ->
                 localStorageProvider.upload(inputStream, "fail.txt", "any/path")
             )
-                .isInstanceOf(FileUploadFailureException.class)
+                .isInstanceOf(FileLocalUploadFailureException.class)
                 .hasMessageContaining("Could not store file locally")
                 .hasCauseInstanceOf(IOException.class);
         }
