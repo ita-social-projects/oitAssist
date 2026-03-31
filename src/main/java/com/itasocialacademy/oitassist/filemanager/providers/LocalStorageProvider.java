@@ -20,7 +20,7 @@ public class LocalStorageProvider implements StorageProvider {
     // For testing purposes AND may be used in upload() directory constructing
     private final String rootPath;
 
-    public LocalStorageProvider(@Value("${app.storage.local.root}") String rootPath) {
+    public LocalStorageProvider(@Value("${app.storage.local.root:./uploads}") String rootPath) {
         this.rootPath = rootPath;
     }
 
@@ -32,15 +32,22 @@ public class LocalStorageProvider implements StorageProvider {
     @Override
     public String upload(InputStream inputStream, String morphedName, String path) {
         try {
-            Path directoryPath = Paths.get(rootPath, path).toAbsolutePath().normalize();
-            Files.createDirectories(directoryPath);
-            Path filePath = directoryPath.resolve(morphedName);
+            Path root = Paths.get(rootPath).toAbsolutePath().normalize();
+            Path normalizedDirectory = root.resolve(path).normalize();
+            Path normalizedFile = normalizedDirectory.resolve(morphedName).normalize();
 
-            Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
+            if (!normalizedDirectory.startsWith(root) || !normalizedFile.startsWith(root)) {
+                throw new FileUploadFailureException("Invalid upload path outside configured storage root",
+                    new IllegalArgumentException(path));
+            }
+            Files.createDirectories(normalizedDirectory);
 
-            log.info("File successfully uploaded to: {}", filePath);
+            //todo: are we okay with the silent overwrite?
+            Files.copy(inputStream, normalizedFile, StandardCopyOption.REPLACE_EXISTING);
 
-            return filePath.toString();
+            log.info("File successfully uploaded to: {}", normalizedFile);
+
+            return normalizedFile.toString();
         } catch (IOException e) {
             log.error("Failed to upload file {} to path {}", morphedName, path, e);
             throw new FileUploadFailureException("Could not store file locally", e);
@@ -63,6 +70,7 @@ public class LocalStorageProvider implements StorageProvider {
             log.error("File deletion failed. No file found: {}", fileFullPath, e);
         } catch (IOException e) {
             log.error("Could not delete physical file at: {}", fileFullPath, e);
+            throw new IllegalStateException("Could not delete physical file: " + fileFullPath, e);
         }
     }
 }
