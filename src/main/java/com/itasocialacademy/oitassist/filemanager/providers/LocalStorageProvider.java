@@ -72,7 +72,10 @@ public class LocalStorageProvider implements StorageProvider {
                 target = root.resolve(fileFullPath).normalize();
                 if (!Files.exists(target) && fileFullPath.startsWith(root.getFileName().toString())) {
                     Path strippedPath = inputPath.subpath(1, inputPath.getNameCount());
-                    target = root.resolve(strippedPath).normalize();
+                    Path candidateTarget = root.resolve(strippedPath).normalize();
+                    if (Files.exists(candidateTarget)) {
+                        target = candidateTarget;
+                    }
                 }
             }
 

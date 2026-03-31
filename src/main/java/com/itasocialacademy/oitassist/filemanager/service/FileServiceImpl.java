@@ -10,9 +10,11 @@ import java.io.FileNotFoundException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FileServiceImpl implements FileService {
@@ -68,14 +70,20 @@ public class FileServiceImpl implements FileService {
             .orElseThrow(() -> new UnsupportedStorageException("Unsupported storage source: "
                 + file.getStorageProvider()));
 
-        // todo: check SharePoint compatibility
-        provider.deletePhysical(file.getStorageKey());
-
+        String originalStorageKey = file.getStorageKey();
         file.setStatus(FileStatus.HARD_DELETED);
         file.setDeletedAt(OffsetDateTime.now());
         // todo: change field to nullable or set to empty string on deletion.
         // So far we can put a placeholder
         file.setStorageKey("DELETED " + fileId);
+
+        try {
+            // todo: check SharePoint compatibility
+            provider.deletePhysical(originalStorageKey);
+        } catch (Exception e) {
+            log.error("Physical deletion failed for file {}, but DB record updated", fileId, e);
+        }
+
         repository.save(file);
     }
 }

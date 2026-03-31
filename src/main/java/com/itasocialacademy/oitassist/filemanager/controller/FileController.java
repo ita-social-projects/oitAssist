@@ -26,9 +26,11 @@ public class FileController {
         @ApiResponse(responseCode = "204", description = "File deleted successfully"),
         @ApiResponse(responseCode = "400", description = "Validation error"),
         @ApiResponse(responseCode = "403", description = "Access denied"),
+        // todo: handle this FileNotFoundException via GlobalExceptionHandler as 404
         @ApiResponse(responseCode = "404", description = "File not found")
     })
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','ORG','USER')")
     public ResponseEntity<Void> deleteSoft(@PathVariable Long id) throws FileNotFoundException {
         fileService.deleteSoft(id);
         return ResponseEntity.noContent().build();
@@ -39,6 +41,7 @@ public class FileController {
         @ApiResponse(responseCode = "204", description = "File deleted successfully"),
         @ApiResponse(responseCode = "400", description = "Validation error"),
         @ApiResponse(responseCode = "403", description = "Access denied"),
+        // todo: handle this FileNotFoundException via GlobalExceptionHandler as 404
         @ApiResponse(responseCode = "404", description = "File not found")
     })
     @DeleteMapping("/{id}/hard")
