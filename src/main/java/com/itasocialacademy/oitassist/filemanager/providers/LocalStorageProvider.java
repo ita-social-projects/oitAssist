@@ -2,14 +2,12 @@ package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalDeleteFailureException;
-import com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalUploadFailureException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidLocalFilePathException;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -73,9 +71,6 @@ public class LocalStorageProvider implements StorageProvider {
             } else {
                 log.warn("Attempted to delete file, but it did not exist: {}", fileFullPath);
             }
-        } catch (NoSuchFileException e) {
-            log.error("File deletion failed. No file found: {}", fileFullPath, e);
-            throw new FileLocalNotFoundException("File deletion failed. No file found: " + fileFullPath, e);
         } catch (IOException e) {
             log.error("Could not delete physical file at: {}", fileFullPath, e);
             throw new FileLocalDeleteFailureException("Could not delete physical file: " + fileFullPath, e);
