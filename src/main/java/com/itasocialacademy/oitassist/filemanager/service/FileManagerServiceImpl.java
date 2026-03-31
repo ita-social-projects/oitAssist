@@ -26,10 +26,10 @@ public class FileManagerServiceImpl implements FileManagerService {
     }
 
     /**
-     * Method to perform a status change of the file.
-     * It marks the file as SOFT_DELETED, which can be used in further storage cleanup operations
-     * either manual, or scheduled.
-     * The physical record of the file after method execution remains intact.
+     * Method to perform a status change of the file. It marks the file as
+     * SOFT_DELETED, which can be used in further storage cleanup operations either
+     * manual, or scheduled. The physical record of the file after method execution
+     * remains intact.
      *
      * @param fileId id of the file.
      * @throws FileNotFoundException Thrown if files is not found in the database.
@@ -39,12 +39,14 @@ public class FileManagerServiceImpl implements FileManagerService {
         FileAsset file = repository.findById(fileId)
             .orElseThrow(() -> new FileNotFoundException("File not found in the database: " + fileId));
 
-        // todo: Implement these check logic when the SecurityService will be implemented
-        //boolean isAdmin = securityService.hasRole("ROLE_ADMIN");
+        // todo: Implement these check logic when the SecurityService will be
+        // implemented
+        // boolean isAdmin = securityService.hasRole("ROLE_ADMIN");
         //
-        //if (!file.getOwnerId().equals(currentUserId) && !isAdmin) {
-        //    throw new AccessDeniedException("You do not have permission to delete this file.");
-        //}
+        // if (!file.getOwnerId().equals(currentUserId) && !isAdmin) {
+        // throw new AccessDeniedException("You do not have permission to delete this
+        // file.");
+        // }
 
         file.setStatus(FileStatus.SOFT_DELETED);
         file.setDeletedAt(OffsetDateTime.now());
@@ -52,8 +54,8 @@ public class FileManagerServiceImpl implements FileManagerService {
     }
 
     /**
-     * Method to handle physical deletion of a file. Used for permanent deletion, cleanup scheduling or orphaned
-     * files' cleanup.
+     * Method to handle physical deletion of a file. Used for permanent deletion,
+     * cleanup scheduling or orphaned files' cleanup.
      *
      * @param fileId id of the file.
      * @throws FileNotFoundException Thrown if files is not found in the database.
@@ -63,7 +65,8 @@ public class FileManagerServiceImpl implements FileManagerService {
         FileAsset file = repository.findById(fileId)
             .orElseThrow(() -> new FileNotFoundException("File not found in the database: " + fileId));
 
-        // todo: Implement security check logic when the SecurityService will be implemented
+        // todo: Implement security check logic when the SecurityService will be
+        // implemented
 
         StorageProvider provider = providers.stream()
             .filter(p -> p.supports(file.getStorageProvider()))
@@ -78,7 +81,7 @@ public class FileManagerServiceImpl implements FileManagerService {
 
         file.setStatus(FileStatus.HARD_DELETED);
         file.setDeletedAt(OffsetDateTime.now());
-        file.setStorageKey("DELETED " + fileId);    //todo: change field to nullable or set to empty string on deletion
+        file.setStorageKey("DELETED " + fileId); // todo: change field to nullable or set to empty string on deletion
         repository.save(file);
     }
 }
