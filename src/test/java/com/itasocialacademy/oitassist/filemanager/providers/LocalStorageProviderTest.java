@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalUploadFailureException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidLocalFilePathException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,9 +85,9 @@ class LocalStorageProviderTest {
     }
 
     @Test
-    void deletePhysical_ShouldReturnGracefully_WhenPathIsBlank() {
-        assertDoesNotThrow(() -> localStorageProvider.deletePhysical("   "));
-        assertDoesNotThrow(() -> localStorageProvider.deletePhysical(null));
+    void deletePhysical_ShouldThrowException_WhenPathIsBlank() {
+        assertThrows(InvalidLocalFilePathException.class, () -> localStorageProvider.deletePhysical("   "));
+        assertThrows(InvalidLocalFilePathException.class, () -> localStorageProvider.deletePhysical(null));
     }
 
     @Test

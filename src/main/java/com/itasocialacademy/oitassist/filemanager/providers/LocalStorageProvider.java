@@ -57,8 +57,7 @@ public class LocalStorageProvider implements StorageProvider {
     @Override
     public void deletePhysical(String fileFullPath) {
         if (fileFullPath == null || fileFullPath.isBlank()) {
-            log.warn("Attempted to delete physical file, but path was null or empty.");
-            return;
+            throw new InvalidLocalFilePathException("Cannot delete local file: blank storage path");
         }
 
         try {
