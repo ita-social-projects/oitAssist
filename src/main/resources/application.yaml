@@ -51,6 +51,7 @@ jwt:
   encrypted-key: ${JWT_ENCRYPTED_KEY}
   sign-key: ${JWT_SIGN_KEY}
   validity: ${JWT_VALIDITY}
+  refresh-validity: ${JWT_REFRESH_VALIDITY}
 
 logging:
   level:

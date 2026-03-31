@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.security.controller;
 
+import com.itasocialacademy.oitassist.security.dao.dto.request.RefreshTokenRequest;
 import com.itasocialacademy.oitassist.security.service.interfaces.TokenService;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TokenRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
@@ -22,9 +23,9 @@ public class SecurityController {
         this.tokenService = tokenService;
     }
 
-    @PostMapping("/token/create")
+    @PostMapping("/signIn")
     @Operation(
-        summary = "Generate JWT token",
+        summary = "Generate JWT access and refresh tokens",
         description = "Creates a JWT token based on provided credentials",
         responses = {
             @ApiResponse(responseCode = "200", description = "Token created successfully"),
@@ -32,6 +33,18 @@ public class SecurityController {
         })
     public TokenResponse createToken(@RequestBody TokenRequest tokenRequest) {
         return tokenService.generateToken(tokenRequest);
+    }
+
+    @Operation(
+        summary = "Generate new JWT access and refresh token",
+        description = "Creates a new JWT access and refresh tokens based on send refresh token",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Token created successfully"),
+            @ApiResponse(responseCode = "403", description = "Invalid token")
+        })
+    @PostMapping("/refresh")
+    public TokenResponse refresh(@RequestBody RefreshTokenRequest request) {
+        return tokenService.refreshToken(request.getToken());
     }
 
     @GetMapping("/api")

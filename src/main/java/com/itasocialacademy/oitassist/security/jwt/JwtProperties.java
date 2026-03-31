@@ -13,4 +13,5 @@ public class JwtProperties {
     private String encryptedKey;
     private String signKey;
     private long validity;
+    private long refreshValidity;
 }

@@ -43,7 +43,7 @@ public class LocalStorageProvider implements StorageProvider {
             }
             Files.createDirectories(normalizedDirectory);
 
-            //todo: are we okay with the silent overwrite?
+            // todo: are we okay with the silent overwrite?
             Files.copy(inputStream, normalizedFile, StandardCopyOption.REPLACE_EXISTING);
 
             log.info("File successfully uploaded to: {}", normalizedFile);

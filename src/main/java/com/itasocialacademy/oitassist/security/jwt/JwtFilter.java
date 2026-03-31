@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.security.jwt;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
+import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.core.web.GlobalExceptionHandler;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
@@ -21,6 +22,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Objects;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
@@ -31,11 +33,14 @@ public class JwtFilter extends OncePerRequestFilter {
     private final UserDetailsService userDetailsService;
     private final JwtHelper jwtHelper;
     private final GlobalExceptionHandler handler;
+    private final ObjectMapper objectMapper;
 
-    public JwtFilter(UserDetailsService userDetailsService, JwtHelper jwtHelper, GlobalExceptionHandler handler) {
+    public JwtFilter(UserDetailsService userDetailsService, JwtHelper jwtHelper, GlobalExceptionHandler handler,
+        ObjectMapper objectMapper) {
         this.userDetailsService = userDetailsService;
         this.jwtHelper = jwtHelper;
         this.handler = handler;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -49,7 +54,7 @@ public class JwtFilter extends OncePerRequestFilter {
             if (Objects.nonNull(authorizationHeader) && authorizationHeader.startsWith("Bearer ")) {
                 jwt = authorizationHeader.substring(7);
                 String encryptedJwt = jwtHelper.extractEncryptedToken(jwt);
-                username = jwtHelper.extractUsername(encryptedJwt);
+                username = jwtHelper.extractUsername(encryptedJwt, JwtHelper.ACCESS_TOKEN);
 
                 if (Objects.nonNull(username) && SecurityContextHolder.getContext().getAuthentication() == null) {
                     UserDetails userDetails =
@@ -64,25 +69,43 @@ public class JwtFilter extends OncePerRequestFilter {
                 }
             }
         } catch (SignatureException e) {
-            handler.handleSecurityException(
-                new AuthenticationException("Invalid JWT signature", ErrorCode.INVALID_SIGNATURE), request);
+            setError(request, response, "Invalid JWT signature", ErrorCode.INVALID_SIGNATURE);
+            return;
         } catch (IllegalArgumentException e) {
-            handler.handleSecurityException(
-                new AuthenticationException("JWT claims string is empty", ErrorCode.EMPTY_CLAIMS), request);
+            setError(request, response, "JWT claims string is empty", ErrorCode.EMPTY_CLAIMS);
+            return;
         } catch (ExpiredJwtException jwtException) {
-            handler.handleSecurityException(new AuthenticationException("User token expire", ErrorCode.TOKEN_EXPIRE),
-                request);
+            setError(request, response, "User token expire", ErrorCode.TOKEN_EXPIRE);
+            return;
         } catch (UsernameNotFoundException e) {
-            handler.handleSecurityException(new AuthenticationException("Bad credentials", ErrorCode.BAD_CREDENTIAL),
-                request);
+            setError(request, response, "Bad credentials", ErrorCode.BAD_CREDENTIAL);
+            return;
         } catch (UnsupportedJwtException e) {
-            handler.handleSecurityException(
-                new AuthenticationException("JWT token is unsupported", ErrorCode.UNSUPPORTED_TOKEN), request);
+            setError(request, response, "JWT token is unsupported", ErrorCode.UNSUPPORTED_TOKEN);
+            return;
         } catch (MalformedJwtException e) {
-            handler.handleSecurityException(new AuthenticationException("Invalid JWT token", ErrorCode.INVALID_TOKEN),
-                request);
+            setError(request, response, "Invalid JWT token", ErrorCode.INVALID_TOKEN);
+            return;
+        } catch (AuthenticationException e) {
+            setError(request, response, e.getMessage(), e.getErrorCode());
+            return;
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return request.getServletPath().equals("/refresh");
+    }
+
+    private void setError(HttpServletRequest request, HttpServletResponse response, String message, ErrorCode errorCode)
+        throws IOException {
+        response.setContentType("application/json");
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        ErrorResponse errorResponse =
+            handler.handleSecurityException(new AuthenticationException(message, errorCode), request).getBody();
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+        response.getWriter().flush();
     }
 }
