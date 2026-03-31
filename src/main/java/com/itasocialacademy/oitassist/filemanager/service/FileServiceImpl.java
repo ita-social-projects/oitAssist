@@ -1,6 +1,81 @@
 package com.itasocialacademy.oitassist.filemanager.service;
 
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
+import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
+import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
+import com.itasocialacademy.oitassist.filemanager.exceptions.UnsupportedStorageException;
+import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
+import java.io.FileNotFoundException;
+import java.time.OffsetDateTime;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+@Service
+@RequiredArgsConstructor
 public class FileServiceImpl implements FileService {
+    private final List<StorageProvider> providers;
+    private final FileRepository repository;
+
+    @Override
+    @Transactional
+    public Long upload() {
+        return 0L;
+    }
+
+    /**
+     * Method to perform a status change of the file. It marks the file as
+     * SOFT_DELETED, which can be used in further storage cleanup operations either
+     * manual, or scheduled. The physical record of the file after method execution
+     * remains intact.
+     *
+     * @param fileId id of the file.
+     * @throws FileNotFoundException Thrown if files is not found in the database.
+     */
+    @Transactional
+    public void deleteSoft(Long fileId) throws FileNotFoundException {
+        FileAsset file = repository.findById(fileId)
+            .orElseThrow(() -> new FileNotFoundException("File not found in the database: " + fileId));
+
+        // todo: Implement role check with security service.
+        // Throw exception if current user has insufficient authority
+
+        file.setStatus(FileStatus.SOFT_DELETED);
+        file.setDeletedAt(OffsetDateTime.now());
+        repository.save(file);
+    }
+
+    /**
+     * Method to handle physical deletion of a file. Used for permanent deletion,
+     * cleanup scheduling or orphaned files' cleanup.
+     *
+     * @param fileId id of the file.
+     * @throws FileNotFoundException Thrown if files is not found in the database.
+     */
+    @Transactional
+    public void deleteHard(Long fileId) throws FileNotFoundException {
+        FileAsset file = repository.findById(fileId)
+            .orElseThrow(() -> new FileNotFoundException("File not found in the database: " + fileId));
+
+        // todo: Implement role check with security service.
+        // Throw exception if current user has insufficient authority
+
+        StorageProvider provider = providers.stream()
+            .filter(p -> p.supports(file.getStorageProvider()))
+            .findFirst()
+            .orElseThrow(() -> new UnsupportedStorageException("Unsupported storage source: "
+                + file.getStorageProvider()));
+
+        // todo: check SharePoint compatibility
+        provider.deletePhysical(file.getStorageKey());
+
+        file.setStatus(FileStatus.HARD_DELETED);
+        file.setDeletedAt(OffsetDateTime.now());
+        // todo: change field to nullable or set to empty string on deletion.
+        // So far we can put a placeholder
+        file.setStorageKey("DELETED " + fileId);
+        repository.save(file);
+    }
 }

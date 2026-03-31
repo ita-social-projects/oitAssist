@@ -18,7 +18,6 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class LocalStorageProvider implements StorageProvider {
-    // For testing purposes AND may be used in upload() directory constructing
     private final String rootPath;
 
     public LocalStorageProvider(@Value("${app.storage.local.root:./uploads}") String rootPath) {
@@ -43,7 +42,7 @@ public class LocalStorageProvider implements StorageProvider {
             }
             Files.createDirectories(normalizedDirectory);
 
-            //todo: are we okay with the silent overwrite?
+            // todo: are we okay with the silent overwrite?
             Files.copy(inputStream, normalizedFile, StandardCopyOption.REPLACE_EXISTING);
 
             log.info("File successfully uploaded to: {}", normalizedFile);
@@ -64,17 +63,30 @@ public class LocalStorageProvider implements StorageProvider {
 
         try {
             Path root = Paths.get(rootPath).toAbsolutePath().normalize();
-            Path target = root.resolve(fileFullPath).normalize();
+            Path inputPath = Paths.get(fileFullPath);
+            Path target;
+
+            if (inputPath.isAbsolute()) {
+                target = inputPath.normalize();
+            } else {
+                target = root.resolve(fileFullPath).normalize();
+                if (!Files.exists(target) && fileFullPath.startsWith(root.getFileName().toString())) {
+                    Path strippedPath = inputPath.subpath(1, inputPath.getNameCount());
+                    target = root.resolve(strippedPath).normalize();
+                }
+            }
+
             if (!target.startsWith(root)) {
                 throw new InvalidLocalFilePathException("Invalid delete path outside configured storage root: "
                     + fileFullPath);
             }
+
             boolean deleted = Files.deleteIfExists(target);
 
             if (deleted) {
-                log.info("Physically deleted file: {}", fileFullPath);
+                log.info("File deleted successfully: {}", target);
             } else {
-                log.warn("Attempted to delete file, but it did not exist: {}", fileFullPath);
+                log.warn("File not found at: {}", target.toAbsolutePath());
             }
         } catch (IOException e) {
             log.error("Could not delete physical file at: {}", fileFullPath, e);
