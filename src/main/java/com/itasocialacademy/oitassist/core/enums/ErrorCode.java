@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * Represents application-specific error codes used across all layers.
+ *
  * <p>
  * Each {@code ErrorCode} is associated with an {@link ErrorCategory}, which
  * determines the type of error and is used for mapping to HTTP status codes in
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ErrorCode {
     COMMON_INTERNAL_ERROR(ErrorCategory.TECHNICAL),
+    FILE_UPLOAD_FAILED(ErrorCategory.TECHNICAL),
     COMMON_VALIDATION_FAILED(ErrorCategory.VALIDATION),
 
     TOKEN_EXPIRE(ErrorCategory.AUTHENTICATION),
