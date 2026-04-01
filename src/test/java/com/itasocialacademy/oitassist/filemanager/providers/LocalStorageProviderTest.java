@@ -103,9 +103,7 @@ class LocalStorageProviderTest {
             mockedFiles.when(() -> Files.createDirectories(any(Path.class)))
                 .thenThrow(new IOException("Disk Full"));
 
-            assertThatThrownBy(() ->
-                localStorageProvider.upload(inputStream, "fail.txt", "any/path")
-            )
+            assertThatThrownBy(() -> localStorageProvider.upload(inputStream, "fail.txt", "any/path"))
                 .isInstanceOf(FileLocalUploadFailureException.class)
                 .hasMessageContaining("Could not store file locally")
                 .hasCauseInstanceOf(IOException.class);
