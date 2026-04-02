@@ -4,9 +4,9 @@ import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.UnsupportedStorageException;
 import com.itasocialacademy.oitassist.filemanager.providers.LocalStorageProvider;
-import java.io.FileNotFoundException;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,7 +57,7 @@ class FileServiceImplTest {
     // --- Soft Delete Tests ---
 
     @Test
-    void deleteSoft_ShouldUpdateStatusAndTimestamp_WhenFileExists() throws FileNotFoundException {
+    void deleteSoft_ShouldUpdateStatusAndTimestamp_WhenFileExists() {
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
 
         ArgumentCaptor<FileAsset> fileCaptor = ArgumentCaptor.forClass(FileAsset.class);
@@ -76,7 +76,7 @@ class FileServiceImplTest {
     void deleteSoft_ShouldThrowException_WhenFileNotFound() {
         when(fileRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
-        assertThrows(FileNotFoundException.class, () -> fileService.deleteSoft(nonExistentId));
+        assertThrows(FileAssetNotFoundException.class, () -> fileService.deleteSoft(nonExistentId));
 
         verify(fileRepository, never()).save(any());
     }
@@ -84,7 +84,7 @@ class FileServiceImplTest {
     // --- Hard Delete Tests ---
 
     @Test
-    void deleteHard_ShouldTriggerPhysicalDeletionAndClearPath() throws FileNotFoundException {
+    void deleteHard_ShouldTriggerPhysicalDeletionAndClearPath() {
         String testPath = "/tmp/storage/test.txt";
         existingFile.setStorageKey(testPath);
 
@@ -99,18 +99,17 @@ class FileServiceImplTest {
 
         FileAsset result = captor.getValue();
         assertEquals(FileStatus.HARD_DELETED, result.getStatus());
-        // todo: change the expected storage_key below, when it is changed in the
-        // service!
-        assertEquals("DELETED " + existingFile.getId(), result.getStorageKey());
+
+        assertEquals("", result.getStorageKey());
 
         verify(localStorageProvider, times(1)).deletePhysical(testPath);
     }
 
     @Test
-    void deleteHard_ShouldThrowFileNotFoundException_WhenFileMissingInDb() {
+    void deleteHard_ShouldThrowFileAssetNotFoundException_WhenFileMissingInDb() {
         when(fileRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
-        assertThrows(FileNotFoundException.class, () -> fileService.deleteHard(nonExistentId));
+        assertThrows(FileAssetNotFoundException.class, () -> fileService.deleteHard(nonExistentId));
 
         verify(localStorageProvider, never()).deletePhysical(any());
         verify(fileRepository, never()).save(any());

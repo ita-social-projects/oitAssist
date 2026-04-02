@@ -1,12 +1,12 @@
 package com.itasocialacademy.oitassist.filemanager.service;
 
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.exceptions.UnsupportedStorageException;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
-import java.io.FileNotFoundException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -34,12 +34,11 @@ public class FileServiceImpl implements FileService {
      * remains intact.
      *
      * @param fileId id of the file.
-     * @throws FileNotFoundException Thrown if files is not found in the database.
      */
     @Transactional
-    public void deleteSoft(Long fileId) throws FileNotFoundException {
+    public void deleteSoft(Long fileId) {
         FileAsset file = repository.findById(fileId)
-            .orElseThrow(() -> new FileNotFoundException("File not found in the database: " + fileId));
+            .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
 
         // todo: Implement role check with security service.
         // Throw exception if current user has insufficient authority
@@ -54,12 +53,11 @@ public class FileServiceImpl implements FileService {
      * cleanup scheduling or orphaned files' cleanup.
      *
      * @param fileId id of the file.
-     * @throws FileNotFoundException Thrown if files is not found in the database.
      */
     @Transactional
-    public void deleteHard(Long fileId) throws FileNotFoundException {
+    public void deleteHard(Long fileId) {
         FileAsset file = repository.findById(fileId)
-            .orElseThrow(() -> new FileNotFoundException("File not found in the database: " + fileId));
+            .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
 
         // todo: Implement role check with security service.
         // Throw exception if current user has insufficient authority
@@ -71,17 +69,17 @@ public class FileServiceImpl implements FileService {
                 + file.getStorageProvider()));
 
         String originalStorageKey = file.getStorageKey();
-        file.setStatus(FileStatus.HARD_DELETED);
-        file.setDeletedAt(OffsetDateTime.now());
-        // todo: change field to nullable or set to empty string on deletion.
-        // So far we can put a placeholder
-        file.setStorageKey("DELETED " + fileId);
 
         try {
             // todo: check SharePoint compatibility
             provider.deletePhysical(originalStorageKey);
+
+            file.setStatus(FileStatus.HARD_DELETED);
+            file.setDeletedAt(OffsetDateTime.now());
+            file.setStorageKey("");
         } catch (Exception e) {
             log.error("Physical deletion failed for file {}, but DB record updated", fileId, e);
+            file.setStatus(FileStatus.FAILED);
         }
 
         repository.save(file);

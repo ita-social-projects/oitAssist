@@ -1,9 +1,9 @@
 package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
-import com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalDeleteFailureException;
-import com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalUploadFailureException;
-import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidLocalFilePathException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileDeleteException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathException;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,7 +37,7 @@ public class LocalStorageProvider implements StorageProvider {
             Path normalizedFile = normalizedDirectory.resolve(morphedName).normalize();
 
             if (!normalizedDirectory.startsWith(root) || !normalizedFile.startsWith(root)) {
-                throw new FileLocalUploadFailureException("Invalid upload path outside configured storage root",
+                throw new FileUploadException("Invalid upload path outside configured storage root",
                     new IllegalArgumentException(path));
             }
             Files.createDirectories(normalizedDirectory);
@@ -50,14 +50,14 @@ public class LocalStorageProvider implements StorageProvider {
             return normalizedFile.toString();
         } catch (IOException e) {
             log.error("Failed to upload file {} to path {}", morphedName, path, e);
-            throw new FileLocalUploadFailureException("Could not store file locally", e);
+            throw new FileUploadException("Could not store file locally", e);
         }
     }
 
     @Override
     public void deletePhysical(String fileFullPath) {
         if (fileFullPath == null || fileFullPath.isBlank()) {
-            throw new InvalidLocalFilePathException("Cannot delete local file: blank storage path");
+            throw new InvalidFilePathException("Cannot delete local file: blank storage path");
         }
 
         try {
@@ -79,7 +79,7 @@ public class LocalStorageProvider implements StorageProvider {
             }
 
             if (!target.startsWith(root)) {
-                throw new InvalidLocalFilePathException("Invalid delete path outside configured storage root: "
+                throw new InvalidFilePathException("Invalid delete path outside configured storage root: "
                     + fileFullPath);
             }
 
@@ -92,7 +92,7 @@ public class LocalStorageProvider implements StorageProvider {
             }
         } catch (IOException e) {
             log.error("Could not delete physical file at: {}", fileFullPath, e);
-            throw new FileLocalDeleteFailureException("Could not delete physical file: " + fileFullPath, e);
+            throw new FileDeleteException("Could not delete physical file: " + fileFullPath, e);
         }
     }
 }

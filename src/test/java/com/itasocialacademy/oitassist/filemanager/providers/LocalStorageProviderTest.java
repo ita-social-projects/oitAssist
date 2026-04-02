@@ -1,8 +1,9 @@
 package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
-import com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalUploadFailureException;
-import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidLocalFilePathException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileDeleteException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import org.junit.jupiter.api.BeforeEach;
@@ -80,33 +81,29 @@ class LocalStorageProviderTest {
         String maliciousPath = "../secret.txt";
 
         assertThatThrownBy(() -> localStorageProvider.deletePhysical(maliciousPath))
-            .isInstanceOf(com.itasocialacademy.oitassist.filemanager.exceptions.InvalidLocalFilePathException.class)
+            .isInstanceOf(InvalidFilePathException.class)
             .hasMessageContaining("Invalid delete path outside configured storage root");
     }
 
     @Test
     void deletePhysical_ShouldThrowException_WhenPathIsBlank() {
-        assertThrows(InvalidLocalFilePathException.class, () -> localStorageProvider.deletePhysical("   "));
-        assertThrows(InvalidLocalFilePathException.class, () -> localStorageProvider.deletePhysical(null));
+        assertThrows(InvalidFilePathException.class, () -> localStorageProvider.deletePhysical("   "));
+        assertThrows(InvalidFilePathException.class, () -> localStorageProvider.deletePhysical(null));
     }
 
     @Test
-    void deletePhysical_ShouldThrowCustomException_OnIOException() {
+    void deletePhysical_ShouldThrowFileDeleteException_WhenFileSystemFails() throws IOException {
         Path file = tempDir.resolve("locked.txt");
-        try {
-            Files.createFile(file);
+        Files.createFile(file);
+        String filePath = file.toString();
 
-            try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
-                mockedFiles.when(() -> Files.deleteIfExists(any(Path.class)))
-                    .thenThrow(new IOException("Permission denied"));
+        try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
+            mockedFiles.when(() -> Files.deleteIfExists(any(Path.class)))
+                .thenThrow(new IOException("Permission denied"));
 
-                assertThatThrownBy(() -> localStorageProvider.deletePhysical(file.toString()))
-                    .isInstanceOf(
-                        com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalDeleteFailureException.class)
-                    .hasMessageContaining("Could not delete physical file");
-            }
-        } catch (IOException _) {
-            fail("Setup failed");
+            assertThatThrownBy(() -> localStorageProvider.deletePhysical(filePath))
+                .isInstanceOf(FileDeleteException.class)
+                .hasMessageContaining("Could not delete physical file");
         }
     }
 
@@ -156,7 +153,7 @@ class LocalStorageProviderTest {
         InputStream content = new ByteArrayInputStream("data".getBytes());
 
         assertThatThrownBy(() -> localStorageProvider.upload(content, "hack.exe", "../../../outside"))
-            .isInstanceOf(com.itasocialacademy.oitassist.filemanager.exceptions.FileLocalUploadFailureException.class)
+            .isInstanceOf(FileUploadException.class)
             .hasMessageContaining("Invalid upload path");
     }
 
@@ -184,7 +181,7 @@ class LocalStorageProviderTest {
                 .thenThrow(new IOException("Disk Full"));
 
             assertThatThrownBy(() -> localStorageProvider.upload(inputStream, "fail.txt", "any/path"))
-                .isInstanceOf(FileLocalUploadFailureException.class)
+                .isInstanceOf(FileUploadException.class)
                 .hasMessageContaining("Could not store file locally")
                 .hasCauseInstanceOf(IOException.class);
         }
