@@ -29,7 +29,7 @@ class FileControllerTest {
     // --- Soft Delete Tests ---
 
     @Test
-    void deleteSoft_ShouldReturnNoContent_WhenSuccessful() throws FileNotFoundException {
+    void deleteSoft_ShouldReturnNoContent_WhenSuccessful() {
         doNothing().when(fileService).deleteSoft(FILE_ID);
         ResponseEntity<Void> response = fileController.deleteSoft(FILE_ID);
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
@@ -37,7 +37,7 @@ class FileControllerTest {
     }
 
     @Test
-    void deleteSoft_ShouldThrowException_WhenServiceThrows() throws FileNotFoundException {
+    void deleteSoft_ShouldThrowException_WhenServiceThrows() {
         doThrow(new FileNotFoundException("File not found"))
             .when(fileService).deleteSoft(FILE_ID);
 
@@ -49,7 +49,7 @@ class FileControllerTest {
     // --- Hard Delete Tests ---
 
     @Test
-    void deleteHard_ShouldReturnNoContent_WhenSuccessful() throws FileNotFoundException {
+    void deleteHard_ShouldReturnNoContent_WhenSuccessful() {
         doNothing().when(fileService).deleteHard(FILE_ID);
 
         ResponseEntity<Void> response = fileController.deleteHard(FILE_ID);
@@ -59,7 +59,7 @@ class FileControllerTest {
     }
 
     @Test
-    void deleteHard_ShouldThrowException_WhenServiceThrows() throws FileNotFoundException {
+    void deleteHard_ShouldThrowException_WhenServiceThrows() {
         doThrow(new FileNotFoundException("File not found"))
             .when(fileService).deleteHard(FILE_ID);
 
