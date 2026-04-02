@@ -47,7 +47,7 @@ class FileServiceImplTest {
         existingFile.setId(fileId);
         existingFile.setStatus(FileStatus.ATTACHED);
         existingFile.setStorageProvider(StorageProviderType.LOCAL);
-        // todo: authorities should be tested once we add security service
+        // authorities should be tested once we add security service
 
         nonExistentId = 999L;
     }

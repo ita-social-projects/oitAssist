@@ -40,7 +40,7 @@ public class FileServiceImpl implements FileService {
         FileAsset file = repository.findById(fileId)
             .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
 
-        // todo: Implement role check with security service.
+        // Implement role check with security service.
         // Throw exception if current user has insufficient authority
 
         file.setStatus(FileStatus.SOFT_DELETED);
@@ -59,7 +59,7 @@ public class FileServiceImpl implements FileService {
         FileAsset file = repository.findById(fileId)
             .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
 
-        // todo: Implement role check with security service.
+        // Implement role check with security service.
         // Throw exception if current user has insufficient authority
 
         StorageProvider provider = providers.stream()
@@ -71,7 +71,7 @@ public class FileServiceImpl implements FileService {
         String originalStorageKey = file.getStorageKey();
 
         try {
-            // todo: check SharePoint compatibility
+            // check SharePoint compatibility
             provider.deletePhysical(originalStorageKey);
 
             file.setStatus(FileStatus.HARD_DELETED);

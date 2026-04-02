@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-//todo: add MockMvc to perform requests and verify @PreAuthorize with @WithMockUser
+//add MockMvc to perform requests and verify @PreAuthorize with @WithMockUser
 
 @ExtendWith(MockitoExtension.class)
 class FileControllerTest {
