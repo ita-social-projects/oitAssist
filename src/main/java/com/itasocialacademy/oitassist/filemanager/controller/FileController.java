@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -46,7 +47,7 @@ public class FileController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<List<FileResponseDto>> upload(
         @RequestPart("files") List<MultipartFile> files,
-        @RequestPart("metadata") FileUploadRequestDto requestDto,
+        @RequestPart("metadata") @Valid FileUploadRequestDto requestDto,
         @AuthenticationPrincipal(expression = "id") Long currentUserId) {
         List<FileResponseDto> response = fileService.upload(files, requestDto, currentUserId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
