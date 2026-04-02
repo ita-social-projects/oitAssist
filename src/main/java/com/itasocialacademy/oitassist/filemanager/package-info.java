@@ -7,6 +7,8 @@
         "core::BaseService",
         "core::AbstractServiceImpl",
         "core::GeneralMapper",
+        "core::DtoMapper",
+        "core::CreateMapper",
         "core::EntityDTO",
         "core::CreateEntityDTO",
         "core::UpdateEntityDTO",

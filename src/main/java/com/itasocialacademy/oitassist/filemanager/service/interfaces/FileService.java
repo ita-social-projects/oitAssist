@@ -1,12 +1,12 @@
 package com.itasocialacademy.oitassist.filemanager.service.interfaces;
 
+import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
+import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
+
 public interface FileService {
-    /**
-     * Method to upload a file and create a data record in the database.
-     *
-     * @return id of the new file record in the DB.
-     */
-    Long upload();
+    List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto, Long userId);
 
     /**
      * Method to mark a file SOFT_DELETED, but keep a physical file intact.
