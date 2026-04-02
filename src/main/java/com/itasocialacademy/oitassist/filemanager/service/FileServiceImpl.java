@@ -26,11 +26,10 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 public class FileServiceImpl implements FileService {
-    private final FileRepository fileRepository;
-    private final FileMapper fileMapper;
     private final StorageProvider storageProvider;
     private final List<StorageProvider> providers;
     private final FileRepository repository;
+    private final FileMapper fileMapper;
 
     @Override
     @Transactional
@@ -112,7 +111,7 @@ public class FileServiceImpl implements FileService {
         }
 
         FileAsset fileAsset = buildFileAsset(file, requestDto, originalFilename, storedFilename, storageKey, userId);
-        FileAsset saved = fileRepository.save(fileAsset);
+        FileAsset saved = repository.save(fileAsset);
         return fileMapper.toDto(saved);
     }
 
