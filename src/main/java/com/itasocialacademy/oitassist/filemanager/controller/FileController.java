@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.FileNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,12 +25,11 @@ public class FileController {
         @ApiResponse(responseCode = "204", description = "File deleted successfully"),
         @ApiResponse(responseCode = "400", description = "Validation error"),
         @ApiResponse(responseCode = "403", description = "Access denied"),
-        // todo: handle this FileNotFoundException via GlobalExceptionHandler as 404
-        @ApiResponse(responseCode = "404", description = "File not found")
+        @ApiResponse(responseCode = "404", description = "File not found in the DB")
     })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','ORG','USER')")
-    public ResponseEntity<Void> deleteSoft(@PathVariable Long id) throws FileNotFoundException {
+    public ResponseEntity<Void> deleteSoft(@PathVariable Long id) {
         fileService.deleteSoft(id);
         return ResponseEntity.noContent().build();
     }
@@ -41,12 +39,11 @@ public class FileController {
         @ApiResponse(responseCode = "204", description = "File deleted successfully"),
         @ApiResponse(responseCode = "400", description = "Validation error"),
         @ApiResponse(responseCode = "403", description = "Access denied"),
-        // todo: handle this FileNotFoundException via GlobalExceptionHandler as 404
-        @ApiResponse(responseCode = "404", description = "File not found")
+        @ApiResponse(responseCode = "404", description = "File not found in the DB")
     })
     @DeleteMapping("/{id}/hard")
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
-    public ResponseEntity<Void> deleteHard(@PathVariable Long id) throws FileNotFoundException {
+    public ResponseEntity<Void> deleteHard(@PathVariable Long id) {
         fileService.deleteHard(id);
         return ResponseEntity.noContent().build();
     }
