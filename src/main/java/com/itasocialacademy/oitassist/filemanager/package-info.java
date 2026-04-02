@@ -12,6 +12,8 @@
         "core::UpdateEntityDTO",
         "core::LongEntity",
         "core::EntityRepository",
+        "core::DtoMapper",
+        "core::CreateMapper",
     })
 package com.itasocialacademy.oitassist.filemanager;
 

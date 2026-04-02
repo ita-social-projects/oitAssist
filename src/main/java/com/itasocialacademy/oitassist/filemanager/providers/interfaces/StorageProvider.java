@@ -5,7 +5,8 @@ import java.io.InputStream;
 
 public interface StorageProvider {
     /**
-     * Determines if this provider supports the given type (e.g., LOCAL, SHAREPOINT).
+     * Determines if this provider supports the given type (e.g., LOCAL,
+     * SHAREPOINT).
      */
     boolean supports(StorageProviderType source);
 
@@ -16,6 +17,7 @@ public interface StorageProvider {
 
     /**
      * Physically deletes a file.
+     *
      * @param filePath full file path including filename.
      */
     void deletePhysical(String filePath);
