@@ -1,6 +1,6 @@
 prometheus.scrape "oitAssist" {
   targets = [
-    {__address__ = "backend:8080"},
+    {__address__ = "oitassist-backend:8080"},
   ]
   forward_to = [prometheus.remote_write.grafanacloud.receiver]
   scrape_interval = "10s"
