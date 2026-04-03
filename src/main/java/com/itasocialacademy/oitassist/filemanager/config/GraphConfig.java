@@ -30,8 +30,7 @@ public class GraphConfig {
         TokenCredentialAuthProvider authProvider =
             new TokenCredentialAuthProvider(
                 List.of("https://graph.microsoft.com/.default"),
-                credential
-            );
+                credential);
 
         return GraphServiceClient.builder()
             .authenticationProvider(authProvider)
