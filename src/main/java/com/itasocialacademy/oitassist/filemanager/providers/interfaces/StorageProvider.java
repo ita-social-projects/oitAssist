@@ -28,7 +28,7 @@ public interface StorageProvider {
     /**
      * Physically deletes a file.
      *
-     * @param filePath full file path including filename.
+     * @param filePath relative path including filename.
      */
     void deletePhysical(String filePath);
 }
