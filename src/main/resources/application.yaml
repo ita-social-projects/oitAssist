@@ -91,3 +91,9 @@ management:
     metrics:
       export:
         enabled: true
+
+graph:
+  tenant-id: ${GRAPH_TENANT_ID}
+  client-id: ${GRAPH_CLIENT_ID}
+  client-secret: ${GRAPH_CLIENT_SECRET}
+  drive-id: ${GRAPH_DRIVE_ID}
