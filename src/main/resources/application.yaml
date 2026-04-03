@@ -36,6 +36,8 @@ spring:
           connectiontimeout: ${MAIL_SMTP_CONNECTIONTIMEOUT:5000}
           timeout: ${MAIL_SMTP_TIMEOUT:5000}
           writetimeout: ${MAIL_SMTP_WRITETIMEOUT:5000}
+          ssl:
+            trust=*:
 
 oit:
   swagger:
@@ -91,3 +93,9 @@ management:
     metrics:
       export:
         enabled: true
+
+graph:
+  tenant-id: ${GRAPH_TENANT_ID}
+  client-id: ${GRAPH_CLIENT_ID}
+  client-secret: ${GRAPH_CLIENT_SECRET}
+  drive-id: ${GRAPH_DRIVE_ID}
