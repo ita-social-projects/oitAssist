@@ -25,8 +25,8 @@ public class LocalStorageProvider implements StorageProvider {
     }
 
     @Override
-    public boolean supports(StorageProviderType source) {
-        return StorageProviderType.LOCAL.equals(source);
+    public StorageProviderType getType() {
+        return StorageProviderType.LOCAL;
     }
 
     @Override

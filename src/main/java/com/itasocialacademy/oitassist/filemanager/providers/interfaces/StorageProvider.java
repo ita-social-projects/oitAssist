@@ -8,7 +8,17 @@ public interface StorageProvider {
      * Determines if this provider supports the given type (e.g., LOCAL,
      * SHAREPOINT).
      */
-    boolean supports(StorageProviderType source);
+    default boolean supports(StorageProviderType type) {
+        return getType() == type;
+    }
+
+    /**
+     * Retrieves the type of storage provider represented by this implementation.
+     *
+     * @return the specific {@code StorageProviderType} associated with this storage
+     *         provider, such as {@code LOCAL} or {@code SHAREPOINT}.
+     */
+    StorageProviderType getType();
 
     /**
      * Handles the physical byte transfer.
