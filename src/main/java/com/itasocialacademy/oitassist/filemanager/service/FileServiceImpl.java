@@ -8,9 +8,9 @@ import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestD
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileReadException;
-import com.itasocialacademy.oitassist.filemanager.exceptions.UnsupportedStorageException;
 import com.itasocialacademy.oitassist.filemanager.mapper.FileMapper;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
+import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
 import java.io.IOException;
 import java.time.OffsetDateTime;
@@ -26,8 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 public class FileServiceImpl implements FileService {
-    private final StorageProvider storageProvider;
-    private final List<StorageProvider> providers;
+    private final StorageProviderResolver providerResolver;
     private final FileRepository repository;
     private final FileMapper fileMapper;
 
@@ -74,17 +73,10 @@ public class FileServiceImpl implements FileService {
         // Implement role check with security service.
         // Throw exception if current user has insufficient authority
 
-        StorageProvider provider = providers.stream()
-            .filter(p -> p.supports(file.getStorageProvider()))
-            .findFirst()
-            .orElseThrow(() -> new UnsupportedStorageException("Unsupported storage source: "
-                + file.getStorageProvider()));
-
-        String originalStorageKey = file.getStorageKey();
+        StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
 
         try {
-            // check SharePoint compatibility
-            provider.deletePhysical(originalStorageKey);
+            provider.deletePhysical(file.getStorageKey());
 
             file.setStatus(FileStatus.HARD_DELETED);
             file.setDeletedAt(OffsetDateTime.now());
@@ -102,15 +94,25 @@ public class FileServiceImpl implements FileService {
         String storedFilename = generateStoredFilename(originalFilename);
         String relativePath = buildRelativePath(requestDto);
 
+        StorageProvider provider = providerResolver.resolveDefault();
+
         String storageKey;
         try {
-            storageKey = storageProvider.upload(file.getInputStream(), storedFilename, relativePath);
+            storageKey = provider.upload(file.getInputStream(), storedFilename, relativePath);
         } catch (IOException e) {
             log.error("Failed to read input stream for file: {}", originalFilename, e);
             throw new FileReadException(e);
         }
 
-        FileAsset fileAsset = buildFileAsset(file, requestDto, originalFilename, storedFilename, storageKey, userId);
+        FileAsset fileAsset = buildFileAsset(
+            file,
+            requestDto,
+            originalFilename,
+            storedFilename,
+            storageKey,
+            userId,
+            provider.getType());
+
         FileAsset saved = repository.save(fileAsset);
         return fileMapper.toDto(saved);
     }
@@ -136,13 +138,14 @@ public class FileServiceImpl implements FileService {
         String originalFilename,
         String storedFilename,
         String storageKey,
-        Long userId) {
+        Long userId,
+        StorageProviderType providerType) {
         return FileAsset.builder()
             .userId(userId)
             .relatedEntityType(requestDto.getRelatedEntityType())
             .relatedEntityId(requestDto.getRelatedEntityId())
             .status(resolveStatus(requestDto))
-            .storageProvider(StorageProviderType.LOCAL)
+            .storageProvider(providerType)
             .originalFilename(originalFilename)
             .storedFilename(storedFilename)
             .storageKey(storageKey)

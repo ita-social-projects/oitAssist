@@ -6,8 +6,8 @@ import java.io.InputStream;
 
 public class SharePointStorageProvider implements StorageProvider {
     @Override
-    public boolean supports(StorageProviderType source) {
-        return false;
+    public StorageProviderType getType() {
+        return StorageProviderType.SHAREPOINT;
     }
 
     @Override
