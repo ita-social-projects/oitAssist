@@ -1,5 +1,7 @@
 package com.itasocialacademy.oitassist.filemanager.service;
 
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
@@ -12,6 +14,9 @@ import com.itasocialacademy.oitassist.filemanager.mapper.FileMapper;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
+import com.itasocialacademy.oitassist.filemanager.validation.FileValidationStrategyResolver;
+import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
+import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
 import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -27,12 +32,21 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class FileServiceImpl implements FileService {
     private final StorageProviderResolver providerResolver;
+    private final FileValidationStrategyResolver validationStrategyResolver;
     private final FileRepository repository;
     private final FileMapper fileMapper;
 
     @Override
     @Transactional
     public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto, Long userId) {
+        FileValidationStrategy strategy = validationStrategyResolver.resolve(requestDto.getRelatedEntityType());
+        ValidationResult result = strategy.validate(files, requestDto);
+
+        if (!result.valid()) {
+            throw new ValidationException(
+                String.join(", ", result.violations()),
+                ErrorCode.FILE_VALIDATION_FAILED);
+        }
         return files.stream()
             .map(file -> uploadSingle(file, requestDto, userId))
             .toList();
