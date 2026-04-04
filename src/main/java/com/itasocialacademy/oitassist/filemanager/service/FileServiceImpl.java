@@ -134,10 +134,10 @@ public class FileServiceImpl implements FileService {
     }
 
     private String generateStoredFilename(String originalFilename) {
-        return UUID.randomUUID() + extractExtension(originalFilename);
+        return UUID.randomUUID() + extractExtensionWithDot(originalFilename);
     }
 
-    private String extractExtension(String originalFilename) {
+    private String extractExtensionWithDot(String originalFilename) {
         if (originalFilename == null || !originalFilename.contains(".")) {
             return "";
         }
