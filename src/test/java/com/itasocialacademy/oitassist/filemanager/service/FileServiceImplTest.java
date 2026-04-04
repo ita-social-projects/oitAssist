@@ -6,7 +6,6 @@ import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.UnsupportedStorageException;
-import com.itasocialacademy.oitassist.filemanager.providers.LocalStorageProvider;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,9 +35,6 @@ class FileServiceImplTest {
 
     @InjectMocks
     private FileServiceImpl fileService;
-
-    @Mock
-    private LocalStorageProvider localStorageProvider;
 
     private Long fileId;
     private Long nonExistentId;
@@ -138,7 +134,7 @@ class FileServiceImplTest {
 
         assertThrows(FileAssetNotFoundException.class, () -> fileService.deleteHard(nonExistentId));
 
-        verify(localStorageProvider, never()).deletePhysical(any());
+        verifyNoInteractions(providerResolver, storageProvider);
         verify(fileRepository, never()).save(any());
     }
 }
