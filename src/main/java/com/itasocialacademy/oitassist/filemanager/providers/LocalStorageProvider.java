@@ -15,72 +15,92 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+/**
+ * Implementation of {@link StorageProvider} for local file system storage. This
+ * provider manages files within a configured root directory and returns
+ * OS-independent relative paths for database persistence. This ensures
+ * portability across different environments (Windows, Linux, Docker).
+ */
 @Slf4j
 @Component
 public class LocalStorageProvider implements StorageProvider {
-    private final String rootPath;
+    /**
+     * The absolute, normalized root path where all files are stored.
+     */
+    private final Path root;
 
+    /**
+     * Constructs the provider and pre-calculates the absolute root path.
+     *
+     * @param rootPath the base directory for storage, defaults to "./uploads"
+     */
     public LocalStorageProvider(@Value("${app.storage.local.root:./uploads}") String rootPath) {
-        this.rootPath = rootPath;
+        this.root = Paths.get(rootPath).toAbsolutePath().normalize();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @return {@link StorageProviderType#LOCAL}
+     */
     @Override
     public StorageProviderType getType() {
         return StorageProviderType.LOCAL;
     }
 
+    /**
+     * Uploads a file to the local file system and returns a relative storage key.
+     * The method performs security checks to prevent path traversal and ensures the
+     * directory structure exists before writing the file.
+     *
+     * @param inputStream the data stream of the file
+     * @param morphedName the unique filename to be used on disk
+     * @param path        the subdirectory path within the storage root
+     * @return a relative, forward-slash separated storage key for database storage
+     * @throws FileUploadException if the path is invalid or an I/O error occurs
+     */
     @Override
     public String upload(InputStream inputStream, String morphedName, String path) {
         try {
-            Path root = Paths.get(rootPath).toAbsolutePath().normalize();
-            Path normalizedDirectory = root.resolve(path).normalize();
-            Path normalizedFile = normalizedDirectory.resolve(morphedName).normalize();
+            Path targetDirectory = root.resolve(path).normalize();
+            Path targetFile = targetDirectory.resolve(morphedName).normalize();
 
-            if (!normalizedDirectory.startsWith(root) || !normalizedFile.startsWith(root)) {
+            if (!targetFile.startsWith(root)) {
                 throw new FileUploadException("Invalid upload path outside configured storage root",
                     new IllegalArgumentException(path));
             }
-            Files.createDirectories(normalizedDirectory);
 
-            // are we okay with the silent overwrite?
-            Files.copy(inputStream, normalizedFile, StandardCopyOption.REPLACE_EXISTING);
+            Files.createDirectories(targetDirectory);
+            Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
 
-            log.info("File successfully uploaded to: {}", normalizedFile);
+            log.info("File successfully uploaded to: {}", targetFile);
 
-            return normalizedFile.toString();
+            return root.relativize(targetFile).toString().replace("\\", "/");
         } catch (IOException e) {
             log.error("Failed to upload file {} to path {}", morphedName, path, e);
             throw new FileUploadException("Could not store file locally", e);
         }
     }
 
+    /**
+     * Deletes a file from the local file system using its relative storage key.
+     *
+     * @param storageKey the relative path of the file as stored in the database
+     * @throws InvalidFilePathException if the path is empty or points outside the
+     *                                  storage root
+     * @throws FileDeleteException      if an I/O error occurs during deletion
+     */
     @Override
-    public void deletePhysical(String fileFullPath) {
-        if (fileFullPath == null || fileFullPath.isBlank()) {
-            throw new InvalidFilePathException("Cannot delete local file: blank storage path");
+    public void deletePhysical(String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) {
+            throw new InvalidFilePathException("Cannot delete local file: blank storage key");
         }
 
         try {
-            Path root = Paths.get(rootPath).toAbsolutePath().normalize();
-            Path inputPath = Paths.get(fileFullPath);
-            Path target;
-
-            if (inputPath.isAbsolute()) {
-                target = inputPath.normalize();
-            } else {
-                target = root.resolve(fileFullPath).normalize();
-                if (!Files.exists(target) && fileFullPath.startsWith(root.getFileName().toString())) {
-                    Path strippedPath = inputPath.subpath(1, inputPath.getNameCount());
-                    Path candidateTarget = root.resolve(strippedPath).normalize();
-                    if (Files.exists(candidateTarget)) {
-                        target = candidateTarget;
-                    }
-                }
-            }
+            Path target = root.resolve(storageKey).normalize();
 
             if (!target.startsWith(root)) {
-                throw new InvalidFilePathException("Invalid delete path outside configured storage root: "
-                    + fileFullPath);
+                throw new InvalidFilePathException("Access denied: path is outside storage root: " + storageKey);
             }
 
             boolean deleted = Files.deleteIfExists(target);
@@ -88,11 +108,11 @@ public class LocalStorageProvider implements StorageProvider {
             if (deleted) {
                 log.info("File deleted successfully: {}", target);
             } else {
-                log.warn("File not found at: {}", target.toAbsolutePath());
+                log.warn("File not found for deletion at: {}", target);
             }
         } catch (IOException e) {
-            log.error("Could not delete physical file at: {}", fileFullPath, e);
-            throw new FileDeleteException("Could not delete physical file: " + fileFullPath, e);
+            log.error("Could not delete physical file at: {}", storageKey, e);
+            throw new FileDeleteException("Could not delete physical file: " + storageKey, e);
         }
     }
 }

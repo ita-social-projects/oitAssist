@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.filemanager.controller;
 
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
-import java.io.FileNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -38,10 +38,10 @@ class FileControllerTest {
 
     @Test
     void deleteSoft_ShouldThrowException_WhenServiceThrows() {
-        doThrow(new FileNotFoundException("File not found"))
+        doThrow(new FileAssetNotFoundException("File not found"))
             .when(fileService).deleteSoft(FILE_ID);
 
-        assertThrows(FileNotFoundException.class, () -> fileController.deleteSoft(FILE_ID));
+        assertThrows(FileAssetNotFoundException.class, () -> fileController.deleteSoft(FILE_ID));
 
         verify(fileService, times(1)).deleteSoft(FILE_ID);
     }
@@ -60,10 +60,10 @@ class FileControllerTest {
 
     @Test
     void deleteHard_ShouldThrowException_WhenServiceThrows() {
-        doThrow(new FileNotFoundException("File not found"))
+        doThrow(new FileAssetNotFoundException("File not found"))
             .when(fileService).deleteHard(FILE_ID);
 
-        assertThrows(FileNotFoundException.class, () -> fileController.deleteHard(FILE_ID));
+        assertThrows(FileAssetNotFoundException.class, () -> fileController.deleteHard(FILE_ID));
         verify(fileService, times(1)).deleteHard(FILE_ID);
     }
 }
