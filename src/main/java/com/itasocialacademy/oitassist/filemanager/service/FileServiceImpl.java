@@ -60,6 +60,7 @@ public class FileServiceImpl implements FileService {
      *
      * @param fileId id of the file.
      */
+    @Override
     @Transactional
     public void deleteSoft(Long fileId) {
         FileAsset file = repository.findById(fileId)
@@ -79,6 +80,7 @@ public class FileServiceImpl implements FileService {
      *
      * @param fileId id of the file.
      */
+    @Override
     @Transactional
     public void deleteHard(Long fileId) {
         FileAsset file = repository.findById(fileId)
