@@ -1,5 +1,8 @@
 package com.itasocialacademy.oitassist.filemanager.validation.strategies;
 
+import static com.itasocialacademy.oitassist.filemanager.validation.util.FileValidationUtils.extractExtension;
+import static com.itasocialacademy.oitassist.filemanager.validation.util.FileValidationUtils.formatAllowed;
+import static com.itasocialacademy.oitassist.filemanager.validation.util.FileValidationUtils.isExtensionNotAllowed;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
@@ -29,26 +32,13 @@ public class NewsFileValidationStrategy implements FileValidationStrategy {
         }
 
         for (MultipartFile file : files) {
-            String filename = file.getOriginalFilename();
-            String ext = extractExtension(filename);
-
-            boolean allowed = POLICY.getAllowedExtensions().stream()
-                .anyMatch(e -> e.getRawValue().equals(ext));
-
-            if (!allowed) {
+            String ext = extractExtension(file.getOriginalFilename());
+            if (isExtensionNotAllowed(ext, POLICY.getAllowedExtensions())) {
                 violations.add("File '%s' has unsupported extension. Allowed: %s."
-                    .formatted(filename, POLICY.getAllowedExtensions()));
+                    .formatted(file.getOriginalFilename(), formatAllowed(POLICY.getAllowedExtensions())));
             }
         }
 
         return violations.isEmpty() ? ValidationResult.ok() : ValidationResult.fail(violations);
-    }
-
-    private String extractExtension(String filename) {
-        if (filename == null || !filename.contains(".")) {
-            return "";
-        }
-
-        return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
     }
 }
