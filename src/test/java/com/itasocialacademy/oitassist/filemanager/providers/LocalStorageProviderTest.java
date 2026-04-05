@@ -2,10 +2,14 @@ package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileDeleteException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileListingException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -192,5 +196,72 @@ class LocalStorageProviderTest {
                 .hasMessageContaining("Could not store file locally")
                 .hasCauseInstanceOf(IOException.class);
         }
+    }
+
+    //
+    // listAllPhysicalKeys() SECTION TESTS
+    //
+
+    @Test
+    void listAllPhysicalKeys_ShouldReturnAllFilesRecursivelyWithForwardSlashes() throws IOException {
+        Files.createFile(tempDir.resolve("file1.txt"));
+        Path newsDir = Files.createDirectories(tempDir.resolve("news"));
+        Files.createFile(newsDir.resolve("image.png"));
+        Path docsDir = Files.createDirectories(tempDir.resolve("task"));
+        Files.createFile(docsDir.resolve("resume.pdf"));
+
+        List<String> keys = localStorageProvider.listAllPhysicalKeys();
+
+        assertThat(keys)
+            .hasSize(3)
+            .containsExactlyInAnyOrder(
+                "file1.txt",
+                "news/image.png",
+                "task/resume.pdf")
+            .allSatisfy(key -> assertThat(key)
+                .as("Key '%s' should not contain backslashes", key)
+                .doesNotContain("\\"));
+    }
+
+    @Test
+    void listAllPhysicalKeys_ShouldThrowFileListingException_WhenRootDoesNotExist() {
+        LocalStorageProvider badProvider = new LocalStorageProvider(tempDir.resolve("ghost").toString());
+
+        assertThatThrownBy(badProvider::listAllPhysicalKeys)
+            .isInstanceOf(FileListingException.class)
+            .hasMessageContaining("Failed to walk local storage directory");
+    }
+
+    //
+    // getLastModified() SECTION TESTS
+    //
+
+    @Test
+    void getLastModified_ShouldReturnCorrectTimeInUtc() throws IOException {
+        String fileName = "time-test.txt";
+        Path file = tempDir.resolve(fileName);
+        Files.createFile(file);
+
+        OffsetDateTime result = localStorageProvider.getLastModified(fileName);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getOffset()).isEqualTo(ZoneOffset.UTC);
+        assertThat(result.toInstant()).isBeforeOrEqualTo(OffsetDateTime.now().toInstant());
+    }
+
+    @Test
+    void getLastModified_ShouldThrowException_WhenPathIsOutsideRoot() {
+        String maliciousKey = "../outside.txt";
+
+        assertThatThrownBy(() -> localStorageProvider.getLastModified(maliciousKey))
+            .isInstanceOf(InvalidFilePathException.class)
+            .hasMessageContaining("Access denied: path is outside storage root");
+    }
+
+    @Test
+    void getLastModified_ShouldThrowFileListingException_WhenFileDoesNotExist() {
+        assertThatThrownBy(() -> localStorageProvider.getLastModified("non-existent.txt"))
+            .isInstanceOf(FileListingException.class)
+            .hasMessageContaining("Could not read file metadata");
     }
 }
