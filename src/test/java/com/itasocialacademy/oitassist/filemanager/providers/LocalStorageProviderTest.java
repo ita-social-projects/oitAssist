@@ -34,6 +34,15 @@ class LocalStorageProviderTest {
     }
 
     //
+    // getType() SECTION TESTS
+    //
+
+    @Test
+    void getType_ShouldReturnLocal() {
+        assertThat(localStorageProvider.getType()).isEqualTo(StorageProviderType.LOCAL);
+    }
+
+    //
     // supports() SECTION TESTS
     //
 
@@ -52,16 +61,15 @@ class LocalStorageProviderTest {
     //
 
     @Test
-    void deletePhysical_ShouldHandleRedundantRootPrefix() throws IOException {
-        String fileName = "sample.pdf";
-        Path file = tempDir.resolve(fileName);
+    void deletePhysical_ShouldDeleteFileUsingRelativeStorageKey() throws IOException {
+        Path subDir = tempDir.resolve("news");
+        Files.createDirectories(subDir);
+        Path file = subDir.resolve("article.jpg");
         Files.createFile(file);
 
-        String redundantPath = tempDir.getFileName().toString() + "/" + fileName;
+        localStorageProvider.deletePhysical("news/article.jpg");
 
-        localStorageProvider.deletePhysical(redundantPath);
-
-        assertFalse(Files.exists(file), "File should be deleted even with redundant root prefix");
+        assertFalse(Files.exists(file), "File should be deleted using relative storage key");
     }
 
     @Test
@@ -78,30 +86,29 @@ class LocalStorageProviderTest {
 
     @Test
     void deletePhysical_ShouldThrowException_WhenPathIsOutsideRoot() {
-        String maliciousPath = "../secret.txt";
+        String maliciousKey = "../secret.txt";
 
-        assertThatThrownBy(() -> localStorageProvider.deletePhysical(maliciousPath))
+        assertThatThrownBy(() -> localStorageProvider.deletePhysical(maliciousKey))
             .isInstanceOf(InvalidFilePathException.class)
-            .hasMessageContaining("Invalid delete path outside configured storage root");
+            .hasMessageContaining("Access denied: path is outside storage root");
     }
 
     @Test
-    void deletePhysical_ShouldThrowException_WhenPathIsBlank() {
+    void deletePhysical_ShouldThrowException_WhenKeyIsBlank() {
         assertThrows(InvalidFilePathException.class, () -> localStorageProvider.deletePhysical("   "));
         assertThrows(InvalidFilePathException.class, () -> localStorageProvider.deletePhysical(null));
     }
 
     @Test
     void deletePhysical_ShouldThrowFileDeleteException_WhenFileSystemFails() throws IOException {
-        Path file = tempDir.resolve("locked.txt");
+        Path file = tempDir.resolve("protected.txt");
         Files.createFile(file);
-        String filePath = file.toString();
 
         try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
             mockedFiles.when(() -> Files.deleteIfExists(any(Path.class)))
-                .thenThrow(new IOException("Permission denied"));
+                .thenThrow(new IOException("Lock error"));
 
-            assertThatThrownBy(() -> localStorageProvider.deletePhysical(filePath))
+            assertThatThrownBy(() -> localStorageProvider.deletePhysical("protected.txt"))
                 .isInstanceOf(FileDeleteException.class)
                 .hasMessageContaining("Could not delete physical file");
         }
@@ -122,10 +129,8 @@ class LocalStorageProviderTest {
 
     @Test
     void deletePhysical_ShouldNotThrowException_WhenFileDoesNotExist() {
-        String nonExistentPath = tempDir.resolve("non-existent.txt").toString();
-
-        assertDoesNotThrow(() -> localStorageProvider.deletePhysical(nonExistentPath),
-            "Should handle non-existent files gracefully without throwing exceptions");
+        assertDoesNotThrow(() -> localStorageProvider.deletePhysical("non-existent/file.txt"),
+            "Should handle non-existent files gracefully");
     }
 
     //
@@ -133,17 +138,19 @@ class LocalStorageProviderTest {
     //
 
     @Test
-    void upload_ShouldSaveFileAndReturnPath_WhenInputIsValid() throws IOException {
+    void upload_ShouldSaveFileAndReturnRelativePathWithForwardSlashes() throws IOException {
         String fileName = "test-image.png";
-        String subPath = "uploads/avatars";
+        String subPath = "uploads/avatars"; // Using forward slashes in input
         String content = "fake-image-content";
         InputStream inputStream = new ByteArrayInputStream(content.getBytes());
 
-        String resultPath = localStorageProvider.upload(inputStream, fileName, subPath);
+        String resultKey = localStorageProvider.upload(inputStream, fileName, subPath);
 
-        Path expectedFile = tempDir.resolve(subPath).resolve(fileName);
+        // Assert: The returned key must be relative and use forward slashes
+        assertThat(resultKey).isEqualTo("uploads/avatars/test-image.png");
 
-        assertThat(resultPath).isEqualTo(expectedFile.toString());
+        // Verify physical file existence
+        Path expectedFile = tempDir.resolve("uploads/avatars").resolve(fileName);
         assertThat(Files.exists(expectedFile)).isTrue();
         assertThat(Files.readString(expectedFile)).isEqualTo(content);
     }
@@ -152,9 +159,9 @@ class LocalStorageProviderTest {
     void upload_ShouldThrowException_WhenPathAttemptsTraversal() {
         InputStream content = new ByteArrayInputStream("data".getBytes());
 
-        assertThatThrownBy(() -> localStorageProvider.upload(content, "hack.exe", "../../../outside"))
+        assertThatThrownBy(() -> localStorageProvider.upload(content, "hack.exe", "../../etc"))
             .isInstanceOf(FileUploadException.class)
-            .hasMessageContaining("Invalid upload path");
+            .hasMessageContaining("Invalid upload path outside configured storage root");
     }
 
     @Test
