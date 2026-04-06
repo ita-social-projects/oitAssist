@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.filemanager.validation.policy;
 import com.itasocialacademy.oitassist.filemanager.validation.enums.AllowedExtension;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FilePolicy;
 import java.util.Set;
+import org.springframework.util.unit.DataSize;
 
 public final class TaskFilePolicy implements FilePolicy {
     public static final TaskFilePolicy INSTANCE = new TaskFilePolicy();
@@ -22,5 +23,11 @@ public final class TaskFilePolicy implements FilePolicy {
     @Override
     public int getMaxFileCount() {
         return 1;
+    }
+
+    // TODO: confirm size limit with business
+    @Override
+    public DataSize getMaxFileSize() {
+        return DataSize.ofMegabytes(50);
     }
 }
