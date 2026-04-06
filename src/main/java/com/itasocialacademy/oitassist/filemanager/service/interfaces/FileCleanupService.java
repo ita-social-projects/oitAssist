@@ -11,6 +11,7 @@ package com.itasocialacademy.oitassist.filemanager.service.interfaces;
  * <li>Detecting "dangling" references where the parent entity (e.g., News) has
  * been deleted.</li>
  * </ul>
+ * All these actions are run in a full cycle to ensure consistent storage state.
  */
 public interface FileCleanupService {
     /**

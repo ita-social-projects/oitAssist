@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileListingException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.UnsupportedStorageException;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
@@ -114,7 +115,7 @@ public class FileCleanupServiceImpl implements FileCleanupService {
             } else {
                 log.info("Files cleanup: No rogue files found.");
             }
-        } catch (FileListingException e) {
+        } catch (FileListingException | UnsupportedStorageException e) {
             log.error("Files cleanup: Storage inventory for rogue files could not be built reliably.", e);
         }
     }
@@ -260,6 +261,10 @@ public class FileCleanupServiceImpl implements FileCleanupService {
             if (!activeKeys.contains(key)) {
                 try {
                     OffsetDateTime lastModified = provider.getLastModified(key);
+                    if (lastModified == null) {
+                        log.warn("Files cleanup: Skipping rogue file {}: could not determine last modified time", key);
+                        continue;
+                    }
                     if (lastModified.isBefore(safetyThreshold)) {
                         provider.deletePhysical(key);
                         rogueCount++;
