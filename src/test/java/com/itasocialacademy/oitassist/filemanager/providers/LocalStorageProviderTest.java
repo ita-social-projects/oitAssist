@@ -77,18 +77,6 @@ class LocalStorageProviderTest {
     }
 
     @Test
-    void deletePhysical_ShouldHandleRelativePath() throws IOException {
-        Path subDir = tempDir.resolve("news");
-        Files.createDirectories(subDir);
-        Path file = subDir.resolve("article.jpg");
-        Files.createFile(file);
-
-        localStorageProvider.deletePhysical("news/article.jpg");
-
-        assertFalse(Files.exists(file), "Should delete file using relative path resolution");
-    }
-
-    @Test
     void deletePhysical_ShouldThrowException_WhenPathIsOutsideRoot() {
         String maliciousKey = "../secret.txt";
 
@@ -120,13 +108,13 @@ class LocalStorageProviderTest {
 
     @Test
     void deletePhysical_ShouldDeleteExistingFile() throws IOException {
-        Path fileToDelete = tempDir.resolve("test-file.txt");
+        String relativeKey = "test-file.txt";
+        Path fileToDelete = tempDir.resolve(relativeKey);
         Files.createFile(fileToDelete);
-        String absolutePath = fileToDelete.toAbsolutePath().toString();
 
         assertTrue(Files.exists(fileToDelete), "File should exist before deletion");
 
-        localStorageProvider.deletePhysical(absolutePath);
+        localStorageProvider.deletePhysical(relativeKey);
 
         assertFalse(Files.exists(fileToDelete), "File should be physically deleted");
     }

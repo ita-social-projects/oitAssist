@@ -18,25 +18,4 @@ public interface FileCleanupService {
      * cron job or a manual administrative action.
      */
     void runFullCleanup();
-
-    /**
-     * Identifies and permanently deletes files from storage and the database if
-     * they are marked as TEMPORARY or SOFT_DELETED and have exceeded their
-     * respective grace periods.
-     */
-    void purgeExpiredAndOrphanedFiles();
-
-    /**
-     * Performs a disk-to-database reconciliation. Scans physical storage for files
-     * that are not tracked in the database and deletes them if they exceed a safety
-     * age threshold.
-     */
-    void cleanupRoguePhysicalFiles();
-
-    /**
-     * Scans for files with an ATTACHED status whose parent entities no longer exist
-     * in the database. These files are moved to SOFT_DELETED status to be
-     * eventually purged.
-     */
-    void handleDanglingAttachedFiles();
 }

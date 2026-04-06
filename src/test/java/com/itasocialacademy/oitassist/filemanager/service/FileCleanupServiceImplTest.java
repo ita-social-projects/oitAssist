@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -34,11 +35,11 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,50 +73,90 @@ class FileCleanupServiceImplTest {
     }
 
     @Test
-    @DisplayName("Full Cleanup Orchestration should run all sub-tasks")
-    void runFullCleanup_ShouldInvokeAllSteps() {
+    @DisplayName("Full Cleanup: Should mark dangling files, flush, and then purge")
+    void runFullCleanup_ShouldExecuteAllPhases() {
+        FileAsset danglingFile = FileAsset.builder()
+            .id(1L).status(FileStatus.ATTACHED)
+            .relatedEntityType(RelatedEntityType.NEWS).relatedEntityId(100L).build();
+        InOrder order = inOrder(repository, storageProvider);
+
+        when(repository.findAllAttachedFiles()).thenReturn(List.of(danglingFile));
+        when(entityManager.createQuery(anyString(), eq(Long.class))).thenReturn(query);
+        when(query.setParameter(eq("ids"), any())).thenReturn(query);
+        when(query.getResultList()).thenReturn(Collections.emptyList()); // Parent missing
+        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(List.of(5L));
+        when(storageProvider.listAllPhysicalKeys()).thenReturn(List.of("rogue.jpg"));
+        when(repository.findAllActiveStorageKeys()).thenReturn(Collections.emptyList());
+        when(storageProvider.getLastModified("rogue.jpg")).thenReturn(OffsetDateTime.now().minusDays(2));
+
+        cleanupService.runFullCleanup();
+
+        order.verify(repository).findAllAttachedFiles();
+        order.verify(repository).findIdsEligibleForCleanup(any(), any());
+        order.verify(storageProvider).listAllPhysicalKeys();
+
+        assertThat(danglingFile.getStatus()).isEqualTo(FileStatus.SOFT_DELETED);
+        verify(entityManager).flush();
+        verify(fileService).deleteHard(5L);
+        verify(storageProvider).deletePhysical("rogue.jpg");
+    }
+
+    @Test
+    @DisplayName("Full Cleanup: Should be resilient if one phase fails (e.g., Purge)")
+    void runFullCleanup_ShouldContinueDespiteIndividualFileErrors() {
+        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(List.of(1L, 2L));
+        doThrow(new RuntimeException("Hard delete failed")).when(fileService).deleteHard(1L);
+
+        cleanupService.runFullCleanup();
+
+        verify(fileService).deleteHard(1L);
+        verify(fileService).deleteHard(2L);
+        verify(storageProvider).listAllPhysicalKeys();
+    }
+
+    // --- 1. PURGE PHASE TESTS ---
+
+    @Test
+    @DisplayName("Full Cleanup: Purge phase should be skipped gracefully when no IDs are found")
+    void runFullCleanup_ShouldHandleEmptyPurgeList() {
+        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
         when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
         when(storageProvider.listAllPhysicalKeys()).thenReturn(Collections.emptyList());
-        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
 
         cleanupService.runFullCleanup();
 
         verify(repository).findIdsEligibleForCleanup(any(), any());
-        verify(storageProvider).listAllPhysicalKeys();
-        verify(repository).findAllAttachedFiles();
-    }
-
-    // --- 1. PURGE TESTS ---
-
-    @Test
-    @DisplayName("Purge should log and return when no IDs found")
-    void purgeExpiredAndOrphanedFiles_ShouldHandleEmptyList() {
-        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
-        cleanupService.purgeExpiredAndOrphanedFiles();
         verify(fileService, never()).deleteHard(anyLong());
     }
 
     @Test
-    @DisplayName("Purge should continue processing if one hard delete fails")
-    void purge_ShouldBeResilientToExceptions() {
+    @DisplayName("Full Cleanup: Purge phase should be resilient if one hard delete fails")
+    void runFullCleanup_PurgePhaseShouldBeResilientToExceptions() {
+        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
         when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(List.of(1L, 2L));
-        doThrow(new RuntimeException("Failure")).when(fileService).deleteHard(1L);
+        doThrow(new RuntimeException("Hard delete failed for file 1")).when(fileService).deleteHard(1L);
 
-        cleanupService.purgeExpiredAndOrphanedFiles();
+        when(storageProvider.listAllPhysicalKeys()).thenReturn(Collections.emptyList());
+
+        cleanupService.runFullCleanup();
 
         verify(fileService).deleteHard(1L);
         verify(fileService).deleteHard(2L);
+        verify(storageProvider).listAllPhysicalKeys();
     }
 
     @Test
-    @DisplayName("Should purge files using the combined repository query")
-    void purgeExpiredAndOrphanedFiles_ShouldUseCombinedQuery() {
+    @DisplayName("Full Cleanup: Purge phase should use combined repository query results")
+    void runFullCleanup_PurgePhaseShouldUseCombinedQuery() {
         List<Long> ids = List.of(1L, 2L, 3L);
         when(repository.findIdsEligibleForCleanup(any(OffsetDateTime.class), any(OffsetDateTime.class)))
             .thenReturn(ids);
+        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
+        when(storageProvider.listAllPhysicalKeys()).thenReturn(Collections.emptyList());
 
-        cleanupService.purgeExpiredAndOrphanedFiles();
+        cleanupService.runFullCleanup();
 
+        verify(repository).findIdsEligibleForCleanup(any(OffsetDateTime.class), any(OffsetDateTime.class));
         verify(fileService, times(3)).deleteHard(anyLong());
         verify(fileService).deleteHard(1L);
         verify(fileService).deleteHard(2L);
@@ -123,61 +164,56 @@ class FileCleanupServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should continue processing subsequent files if one hard delete fails")
-    void purgeExpiredAndOrphanedFiles_ShouldBeResilientToErrors() {
+    @DisplayName("Full Cleanup: Purge phase should continue processing subsequent files if one hard delete fails")
+    void runFullCleanup_PurgePhase_ShouldBeResilientToErrors() {
         List<Long> idsToPurge = List.of(1L, 2L);
-
         when(repository.findIdsEligibleForCleanup(any(OffsetDateTime.class), any(OffsetDateTime.class)))
             .thenReturn(idsToPurge);
-
         doThrow(new RuntimeException("IO Error or DB Constraint"))
             .when(fileService).deleteHard(1L);
 
-        cleanupService.purgeExpiredAndOrphanedFiles();
+        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
+        when(storageProvider.listAllPhysicalKeys()).thenReturn(Collections.emptyList());
+
+        cleanupService.runFullCleanup();
 
         verify(fileService).deleteHard(1L);
         verify(fileService).deleteHard(2L);
-        verifyNoMoreInteractions(fileService);
+        verify(storageProvider).listAllPhysicalKeys();
     }
 
-    // --- 2. ROGUE FILE TESTS ---
+    // --- 2. ROGUE PHASE TESTS ---
 
     @Test
-    @DisplayName("Rogue cleanup should handle metadata retrieval errors")
-    void rogue_ShouldHandleMetadataErrors() {
-        String key = "error.txt";
-        when(storageProvider.listAllPhysicalKeys()).thenReturn(List.of(key));
+    @DisplayName("Full Cleanup: Rogue phase should skip deletion and continue if metadata retrieval fails")
+    void runFullCleanup_RoguePhase_ShouldHandleMetadataErrors() {
+        String errorKey = "unreadable-file.txt";
+        String normalKey = "old-rogue.txt";
+
+        when(storageProvider.listAllPhysicalKeys()).thenReturn(List.of(errorKey, normalKey));
         when(repository.findAllActiveStorageKeys()).thenReturn(Collections.emptyList());
-        when(storageProvider.getLastModified(key)).thenThrow(new RuntimeException("IO Error"));
+        when(storageProvider.getLastModified(errorKey)).thenThrow(new RuntimeException("IO Error reading attributes"));
+        when(storageProvider.getLastModified(normalKey)).thenReturn(OffsetDateTime.now().minusDays(10));
+        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
+        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
 
-        cleanupService.cleanupRoguePhysicalFiles();
+        cleanupService.runFullCleanup();
 
-        verify(storageProvider, never()).deletePhysical(key);
-    }
-
-    @Test
-    @DisplayName("Rogue cleanup should handle errors when getting last modified time")
-    void cleanupRoguePhysicalFiles_ShouldHandleMetadataErrors() {
-        String key = "error-file.txt";
-        when(storageProvider.listAllPhysicalKeys()).thenReturn(List.of(key));
-        when(repository.findAllActiveStorageKeys()).thenReturn(Collections.emptyList());
-        when(storageProvider.getLastModified(key)).thenThrow(new RuntimeException("IO Error"));
-
-        cleanupService.cleanupRoguePhysicalFiles();
-
-        verify(storageProvider, never()).deletePhysical(key);
+        verify(storageProvider, never()).deletePhysical(errorKey);
+        verify(storageProvider).deletePhysical(normalKey);
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("provideRogueFileScenarios")
-    @DisplayName("Rogue cleanup should correctly handle various file scenarios")
-    void cleanupRoguePhysicalFiles_Parameterized(
+    @DisplayName("Full Cleanup: Rogue phase should correctly handle various file scenarios")
+    void runFullCleanup_RoguePhase_Parameterized(
         String description,
         List<String> activeKeys,
         OffsetDateTime lastModified,
         boolean expectDelete) {
 
         String fileName = "test-file.png";
+
         when(storageProvider.listAllPhysicalKeys()).thenReturn(List.of(fileName));
         when(repository.findAllActiveStorageKeys()).thenReturn(activeKeys);
 
@@ -185,7 +221,10 @@ class FileCleanupServiceImplTest {
             when(storageProvider.getLastModified(fileName)).thenReturn(lastModified);
         }
 
-        cleanupService.cleanupRoguePhysicalFiles();
+        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
+        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
+
+        cleanupService.runFullCleanup();
 
         if (expectDelete) {
             verify(storageProvider).deletePhysical(fileName);
@@ -195,56 +234,70 @@ class FileCleanupServiceImplTest {
     }
 
     @Test
-    @DisplayName("Should NOT delete rogue files newer than the safety threshold")
-    void cleanupRoguePhysicalFiles_ShouldSkipNewRogueFiles() {
+    @DisplayName("Full Cleanup: Should NOT delete rogue files newer than the safety threshold (Grace Period)")
+    void runFullCleanup_RoguePhase_ShouldSkipNewRogueFiles() {
         String newFile = "just/uploaded.png";
+
         when(storageProvider.listAllPhysicalKeys()).thenReturn(List.of(newFile));
         when(repository.findAllActiveStorageKeys()).thenReturn(Collections.emptyList());
-
         when(storageProvider.getLastModified(newFile)).thenReturn(OffsetDateTime.now());
+        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
+        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
 
-        cleanupService.cleanupRoguePhysicalFiles();
+        cleanupService.runFullCleanup();
 
         verify(storageProvider, never()).deletePhysical(newFile);
     }
 
-    // --- 3. DANGLING REFERENCE TESTS ---
+    // --- 3. DANGLING PHASE TESTS ---
 
     @Test
-    @DisplayName("Dangling check should mark orphaned files as soft deleted")
-    void dangling_ShouldProcessMissingParents() {
-        FileAsset newsFile = FileAsset.builder().id(1L).status(FileStatus.ATTACHED)
-            .relatedEntityType(RelatedEntityType.NEWS).relatedEntityId(100L).build();
+    @DisplayName("Full Cleanup: Dangling phase should mark orphaned files as soft deleted")
+    void runFullCleanup_DanglingPhase_ShouldProcessMissingParents() {
+        FileAsset newsFile = FileAsset.builder()
+            .id(1L)
+            .status(FileStatus.ATTACHED)
+            .relatedEntityType(RelatedEntityType.NEWS)
+            .relatedEntityId(100L)
+            .build();
 
         when(repository.findAllAttachedFiles()).thenReturn(List.of(newsFile));
-
         when(entityManager.createQuery(anyString(), eq(Long.class))).thenReturn(query);
         when(query.setParameter(eq("ids"), any())).thenReturn(query);
-        when(query.getResultList()).thenReturn(Collections.emptyList()); // Parent missing
+        when(query.getResultList()).thenReturn(Collections.emptyList());
+        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
+        when(storageProvider.listAllPhysicalKeys()).thenReturn(Collections.emptyList());
 
-        cleanupService.handleDanglingAttachedFiles();
+        cleanupService.runFullCleanup();
 
         assertThat(newsFile.getStatus()).isEqualTo(FileStatus.SOFT_DELETED);
         assertThat(newsFile.getDeletedAt()).isNotNull();
+        verify(entityManager).flush();
     }
 
     @Test
-    @DisplayName("Dangling check should ignore files with null entity IDs")
-    void dangling_ShouldIgnoreNullRelatedIds() {
-        FileAsset nullIdFile = FileAsset.builder().id(1L).status(FileStatus.ATTACHED)
-            .relatedEntityType(RelatedEntityType.NEWS).relatedEntityId(null).build();
+    @DisplayName("Full Cleanup: Dangling phase should ignore files with null entity IDs")
+    void runFullCleanup_DanglingPhase_ShouldIgnoreNullRelatedIds() {
+        FileAsset nullIdFile = FileAsset.builder()
+            .id(1L)
+            .status(FileStatus.ATTACHED)
+            .relatedEntityType(RelatedEntityType.NEWS)
+            .relatedEntityId(null)
+            .build();
 
         when(repository.findAllAttachedFiles()).thenReturn(List.of(nullIdFile));
+        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
+        when(storageProvider.listAllPhysicalKeys()).thenReturn(Collections.emptyList());
 
-        cleanupService.handleDanglingAttachedFiles();
+        cleanupService.runFullCleanup();
 
-        assertThat(nullIdFile.getStatus()).isEqualTo(FileStatus.SOFT_DELETED);
+        assertThat(nullIdFile.getStatus()).isEqualTo(FileStatus.ATTACHED);
         verify(entityManager, never()).createQuery(anyString(), any());
     }
 
     @Test
-    @DisplayName("Should throw IllegalArgumentException when entity type is not mapped in switch")
-    void dangling_ShouldThrowExceptionForUnmappedType() {
+    @DisplayName("Full Cleanup: Should throw IllegalArgumentException if an attached file has an unmapped entity type")
+    void runFullCleanup_ShouldThrowExceptionForUnmappedType() {
         FileAsset competitionFile = FileAsset.builder()
             .id(99L)
             .status(FileStatus.ATTACHED)
@@ -254,30 +307,42 @@ class FileCleanupServiceImplTest {
 
         when(repository.findAllAttachedFiles()).thenReturn(List.of(competitionFile));
 
-        assertThatThrownBy(() -> cleanupService.handleDanglingAttachedFiles())
+        assertThatThrownBy(() -> cleanupService.runFullCleanup())
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unknown entity type: COMPETITION");
+
+        verify(repository, never()).findIdsEligibleForCleanup(any(), any());
     }
 
     @Test
-    @DisplayName("Rogue cleanup should skip new files (race condition logic)")
-    void cleanupRoguePhysicalFiles_ShouldSkipNewFiles() {
-        String newFile = "new.txt";
+    @DisplayName("Full Cleanup: Rogue phase should skip files within the grace period (race condition safety)")
+    void runFullCleanup_RoguePhase_ShouldSkipNewFiles() {
+        String newFile = "newly-uploaded-file.txt";
+
         when(storageProvider.listAllPhysicalKeys()).thenReturn(List.of(newFile));
         when(repository.findAllActiveStorageKeys()).thenReturn(Collections.emptyList());
         when(storageProvider.getLastModified(newFile)).thenReturn(OffsetDateTime.now());
+        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
+        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
 
-        cleanupService.cleanupRoguePhysicalFiles();
+        cleanupService.runFullCleanup();
 
         verify(storageProvider, never()).deletePhysical(newFile);
     }
 
     @Test
-    @DisplayName("Should skip dangling check if no attached files exist")
-    void handleDanglingAttachedFiles_ShouldHandleEmptyList() {
+    @DisplayName("Full Cleanup: Dangling phase should skip database queries if no attached files exist")
+    void runFullCleanup_DanglingPhase_ShouldHandleEmptyList() {
         when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
-        cleanupService.handleDanglingAttachedFiles();
+        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
+        when(storageProvider.listAllPhysicalKeys()).thenReturn(Collections.emptyList());
+
+        cleanupService.runFullCleanup();
+
         verify(entityManager, never()).createQuery(anyString(), any());
+
+        verify(repository).findIdsEligibleForCleanup(any(), any());
+        verify(storageProvider).listAllPhysicalKeys();
     }
 
     private static Stream<Arguments> provideRogueFileScenarios() {

@@ -41,42 +41,49 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @RequiredArgsConstructor
 public class FileCleanupServiceImpl implements FileCleanupService {
+    @PersistenceContext
+    private EntityManager entityManager;
     private final FileService fileService;
     private final FileRepository repository;
     private final StorageProviderResolver providerResolver;
     private final FileCleanupConfig cleanupConfig;
 
-    @PersistenceContext
-    private EntityManager entityManager;
-
     /**
      * Executes the full cleanup suite. Order of execution: 1. Dangling references
-     * are marked as SOFT_DELETED. 2. DB-identified expired/orphaned files are
-     * hard-deleted. 3. Rogue physical files are reconciled and removed.
+     * are marked as SOFT_DELETED. 2. Force flush to ensure DB updates are before
+     * file operations. 3. DB-identified expired/orphaned files are hard-deleted. 4.
+     * Rogue physical files are reconciled and removed.
      */
     @Override
     @Transactional
     public void runFullCleanup() {
-        log.info("File cleanup cycle starting...");
+        log.info("Files cleanup cycle starting...");
+
         this.handleDanglingAttachedFiles();
+
+        entityManager.flush();
+
         this.purgeExpiredAndOrphanedFiles();
         this.cleanupRoguePhysicalFiles();
-        log.info("File cleanup cycle complete.");
+
+        log.info("Files cleanup cycle complete.");
     }
 
     /**
      * Queries the database for IDs eligible for purging and delegates hard-deletion
-     * to the {@link FileService}.
+     * to the {@link FileService}. Identifies and permanently deletes files from
+     * storage and the database if they are marked as TEMPORARY or SOFT_DELETED and
+     * have exceeded their respective grace periods.
      */
-    @Override
-    public void purgeExpiredAndOrphanedFiles() {
+    private void purgeExpiredAndOrphanedFiles() {
+        log.info("Files cleanup: Purging expired and orphaned files...");
         OffsetDateTime orphanThreshold = OffsetDateTime.now().minusHours(cleanupConfig.getOrphanHours());
         OffsetDateTime expiredThreshold = OffsetDateTime.now().minusHours(cleanupConfig.getExpiredHours());
 
         List<Long> fileIds = repository.findIdsEligibleForCleanup(orphanThreshold, expiredThreshold);
 
         if (fileIds.isEmpty()) {
-            log.info("Files cleanup: No orphaned of expired files eligible for purging.");
+            log.info("Files cleanup: No orphaned or expired files eligible for purging.");
             return;
         }
 
@@ -87,13 +94,13 @@ public class FileCleanupServiceImpl implements FileCleanupService {
 
     /**
      * Compares the physical file inventory from the {@link StorageProvider} against
-     * active database records.
+     * active database records. Performs a disk-to-database reconciliation.
      *
      * @throws FileListingException if the physical storage cannot be reliably
      *                              scanned.
      */
-    @Override
-    public void cleanupRoguePhysicalFiles() {
+    private void cleanupRoguePhysicalFiles() {
+        log.info("Files cleanup: Cleaning up rogue physical files...");
         try {
             StorageProvider provider = providerResolver.resolveDefault();
             List<String> physicalKeys = provider.listAllPhysicalKeys();
@@ -104,6 +111,8 @@ public class FileCleanupServiceImpl implements FileCleanupService {
 
             if (rogueCount > 0) {
                 log.info("Files cleanup: Purged {} rogue files with no DB record.", rogueCount);
+            } else {
+                log.info("Files cleanup: No rogue files found.");
             }
         } catch (FileListingException e) {
             log.error("Files cleanup: Storage inventory for rogue files could not be built reliably.", e);
@@ -112,7 +121,8 @@ public class FileCleanupServiceImpl implements FileCleanupService {
 
     /**
      * Identifies files marked as {@code ATTACHED} whose parent entities (e.g.,
-     * News, Task) have been deleted from the database.
+     * News, Task) have been deleted from the database. These files are moved to
+     * SOFT_DELETED status to be eventually purged.
      *
      * <p>
      * This method uses a batching strategy: it groups files by their
@@ -121,9 +131,8 @@ public class FileCleanupServiceImpl implements FileCleanupService {
      * moved to {@code SOFT_DELETED} status.
      * </p>
      */
-    @Override
-    public void handleDanglingAttachedFiles() {
-        log.info("Checking for dangling file references...");
+    private void handleDanglingAttachedFiles() {
+        log.info("Files cleanup: Checking for dangling file references...");
 
         List<FileAsset> attachedFiles = repository.findAllAttachedFiles();
 
@@ -134,6 +143,8 @@ public class FileCleanupServiceImpl implements FileCleanupService {
 
         if (danglingCount > 0) {
             log.info("Files cleanup: Cleaned up {} dangling references - moved to SOFT_DELETED.", danglingCount);
+        } else {
+            log.info("Files cleanup: No dangling references found.");
         }
     }
 
@@ -175,7 +186,9 @@ public class FileCleanupServiceImpl implements FileCleanupService {
      */
     private int markFilesAsSoftDeleted(List<FileAsset> files, Set<Long> existingParentIds, int totalDangling) {
         for (FileAsset file : files) {
-            if (!existingParentIds.contains(file.getRelatedEntityId())) {
+            Long parentId = file.getRelatedEntityId();
+
+            if (parentId != null && !existingParentIds.contains(parentId)) {
                 file.setStatus(FileStatus.SOFT_DELETED);
                 file.setDeletedAt(OffsetDateTime.now());
                 totalDangling++;

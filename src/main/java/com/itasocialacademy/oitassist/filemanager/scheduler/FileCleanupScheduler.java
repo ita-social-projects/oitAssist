@@ -1,19 +1,31 @@
 package com.itasocialacademy.oitassist.filemanager.scheduler;
 
+import com.itasocialacademy.oitassist.filemanager.config.FileCleanupConfig;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.SchedulingConfigurer;
+import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 
 @Slf4j
-@Component
+@Configuration
+@EnableScheduling
 @RequiredArgsConstructor
-public class FileCleanupScheduler {
+public class FileCleanupScheduler implements SchedulingConfigurer {
     private final FileCleanupService cleanupService;
+    private final FileCleanupConfig cleanupConfig;
 
-    @Scheduled(cron = "${app.filemanager.cleanup.cron}")
+    @Override
+    public void configureTasks(ScheduledTaskRegistrar registrar) {
+        registrar.addCronTask(
+            this::scheduledTask,
+            cleanupConfig.getCron());
+    }
+
     public void scheduledTask() {
+        log.info("Scheduled file cleanup triggered.");
         cleanupService.runFullCleanup();
     }
 }
