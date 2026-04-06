@@ -137,6 +137,10 @@ public class FileCleanupServiceImpl implements FileCleanupService {
 
         List<FileAsset> attachedFiles = repository.findAllAttachedFiles();
 
+        // For large-scale deployments, replace with a paginated/streaming approach
+        // and chunk the IN-query to avoid heap pressure and DB parameter limits.
+        // See issue #168.
+
         Map<RelatedEntityType, List<FileAsset>> groupedFiles = attachedFiles.stream()
             .collect(Collectors.groupingBy(FileAsset::getRelatedEntityType));
 
