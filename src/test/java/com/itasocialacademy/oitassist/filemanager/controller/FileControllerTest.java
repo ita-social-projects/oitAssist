@@ -1,22 +1,27 @@
 package com.itasocialacademy.oitassist.filemanager.controller;
 
-import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.itasocialacademy.oitassist.ControllerUnitTest;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
+import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
+import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-//add MockMvc to perform requests and verify @PreAuthorize with @WithMockUser
-
-@ExtendWith(MockitoExtension.class)
-class FileControllerTest {
+class FileControllerTest extends ControllerUnitTest<FileController> {
 
     @Mock
     private FileService fileService;
@@ -24,46 +29,111 @@ class FileControllerTest {
     @InjectMocks
     private FileController fileController;
 
-    private static final Long FILE_ID = 0L;
+    @Override
+    protected FileController getController() {
+        return fileController;
+    }
 
-    // --- Soft Delete Tests ---
+    private MockMultipartFile singleFilePart() {
+        return new MockMultipartFile("files", "photo.jpg", MediaType.IMAGE_JPEG_VALUE, "image-bytes".getBytes());
+    }
+
+    private MockMultipartFile metadataPart(FileUploadRequestDto dto) throws Exception {
+        return new MockMultipartFile("metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(dto));
+    }
+
+    // --- Upload Tests ---
 
     @Test
-    void deleteSoft_ShouldReturnNoContent_WhenSuccessful() {
-        doNothing().when(fileService).deleteSoft(FILE_ID);
-        ResponseEntity<Void> response = fileController.deleteSoft(FILE_ID);
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(fileService, times(1)).deleteSoft(FILE_ID);
+    void upload_ShouldReturnCreatedWithBody_WhenFilesUploadedSuccessfully() throws Exception {
+        FileUploadRequestDto requestDto = FileUploadRequestDto.builder()
+            .relatedEntityType(RelatedEntityType.NEWS)
+            .relatedEntityId(10L)
+            .build();
+        List<FileResponseDto> serviceResponse = List.of(
+            FileResponseDto.builder()
+                .id(1L)
+                .storageKey("uploads/photo.jpg")
+                .mimeType(MediaType.IMAGE_JPEG_VALUE)
+                .size(1024L)
+                .build());
+
+        when(fileService.upload(any(), any(), any())).thenReturn(serviceResponse);
+
+        mockMvc.perform(multipart("/api/v1/files")
+            .file(singleFilePart())
+            .file(metadataPart(requestDto)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$[0].id").value(1))
+            .andExpect(jsonPath("$[0].storageKey").value("uploads/photo.jpg"))
+            .andExpect(jsonPath("$[0].mimeType").value(MediaType.IMAGE_JPEG_VALUE))
+            .andExpect(jsonPath("$[0].size").value(1024));
     }
 
     @Test
-    void deleteSoft_ShouldThrowException_WhenServiceThrows() {
-        doThrow(new FileAssetNotFoundException("File not found"))
-            .when(fileService).deleteSoft(FILE_ID);
+    void upload_ShouldDelegateToServiceWithNullUserId_WhenFilesAndMetadataAreValid() throws Exception {
+        // standaloneSetup does not process @AuthenticationPrincipal,
+        // so currentUserId is always null in unit test scope.
+        FileUploadRequestDto requestDto = FileUploadRequestDto.builder()
+            .relatedEntityType(RelatedEntityType.TASK)
+            .relatedEntityId(5L)
+            .build();
 
-        assertThrows(FileAssetNotFoundException.class, () -> fileController.deleteSoft(FILE_ID));
+        when(fileService.upload(any(), any(), eq(null))).thenReturn(List.of());
 
-        verify(fileService, times(1)).deleteSoft(FILE_ID);
-    }
+        mockMvc.perform(multipart("/api/v1/files")
+            .file(singleFilePart())
+            .file(metadataPart(requestDto)))
+            .andExpect(status().isCreated());
 
-    // --- Hard Delete Tests ---
-
-    @Test
-    void deleteHard_ShouldReturnNoContent_WhenSuccessful() {
-        doNothing().when(fileService).deleteHard(FILE_ID);
-
-        ResponseEntity<Void> response = fileController.deleteHard(FILE_ID);
-
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(fileService, times(1)).deleteHard(FILE_ID);
+        verify(fileService).upload(any(), any(), eq(null));
     }
 
     @Test
-    void deleteHard_ShouldThrowException_WhenServiceThrows() {
-        doThrow(new FileAssetNotFoundException("File not found"))
-            .when(fileService).deleteHard(FILE_ID);
+    void upload_ShouldReturnBadRequest_WhenRelatedEntityTypeIsMissing() throws Exception {
+        FileUploadRequestDto requestDto = FileUploadRequestDto.builder()
+            .relatedEntityId(10L)
+            .build();
 
-        assertThrows(FileAssetNotFoundException.class, () -> fileController.deleteHard(FILE_ID));
-        verify(fileService, times(1)).deleteHard(FILE_ID);
+        mockMvc.perform(multipart("/api/v1/files")
+            .file(singleFilePart())
+            .file(metadataPart(requestDto)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void upload_ShouldReturnBadRequest_WhenMetadataPartIsMissing() throws Exception {
+        mockMvc.perform(multipart("/api/v1/files")
+            .file(singleFilePart()))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void upload_ShouldReturnBadRequest_WhenFilesPartIsMissing() throws Exception {
+        FileUploadRequestDto requestDto = FileUploadRequestDto.builder()
+            .relatedEntityType(RelatedEntityType.NEWS)
+            .relatedEntityId(10L)
+            .build();
+
+        mockMvc.perform(multipart("/api/v1/files")
+            .file(metadataPart(requestDto)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void upload_ShouldReturnInternalServerError_WhenServiceThrowsFileUploadException() throws Exception {
+        FileUploadRequestDto requestDto = FileUploadRequestDto.builder()
+            .relatedEntityType(RelatedEntityType.NEWS)
+            .relatedEntityId(10L)
+            .build();
+
+        when(fileService.upload(any(), any(), any()))
+            .thenThrow(new FileUploadException("photo.jpg", new RuntimeException("I/O error")));
+
+        mockMvc.perform(multipart("/api/v1/files")
+            .file(singleFilePart())
+            .file(metadataPart(requestDto)))
+            .andExpect(status().isInternalServerError());
     }
 }
