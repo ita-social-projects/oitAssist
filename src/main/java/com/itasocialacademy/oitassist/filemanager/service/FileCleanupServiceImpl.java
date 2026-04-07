@@ -13,6 +13,7 @@ import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanup
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.HashSet;
@@ -242,46 +243,90 @@ public class FileCleanupServiceImpl implements FileCleanupService {
     }
 
     /**
-     * Reconciles physical storage with the database by deleting files found on disk
-     * that have no corresponding database record.
+     * Identifies and removes "rogue" files—files existing in physical storage that
+     * are no longer tracked in the active database.
      *
      * <p>
-     * <strong>Safety Mechanism:</strong> To prevent deleting files that are
-     * currently being uploaded (where the file exists but the DB transaction hasn't
-     * committed), this only deletes files older than the configured
-     * {@code rogueGraceHours}.
+     * This method calculates a safety grace period based on configuration to
+     * prevent deleting files that were very recently uploaded but not yet indexed.
      * </p>
      *
-     * @param physicalKeys list of all relative paths found in the storage provider
-     * @param activeKeys   set of all storage keys currently tracked in the database
-     * @param provider     the storage provider to execute deletions against
-     * @return the number of rogue files successfully purged
+     * @param physicalKeys A list of all file keys currently found in the storage
+     *                     provider.
+     * @param activeKeys   A set of keys currently marked as active/valid in the
+     *                     system.
+     * @param provider     The storage service used to fetch metadata and perform
+     *                     deletions.
+     * @return The total number of rogue files successfully deleted.
      */
     private int deleteRogueFiles(List<String> physicalKeys, Set<String> activeKeys, StorageProvider provider) {
-        int rogueCount = 0;
         OffsetDateTime safetyThreshold = OffsetDateTime.now().minusHours(cleanupConfig.getRogueGraceHours());
 
-        for (String key : physicalKeys) {
-            if (!activeKeys.contains(key)) {
-                try {
-                    OffsetDateTime lastModified = provider.getLastModified(key);
-                    if (lastModified == null) {
-                        log.warn("Files cleanup: Skipping rogue file {}: could not determine last modified time", key);
-                        continue;
-                    }
-                    if (lastModified.isBefore(safetyThreshold)) {
-                        provider.deletePhysical(key);
-                        rogueCount++;
-                    } else {
-                        log.debug("Files cleanup: Skipping rogue file {}: too new (Last modified: {})", key,
-                            lastModified);
-                    }
-                } catch (Exception e) {
-                    log.error("Files cleanup: Failed to process or delete rogue file: {}", key, e);
-                }
+        return (int) physicalKeys.stream()
+            .filter(key -> !activeKeys.contains(key))
+            .filter(key -> tryProcessRogueDeletion(key, safetyThreshold, provider))
+            .count();
+    }
+
+    /**
+     * Attempts to delete a single rogue file.
+     *
+     * <p>
+     * This acts as a circuit breaker for individual file operations; if a specific
+     * deletion or metadata check fails, it logs the error and allows the batch
+     * process to continue.
+     * </p>
+     *
+     * @param key             The unique identifier of the file in storage.
+     * @param safetyThreshold The cutoff timestamp; files modified after this are
+     *                        skipped.
+     * @param provider        The storage service interface.
+     * @return {@code true} if the file met all criteria and was successfully
+     *         deleted; {@code false} otherwise.
+     */
+    private boolean tryProcessRogueDeletion(String key, OffsetDateTime safetyThreshold, StorageProvider provider) {
+        try {
+            if (isEligibleForCleanup(key, safetyThreshold, provider)) {
+                provider.deletePhysical(key);
+                return true;
             }
+        } catch (Exception e) {
+            log.error("Files cleanup: Failed to process or delete rogue file: {}", key, e);
         }
-        return rogueCount;
+        return false;
+    }
+
+    /**
+     * Evaluates whether a file is safe to delete based on its modification
+     * metadata.
+     *
+     * <p>
+     * A file is eligible only if:
+     * <ul>
+     * <li>It has a valid "Last Modified" timestamp.</li>
+     * <li>That timestamp is older than the provided {@code safetyThreshold}.</li>
+     * </ul>
+     * </p>
+     *
+     * @param key             The unique identifier of the file.
+     * @param safetyThreshold The temporal boundary for the grace period.
+     * @param provider        The storage service used to retrieve file attributes.
+     * @return {@code true} if the file is confirmed as old enough for removal.
+     */
+    private boolean isEligibleForCleanup(String key, OffsetDateTime safetyThreshold, StorageProvider provider) {
+        OffsetDateTime lastModified = provider.getLastModified(key);
+
+        if (lastModified == null) {
+            log.warn("Files cleanup: Skipping rogue file {}: could not determine last modified time", key);
+            return false;
+        }
+
+        if (lastModified.isAfter(safetyThreshold)) {
+            log.debug("Files cleanup: Skipping rogue file {}: too new (Last modified: {})", key, lastModified);
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -298,41 +343,23 @@ public class FileCleanupServiceImpl implements FileCleanupService {
             return Collections.emptySet();
         }
 
-        String entityName = getEntityName(type);
+        String entityName = type.getEntityName();
+
+        if (entityName == null || entityName.isBlank()) {
+            throw new IllegalArgumentException("Unknown entity type: " + type.name());
+        }
 
         String queryString = String.format("SELECT e.id FROM %s e WHERE e.id IN :ids", entityName);
 
-        List<Long> result = entityManager.createQuery(queryString, Long.class)
+        TypedQuery<Long> query = entityManager.createQuery(queryString, Long.class);
+        if (query == null) {
+            throw new IllegalArgumentException("EntityManager returned null query. Unknown entity type: " + entityName);
+        }
+
+        List<Long> result = query
             .setParameter("ids", ids)
             .getResultList();
 
         return new HashSet<>(result);
-    }
-
-    /**
-     * Maps a {@link RelatedEntityType} to its corresponding JPA Entity name. This
-     * mapping is used for dynamic JPQL queries during the dangling reference check.
-     * The returned string must exactly match the name defined in the
-     * {@code @Entity} annotation of the target class.
-     *
-     * <p>
-     * <strong>Maintenance Note:</strong> This method must be kept in sync with the
-     * {@link RelatedEntityType} enum. When adding new supported entities to the
-     * system (e.g., {@code PROJECT}, {@code USER}), you must update this switch
-     * case to prevent {@link IllegalArgumentException} during the cleanup cycle.
-     * </p>
-     *
-     * @param type the enum constant representing the type of the parent entity
-     * @return the String name of the JPA entity (e.g., "News")
-     * @throws IllegalArgumentException if the provided type is not yet mapped to an
-     *                                  entity name
-     */
-    private String getEntityName(RelatedEntityType type) {
-        return switch (type) {
-            case NEWS -> "News";
-            case TASK -> "Task";
-            case SUBMISSION -> "Submission";
-            default -> throw new IllegalArgumentException("Unknown entity type: " + type);
-        };
     }
 }

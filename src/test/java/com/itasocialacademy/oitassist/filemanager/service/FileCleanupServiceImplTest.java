@@ -309,7 +309,7 @@ class FileCleanupServiceImplTest {
 
         assertThatThrownBy(() -> cleanupService.runFullCleanup())
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unknown entity type: COMPETITION");
+            .hasMessageContaining("EntityManager returned null query. Unknown entity type: Competition");
 
         verify(repository, never()).findIdsEligibleForCleanup(any(), any());
     }
