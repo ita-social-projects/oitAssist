@@ -24,6 +24,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -81,7 +82,7 @@ public class FileServiceImpl implements FileService {
      * @param fileId id of the file.
      */
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void deleteHard(Long fileId) {
         FileAsset file = repository.findById(fileId)
             .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));

@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.filemanager.controller;
 
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
+import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +21,9 @@ class FileControllerTest {
 
     @Mock
     private FileService fileService;
+
+    @Mock
+    private FileCleanupService cleanupService;
 
     @InjectMocks
     private FileController fileController;
@@ -65,5 +69,26 @@ class FileControllerTest {
 
         assertThrows(FileAssetNotFoundException.class, () -> fileController.deleteHard(FILE_ID));
         verify(fileService, times(1)).deleteHard(FILE_ID);
+    }
+
+    // --- Cleanup Tests ---
+
+    @Test
+    void triggerManualCleanup_ShouldReturnNoContent_WhenSuccessful() {
+        doNothing().when(cleanupService).runFullCleanup();
+
+        ResponseEntity<Void> response = fileController.triggerManualCleanup();
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(cleanupService, times(1)).runFullCleanup();
+    }
+
+    @Test
+    void triggerManualCleanup_ShouldThrowException_WhenCleanupServiceFails() {
+        doThrow(new RuntimeException("Internal cleanup error"))
+            .when(cleanupService).runFullCleanup();
+
+        assertThrows(RuntimeException.class, () -> fileController.triggerManualCleanup());
+        verify(cleanupService, times(1)).runFullCleanup();
     }
 }
