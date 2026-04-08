@@ -22,9 +22,11 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /**
  * Centralized exception handler for the entire application.
+ *
  * <p>
  * This {@link ControllerAdvice} intercepts exceptions thrown from controllers
  * or service layers and converts them into standardized {@link ErrorResponse}
@@ -56,6 +58,7 @@ import java.util.stream.Collectors;
  * </ul>
  *
  * <h2>Trace ID</h2>
+ *
  * <p>
  * Supports tracing via:
  * <ul>
@@ -202,5 +205,26 @@ public class GlobalExceptionHandler {
                 "Access denied",
                 status.value(),
                 null));
+    }
+
+    /**
+     * Handles {@link MissingServletRequestPartException} by generating an
+     * appropriate error response. This exception is thrown when a required part of
+     * a multipart request is missing.
+     *
+     * @param ex      the exception object containing details of the missing request
+     *                part
+     * @param request the HTTP request that triggered the exception
+     * @return a {@link ResponseEntity} containing an {@link ErrorResponse} with
+     *         error details, including the specific request part that was missing
+     */
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ErrorResponse> handleMissingServletRequestPart(
+        MissingServletRequestPartException ex, HttpServletRequest request) {
+        log.warn("Missing request part: traceId={}, part={}", MDC.get("traceId"), ex.getRequestPartName());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED,
+                "Required request part '" + ex.getRequestPartName() + "' is not present",
+                HttpStatus.BAD_REQUEST.value(), null));
     }
 }

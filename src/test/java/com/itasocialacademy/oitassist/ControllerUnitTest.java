@@ -10,14 +10,14 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
-public abstract class ControllerUnitTest {
+public abstract class ControllerUnitTest<T> {
     public MockMvc mockMvc;
 
     protected final ObjectMapper objectMapper = new ObjectMapper();
 
     private final AppExceptionHttpStatusMapper mapper = new AppExceptionHttpStatusMapper();
 
-    protected abstract Object getController();
+    protected abstract T getController();
 
     @BeforeEach
     public void setup() {
