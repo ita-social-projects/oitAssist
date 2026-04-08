@@ -1,7 +1,10 @@
 package com.itasocialacademy.oitassist.filemanager.providers.interfaces;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileListingException;
 import java.io.InputStream;
+import java.time.OffsetDateTime;
+import java.util.List;
 
 public interface StorageProvider {
     /**
@@ -31,4 +34,21 @@ public interface StorageProvider {
      * @param filePath relative path including filename.
      */
     void deletePhysical(String filePath);
+
+    /**
+     * Scans physical storage and returns all relative keys.
+     *
+     * @throws FileListingException if scanning or key construction fails.
+     */
+    List<String> listAllPhysicalKeys();
+
+    /**
+     * Returns the last modified time of a physical file.
+     *
+     * @param storageKey the relative path of the file
+     * @return the OffsetDateTime of last modification, or a fallback (e.g., now) if
+     *         unavailable
+     * @throws FileListingException if the file metadata cannot be accessed
+     */
+    OffsetDateTime getLastModified(String storageKey);
 }

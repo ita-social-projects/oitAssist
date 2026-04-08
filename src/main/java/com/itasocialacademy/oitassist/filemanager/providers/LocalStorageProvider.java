@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileDeleteException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileListingException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathException;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
@@ -11,6 +12,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -113,6 +118,74 @@ public class LocalStorageProvider implements StorageProvider {
         } catch (IOException e) {
             log.error("Could not delete physical file at: {}", storageKey, e);
             throw new FileDeleteException("Could not delete physical file: " + storageKey, e);
+        }
+    }
+
+    /**
+     * Scans the entire local storage root directory and returns a list of relative
+     * storage keys for all regular files found.
+     *
+     * <p>
+     * This method performs a recursive walk of the {@code root} directory. Each
+     * absolute system path is relativized against the storage root and normalized
+     * to use forward-slashes (/) to maintain database consistency across different
+     * Operating Systems (Windows/Linux).
+     * </p>
+     *
+     * @return a {@link List} of relative storage keys (e.g., "news/image.jpg")
+     * @throws FileListingException if an I/O error occurs while walking the file
+     *                              tree or if a path cannot be relativized against
+     *                              the root.
+     */
+    @Override
+    public List<String> listAllPhysicalKeys() {
+        try (var stream = Files.walk(this.root)) {
+            return stream
+                .filter(Files::isRegularFile)
+                .map(path -> {
+                    try {
+                        return this.root.relativize(path).toString().replace("\\", "/");
+                    } catch (IllegalArgumentException e) {
+                        throw new FileListingException("Failed to build storage key for path: " + path, e);
+                    }
+                })
+                .toList();
+        } catch (IOException e) {
+            throw new FileListingException("Failed to walk local storage directory", e);
+        }
+    }
+
+    /**
+     * Retrieves the last modified timestamp of a file from the local file system.
+     *
+     * <p>
+     * This is used primarily as a safety mechanism during rogue file cleanup to
+     * prevent the deletion of files currently being uploaded (race conditions). The
+     * method verifies that the requested {@code storageKey} does not attempt to
+     * access files outside the configured {@code root} directory.
+     * </p>
+     *
+     * @param storageKey the relative path of the file as stored in the database
+     * @return the {@link OffsetDateTime} of the file's last modification in UTC
+     * @throws InvalidFilePathException if the path is outside the storage root or
+     *                                  malformed
+     * @throws FileListingException     if the file metadata cannot be accessed due
+     *                                  to I/O errors
+     */
+    @Override
+    public OffsetDateTime getLastModified(String storageKey) {
+        try {
+            Path target = root.resolve(storageKey).normalize();
+
+            if (!target.startsWith(root)) {
+                throw new InvalidFilePathException("Access denied: path is outside storage root: " + storageKey);
+            }
+
+            FileTime fileTime = Files.getLastModifiedTime(target);
+            return OffsetDateTime.ofInstant(fileTime.toInstant(), ZoneOffset.UTC);
+        } catch (IOException e) {
+            log.error("Failed to retrieve last modified time for file: {}", storageKey, e);
+            throw new FileListingException("Could not read file metadata for: " + storageKey, e);
         }
     }
 }

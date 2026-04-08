@@ -18,9 +18,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ErrorCode {
     COMMON_INTERNAL_ERROR(ErrorCategory.TECHNICAL),
-    FILE_READ_FAILED(ErrorCategory.TECHNICAL),
     FILE_UPLOAD_FAILED(ErrorCategory.TECHNICAL),
     FILE_DELETE_FAILED(ErrorCategory.TECHNICAL),
+    FILE_LISTING_FAILED(ErrorCategory.TECHNICAL),
     PROVIDER_NOT_SUPPORTED(ErrorCategory.NOT_FOUND),
     FILE_ASSET_NOT_FOUND(ErrorCategory.NOT_FOUND),
     INVALID_FILE_PATH(ErrorCategory.TECHNICAL),

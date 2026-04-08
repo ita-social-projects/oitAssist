@@ -78,7 +78,6 @@ springdoc:
 web_client:
   origin: ${WEB_CLIENT_ORIGIN}
 
-
 management:
   endpoints:
     web:
@@ -97,3 +96,14 @@ graph:
   client-id: ${GRAPH_CLIENT_ID}
   client-secret: ${GRAPH_CLIENT_SECRET}
   drive-id: ${GRAPH_DRIVE_ID}
+
+app:
+  storage:
+    local:
+      root: ${APP_STORAGE_LOCAL_ROOT:./uploads}
+  filemanager:
+    cleanup:
+      orphan-hours: ${APP_FILEMANAGER_CLEANUP_ORPHAN_HOURS:24}
+      expired-hours: ${APP_FILEMANAGER_CLEANUP_EXPIRED_HOURS:720}
+      rogue-grace-hours: ${APP_FILEMANAGER_CLEANUP_ROGUE_GRACE_HOURS:1}
+      cron: ${APP_FILEMANAGER_CLEANUP_CRON:0 0 3 * * *}
