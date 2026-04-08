@@ -89,6 +89,8 @@ public class FileCleanupServiceImpl implements FileCleanupService {
             return;
         }
 
+        log.debug("Files cleanup: Found {} IDs eligible for purging: {}", fileIds.size(), fileIds);
+
         int successCount = deleteExpiredAndOrphaned(fileIds);
 
         log.info("Files cleanup complete: {}/{} files successfully purged.", successCount, fileIds.size());
@@ -170,6 +172,8 @@ public class FileCleanupServiceImpl implements FileCleanupService {
         for (Map.Entry<RelatedEntityType, List<FileAsset>> entry : groupedFiles.entrySet()) {
             RelatedEntityType type = entry.getKey();
             List<FileAsset> files = entry.getValue();
+
+            log.debug("Files cleanup: Processing dangling check for group: {} ({} files)", type, files.size());
 
             final Set<Long> parentIds = collectIdsForType(files);
 

@@ -78,9 +78,10 @@ public class LocalStorageProvider implements StorageProvider {
             Files.createDirectories(targetDirectory);
             Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
 
-            log.info("File successfully uploaded to: {}", targetFile);
+            String storageKey = root.relativize(targetFile).toString().replace("\\", "/");
+            log.info("File successfully uploaded to: {}. Storage key: {}", targetFile, storageKey);
 
-            return root.relativize(targetFile).toString().replace("\\", "/");
+            return storageKey;
         } catch (IOException e) {
             log.error("Failed to upload file {} to path {}", morphedName, path, e);
             throw new FileUploadException("Could not store file locally", e);
@@ -140,7 +141,7 @@ public class LocalStorageProvider implements StorageProvider {
     @Override
     public List<String> listAllPhysicalKeys() {
         try (var stream = Files.walk(this.root)) {
-            return stream
+            List<String> keys = stream
                 .filter(Files::isRegularFile)
                 .map(path -> {
                     try {
@@ -150,6 +151,8 @@ public class LocalStorageProvider implements StorageProvider {
                     }
                 })
                 .toList();
+            log.debug("Found {} physical files in local storage", keys.size());
+            return keys;
         } catch (IOException e) {
             throw new FileListingException("Failed to walk local storage directory", e);
         }
