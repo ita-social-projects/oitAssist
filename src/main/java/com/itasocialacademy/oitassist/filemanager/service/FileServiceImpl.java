@@ -9,7 +9,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
-import com.itasocialacademy.oitassist.filemanager.exceptions.FileReadException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
 import com.itasocialacademy.oitassist.filemanager.mapper.FileMapper;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
@@ -114,11 +114,11 @@ public class FileServiceImpl implements FileService {
         StorageProvider provider = providerResolver.resolveDefault();
 
         String storageKey;
-        try {
-            storageKey = provider.upload(file.getInputStream(), storedFilename, relativePath);
+        try (var inputStream = file.getInputStream()) {
+            storageKey = provider.upload(inputStream, storedFilename, relativePath);
         } catch (IOException e) {
-            log.error("Failed to read input stream for file: {}", originalFilename, e);
-            throw new FileReadException(e);
+            log.error("Failed to upload file: {}", originalFilename, e);
+            throw new FileUploadException(originalFilename, e);
         }
 
         FileAsset fileAsset = buildFileAsset(
