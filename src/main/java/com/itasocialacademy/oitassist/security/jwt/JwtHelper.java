@@ -41,13 +41,13 @@ public class JwtHelper {
             .subject(subject)
             .issuedAt(currentDate)
             .expiration(expiryDate)
-            .encryptWith(getSecretKey(jwtProperties.getEncryptedKey()), Jwts.ENC.A256GCM)
+            .encryptWith(getSecretKey(jwtProperties.getEncryptedKey()), Jwts.ENC.A192CBC_HS384)
             .compact();
         return Jwts.builder()
             .subject(encryptedToken)
             .issuedAt(currentDate)
             .expiration(expiryDate)
-            .signWith(getSecretKey(jwtProperties.getSignKey()), Jwts.SIG.HS512)
+            .signWith(getSecretKey(jwtProperties.getSignKey()), Jwts.SIG.HS384)
             .compact();
     }
 
