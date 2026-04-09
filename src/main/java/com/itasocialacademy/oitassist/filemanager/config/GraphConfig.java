@@ -3,10 +3,7 @@ package com.itasocialacademy.oitassist.filemanager.config;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
 import com.itasocialacademy.oitassist.filemanager.properties.GraphProperties;
-import com.microsoft.graph.authentication.TokenCredentialAuthProvider;
-import com.microsoft.graph.requests.GraphServiceClient;
-import java.util.List;
-import okhttp3.Request;
+import com.microsoft.graph.serviceclient.GraphServiceClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,21 +16,15 @@ public class GraphConfig {
     }
 
     @Bean
-    public GraphServiceClient<Request> graphClient() {
-        ClientSecretCredential credential =
-            new ClientSecretCredentialBuilder()
-                .clientId(graphProperties.getClientId())
-                .clientSecret(graphProperties.getClientSecret())
-                .tenantId(graphProperties.getTenantId())
-                .build();
+    public GraphServiceClient graphClient() {
+        ClientSecretCredential credential = new ClientSecretCredentialBuilder()
+            .clientId(graphProperties.getClientId())
+            .clientSecret(graphProperties.getClientSecret())
+            .tenantId(graphProperties.getTenantId())
+            .build();
 
-        TokenCredentialAuthProvider authProvider =
-            new TokenCredentialAuthProvider(
-                List.of("https://graph.microsoft.com/.default"),
-                credential);
+        String[] scopes = new String[] {"https://graph.microsoft.com/.default"};
 
-        return GraphServiceClient.builder()
-            .authenticationProvider(authProvider)
-            .buildClient();
+        return new GraphServiceClient(credential, scopes);
     }
 }
