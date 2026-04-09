@@ -52,7 +52,7 @@ public class JwtHelper {
     }
 
     public String extractUsername(String token, String tokenType) {
-        Jwe<Claims> jwe = extractEncryptedClaims(token);
+        Jwe<Claims> jwe = extractEncryptedClaims(extractEncryptedToken(token));
         if (!tokenType.equals(jwe.getPayload().get("token_type"))) {
             throw new AuthenticationException("Invalid token type", ErrorCode.INVALID_TOKEN_TYPE);
         }
