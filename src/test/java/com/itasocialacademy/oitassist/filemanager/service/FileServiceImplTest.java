@@ -256,6 +256,8 @@ class FileServiceImplTest {
 
     @Test
     void deleteSoft_ShouldUpdateStatusAndTimestamp_WhenFileExists() {
+        String originalKey = "news/photo.jpg";
+        existingFile.setStorageKey(originalKey);
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
 
         fileService.deleteSoft(fileId);
@@ -266,6 +268,7 @@ class FileServiceImplTest {
         FileAsset savedFile = fileCaptor.getValue();
         assertEquals(FileStatus.SOFT_DELETED, savedFile.getStatus());
         assertNotNull(savedFile.getDeletedAt());
+        assertEquals(originalKey, savedFile.getStorageKey(), "Storage key must remain intact on soft delete");
     }
 
     @Test
@@ -294,8 +297,10 @@ class FileServiceImplTest {
         verify(fileRepository).save(captor.capture());
 
         FileAsset result = captor.getValue();
-        assertEquals(FileStatus.HARD_DELETED, result.getStatus());
-        assertEquals("", result.getStorageKey());
+        assertAll(
+            () -> assertEquals(FileStatus.HARD_DELETED, result.getStatus()),
+            () -> assertEquals("", result.getStorageKey()),
+            () -> assertNotNull(result.getDeletedAt(), "deletedAt should be set on successful hard delete"));
     }
 
     @Test
@@ -311,7 +316,8 @@ class FileServiceImplTest {
 
     @Test
     void deleteHard_ShouldSetStatusToFailed_WhenPhysicalDeletionThrowsException() {
-        existingFile.setStorageKey("path/to/fail");
+        String testPath = "path/to/fail";
+        existingFile.setStorageKey(testPath);
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
         when(providerResolver.resolve(any())).thenReturn(storageProvider);
 
@@ -323,7 +329,12 @@ class FileServiceImplTest {
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
         verify(fileRepository).save(captor.capture());
 
-        assertEquals(FileStatus.FAILED, captor.getValue().getStatus());
+        FileAsset result = captor.getValue();
+        assertAll(
+            () -> assertEquals(FileStatus.FAILED, result.getStatus()),
+            () -> assertEquals(testPath, result.getStorageKey(),
+                "Storage key should NOT be cleared if physical deletion fails"),
+            () -> assertNull(result.getDeletedAt(), "deletedAt should NOT be set if physical deletion fails"));
     }
 
     @Test

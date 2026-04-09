@@ -2,17 +2,23 @@ package com.itasocialacademy.oitassist.filemanager.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
+import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -25,6 +31,9 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
 
     @Mock
     private FileService fileService;
+
+    @Mock
+    private FileCleanupService cleanupService;
 
     @InjectMocks
     private FileController fileController;
@@ -135,5 +144,84 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
             .file(singleFilePart())
             .file(metadataPart(requestDto)))
             .andExpect(status().isInternalServerError());
+    }
+
+    // --- Delete Tests ---
+
+    @Test
+    void deleteSoft_ShouldReturnNoContent_WhenFileExists() throws Exception {
+        Long fileId = 1L;
+
+        mockMvc.perform(delete("/api/v1/files/{id}", fileId))
+            .andExpect(status().isNoContent());
+
+        verify(fileService).deleteSoft(fileId);
+    }
+
+    @Test
+    void deleteHard_ShouldReturnNoContent_WhenFileExists() throws Exception {
+        Long fileId = 1L;
+
+        mockMvc.perform(delete("/api/v1/files/{id}/hard", fileId))
+            .andExpect(status().isNoContent());
+
+        verify(fileService).deleteHard(fileId);
+    }
+
+    @Test
+    void deleteSoft_ShouldReturnNotFound_WhenFileDoesNotExist() throws Exception {
+        Long fileId = 999L;
+        doThrow(new FileAssetNotFoundException("File not found")).when(fileService).deleteSoft(fileId);
+
+        mockMvc.perform(delete("/api/v1/files/{id}", fileId))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteHard_ShouldReturnNotFound_WhenFileDoesNotExist() throws Exception {
+        Long fileId = 999L;
+        doThrow(new FileAssetNotFoundException("File not found")).when(fileService).deleteHard(fileId);
+
+        mockMvc.perform(delete("/api/v1/files/{id}/hard", fileId))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteSoft_ShouldReturnForbidden_WhenUserHasNoPermission() throws Exception {
+        Long fileId = 1L;
+        doThrow(new AuthorizationException("Access denied", ErrorCode.ACCESS_DENIED))
+            .when(fileService).deleteSoft(fileId);
+
+        mockMvc.perform(delete("/api/v1/files/{id}", fileId))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteHard_ShouldReturnForbidden_WhenUserHasNoPermission() throws Exception {
+        Long fileId = 1L;
+        doThrow(new AuthorizationException("Access denied", ErrorCode.ACCESS_DENIED))
+            .when(fileService).deleteHard(fileId);
+
+        mockMvc.perform(delete("/api/v1/files/{id}/hard", fileId))
+            .andExpect(status().isForbidden());
+    }
+
+    // --- Cleanup Tests ---
+
+    @Test
+    void triggerManualCleanup_ShouldReturnNoContent() throws Exception {
+        mockMvc.perform(delete("/api/v1/files/cleanup"))
+            .andExpect(status().isNoContent());
+
+        verify(cleanupService).runFullCleanup();
+    }
+
+    @Test
+    void triggerManualCleanup_ShouldReturnForbidden_WhenUserIsNotAdmin() throws Exception {
+        doThrow(new AuthorizationException("Access denied", ErrorCode.ACCESS_DENIED))
+            .when(cleanupService).runFullCleanup();
+
+        mockMvc.perform(delete("/api/v1/files/cleanup"))
+            .andExpect(status().isForbidden());
     }
 }

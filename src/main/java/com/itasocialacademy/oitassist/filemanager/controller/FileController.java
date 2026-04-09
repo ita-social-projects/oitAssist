@@ -61,12 +61,19 @@ public class FileController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(summary = "Soft delete file", description = "Marks the DB record SOFT_DELETED, file remains intact")
+    @Operation(
+        summary = "Soft delete file",
+        description = "Marks the DB record SOFT_DELETED, file remains intact")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "File deleted successfully"),
-        @ApiResponse(responseCode = "400", description = "Validation error"),
-        @ApiResponse(responseCode = "403", description = "Access denied"),
-        @ApiResponse(responseCode = "404", description = "File not found in the DB")
+        @ApiResponse(
+            responseCode = "204",
+            description = "File deleted successfully"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Access denied"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "File not found in the DB")
     })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','ORG','USER')")
@@ -75,12 +82,19 @@ public class FileController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Hard delete file", description = "Marks the DB record HARD_DELETED, file is deleted")
+    @Operation(
+        summary = "Hard delete file",
+        description = "Marks the DB record HARD_DELETED, file is deleted")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "File deleted successfully"),
-        @ApiResponse(responseCode = "400", description = "Validation error"),
-        @ApiResponse(responseCode = "403", description = "Access denied"),
-        @ApiResponse(responseCode = "404", description = "File not found in the DB")
+        @ApiResponse(
+            responseCode = "204",
+            description = "File deleted successfully"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Access denied"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "File not found in the DB")
     })
     @DeleteMapping("/{id}/hard")
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")

@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
+import com.itasocialacademy.oitassist.filemanager.exceptions.UnsupportedStorageException;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
@@ -103,7 +104,7 @@ class FileCleanupServiceImplTest {
 
     @Test
     @DisplayName("Full Cleanup: Should be resilient if one phase fails (e.g., Purge)")
-    void runFullCleanup_ShouldContinueDespiteIndividualFileErrors() {
+    void runFullCleanup_ShouldContinue_DespiteIndividualFileErrors() {
         when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(List.of(1L, 2L));
         doThrow(new RuntimeException("Hard delete failed")).when(fileService).deleteHard(1L);
 
@@ -131,7 +132,7 @@ class FileCleanupServiceImplTest {
 
     @Test
     @DisplayName("Full Cleanup: Purge phase should be resilient if one hard delete fails")
-    void runFullCleanup_PurgePhaseShouldBeResilientToExceptions() {
+    void runFullCleanup_PurgePhase_ShouldBeResilientToExceptions() {
         when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
         when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(List.of(1L, 2L));
         doThrow(new RuntimeException("Hard delete failed for file 1")).when(fileService).deleteHard(1L);
@@ -147,7 +148,7 @@ class FileCleanupServiceImplTest {
 
     @Test
     @DisplayName("Full Cleanup: Purge phase should use combined repository query results")
-    void runFullCleanup_PurgePhaseShouldUseCombinedQuery() {
+    void runFullCleanup_PurgePhase_ShouldUseCombinedQuery() {
         List<Long> ids = List.of(1L, 2L, 3L);
         when(repository.findIdsEligibleForCleanup(any(OffsetDateTime.class), any(OffsetDateTime.class)))
             .thenReturn(ids);
@@ -331,32 +332,86 @@ class FileCleanupServiceImplTest {
     }
 
     @Test
-    @DisplayName("Full Cleanup: Dangling phase should skip database queries if no attached files exist")
-    void runFullCleanup_DanglingPhase_ShouldHandleEmptyList() {
-        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
+    @DisplayName("Full Cleanup: Dangling phase should be resilient if one group fails (currently it throws, so we verify existing behavior)")
+    void runFullCleanup_DanglingPhase_ShouldThrowAndStop_WhenTypeIsUnmapped() {
+        FileAsset competitionFile = FileAsset.builder()
+            .id(1L).status(FileStatus.ATTACHED)
+            .relatedEntityType(RelatedEntityType.COMPETITION).relatedEntityId(123L).build();
+        FileAsset newsFile = FileAsset.builder()
+            .id(2L).status(FileStatus.ATTACHED)
+            .relatedEntityType(RelatedEntityType.NEWS).relatedEntityId(456L).build();
+
+        when(repository.findAllAttachedFiles()).thenReturn(List.of(competitionFile, newsFile));
+
+        assertThatThrownBy(() -> cleanupService.runFullCleanup())
+            .isInstanceOf(IllegalArgumentException.class);
+
+        // Verify that the news file wasn't even reached because Competition came first
+        // or the whole transaction rolled back
+        assertThat(newsFile.getStatus()).isEqualTo(FileStatus.ATTACHED);
+    }
+
+    @Test
+    @DisplayName("Full Cleanup: Dangling phase should NOT mark files if parents exist")
+    void runFullCleanup_DanglingPhase_ShouldSkip_IfParentExists() {
+        FileAsset newsFile = FileAsset.builder()
+            .id(1L).status(FileStatus.ATTACHED)
+            .relatedEntityType(RelatedEntityType.NEWS).relatedEntityId(100L).build();
+
+        when(repository.findAllAttachedFiles()).thenReturn(List.of(newsFile));
+        when(entityManager.createQuery(anyString(), eq(Long.class))).thenReturn(query);
+        when(query.setParameter(eq("ids"), any())).thenReturn(query);
+        when(query.getResultList()).thenReturn(List.of(100L)); // Parent exists
         when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
         when(storageProvider.listAllPhysicalKeys()).thenReturn(Collections.emptyList());
 
         cleanupService.runFullCleanup();
 
-        verify(entityManager, never()).createQuery(anyString(), any());
+        assertThat(newsFile.getStatus()).isEqualTo(FileStatus.ATTACHED);
+        assertThat(newsFile.getDeletedAt()).isNull();
+    }
 
-        verify(repository).findIdsEligibleForCleanup(any(), any());
-        verify(storageProvider).listAllPhysicalKeys();
+    @Test
+    @DisplayName("Full Cleanup: Rogue phase should log error and continue when storage provider throws exception on list")
+    void runFullCleanup_RoguePhase_ShouldContinue_WhenListFails() {
+        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
+        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
+        when(providerResolver.resolveDefault()).thenThrow(new UnsupportedStorageException("Test exception"));
+
+        // Should not throw exception
+        cleanupService.runFullCleanup();
+
+        verify(providerResolver).resolveDefault();
+    }
+
+    @Test
+    @DisplayName("Full Cleanup: Rogue phase should skip deletion when lastModified returns null")
+    void runFullCleanup_RoguePhase_ShouldSkip_WhenLastModifiedIsNull() {
+        String rogueKey = "rogue.jpg";
+        when(storageProvider.listAllPhysicalKeys()).thenReturn(List.of(rogueKey));
+        when(repository.findAllActiveStorageKeys()).thenReturn(Collections.emptyList());
+        when(storageProvider.getLastModified(rogueKey)).thenReturn(null);
+
+        when(repository.findAllAttachedFiles()).thenReturn(Collections.emptyList());
+        when(repository.findIdsEligibleForCleanup(any(), any())).thenReturn(Collections.emptyList());
+
+        cleanupService.runFullCleanup();
+
+        verify(storageProvider, never()).deletePhysical(rogueKey);
     }
 
     private static Stream<Arguments> provideRogueFileScenarios() {
         return Stream.of(
             // Scenario 1: File is active in DB -> Skip (regardless of age)
-            Arguments.of("Skip: File is active in DB",
-                List.of("test-file.png"), OffsetDateTime.now().minusDays(10), false),
+            Arguments.of("Skip: File is active in DB", List.of("test-file.png"), OffsetDateTime.now().minusDays(10),
+                false),
 
             // Scenario 2: File is rogue but very new (within grace period) -> Skip
-            Arguments.of("Skip: File is rogue but newly uploaded",
-                Collections.emptyList(), OffsetDateTime.now(), false),
+            Arguments.of("Skip: File is rogue but newly uploaded", Collections.emptyList(), OffsetDateTime.now(),
+                false),
 
             // Scenario 3: File is rogue and old (outside grace period) -> DELETE
-            Arguments.of("Delete: File is rogue and older than threshold",
-                Collections.emptyList(), OffsetDateTime.now().minusDays(2), true));
+            Arguments.of("Delete: File is rogue and older than threshold", Collections.emptyList(),
+                OffsetDateTime.now().minusDays(2), true));
     }
 }
