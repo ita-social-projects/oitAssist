@@ -15,6 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -25,10 +26,13 @@ public class SecurityConfig {
     private final JwtFilter jwtFilter;
 
     private final UserDetailsService authUserDetailsService;
+    private final AuthenticationEntryPoint entryPoint;
 
-    public SecurityConfig(JwtFilter jwtFilter, UserDetailsService authUserDetailsService) {
+    public SecurityConfig(JwtFilter jwtFilter, UserDetailsService authUserDetailsService,
+        AuthenticationEntryPoint entryPoint) {
         this.jwtFilter = jwtFilter;
         this.authUserDetailsService = authUserDetailsService;
+        this.entryPoint = entryPoint;
     }
 
     @Bean
@@ -62,12 +66,16 @@ public class SecurityConfig {
                 .permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/news/{id}", "/api/v1/news")
                 .permitAll()
+                .requestMatchers(HttpMethod.POST, "/refresh")
+                .permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/api", "/api/**")
                 .authenticated()
                 .anyRequest()
                 .permitAll())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(entryPoint))
             .addFilterBefore(jwtFilter,
                 UsernamePasswordAuthenticationFilter.class)
             .build();

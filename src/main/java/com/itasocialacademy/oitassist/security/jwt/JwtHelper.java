@@ -1,5 +1,7 @@
 package com.itasocialacademy.oitassist.security.jwt;
 
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -12,6 +14,9 @@ import java.util.function.Function;
 
 @Component
 public class JwtHelper {
+    public static final String ACCESS_TOKEN = "access";
+    public static final String REFRESH_TOKEN = "refresh";
+
     private final JwtProperties jwtProperties;
 
     public JwtHelper(JwtProperties jwtProperties) {
@@ -20,6 +25,16 @@ public class JwtHelper {
 
     public String createToken(Map<String, Object> claims, String subject) {
         Date expiryDate = Date.from(Instant.ofEpochMilli(System.currentTimeMillis() + jwtProperties.getValidity()));
+        return generateToken(claims, subject, expiryDate);
+    }
+
+    public String createRefreshToken(Map<String, Object> claims, String subject) {
+        Date expiryDate =
+            Date.from(Instant.ofEpochMilli(System.currentTimeMillis() + jwtProperties.getRefreshValidity()));
+        return generateToken(claims, subject, expiryDate);
+    }
+
+    private String generateToken(Map<String, Object> claims, String subject, Date expiryDate) {
         Date currentDate = new Date(System.currentTimeMillis());
         String encryptedToken = Jwts.builder()
             .claims(claims)
@@ -36,8 +51,11 @@ public class JwtHelper {
             .compact();
     }
 
-    public String extractUsername(String token) {
-        Jwe<Claims> jwe = extractEncryptedClaims(token);
+    public String extractUsername(String token, String tokenType) {
+        Jwe<Claims> jwe = extractEncryptedClaims(extractEncryptedToken(token));
+        if (!tokenType.equals(jwe.getPayload().get("token_type"))) {
+            throw new AuthenticationException("Invalid token type", ErrorCode.INVALID_TOKEN_TYPE);
+        }
         return extractClaimBody(jwe, Claims::getSubject);
     }
 

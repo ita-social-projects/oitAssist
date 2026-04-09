@@ -118,7 +118,7 @@ public class GlobalExceptionHandler {
             ex.getErrorCode(),
             ex.getClass().getSimpleName(),
             ex.getMessage(),
-            MDC.get("traceId"));
+            MDC.get(TRACE_ID_MDC));
         HttpStatus status = statusMapper.map(ex.getErrorCode());
         return ResponseEntity.status(status)
             .body(buildResponse(request, ex.getErrorCode(), ex.getMessage(), status.value(), ex.getDetails()));
@@ -131,7 +131,7 @@ public class GlobalExceptionHandler {
             ex.getErrorCode(),
             MDC.get("userId"),
             MDC.get("ip"),
-            MDC.get("traceId"));
+            MDC.get(TRACE_ID_MDC));
         HttpStatus status = statusMapper.map(ex.getErrorCode());
         return ResponseEntity.status(status)
             .body(buildResponse(request, ex.getErrorCode(), ex.getMessage(), status.value(), null));
@@ -143,7 +143,7 @@ public class GlobalExceptionHandler {
             "TechnicalException [{}] type={} traceId={} path={}",
             ex.getErrorCode(),
             ex.getClass().getSimpleName(),
-            MDC.get("traceId"),
+            MDC.get(TRACE_ID_MDC),
             request.getRequestURI(),
             ex);
 
@@ -165,7 +165,7 @@ public class GlobalExceptionHandler {
                     "Invalid value"),
                 (a, b) -> a + "; " + b));
 
-        log.warn("Validation failed: traceId={}, errors={}", MDC.get("traceId"), fieldErrors);
+        log.warn("Validation failed: traceId={}, errors={}", MDC.get(TRACE_ID_MDC), fieldErrors);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, "Validation failed",
@@ -175,7 +175,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
         HttpServletRequest request) {
-        log.warn("Validation failed: traceId={}", MDC.get("traceId"));
+        log.warn("Validation failed: traceId={}", MDC.get(TRACE_ID_MDC));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, "Request body is missing or malformed",
@@ -184,7 +184,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAnyException(Exception ex, HttpServletRequest request) {
-        log.error("Unhandled exception: traceId={}", MDC.get("traceId"), ex);
+        log.error("Unhandled exception: traceId={}", MDC.get(TRACE_ID_MDC), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(buildResponse(request, ErrorCode.COMMON_INTERNAL_ERROR, "An unexpected error occurred",
                 HttpStatus.INTERNAL_SERVER_ERROR.value(), null));
@@ -194,7 +194,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAccessDenied(
         Exception ex,
         HttpServletRequest request) {
-        log.warn("Access denied: traceId={}", MDC.get("traceId"));
+        log.warn("Access denied: traceId={}", MDC.get(TRACE_ID_MDC));
 
         HttpStatus status = HttpStatus.FORBIDDEN;
 
@@ -221,7 +221,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MissingServletRequestPartException.class)
     public ResponseEntity<ErrorResponse> handleMissingServletRequestPart(
         MissingServletRequestPartException ex, HttpServletRequest request) {
-        log.warn("Missing request part: traceId={}, part={}", MDC.get("traceId"), ex.getRequestPartName());
+        log.warn("Missing request part: traceId={}, part={}", MDC.get(TRACE_ID_MDC), ex.getRequestPartName());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED,
                 "Required request part '" + ex.getRequestPartName() + "' is not present",

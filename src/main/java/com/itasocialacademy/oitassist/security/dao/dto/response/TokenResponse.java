@@ -12,4 +12,6 @@ import lombok.*;
 public class TokenResponse {
     @Schema(description = "token", example = "very-long-token")
     private String token;
+    @Schema(description = "refresh token", example = "very-long-token")
+    private String refreshToken;
 }

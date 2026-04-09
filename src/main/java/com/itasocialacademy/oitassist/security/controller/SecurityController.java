@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.security.controller;
 
+import com.itasocialacademy.oitassist.security.dao.dto.request.RefreshTokenRequest;
 import com.itasocialacademy.oitassist.security.service.interfaces.TokenService;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TokenRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
@@ -7,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,9 +24,9 @@ public class SecurityController {
         this.tokenService = tokenService;
     }
 
-    @PostMapping("/token/create")
+    @PostMapping("/signIn")
     @Operation(
-        summary = "Generate JWT token",
+        summary = "Generate JWT access and refresh tokens",
         description = "Creates a JWT token based on provided credentials",
         responses = {
             @ApiResponse(responseCode = "200", description = "Token created successfully"),
@@ -32,6 +34,18 @@ public class SecurityController {
         })
     public TokenResponse createToken(@RequestBody TokenRequest tokenRequest) {
         return tokenService.generateToken(tokenRequest);
+    }
+
+    @Operation(
+        summary = "Generate new JWT access and refresh token",
+        description = "Creates a new JWT access and refresh tokens based on send refresh token",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Token created successfully"),
+            @ApiResponse(responseCode = "403", description = "Invalid token")
+        })
+    @PostMapping("/refresh")
+    public TokenResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return tokenService.refreshToken(request.getToken());
     }
 
     @GetMapping("/api")
