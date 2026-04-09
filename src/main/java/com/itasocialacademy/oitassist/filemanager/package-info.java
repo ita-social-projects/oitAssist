@@ -7,11 +7,15 @@
         "core::BaseService",
         "core::AbstractServiceImpl",
         "core::GeneralMapper",
+        "core::DtoMapper",
+        "core::CreateMapper",
         "core::EntityDTO",
         "core::CreateEntityDTO",
         "core::UpdateEntityDTO",
         "core::LongEntity",
         "core::EntityRepository",
+        "core::DtoMapper",
+        "core::CreateMapper",
     })
 package com.itasocialacademy.oitassist.filemanager;
 

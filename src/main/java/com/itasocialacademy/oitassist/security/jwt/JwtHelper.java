@@ -14,8 +14,8 @@ import java.util.function.Function;
 
 @Component
 public class JwtHelper {
-    public final static String ACCESS_TOKEN = "access";
-    public final static String REFRESH_TOKEN = "refresh";
+    public static final String ACCESS_TOKEN = "access";
+    public static final String REFRESH_TOKEN = "refresh";
 
     private final JwtProperties jwtProperties;
 
@@ -41,13 +41,13 @@ public class JwtHelper {
             .subject(subject)
             .issuedAt(currentDate)
             .expiration(expiryDate)
-            .encryptWith(getSecretKey(jwtProperties.getEncryptedKey()), Jwts.ENC.A192CBC_HS384)
+            .encryptWith(getSecretKey(jwtProperties.getEncryptedKey()), Jwts.ENC.A256GCM)
             .compact();
         return Jwts.builder()
             .subject(encryptedToken)
             .issuedAt(currentDate)
             .expiration(expiryDate)
-            .signWith(getSecretKey(jwtProperties.getSignKey()), Jwts.SIG.HS384)
+            .signWith(getSecretKey(jwtProperties.getSignKey()), Jwts.SIG.HS512)
             .compact();
     }
 
