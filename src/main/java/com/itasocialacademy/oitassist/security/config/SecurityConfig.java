@@ -69,7 +69,8 @@ public class SecurityConfig {
                     "/api/v1/news/**")
                 .permitAll()
                 .requestMatchers(
-                    "/actuator/**",
+                    "/actuator/health/**",
+                    "/actuator/info",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
                     "/docs/**",
