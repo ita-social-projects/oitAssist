@@ -1,7 +1,6 @@
 package com.itasocialacademy.oitassist.auth.service;
 
-import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
-import com.itasocialacademy.oitassist.user.dao.model.UserActivationToken;
+import com.itasocialacademy.oitassist.auth.dto.request.RegisterRequest;
 import com.itasocialacademy.oitassist.auth.exceptions.UserNotActivatedException;
 import com.itasocialacademy.oitassist.auth.mapper.RegisterRequestMapper;
 import com.itasocialacademy.oitassist.auth.service.interfaces.RegistrationService;
@@ -31,6 +30,11 @@ public class RegistrationServiceImpl implements RegistrationService {
 
     /**
      * {@inheritDoc}
+     *
+     * <p>
+     * Token generation and activation email dispatch are delegated to
+     * {@link com.itasocialacademy.oitassist.auth.service.interfaces.UserActivationService#initializeActivation}.
+     * </p>
      */
     @Override
     @Transactional
@@ -43,18 +47,9 @@ public class RegistrationServiceImpl implements RegistrationService {
             User user = registerRequestMapper.toEntity(request);
             user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-            UserActivationToken userActivationToken = UserActivationToken.generateActivationToken();
-
-            user.setUserActivationToken(userActivationToken);
-
             userRepository.save(user);
 
-            userActivationService.publishActivationEvent(
-                request.getEmail(),
-                request.getFirstName(),
-                userActivationToken.getToken());
-
-            log.info("Activation account event published with email={}", request.getEmail());
+            userActivationService.initializeActivation(request.getEmail(), request.getFirstName());
 
             log.info("User successfully created with email={}", request.getEmail());
         } catch (DataIntegrityViolationException e) {

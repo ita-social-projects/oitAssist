@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.auth.controller;
 
-import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
+import com.itasocialacademy.oitassist.auth.dto.request.RegisterRequest;
 import com.itasocialacademy.oitassist.auth.service.interfaces.RegistrationService;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;

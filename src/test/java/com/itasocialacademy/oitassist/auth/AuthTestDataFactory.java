@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.auth;
 
-import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
-import com.itasocialacademy.oitassist.auth.dao.dto.request.ResendVerificationMailRequest;
+import com.itasocialacademy.oitassist.auth.dto.request.RegisterRequest;
+import com.itasocialacademy.oitassist.auth.dto.request.ResendVerificationMailRequest;
 
 public class AuthTestDataFactory {
     public static final String REGISTRATION_PATH = "/api/v1/registration";

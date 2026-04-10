@@ -1,8 +1,8 @@
 package com.itasocialacademy.oitassist.auth.service;
 
 import com.itasocialacademy.oitassist.auth.AuthTestDataFactory;
-import com.itasocialacademy.oitassist.auth.dao.dto.event.ActivationAccountEvent;
-import com.itasocialacademy.oitassist.auth.dao.dto.request.ResendVerificationMailRequest;
+import com.itasocialacademy.oitassist.auth.dto.event.ActivationAccountEvent;
+import com.itasocialacademy.oitassist.auth.dto.request.ResendVerificationMailRequest;
 import com.itasocialacademy.oitassist.auth.exceptions.UserAlreadyActivatedException;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import com.itasocialacademy.oitassist.user.dao.model.User;

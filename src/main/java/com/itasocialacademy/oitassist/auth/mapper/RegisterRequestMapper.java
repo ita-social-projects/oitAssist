@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.auth.mapper;
 
-import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
+import com.itasocialacademy.oitassist.auth.dto.request.RegisterRequest;
 import com.itasocialacademy.oitassist.user.dao.model.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

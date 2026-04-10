@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.auth.service.interfaces;
 
-import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
+import com.itasocialacademy.oitassist.auth.dto.request.RegisterRequest;
 
 /**
  * Service responsible for handling user registration workflow. Defines
@@ -16,6 +16,7 @@ public interface RegistrationService {
      * <li>password encoding</li>
      * <li>setting default role and status</li>
      * <li>saving the user to the database</li>
+     * <li>initializing account activation and sending a verification email</li>
      * </ul>
      *
      * @param request the registration request containing user personal information

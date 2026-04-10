@@ -9,15 +9,16 @@ import java.util.Map;
  */
 public interface EmailService {
     /**
-     * Sends an HTML email generated from a template.
+     * Sends an HTML email using a specified template. The method takes a
+     * recipient's email address, a path to the email template, a subject line, and
+     * a map of key-value pairs for populating the template. The method processes
+     * the email template with the provided data and sends the resulting email.
      *
-     * @param to           recipient email address
-     * @param templatePath path to the email template file (e.g. FreeMarker,
-     *                     Thymeleaf template)
-     * @param root         template model containing variables used for rendering
-     *                     dynamic content
-     *
-     * @throws RuntimeException if email sending fails
+     * @param to           the recipient's email address
+     * @param templatePath the file path of the email template to be used
+     * @param subject      the subject line of the email
+     * @param root         a map containing key-value pairs used to populate
+     *                     placeholders in the email template
      */
-    void sendHtmlEmail(String to, String templatePath, String subject, Map<String, Object> root);
+    void sendTemplateEmail(String to, String templatePath, String subject, Map<String, String> root);
 }
