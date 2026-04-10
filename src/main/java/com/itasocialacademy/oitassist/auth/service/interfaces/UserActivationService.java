@@ -28,5 +28,17 @@ public interface UserActivationService {
      */
     void resendVerificationEmail(String email);
 
-    void publishActivationEvent(String email, String firstName, String token);
+    /**
+     * Initializes the account activation process for a newly registered user.
+     * Generates a new activation token, persists it to the user record, and sends a
+     * verification email with an activation link.
+     *
+     * @param email     the email address of the user
+     * @param firstName the first name of the user, used to personalize the email
+     * @throws UserNotFoundException         if no user exists with the provided
+     *                                       email
+     * @throws UserAlreadyActivatedException if the user account is already
+     *                                       activated
+     */
+    void initializeActivation(String email, String firstName);
 }
