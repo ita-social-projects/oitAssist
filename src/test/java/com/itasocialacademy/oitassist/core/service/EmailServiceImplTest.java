@@ -38,7 +38,7 @@ class EmailServiceImplTest {
         String to = "test@mail.com";
         String templatePath = "registration-confirmation.html";
         String subject = "Registration Confirmation";
-        Map<String, Object> root = Map.of("name", "Test");
+        Map<String, String> root = Map.of("name", "Test");
         MimeMessage message = mock(MimeMessage.class);
         Template template = mock(Template.class);
 
@@ -46,7 +46,7 @@ class EmailServiceImplTest {
         when(javaMailSender.createMimeMessage()).thenReturn(message);
         when(configuration.getTemplate(templatePath)).thenReturn(template);
 
-        emailService.sendHtmlEmail(to, templatePath, subject, root);
+        emailService.sendTemplateEmail(to, templatePath, subject, root);
 
         // then
         verify(javaMailSender, times(1)).send(message);
@@ -54,11 +54,11 @@ class EmailServiceImplTest {
 
     @Test
     @DisplayName("Send HTML email with template - IOException")
-    void sendHtmlEmail_whenMessagingException_shouldThrowEmailSendingException() throws Exception {
+    void sendTemplateEmail_whenMessagingException_shouldThrowEmailSendingException() throws Exception {
         // given
         String to = "test@mail.com";
         String templatePath = "registration-confirmation.html";
-        Map<String, Object> root = Map.of("name", "Test");
+        Map<String, String> root = Map.of("name", "Test");
         String subject = "Registration Confirmation";
         MimeMessage message = mock(MimeMessage.class);
 
@@ -67,6 +67,6 @@ class EmailServiceImplTest {
         doThrow(new IOException()).when(configuration).getTemplate(templatePath);
 
         // then
-        assertDoesNotThrow(() -> emailService.sendHtmlEmail(to, templatePath, subject, root));
+        assertDoesNotThrow(() -> emailService.sendTemplateEmail(to, templatePath, subject, root));
     }
 }
