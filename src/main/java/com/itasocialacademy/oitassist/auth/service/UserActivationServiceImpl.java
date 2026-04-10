@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.auth.service;
 
-import com.itasocialacademy.oitassist.auth.dao.dto.event.ActivationAccountEvent;
+import com.itasocialacademy.oitassist.auth.dto.event.ActivationAccountEvent;
 import com.itasocialacademy.oitassist.auth.exceptions.UserAlreadyActivatedException;
 import com.itasocialacademy.oitassist.auth.service.interfaces.UserActivationService;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;

@@ -2,7 +2,7 @@ package com.itasocialacademy.oitassist.auth.controller;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.auth.AuthTestDataFactory;
-import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
+import com.itasocialacademy.oitassist.auth.dto.request.RegisterRequest;
 import com.itasocialacademy.oitassist.auth.service.interfaces.RegistrationService;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import org.junit.jupiter.api.DisplayName;

@@ -2,7 +2,7 @@ package com.itasocialacademy.oitassist.auth.controller;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.auth.AuthTestDataFactory;
-import com.itasocialacademy.oitassist.auth.dao.dto.request.ResendVerificationMailRequest;
+import com.itasocialacademy.oitassist.auth.dto.request.ResendVerificationMailRequest;
 import com.itasocialacademy.oitassist.auth.exceptions.UserAlreadyActivatedException;
 import com.itasocialacademy.oitassist.auth.service.interfaces.UserActivationService;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;

@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.auth.controller;
 
-import com.itasocialacademy.oitassist.auth.dao.dto.request.ResendVerificationMailRequest;
+import com.itasocialacademy.oitassist.auth.dto.request.ResendVerificationMailRequest;
 import com.itasocialacademy.oitassist.user.exceptions.ActivationTokenSendingTimeoutException;
 import com.itasocialacademy.oitassist.auth.service.interfaces.UserActivationService;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;

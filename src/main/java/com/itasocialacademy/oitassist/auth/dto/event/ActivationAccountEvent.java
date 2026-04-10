@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.auth.dao.dto.event;
+package com.itasocialacademy.oitassist.auth.dto.event;
 
 public record ActivationAccountEvent(
     String email,

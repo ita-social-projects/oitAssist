@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.auth.dao.dto.request;
+package com.itasocialacademy.oitassist.auth.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;

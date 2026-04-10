@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.auth.service.interfaces;
 
-import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
+import com.itasocialacademy.oitassist.auth.dto.request.RegisterRequest;
 
 /**
  * Service responsible for handling user registration workflow. Defines

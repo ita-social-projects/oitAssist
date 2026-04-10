@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.auth.listener;
 
-import com.itasocialacademy.oitassist.auth.dao.dto.event.ActivationAccountEvent;
+import com.itasocialacademy.oitassist.auth.dto.event.ActivationAccountEvent;
 import com.itasocialacademy.oitassist.core.properties.WebClientProperties;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
 import lombok.RequiredArgsConstructor;

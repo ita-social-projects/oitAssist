@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.auth.service;
 
 import com.itasocialacademy.oitassist.auth.AuthTestDataFactory;
-import com.itasocialacademy.oitassist.auth.dao.dto.request.RegisterRequest;
+import com.itasocialacademy.oitassist.auth.dto.request.RegisterRequest;
 import com.itasocialacademy.oitassist.auth.exceptions.UserNotActivatedException;
 import com.itasocialacademy.oitassist.auth.mapper.RegisterRequestMapper;
 import com.itasocialacademy.oitassist.auth.service.interfaces.UserActivationService;
