@@ -29,6 +29,37 @@ public class UserActivationServiceImpl implements UserActivationService {
      * {@inheritDoc}
      *
      * <p>
+     * Looks up the token, validates it is not expired, sets the user status to
+     * {@code ACTIVATED}, and deletes the token so it cannot be reused.
+     * </p>
+     */
+    @Override
+    @Transactional
+    public void verifyEmail(String token) {
+        UserActivationToken activationToken = tokenRepository.findByToken(token)
+            .orElseThrow(InvalidActivationTokenException::new);
+
+        if (activationToken.isExpired()) {
+            throw new InvalidActivationTokenException();
+        }
+
+        User user = activationToken.getUser();
+
+        if (user.getUserStatus() == UserStatus.ACTIVATED) {
+            throw new UserAlreadyActivatedException();
+        }
+
+        user.setUserStatus(UserStatus.ACTIVATED);
+        user.setUserActivationToken(null);
+        userRepository.save(user);
+
+        log.info("User account activated for email={}", user.getEmail());
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
      * If the existing activation token is expired or missing, a fresh token is
      * generated and assigned to the user. If a valid token already exists but the
      * resend cooldown has not elapsed, an exception is thrown. The updated user
@@ -66,38 +97,6 @@ public class UserActivationServiceImpl implements UserActivationService {
      */
     private void sendActivationEmail(String email, String firstName, String token) {
         eventPublisher.publishEvent(new ActivationAccountEvent(email, firstName, token));
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * <p>
-     * Looks up the token, validates it is not expired, sets the user status to
-     * {@code ACTIVATED}, and deletes the token so it cannot be reused.
-     * </p>
-     */
-    @Override
-    @Transactional
-    public void verifyEmail(String token) {
-        UserActivationToken activationToken = tokenRepository.findByToken(token)
-            .orElseThrow(InvalidActivationTokenException::new);
-
-        if (activationToken.isExpired()) {
-            throw new InvalidActivationTokenException();
-        }
-
-        User user = activationToken.getUser();
-
-        if (user.getUserStatus() == UserStatus.ACTIVATED) {
-            throw new UserAlreadyActivatedException();
-        }
-
-        user.setUserStatus(UserStatus.ACTIVATED);
-        user.setUserActivationToken(null);
-
-        userRepository.save(user);
-
-        log.info("User account activated for email={}", user.getEmail());
     }
 
     /**
