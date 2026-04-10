@@ -9,13 +9,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
+@RequestMapping(value = "/api/v1/security")
 @Tag(name = "Security v1", description = "Operations related to security and token management")
 public class SecurityController {
     private final TokenService tokenService;
@@ -57,7 +61,7 @@ public class SecurityController {
             @ApiResponse(responseCode = "200", description = "Request successful")
         })
     public void api() {
-        System.out.println("Token work");
+        log.info("/api/v1/security/api placeholder");
     }
 
     @GetMapping("/api/get")
@@ -70,7 +74,7 @@ public class SecurityController {
             @ApiResponse(responseCode = "401", description = "Unauthorized")
         })
     public void apiGet() {
-        System.out.println("Token work");
+        log.info("/api/v1/security/api/get placeholder Token work");
     }
 
     @GetMapping("/api/get/get")
@@ -83,7 +87,7 @@ public class SecurityController {
             @ApiResponse(responseCode = "401", description = "Unauthorized")
         })
     public void apiGetGet() {
-        System.out.println("Token work");
+        log.info("/api/v1/security/api/get/get placeholder Token work");
     }
 
     @GetMapping("/api/admin")
@@ -98,7 +102,7 @@ public class SecurityController {
             @ApiResponse(responseCode = "403", description = "Forbidden - user not admin")
         })
     public void apiAdmin() {
-        System.out.println("Token work");
+        log.info("/api/v1/security/api/admin placeholder Token work");
     }
 
     @GetMapping("/api/user")
@@ -113,6 +117,6 @@ public class SecurityController {
             @ApiResponse(responseCode = "403", description = "Forbidden - user not authorized")
         })
     public void apiUser() {
-        System.out.println("Token work");
+        log.info("/api/v1/security/api/user placeholder Token work");
     }
 }

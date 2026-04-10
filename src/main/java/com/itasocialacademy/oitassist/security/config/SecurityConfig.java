@@ -61,18 +61,23 @@ public class SecurityConfig {
         return http.csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST,
-                    "/api/v1/registration",
-                    "/api/v1/registration/resend-email")
+                    "/api/v1/registration/**",
+                    "/api/v1/security/signIn",
+                    "/api/v1/security/refresh")
                 .permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/news/{id}", "/api/v1/news")
+                .requestMatchers(HttpMethod.GET,
+                    "/api/v1/news/**")
                 .permitAll()
-                .requestMatchers(HttpMethod.POST, "/refresh")
+                .requestMatchers(
+                    "/actuator/health/**",
+                    "/actuator/info",
+                    "/v3/api-docs/**",
+                    "/swagger-ui/**",
+                    "/docs/**",
+                    "/docs")
                 .permitAll()
-                .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers("/api", "/api/**")
-                .authenticated()
                 .anyRequest()
-                .permitAll())
+                .authenticated())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(entryPoint))
