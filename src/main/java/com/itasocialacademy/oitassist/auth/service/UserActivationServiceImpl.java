@@ -23,10 +23,12 @@ public class UserActivationServiceImpl implements UserActivationService {
     /**
      * {@inheritDoc}
      *
-     * <p>If the existing activation token is expired or missing, a fresh token is
+     * <p>
+     * If the existing activation token is expired or missing, a fresh token is
      * generated and assigned to the user. If a valid token already exists but the
      * resend cooldown has not elapsed, an exception is thrown. The updated user
      * state is persisted before the activation email is dispatched.
+     * </p>
      */
     @Transactional
     public void resendVerificationEmail(String email) {

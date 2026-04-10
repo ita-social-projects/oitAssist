@@ -31,8 +31,10 @@ public class RegistrationServiceImpl implements RegistrationService {
     /**
      * {@inheritDoc}
      *
-     * <p>Token generation and activation email dispatch are delegated to
+     * <p>
+     * Token generation and activation email dispatch are delegated to
      * {@link com.itasocialacademy.oitassist.auth.service.interfaces.UserActivationService#initializeActivation}.
+     * </p>
      */
     @Override
     @Transactional

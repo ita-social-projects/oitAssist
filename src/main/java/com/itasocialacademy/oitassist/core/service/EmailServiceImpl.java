@@ -27,10 +27,12 @@ public class EmailServiceImpl implements EmailService {
     /**
      * {@inheritDoc}
      *
-     * <p>Loads the FreeMarker template at {@code templatePath}, merges it with the
+     * <p>
+     * Loads the FreeMarker template at {@code templatePath}, merges it with the
      * provided {@code root} model, and sends the rendered HTML as a MIME message.
      * Runs asynchronously. Errors during template processing or mail delivery are
      * logged and swallowed — the caller is not notified of send failures.
+     * </p>
      */
     @Async
     @Override
