@@ -2,11 +2,11 @@ package com.itasocialacademy.oitassist.security.service;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
+import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.jwt.JwtHelper;
 import com.itasocialacademy.oitassist.security.service.interfaces.TokenService;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TokenRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
-import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
@@ -14,6 +14,7 @@ import io.jsonwebtoken.security.SignatureException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -76,7 +77,17 @@ public class TokenServiceImpl implements TokenService {
     private TokenResponse getTokenResponse(UserDetailsImpl userDetails) {
         Map<String, Object> accessTokenClaims = new HashMap<>();
         accessTokenClaims.put("id", userDetails.getId());
-        accessTokenClaims.put("role", userDetails.getRole());
+
+        // Extract role from authorities (assuming "ROLE_XXX" format and single role)
+        String role = userDetails.getAuthorities().stream()
+            .map(GrantedAuthority::getAuthority)
+            .filter(Objects::nonNull)
+            .filter(a -> a.startsWith("ROLE_"))
+            .map(a -> a.substring(5))
+            .findFirst()
+            .orElse("");
+        accessTokenClaims.put("role", role);
+
         accessTokenClaims.put("token_type", JwtHelper.ACCESS_TOKEN);
         String accessToken = jwtHelper.createToken(accessTokenClaims, userDetails.getUsername());
 

@@ -1,7 +1,6 @@
 package com.itasocialacademy.oitassist.security.service;
 
-import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
-import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityUserProvider;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -9,18 +8,15 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
-    private final UserFacade userFacade;
+    private final SecurityUserProvider securityUserProvider;
 
-    public UserDetailsServiceImpl(UserFacade userFacade) {
-        this.userFacade = userFacade;
+    public UserDetailsServiceImpl(SecurityUserProvider securityUserProvider) {
+        this.securityUserProvider = securityUserProvider;
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        UserDetailsImpl userDetailsImpl = userFacade.getUserByEmail(username);
-        if (userDetailsImpl == null) {
-            throw new UsernameNotFoundException("User not Found!");
-        }
-        return userDetailsImpl;
+        return securityUserProvider.findByEmail(username)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
     }
 }

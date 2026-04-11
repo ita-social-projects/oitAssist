@@ -16,6 +16,7 @@
         "core::EntityRepository",
         "core::DtoMapper",
         "core::CreateMapper",
+        "security::SecurityService"
     })
 package com.itasocialacademy.oitassist.filemanager;
 

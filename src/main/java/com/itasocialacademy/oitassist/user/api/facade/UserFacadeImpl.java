@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.user.api.facade;
 
-import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
+import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.api.dto.CreateUserCommand;
 import com.itasocialacademy.oitassist.user.api.dto.UserDto;

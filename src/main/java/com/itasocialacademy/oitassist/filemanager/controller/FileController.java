@@ -53,6 +53,7 @@ public class FileController {
         responseCode = "401",
         description = "Unauthorized")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FileResponseDto>> upload(
         @RequestPart("files") List<MultipartFile> files,
         @RequestPart("metadata") @Valid FileUploadRequestDto requestDto,

@@ -13,7 +13,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
@@ -27,12 +26,14 @@ public class SecurityConfig {
 
     private final UserDetailsService authUserDetailsService;
     private final AuthenticationEntryPoint entryPoint;
+    private final PasswordEncoder passwordEncoder;
 
     public SecurityConfig(JwtFilter jwtFilter, UserDetailsService authUserDetailsService,
-        AuthenticationEntryPoint entryPoint) {
+        AuthenticationEntryPoint entryPoint, PasswordEncoder passwordEncoder) {
         this.jwtFilter = jwtFilter;
         this.authUserDetailsService = authUserDetailsService;
         this.entryPoint = entryPoint;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Bean
@@ -40,13 +41,8 @@ public class SecurityConfig {
         final DaoAuthenticationProvider daoAuthenticationProvider =
             new DaoAuthenticationProvider(authUserDetailsService);
         daoAuthenticationProvider.setPasswordEncoder(
-            passwordEncoder());
+            passwordEncoder);
         return daoAuthenticationProvider;
-    }
-
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 
     @Bean

@@ -2,8 +2,7 @@
     allowedDependencies = {
         "core::GlobalExceptionHandler",
         "core::AuthenticationException",
-        "user::UserFacade",
-        "user::UserDetailsImpl"
+        "user::UserFacade"
     })
 package com.itasocialacademy.oitassist.security;
 
