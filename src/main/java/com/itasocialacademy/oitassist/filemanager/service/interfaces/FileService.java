@@ -15,8 +15,13 @@ public interface FileService {
      * @param userId     the ID of the user performing the upload
      * @return a list of {@link FileResponseDto} representing the persisted file
      *         records
-     * @throws com.itasocialacademy.oitassist.core.exceptions.ValidationException if any file fails the
-     *                                                                            policy validation
+     * @throws com.itasocialacademy.oitassist.core.exceptions.ValidationException if
+     *                                                                            any
+     *                                                                            file
+     *                                                                            fails
+     *                                                                            the
+     *                                                                            policy
+     *                                                                            validation
      */
     List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto, Long userId);
 
