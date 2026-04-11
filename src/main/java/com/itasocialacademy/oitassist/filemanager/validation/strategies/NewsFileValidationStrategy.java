@@ -7,11 +7,17 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class NewsFileValidationStrategy extends AbstractFileValidationStrategy {
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public RelatedEntityType supports() {
         return RelatedEntityType.NEWS;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected FilePolicy resolvePolicy(Long relatedEntityId) {
         return NewsFilePolicy.INSTANCE;

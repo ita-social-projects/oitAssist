@@ -6,6 +6,23 @@ import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface FileService {
+    /**
+     * Validates and uploads a batch of files, linking them to the specified entity.
+     *
+     * @param files      the files to upload
+     * @param requestDto upload context metadata (entity type and optional entity
+     *                   ID)
+     * @param userId     the ID of the user performing the upload
+     * @return a list of {@link FileResponseDto} representing the persisted file
+     *         records
+     * @throws com.itasocialacademy.oitassist.core.exceptions.ValidationException if
+     *                                                                            any
+     *                                                                            file
+     *                                                                            fails
+     *                                                                            the
+     *                                                                            policy
+     *                                                                            validation
+     */
     List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto, Long userId);
 
     /**

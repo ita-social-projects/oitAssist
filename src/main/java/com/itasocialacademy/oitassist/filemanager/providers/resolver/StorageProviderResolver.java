@@ -16,6 +16,14 @@ public class StorageProviderResolver {
     @Value("${storage.default-provider:LOCAL}")
     private StorageProviderType defaultProvider;
 
+    /**
+     * Resolves a {@link StorageProvider} that supports the given type.
+     *
+     * @param type the desired storage provider type
+     * @return the matching {@link StorageProvider}
+     * @throws UnsupportedStorageException if no registered provider supports the
+     *                                     given type
+     */
     public StorageProvider resolve(StorageProviderType type) {
         return providers.stream()
             .filter(p -> p.supports(type))
@@ -24,6 +32,14 @@ public class StorageProviderResolver {
                 "Unsupported storage provider: " + type));
     }
 
+    /**
+     * Resolves the default {@link StorageProvider} as configured by the
+     * {@code storage.default-provider} property (defaults to {@code LOCAL}).
+     *
+     * @return the default {@link StorageProvider}
+     * @throws UnsupportedStorageException if the configured default type has no
+     *                                     matching provider
+     */
     public StorageProvider resolveDefault() {
         return resolve(defaultProvider);
     }

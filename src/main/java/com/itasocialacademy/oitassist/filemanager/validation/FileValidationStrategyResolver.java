@@ -13,6 +13,22 @@ import org.springframework.stereotype.Component;
 public class FileValidationStrategyResolver {
     private final List<FileValidationStrategy> strategies;
 
+    /**
+     * Resolves the {@link FileValidationStrategy} registered for the given entity
+     * type.
+     *
+     * @param type the entity type for which a validation strategy is required
+     * @return the matching {@link FileValidationStrategy}
+     * @throws com.itasocialacademy.oitassist.core.exceptions.ValidationException if
+     *                                                                            no
+     *                                                                            strategy
+     *                                                                            is
+     *                                                                            registered
+     *                                                                            for
+     *                                                                            the
+     *                                                                            given
+     *                                                                            type
+     */
     public FileValidationStrategy resolve(RelatedEntityType type) {
         return strategies.stream()
             .filter(s -> s.supports() == type)
