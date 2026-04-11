@@ -1,6 +1,8 @@
 package com.itasocialacademy.oitassist.auth.service;
 
+import com.itasocialacademy.oitassist.auth.dao.repository.UserActivationTokenRepository;
 import com.itasocialacademy.oitassist.auth.dto.event.ActivationAccountEvent;
+import com.itasocialacademy.oitassist.auth.exceptions.InvalidActivationTokenException;
 import com.itasocialacademy.oitassist.auth.exceptions.UserAlreadyActivatedException;
 import com.itasocialacademy.oitassist.auth.service.interfaces.UserActivationService;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
@@ -9,16 +11,50 @@ import com.itasocialacademy.oitassist.user.dao.model.UserActivationToken;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserActivationServiceImpl implements UserActivationService {
     private final UserRepository userRepository;
+    private final UserActivationTokenRepository tokenRepository;
     private final ApplicationEventPublisher eventPublisher;
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Looks up the token, validates it is not expired, sets the user status to
+     * {@code ACTIVATED}, and deletes the token so it cannot be reused.
+     * </p>
+     */
+    @Override
+    @Transactional
+    public void verifyEmail(String token) {
+        UserActivationToken activationToken = tokenRepository.findByToken(token)
+            .orElseThrow(InvalidActivationTokenException::new);
+
+        if (activationToken.isExpired()) {
+            throw new InvalidActivationTokenException();
+        }
+
+        User user = activationToken.getUser();
+
+        if (user.getUserStatus() == UserStatus.ACTIVATED) {
+            throw new UserAlreadyActivatedException();
+        }
+
+        user.setUserStatus(UserStatus.ACTIVATED);
+        user.setUserActivationToken(null);
+        userRepository.save(user);
+
+        log.info("User account activated for email={}", user.getEmail());
+    }
 
     /**
      * {@inheritDoc}
