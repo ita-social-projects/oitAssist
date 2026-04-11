@@ -11,6 +11,9 @@ public final class NewsFilePolicy implements FilePolicy {
     private NewsFilePolicy() {
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Set<AllowedExtension> getAllowedExtensions() {
         return Set.of(
@@ -21,12 +24,18 @@ public final class NewsFilePolicy implements FilePolicy {
             AllowedExtension.WEBP);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int getMaxFileCount() {
         return 10;
     }
 
     // TODO: confirm size limit with business
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DataSize getMaxFileSize() {
         return DataSize.ofMegabytes(10);

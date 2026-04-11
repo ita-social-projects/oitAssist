@@ -11,6 +11,9 @@ public final class TaskFilePolicy implements FilePolicy {
     private TaskFilePolicy() {
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Set<AllowedExtension> getAllowedExtensions() {
         return Set.of(
@@ -20,12 +23,18 @@ public final class TaskFilePolicy implements FilePolicy {
             AllowedExtension.ACCDB);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int getMaxFileCount() {
         return 1;
     }
 
     // TODO: confirm size limit with business
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public DataSize getMaxFileSize() {
         return DataSize.ofMegabytes(50);
