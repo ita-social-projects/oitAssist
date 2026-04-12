@@ -51,7 +51,7 @@ class RegistrationServiceImplTest {
         RegisterRequest request = AuthTestDataFactory.validRegisterRequest();
 
         // when
-        when(user.getUserStatus()).thenReturn(UserStatus.NOT_ACTIVATED);
+        when(user.getUserStatus()).thenReturn(UserStatus.PENDING);
         when(userRepository.findUserByEmail(request.getEmail()))
             .thenReturn(Optional.of(user));
 
@@ -71,7 +71,7 @@ class RegistrationServiceImplTest {
         RegisterRequest request = AuthTestDataFactory.validRegisterRequest();
 
         // when
-        when(user.getUserStatus()).thenReturn(UserStatus.ACTIVATED);
+        when(user.getUserStatus()).thenReturn(UserStatus.ACTIVE);
         when(userRepository.findUserByEmail(request.getEmail()))
             .thenReturn(Optional.of(user));
 

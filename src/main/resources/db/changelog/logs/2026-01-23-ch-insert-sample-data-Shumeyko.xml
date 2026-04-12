@@ -13,7 +13,7 @@
             <column name="middle_name" value="Олегович"/>
             <column name="password" value="$2a$10$ohGnznEwIkq/G7uEmpuP5eS8xTEqgcyq6qDxGUmnJqCLfFRHAVZ1q"/>
             <column name="role" value="ADMIN"/>
-            <column name="user_status" value="VERIFIED"/>
+            <column name="user_status" value="ACTIVE"/>
         </insert>
 
         <insert tableName="users">
@@ -23,7 +23,7 @@
             <column name="middle_name" value="Петренко"/>
             <column name="password" value="$2a$10$ohGnznEwIkq/G7uEmpuP5eS8xTEqgcyq6qDxGUmnJqCLfFRHAVZ1q"/>
             <column name="role" value="USER"/>
-            <column name="user_status" value="ACTIVATED"/>
+            <column name="user_status" value="ACTIVE"/>
         </insert>
 
         <insert tableName="competitions">

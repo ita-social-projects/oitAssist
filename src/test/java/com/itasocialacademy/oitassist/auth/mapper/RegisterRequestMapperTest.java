@@ -31,7 +31,7 @@ class RegisterRequestMapperTest {
         assertEquals("1234", user.getPassword());
         assertEquals(request.getLastName(), user.getSurname());
         assertEquals(Role.USER, user.getRole());
-        assertEquals(UserStatus.NOT_ACTIVATED, user.getUserStatus());
+        assertEquals(UserStatus.PENDING, user.getUserStatus());
         assertNotNull(user.getCreatedAt());
     }
 }

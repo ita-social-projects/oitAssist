@@ -72,7 +72,7 @@ class UserActivationServiceImplTest {
 
         // when
         when(userRepository.findUserByEmail(email)).thenReturn(Optional.of(user));
-        when(user.getUserStatus()).thenReturn(UserStatus.ACTIVATED);
+        when(user.getUserStatus()).thenReturn(UserStatus.ACTIVE);
 
         // then
         assertThrows(UserAlreadyActivatedException.class,
@@ -90,7 +90,7 @@ class UserActivationServiceImplTest {
 
         User user = User.builder()
             .email(request.getEmail())
-            .userStatus(UserStatus.NOT_ACTIVATED)
+            .userStatus(UserStatus.PENDING)
             .build();
 
         UserActivationToken userActivationToken = UserActivationToken.generateActivationToken();
@@ -127,7 +127,7 @@ class UserActivationServiceImplTest {
         User user = User.builder()
             .email(request.getEmail())
             .userActivationToken(expiredToken)
-            .userStatus(UserStatus.NOT_ACTIVATED)
+            .userStatus(UserStatus.PENDING)
             .build();
 
         ActivationAccountEvent event =
@@ -161,7 +161,7 @@ class UserActivationServiceImplTest {
         User user = User.builder()
             .email(email)
             .userActivationToken(activationToken)
-            .userStatus(UserStatus.NOT_ACTIVATED)
+            .userStatus(UserStatus.PENDING)
             .build();
 
         try (MockedStatic<UserActivationToken> mocked = mockStatic(UserActivationToken.class)) {
@@ -194,7 +194,7 @@ class UserActivationServiceImplTest {
             .email(request.getEmail())
             .firstName(firstName)
             .userActivationToken(activationToken)
-            .userStatus(UserStatus.NOT_ACTIVATED)
+            .userStatus(UserStatus.PENDING)
             .build();
 
         ActivationAccountEvent event =
