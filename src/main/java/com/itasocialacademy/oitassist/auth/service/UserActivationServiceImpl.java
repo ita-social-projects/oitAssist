@@ -45,11 +45,11 @@ public class UserActivationServiceImpl implements UserActivationService {
 
         User user = activationToken.getUser();
 
-        if (user.getUserStatus() == UserStatus.ACTIVATED) {
+        if (user.getUserStatus() == UserStatus.ACTIVE) {
             throw new UserAlreadyActivatedException();
         }
 
-        user.setUserStatus(UserStatus.ACTIVATED);
+        user.setUserStatus(UserStatus.ACTIVE);
         user.setUserActivationToken(null);
         userRepository.save(user);
 
@@ -130,7 +130,7 @@ public class UserActivationServiceImpl implements UserActivationService {
         User user = userRepository.findUserByEmail(email)
             .orElseThrow(UserNotFoundException::new);
 
-        if (user.getUserStatus() != UserStatus.NOT_ACTIVATED) {
+        if (user.getUserStatus() != UserStatus.PENDING) {
             throw new UserAlreadyActivatedException();
         }
 
