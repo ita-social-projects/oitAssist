@@ -78,7 +78,6 @@ public class TokenServiceImpl implements TokenService {
         Map<String, Object> accessTokenClaims = new HashMap<>();
         accessTokenClaims.put("id", userDetails.getId());
 
-        // Extract role from authorities (assuming "ROLE_XXX" format and single role)
         String role = userDetails.getAuthorities().stream()
             .map(GrantedAuthority::getAuthority)
             .filter(Objects::nonNull)

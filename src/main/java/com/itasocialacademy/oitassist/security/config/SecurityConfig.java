@@ -5,15 +5,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -23,38 +20,23 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 public class SecurityConfig {
     private final JwtFilter jwtFilter;
-
-    private final UserDetailsService authUserDetailsService;
     private final AuthenticationEntryPoint entryPoint;
-    private final PasswordEncoder passwordEncoder;
 
-    public SecurityConfig(JwtFilter jwtFilter, UserDetailsService authUserDetailsService,
-        AuthenticationEntryPoint entryPoint, PasswordEncoder passwordEncoder) {
+    public SecurityConfig(JwtFilter jwtFilter,
+        AuthenticationEntryPoint entryPoint) {
         this.jwtFilter = jwtFilter;
-        this.authUserDetailsService = authUserDetailsService;
         this.entryPoint = entryPoint;
-        this.passwordEncoder = passwordEncoder;
     }
 
     @Bean
-    public DaoAuthenticationProvider authenticationProvider() {
-        final DaoAuthenticationProvider daoAuthenticationProvider =
-            new DaoAuthenticationProvider(authUserDetailsService);
-        daoAuthenticationProvider.setPasswordEncoder(
-            passwordEncoder);
-        return daoAuthenticationProvider;
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity httpSecurity) {
-        return httpSecurity.getSharedObject(AuthenticationManagerBuilder.class)
-            .authenticationProvider(authenticationProvider())
-            .build();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) {
+        return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Bean
     public SecurityFilterChain configure(HttpSecurity http) {
-        return http.csrf(AbstractHttpConfigurer::disable)
+        return http
+            .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/registration/**",
