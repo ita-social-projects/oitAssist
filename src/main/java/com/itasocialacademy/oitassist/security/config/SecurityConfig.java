@@ -44,7 +44,8 @@ public class SecurityConfig {
                     "/api/v1/security/refresh")
                 .permitAll()
                 .requestMatchers(HttpMethod.GET,
-                    "/api/v1/news/**")
+                    "/api/v1/news/**",
+                    "/api/v1/user-activation/verify")
                 .permitAll()
                 .requestMatchers(
                     "/actuator/health/**",

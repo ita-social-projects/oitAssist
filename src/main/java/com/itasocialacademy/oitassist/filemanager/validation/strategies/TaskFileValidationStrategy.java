@@ -7,11 +7,17 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class TaskFileValidationStrategy extends AbstractFileValidationStrategy {
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public RelatedEntityType supports() {
         return RelatedEntityType.TASK;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected FilePolicy resolvePolicy(Long relatedEntityId) {
         return TaskFilePolicy.INSTANCE;

@@ -40,6 +40,15 @@ public class FileServiceImpl implements FileService {
     private final FileMapper fileMapper;
     private final SecurityService securityService;
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Resolves the validation strategy for the given entity type, validates all
+     * files against the applicable policy, then delegates each file to
+     * {@link #uploadSingle}.
+     * </p>
+     */
     @Override
     @Transactional
     public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto, Long userId) {
@@ -111,6 +120,17 @@ public class FileServiceImpl implements FileService {
         repository.save(file);
     }
 
+    /**
+     * Uploads a single file to the default storage provider and persists its
+     * metadata.
+     *
+     * @param file       the file to upload
+     * @param requestDto upload context metadata
+     * @param userId     the ID of the uploading user
+     * @return the persisted file record as a {@link FileResponseDto}
+     * @throws FileUploadException if the file stream cannot be read or the upload
+     *                             fails
+     */
     private FileResponseDto uploadSingle(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
         String originalFilename = file.getOriginalFilename();
         String storedFilename = generateStoredFilename(originalFilename);
@@ -139,10 +159,23 @@ public class FileServiceImpl implements FileService {
         return fileMapper.toDto(saved);
     }
 
+    /**
+     * Generates a unique filename by prepending a UUID to the original file
+     * extension.
+     *
+     * @param originalFilename the original name of the uploaded file
+     * @return a unique filename safe for storage
+     */
     private String generateStoredFilename(String originalFilename) {
         return UUID.randomUUID() + extractExtensionWithDot(originalFilename);
     }
 
+    /**
+     * Extracts the file extension including the leading dot (e.g., {@code ".pdf"}).
+     *
+     * @param originalFilename the original filename
+     * @return the extension with dot, or an empty string if no extension is present
+     */
     private String extractExtensionWithDot(String originalFilename) {
         if (originalFilename == null || !originalFilename.contains(".")) {
             return "";
@@ -150,10 +183,28 @@ public class FileServiceImpl implements FileService {
         return originalFilename.substring(originalFilename.lastIndexOf('.'));
     }
 
+    /**
+     * Builds the relative storage directory path derived from the entity type.
+     *
+     * @param requestDto the upload request containing the entity type
+     * @return a lowercase subdirectory name (e.g., {@code "news"}, {@code "task"})
+     */
     private String buildRelativePath(FileUploadRequestDto requestDto) {
         return requestDto.getRelatedEntityType().name().toLowerCase();
     }
 
+    /**
+     * Constructs a {@link FileAsset} entity from upload context data.
+     *
+     * @param file             the uploaded file
+     * @param requestDto       the upload request metadata
+     * @param originalFilename the original client-provided filename
+     * @param storedFilename   the unique filename used on disk
+     * @param storageKey       the relative storage key returned by the provider
+     * @param userId           the ID of the uploading user
+     * @param providerType     the storage provider type used for this upload
+     * @return a new {@link FileAsset} ready for persistence
+     */
     private FileAsset buildFileAsset(
         MultipartFile file,
         FileUploadRequestDto requestDto,
@@ -176,6 +227,14 @@ public class FileServiceImpl implements FileService {
             .build();
     }
 
+    /**
+     * Determines the initial {@link FileStatus} based on whether the upload is
+     * linked to a specific entity. Returns {@code TEMPORARY} when no entity ID is
+     * present, or {@code ATTACHED} when linked.
+     *
+     * @param requestDto the upload request metadata
+     * @return the appropriate initial file status
+     */
     private FileStatus resolveStatus(FileUploadRequestDto requestDto) {
         return requestDto.getRelatedEntityId() == null
             ? FileStatus.TEMPORARY

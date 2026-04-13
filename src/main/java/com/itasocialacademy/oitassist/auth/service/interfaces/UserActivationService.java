@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.auth.service.interfaces;
 
+import com.itasocialacademy.oitassist.auth.exceptions.InvalidActivationTokenException;
 import com.itasocialacademy.oitassist.auth.exceptions.UserAlreadyActivatedException;
 import com.itasocialacademy.oitassist.user.exceptions.ActivationTokenSendingTimeoutException;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
@@ -41,4 +42,16 @@ public interface UserActivationService {
      *                                       activated
      */
     void initializeActivation(String email, String firstName);
+
+    /**
+     * Verifies a user's email address using the activation token from the email
+     * link. If the token is valid and not expired, the user's status is updated to
+     * {@code ACTIVATED} and the token is removed.
+     *
+     * @param token the activation token sent to the user's email
+     * @throws InvalidActivationTokenException if the token does not exist or has
+     *                                         expired
+     * @throws UserAlreadyActivatedException   if the account is already activated
+     */
+    void verifyEmail(String token);
 }

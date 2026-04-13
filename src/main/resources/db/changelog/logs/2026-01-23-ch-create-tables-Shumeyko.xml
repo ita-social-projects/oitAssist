@@ -42,7 +42,7 @@
 
             ALTER TABLE users
                 ADD CONSTRAINT chk_users_status
-                    CHECK (user_status IN ('BLOCKED', 'DEACTIVATED', 'ACTIVATED', 'DELETED', 'VERIFIED', 'NOT_ACTIVATED'));
+                    CHECK (user_status IN ('PENDING', 'ACTIVE', 'INACTIVE', 'BLOCKED', 'DELETED'));
         </sql>
     </changeSet>
 

@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.filemanager.controller;
 
+import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
@@ -7,7 +8,9 @@ import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,22 +40,46 @@ public class FileController {
     private final FileService fileService;
     private final FileCleanupService cleanupService;
 
+    /**
+     * Validates and uploads a batch of files, persisting their metadata and linking
+     * them to the specified entity. Returns the saved file records on success.
+     *
+     * @param files         the files to upload
+     * @param requestDto    upload context metadata (entity type and optional entity
+     *                      ID)
+     * @param currentUserId the ID of the authenticated user initiating the upload
+     * @return HTTP 201 with the list of persisted file records
+     */
+    @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
         summary = "Upload files",
         description = """
             Uploads one or more files, stores their metadata, and links them to the specified related entity.
-            """)
-    @ApiResponse(
-        responseCode = "201",
-        description = "Files uploaded successfully",
-        content = @Content(array = @ArraySchema(schema = @Schema(implementation = FileResponseDto.class))))
-    @ApiResponse(
-        responseCode = "400",
-        description = "Invalid upload request")
-    @ApiResponse(
-        responseCode = "401",
-        description = "Unauthorized")
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+            """,
+        requestBody = @RequestBody(
+            content = @Content(
+                mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                encoding = @Encoding(name = "metadata", contentType = "application/json"))))
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "201",
+            description = "Files uploaded successfully",
+            content = @Content(
+                mediaType = "application/json",
+                array = @ArraySchema(schema = @Schema(implementation = FileResponseDto.class)))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid upload request",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FileResponseDto>> upload(
         @RequestPart("files") List<MultipartFile> files,
@@ -62,6 +89,13 @@ public class FileController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    /**
+     * Marks the file record as SOFT_DELETED. The physical file remains in storage
+     * and will be purged during the next cleanup cycle.
+     *
+     * @param id the ID of the file to soft-delete
+     * @return HTTP 204 on success
+     */
     @Operation(
         summary = "Soft delete file",
         description = "Marks the DB record SOFT_DELETED, file remains intact")
@@ -83,6 +117,13 @@ public class FileController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Permanently deletes the file from both the physical storage and the database
+     * by marking the record as HARD_DELETED.
+     *
+     * @param id the ID of the file to hard-delete
+     * @return HTTP 204 on success
+     */
     @Operation(
         summary = "Hard delete file",
         description = "Marks the DB record HARD_DELETED, file is deleted")
@@ -104,6 +145,12 @@ public class FileController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Triggers the full file cleanup cycle immediately, without waiting for the
+     * next scheduled execution. Restricted to administrators.
+     *
+     * @return HTTP 204 on success
+     */
     @Operation(
         summary = "Trigger manual file cleanup",
         description = "Forces the file cleanup logic to run immediately for orphaned and expired files.")

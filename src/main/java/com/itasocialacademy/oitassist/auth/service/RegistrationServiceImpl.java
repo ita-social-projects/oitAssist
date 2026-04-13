@@ -61,7 +61,7 @@ public class RegistrationServiceImpl implements RegistrationService {
     }
 
     private void checkUserNotExists(User user) {
-        if (user.getUserStatus() == UserStatus.NOT_ACTIVATED) {
+        if (user.getUserStatus() == UserStatus.PENDING) {
             log.warn("User already registered but not activated with email={}", user.getEmail());
             throw new UserNotActivatedException();
         }
