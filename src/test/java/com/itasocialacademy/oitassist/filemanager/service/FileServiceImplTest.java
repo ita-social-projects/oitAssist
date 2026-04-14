@@ -83,6 +83,132 @@ class FileServiceImplTest {
     // --- Upload Tests ---
 
     @Test
+    void upload_ShouldReturnEmptyList_WhenNoFilesProvided() {
+        FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
+        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
+        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+
+        List<FileResponseDto> result = fileService.upload(List.of(), request);
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(providerResolver, fileRepository);
+    }
+
+    @Test
+    void upload_ShouldHandleFilesWithoutExtension() {
+        MultipartFile file = new MockMultipartFile("file", "filename_without_extension", "text/plain", new byte[10]);
+        FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
+        ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
+
+        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
+        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+        when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored");
+        when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
+        when(fileRepository.save(any())).thenReturn(new FileAsset());
+        when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
+
+        fileService.upload(List.of(file), request);
+
+        verify(fileRepository).save(captor.capture());
+        FileAsset saved = captor.getValue();
+        assertFalse(saved.getStoredFilename().contains("."),
+            "Stored filename should not have a dot if original didn't");
+    }
+
+    @Test
+    void upload_ShouldHandleNullOriginalFilename() {
+        MultipartFile file = new MockMultipartFile("file", null, "text/plain", new byte[10]);
+        FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
+        ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
+
+        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
+        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+        when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored");
+        when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
+        when(fileRepository.save(any())).thenReturn(new FileAsset());
+        when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
+
+        fileService.upload(List.of(file), request);
+
+        verify(fileRepository).save(captor.capture());
+        FileAsset saved = captor.getValue();
+        assertEquals("", saved.getOriginalFilename());
+        assertFalse(saved.getStoredFilename().contains("."));
+    }
+
+    @Test
+    void upload_ShouldHandleFilesWithMultipleDots() {
+        MultipartFile file = new MockMultipartFile("file", "archive.tar.gz", "application/gzip", new byte[10]);
+        FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
+        ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
+
+        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
+        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+        when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored.gz");
+        when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
+        when(fileRepository.save(any())).thenReturn(new FileAsset());
+        when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
+
+        fileService.upload(List.of(file), request);
+
+        verify(fileRepository).save(captor.capture());
+        FileAsset saved = captor.getValue();
+        assertTrue(saved.getStoredFilename().endsWith(".gz"));
+        assertFalse(saved.getStoredFilename().endsWith(".tar.gz"), "Should only extract the last extension");
+    }
+
+    @Test
+    void upload_ShouldHandleFilenameEndingWithDot() {
+        MultipartFile file = new MockMultipartFile("file", "filename.", "text/plain", new byte[10]);
+        FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
+        ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
+
+        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
+        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+        when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored.");
+        when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
+        when(fileRepository.save(any())).thenReturn(new FileAsset());
+        when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
+
+        fileService.upload(List.of(file), request);
+
+        verify(fileRepository).save(captor.capture());
+        FileAsset saved = captor.getValue();
+        assertTrue(saved.getStoredFilename().endsWith("."));
+    }
+
+    @Test
+    void upload_ShouldHandleFilenameBeingJustADot() {
+        MultipartFile file = new MockMultipartFile("file", ".", "text/plain", new byte[10]);
+        FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
+        ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
+
+        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
+        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+        when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored.");
+        when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
+        when(fileRepository.save(any())).thenReturn(new FileAsset());
+        when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
+
+        fileService.upload(List.of(file), request);
+
+        verify(fileRepository).save(captor.capture());
+        FileAsset saved = captor.getValue();
+        assertTrue(saved.getStoredFilename().endsWith("."));
+    }
+
+    @Test
     void upload_ShouldReturnMappedDtos_WhenFilesAreValid() {
         MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", new byte[512]);
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
@@ -98,7 +224,7 @@ class FileServiceImplTest {
         when(fileRepository.save(any())).thenReturn(savedAsset);
         when(fileMapper.toDto(savedAsset)).thenReturn(expectedDto);
 
-        List<FileResponseDto> result = fileService.upload(List.of(file), request, userId);
+        List<FileResponseDto> result = fileService.upload(List.of(file), request);
 
         assertEquals(List.of(expectedDto), result);
         verify(validationStrategyResolver).resolve(RelatedEntityType.NEWS);
@@ -122,7 +248,7 @@ class FileServiceImplTest {
         when(fileRepository.save(any())).thenReturn(new FileAsset());
         when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
 
-        fileService.upload(List.of(file), request, userId);
+        fileService.upload(List.of(file), request);
 
         verify(fileRepository).save(captor.capture());
         FileAsset saved = captor.getValue();
@@ -152,7 +278,7 @@ class FileServiceImplTest {
         when(fileRepository.save(any())).thenReturn(new FileAsset());
         when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
 
-        fileService.upload(List.of(file), request, userId);
+        fileService.upload(List.of(file), request);
 
         verify(storageProvider).upload(any(), anyString(), eq("task"));
     }
@@ -172,7 +298,7 @@ class FileServiceImplTest {
         when(fileRepository.save(any())).thenReturn(new FileAsset());
         when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
 
-        fileService.upload(List.of(file), request, userId);
+        fileService.upload(List.of(file), request);
 
         verify(fileRepository).save(captor.capture());
         assertEquals(FileStatus.ATTACHED, captor.getValue().getStatus());
@@ -193,7 +319,7 @@ class FileServiceImplTest {
         when(fileRepository.save(any())).thenReturn(new FileAsset());
         when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
 
-        fileService.upload(List.of(file), request, userId);
+        fileService.upload(List.of(file), request);
 
         verify(fileRepository).save(captor.capture());
         assertEquals(FileStatus.TEMPORARY, captor.getValue().getStatus());
@@ -209,9 +335,9 @@ class FileServiceImplTest {
         when(validationStrategy.validate(any(), any())).thenReturn(
             ValidationResult.fail("File size exceeded"));
 
-        var files = List.of(file);
+        List<MultipartFile> files = List.of(file);
         ValidationException exception = assertThrows(
-            ValidationException.class, () -> fileService.upload(files, request, userId));
+            ValidationException.class, () -> fileService.upload(files, request));
 
         assertTrue(exception.getMessage().contains("File size exceeded"));
         verifyNoInteractions(providerResolver);
@@ -230,9 +356,9 @@ class FileServiceImplTest {
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
 
-        var files = List.of(file);
+        List<MultipartFile> files = List.of(file);
         FileUploadException exception = assertThrows(
-            FileUploadException.class, () -> fileService.upload(files, request, userId));
+            FileUploadException.class, () -> fileService.upload(files, request));
 
         assertInstanceOf(IOException.class, exception.getCause());
         verify(fileRepository, never()).save(any());
@@ -257,7 +383,7 @@ class FileServiceImplTest {
             .thenReturn(FileResponseDto.builder().id(1L).build())
             .thenReturn(FileResponseDto.builder().id(2L).build());
 
-        List<FileResponseDto> result = fileService.upload(List.of(file1, file2), request, userId);
+        List<FileResponseDto> result = fileService.upload(List.of(file1, file2), request);
 
         assertEquals(2, result.size());
         verify(storageProvider, times(2)).upload(any(), anyString(), anyString());
@@ -277,7 +403,7 @@ class FileServiceImplTest {
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("path/key");
         when(fileRepository.save(any())).thenReturn(existingFile);
 
-        assertDoesNotThrow(() -> fileService.upload(List.of(file), request, null));
+        assertDoesNotThrow(() -> fileService.upload(List.of(file), request));
         verify(securityService).getCurrentUserId();
     }
 
@@ -286,8 +412,9 @@ class FileServiceImplTest {
         MultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", new byte[10]);
         when(securityService.getCurrentUserId()).thenReturn(Optional.empty());
 
-        assertThrows(AuthorizationException.class,
-            () -> fileService.upload(List.of(file), uploadRequest(RelatedEntityType.NEWS, 1L), null));
+        List<MultipartFile> files = List.of(file);
+        FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
+        assertThrows(AuthorizationException.class, () -> fileService.upload(files, request));
 
         verifyNoInteractions(fileRepository, storageProvider);
     }

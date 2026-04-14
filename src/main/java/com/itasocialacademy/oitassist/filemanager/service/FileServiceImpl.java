@@ -51,7 +51,7 @@ public class FileServiceImpl implements FileService {
      */
     @Override
     @Transactional
-    public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto, Long userId) {
+    public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto) {
         Long currentUserId = securityService.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be authenticated to upload files.",
                 ErrorCode.ACCESS_DENIED));
