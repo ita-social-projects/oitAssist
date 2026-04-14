@@ -132,7 +132,7 @@ public class FileServiceImpl implements FileService {
      *                             fails
      */
     private FileResponseDto uploadSingle(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
-        String originalFilename = file.getOriginalFilename();
+        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
         String storedFilename = generateStoredFilename(originalFilename);
         String relativePath = buildRelativePath(requestDto);
 

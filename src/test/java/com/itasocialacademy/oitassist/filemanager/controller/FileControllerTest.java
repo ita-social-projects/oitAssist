@@ -56,7 +56,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
         return new MockMultipartFile("files", "photo.jpg", MediaType.IMAGE_JPEG_VALUE, "image-bytes".getBytes());
     }
 
-    private MockMultipartFile metadataPart(FileUploadRequestDto dto) {
+    private MockMultipartFile metadataPart(FileUploadRequestDto dto) throws Exception {
         return new MockMultipartFile("metadata", "", MediaType.APPLICATION_JSON_VALUE,
             objectMapper.writeValueAsBytes(dto));
     }
