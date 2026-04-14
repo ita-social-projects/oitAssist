@@ -4,20 +4,17 @@ import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
 import com.itasocialacademy.oitassist.filemanager.properties.GraphProperties;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
-import com.microsoft.graph.models.DriveItem;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import java.io.*;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
  * Implementation of {@link StorageProvider} for SharePoint storage. Uses
- * Microsoft Graph API to upload files to a configured drive and returns a web
- * URL for access.
+ * Microsoft Graph API to upload files to a configured drive.
  */
 @Slf4j
 @Component
@@ -45,14 +42,16 @@ public class SharePointStorageProvider implements StorageProvider {
     }
 
     /**
-     * Uploads a file to SharePoint and returns its web URL. The file is stored
-     * relative to the root of the configured drive using path-based addressing.
+     * Uploads a file to SharePoint storage. The file is stored relative to the root
+     * of the configured drive using the provided path and filename. The resulting
+     * storage key represents the file location within the drive and can be used for
+     * further access.
      *
      * @param inputStream the data stream of the file
      * @param morphedName the unique filename to be used in SharePoint
      * @param path        the folder path relative to the drive root
-     * @return a SharePoint web URL that can be used to access the uploaded file
-     * @throws FileUploadException if upload fails or response is invalid
+     * @return a relative storage key identifying the file in SharePoint
+     * @throws FileUploadException if upload fails or the path is invalid
      */
     @Override
     public String upload(InputStream inputStream, String morphedName, String path) {
@@ -61,29 +60,23 @@ public class SharePointStorageProvider implements StorageProvider {
                 throw new FileUploadException("Invalid path", new IllegalArgumentException(path));
             }
 
-            String fullPath = (path == null || path.isBlank())
+            String storageKey = (path == null || path.isBlank())
                 ? morphedName
                 : path.replaceAll("/+$", "") + "/" + morphedName;
 
             String driveId = graphProperties.getDriveId();
 
-            DriveItem item = graphClient
+            graphClient
                 .drives()
                 .byDriveId(driveId)
                 .items()
-                .byDriveItemId("root:/" + fullPath + ":")
+                .byDriveItemId("root:/" + storageKey + ":")
                 .content()
                 .put(inputStream);
 
-            String webUrl = Optional.ofNullable(item)
-                .map(DriveItem::getWebUrl)
-                .orElseThrow(() -> new FileUploadException(
-                    morphedName,
-                    new IllegalStateException("Missing webUrl")));
+            log.info("File uploaded to SharePoint: {}", storageKey);
 
-            log.info("File uploaded to SharePoint: {}", fullPath);
-
-            return webUrl;
+            return storageKey;
         } catch (Exception e) {
             log.error("Failed to upload file {} to SharePoint path {}", morphedName, path, e);
             throw new FileUploadException("Failed to upload file to SharePoint", e);
