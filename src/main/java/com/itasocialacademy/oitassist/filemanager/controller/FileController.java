@@ -50,7 +50,7 @@ public class FileController {
      * @param currentUserId the ID of the authenticated user initiating the upload
      * @return HTTP 201 with the list of persisted file records
      */
-    @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
         summary = "Upload files",
         description = """

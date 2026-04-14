@@ -29,6 +29,16 @@ import org.springframework.mock.web.MockMultipartFile;
 
 class FileControllerTest extends ControllerUnitTest<FileController> {
 
+    private static final String FILES_URL = "/api/v1/files";
+    private static final String FILE_BY_ID_URL = "/api/v1/files/{id}";
+    private static final String FILE_BY_ID_HARD_URL = "/api/v1/files/{id}/hard";
+    private static final String FILES_CLEANUP_URL = "/api/v1/files/cleanup";
+    private static final Long EXISTING_FILE_ID = 1L;
+    private static final Long NON_EXISTING_FILE_ID = 999L;
+    private static final Long RELATED_ENTITY_ID = 10L;
+    private static final String ACCESS_DENIED_MESSAGE = "Access denied";
+    private static final String FILE_NOT_FOUND_MESSAGE = "File not found";
+
     @Mock
     private FileService fileService;
 
@@ -58,7 +68,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
     void upload_ShouldReturnCreatedWithBody_WhenFilesUploadedSuccessfully() throws Exception {
         FileUploadRequestDto requestDto = FileUploadRequestDto.builder()
             .relatedEntityType(RelatedEntityType.NEWS)
-            .relatedEntityId(10L)
+            .relatedEntityId(RELATED_ENTITY_ID)
             .build();
         List<FileResponseDto> serviceResponse = List.of(
             FileResponseDto.builder()
@@ -70,7 +80,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
 
         when(fileService.upload(any(), any(), any())).thenReturn(serviceResponse);
 
-        mockMvc.perform(multipart("/api/v1/files")
+        mockMvc.perform(multipart(FILES_URL)
             .file(singleFilePart())
             .file(metadataPart(requestDto)))
             .andExpect(status().isCreated())
@@ -91,7 +101,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
 
         when(fileService.upload(any(), any(), eq(null))).thenReturn(List.of());
 
-        mockMvc.perform(multipart("/api/v1/files")
+        mockMvc.perform(multipart(FILES_URL)
             .file(singleFilePart())
             .file(metadataPart(requestDto)))
             .andExpect(status().isCreated());
@@ -102,10 +112,10 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
     @Test
     void upload_ShouldReturnBadRequest_WhenRelatedEntityTypeIsMissing() throws Exception {
         FileUploadRequestDto requestDto = FileUploadRequestDto.builder()
-            .relatedEntityId(10L)
+            .relatedEntityId(RELATED_ENTITY_ID)
             .build();
 
-        mockMvc.perform(multipart("/api/v1/files")
+        mockMvc.perform(multipart(FILES_URL)
             .file(singleFilePart())
             .file(metadataPart(requestDto)))
             .andExpect(status().isBadRequest());
@@ -113,7 +123,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
 
     @Test
     void upload_ShouldReturnBadRequest_WhenMetadataPartIsMissing() throws Exception {
-        mockMvc.perform(multipart("/api/v1/files")
+        mockMvc.perform(multipart(FILES_URL)
             .file(singleFilePart()))
             .andExpect(status().isBadRequest());
     }
@@ -122,10 +132,10 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
     void upload_ShouldReturnBadRequest_WhenFilesPartIsMissing() throws Exception {
         FileUploadRequestDto requestDto = FileUploadRequestDto.builder()
             .relatedEntityType(RelatedEntityType.NEWS)
-            .relatedEntityId(10L)
+            .relatedEntityId(RELATED_ENTITY_ID)
             .build();
 
-        mockMvc.perform(multipart("/api/v1/files")
+        mockMvc.perform(multipart(FILES_URL)
             .file(metadataPart(requestDto)))
             .andExpect(status().isBadRequest());
     }
@@ -134,13 +144,13 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
     void upload_ShouldReturnInternalServerError_WhenServiceThrowsFileUploadException() throws Exception {
         FileUploadRequestDto requestDto = FileUploadRequestDto.builder()
             .relatedEntityType(RelatedEntityType.NEWS)
-            .relatedEntityId(10L)
+            .relatedEntityId(RELATED_ENTITY_ID)
             .build();
 
         when(fileService.upload(any(), any(), any()))
             .thenThrow(new FileUploadException("photo.jpg", new RuntimeException("I/O error")));
 
-        mockMvc.perform(multipart("/api/v1/files")
+        mockMvc.perform(multipart(FILES_URL)
             .file(singleFilePart())
             .file(metadataPart(requestDto)))
             .andExpect(status().isInternalServerError());
@@ -150,9 +160,9 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
 
     @Test
     void deleteSoft_ShouldReturnNoContent_WhenFileExists() throws Exception {
-        Long fileId = 1L;
+        Long fileId = EXISTING_FILE_ID;
 
-        mockMvc.perform(delete("/api/v1/files/{id}", fileId))
+        mockMvc.perform(delete(FILE_BY_ID_URL, fileId))
             .andExpect(status().isNoContent());
 
         verify(fileService).deleteSoft(fileId);
@@ -160,9 +170,9 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
 
     @Test
     void deleteHard_ShouldReturnNoContent_WhenFileExists() throws Exception {
-        Long fileId = 1L;
+        Long fileId = EXISTING_FILE_ID;
 
-        mockMvc.perform(delete("/api/v1/files/{id}/hard", fileId))
+        mockMvc.perform(delete(FILE_BY_ID_HARD_URL, fileId))
             .andExpect(status().isNoContent());
 
         verify(fileService).deleteHard(fileId);
@@ -170,39 +180,39 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
 
     @Test
     void deleteSoft_ShouldReturnNotFound_WhenFileDoesNotExist() throws Exception {
-        Long fileId = 999L;
-        doThrow(new FileAssetNotFoundException("File not found")).when(fileService).deleteSoft(fileId);
+        Long fileId = NON_EXISTING_FILE_ID;
+        doThrow(new FileAssetNotFoundException(FILE_NOT_FOUND_MESSAGE)).when(fileService).deleteSoft(fileId);
 
-        mockMvc.perform(delete("/api/v1/files/{id}", fileId))
+        mockMvc.perform(delete(FILE_BY_ID_URL, fileId))
             .andExpect(status().isNotFound());
     }
 
     @Test
     void deleteHard_ShouldReturnNotFound_WhenFileDoesNotExist() throws Exception {
-        Long fileId = 999L;
-        doThrow(new FileAssetNotFoundException("File not found")).when(fileService).deleteHard(fileId);
+        Long fileId = NON_EXISTING_FILE_ID;
+        doThrow(new FileAssetNotFoundException(FILE_NOT_FOUND_MESSAGE)).when(fileService).deleteHard(fileId);
 
-        mockMvc.perform(delete("/api/v1/files/{id}/hard", fileId))
+        mockMvc.perform(delete(FILE_BY_ID_HARD_URL, fileId))
             .andExpect(status().isNotFound());
     }
 
     @Test
     void deleteSoft_ShouldReturnForbidden_WhenUserHasNoPermission() throws Exception {
-        Long fileId = 1L;
-        doThrow(new AuthorizationException("Access denied", ErrorCode.ACCESS_DENIED))
+        Long fileId = EXISTING_FILE_ID;
+        doThrow(new AuthorizationException(ACCESS_DENIED_MESSAGE, ErrorCode.ACCESS_DENIED))
             .when(fileService).deleteSoft(fileId);
 
-        mockMvc.perform(delete("/api/v1/files/{id}", fileId))
+        mockMvc.perform(delete(FILE_BY_ID_URL, fileId))
             .andExpect(status().isForbidden());
     }
 
     @Test
     void deleteHard_ShouldReturnForbidden_WhenUserHasNoPermission() throws Exception {
-        Long fileId = 1L;
-        doThrow(new AuthorizationException("Access denied", ErrorCode.ACCESS_DENIED))
+        Long fileId = EXISTING_FILE_ID;
+        doThrow(new AuthorizationException(ACCESS_DENIED_MESSAGE, ErrorCode.ACCESS_DENIED))
             .when(fileService).deleteHard(fileId);
 
-        mockMvc.perform(delete("/api/v1/files/{id}/hard", fileId))
+        mockMvc.perform(delete(FILE_BY_ID_HARD_URL, fileId))
             .andExpect(status().isForbidden());
     }
 
@@ -210,7 +220,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
 
     @Test
     void triggerManualCleanup_ShouldReturnNoContent() throws Exception {
-        mockMvc.perform(delete("/api/v1/files/cleanup"))
+        mockMvc.perform(delete(FILES_CLEANUP_URL))
             .andExpect(status().isNoContent());
 
         verify(cleanupService).runFullCleanup();
@@ -218,10 +228,10 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
 
     @Test
     void triggerManualCleanup_ShouldReturnForbidden_WhenUserIsNotAdmin() throws Exception {
-        doThrow(new AuthorizationException("Access denied", ErrorCode.ACCESS_DENIED))
+        doThrow(new AuthorizationException(ACCESS_DENIED_MESSAGE, ErrorCode.ACCESS_DENIED))
             .when(cleanupService).runFullCleanup();
 
-        mockMvc.perform(delete("/api/v1/files/cleanup"))
+        mockMvc.perform(delete(FILES_CLEANUP_URL))
             .andExpect(status().isForbidden());
     }
 }
