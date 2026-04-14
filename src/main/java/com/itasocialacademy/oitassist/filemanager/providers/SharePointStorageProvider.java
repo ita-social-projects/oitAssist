@@ -62,7 +62,7 @@ public class SharePointStorageProvider implements StorageProvider {
 
             String storageKey = (path == null || path.isBlank())
                 ? morphedName
-                : path.replaceAll("/+$", "") + "/" + morphedName;
+                : path + "/" + morphedName;
 
             String driveId = graphProperties.getDriveId();
 
@@ -77,6 +77,8 @@ public class SharePointStorageProvider implements StorageProvider {
             log.info("File uploaded to SharePoint: {}", storageKey);
 
             return storageKey;
+        } catch (FileUploadException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to upload file {} to SharePoint path {}", morphedName, path, e);
             throw new FileUploadException("Failed to upload file to SharePoint", e);
