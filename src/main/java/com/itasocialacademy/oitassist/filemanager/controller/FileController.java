@@ -22,7 +22,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,10 +43,9 @@ public class FileController {
      * Validates and uploads a batch of files, persisting their metadata and linking
      * them to the specified entity. Returns the saved file records on success.
      *
-     * @param files         the files to upload
-     * @param requestDto    upload context metadata (entity type and optional entity
-     *                      ID)
-     * @param currentUserId the ID of the authenticated user initiating the upload
+     * @param files      the files to upload
+     * @param requestDto upload context metadata (entity type and optional entity
+     *                   ID)
      * @return HTTP 201 with the list of persisted file records
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -80,11 +78,11 @@ public class FileController {
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FileResponseDto>> upload(
         @RequestPart("files") List<MultipartFile> files,
-        @RequestPart("metadata") @Valid FileUploadRequestDto requestDto,
-        @AuthenticationPrincipal(expression = "id") Long currentUserId) {
-        List<FileResponseDto> response = fileService.upload(files, requestDto, currentUserId);
+        @RequestPart("metadata") @Valid FileUploadRequestDto requestDto) {
+        List<FileResponseDto> response = fileService.upload(files, requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

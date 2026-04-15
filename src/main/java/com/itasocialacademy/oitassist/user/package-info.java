@@ -11,7 +11,9 @@
         "core::CreateEntityDTO",
         "core::UpdateEntityDTO",
         "core::LongEntity",
-        "core::EntityRepository"
+        "core::EntityRepository",
+        "security::UserDetailsImpl",
+        "security::SecurityUserProvider"
     })
 package com.itasocialacademy.oitassist.user;
 

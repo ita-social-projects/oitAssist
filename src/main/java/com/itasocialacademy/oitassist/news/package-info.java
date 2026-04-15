@@ -10,7 +10,8 @@
     "core::UpdateEntityDTO",
     "core::LongEntity",
     "core::EntityRepository",
-    "user::UserDetailsImpl",
+    "security::UserDetailsImpl",
+    "security::SecurityService"
 })
 package com.itasocialacademy.oitassist.news;
 

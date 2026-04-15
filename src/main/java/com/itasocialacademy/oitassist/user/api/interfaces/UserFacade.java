@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.user.api.interfaces;
 
 import com.itasocialacademy.oitassist.user.api.dto.CreateUserCommand;
-import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
+import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.user.api.dto.UserDto;
 import com.itasocialacademy.oitassist.user.api.dto.UserPublicDto;
 import java.util.Optional;

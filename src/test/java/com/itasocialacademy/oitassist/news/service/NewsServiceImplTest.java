@@ -7,7 +7,7 @@ import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.dao.model.News;
 import com.itasocialacademy.oitassist.news.dao.repository.NewsRepository;
 import com.itasocialacademy.oitassist.news.mapper.request.NewsMapper;
-import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -22,8 +22,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
@@ -36,6 +34,8 @@ class NewsServiceImplTest {
     private NewsMapper newsMapper;
     @Mock
     private NewsRepository newsRepository;
+    @Mock
+    private SecurityService securityService;
     @InjectMocks
     private NewsServiceImpl newsService;
 
@@ -223,14 +223,6 @@ class NewsServiceImplTest {
     }
 
     private void mockAuthenticatedUser(Long userId) {
-        Authentication authentication = mock(Authentication.class);
-        SecurityContext securityContext = mock(SecurityContext.class);
-        UserDetailsImpl user = mock(UserDetailsImpl.class);
-
-        when(user.getId()).thenReturn(userId);
-        when(authentication.getPrincipal()).thenReturn(user);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-
-        SecurityContextHolder.setContext(securityContext);
+        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
     }
 }

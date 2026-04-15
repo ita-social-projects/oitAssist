@@ -1,7 +1,6 @@
 package com.itasocialacademy.oitassist.filemanager.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -78,7 +77,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
                 .size(1024L)
                 .build());
 
-        when(fileService.upload(any(), any(), any())).thenReturn(serviceResponse);
+        when(fileService.upload(any(), any())).thenReturn(serviceResponse);
 
         mockMvc.perform(multipart(FILES_URL)
             .file(singleFilePart())
@@ -99,14 +98,14 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
             .relatedEntityId(5L)
             .build();
 
-        when(fileService.upload(any(), any(), eq(null))).thenReturn(List.of());
+        when(fileService.upload(any(), any())).thenReturn(List.of());
 
         mockMvc.perform(multipart(FILES_URL)
             .file(singleFilePart())
             .file(metadataPart(requestDto)))
             .andExpect(status().isCreated());
 
-        verify(fileService).upload(any(), any(), eq(null));
+        verify(fileService).upload(any(), any());
     }
 
     @Test
@@ -147,7 +146,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
             .relatedEntityId(RELATED_ENTITY_ID)
             .build();
 
-        when(fileService.upload(any(), any(), any()))
+        when(fileService.upload(any(), any()))
             .thenThrow(new FileUploadException("photo.jpg", new RuntimeException("I/O error")));
 
         mockMvc.perform(multipart(FILES_URL)

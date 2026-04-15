@@ -1,5 +1,7 @@
 package com.itasocialacademy.oitassist.news.service;
 
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
@@ -11,14 +13,13 @@ import com.itasocialacademy.oitassist.news.dao.repository.NewsRepository;
 import com.itasocialacademy.oitassist.news.dao.specification.NewsSpecification;
 import com.itasocialacademy.oitassist.news.mapper.request.NewsMapper;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
-import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -26,8 +27,11 @@ import org.springframework.stereotype.Service;
 public class NewsServiceImpl
     extends AbstractServiceImpl<Long, News, CreateNewsDTO, UpdateNewsDto, ResponseNewsDto, NewsRepository, NewsMapper>
     implements NewsService {
-    protected NewsServiceImpl(NewsRepository repository, NewsMapper mapper) {
+    private final SecurityService securityService;
+
+    protected NewsServiceImpl(NewsRepository repository, NewsMapper mapper, SecurityService securityService) {
         super(repository, mapper);
+        this.securityService = securityService;
     }
 
     private static final int PREVIEWS_LENGTH = 300;
@@ -35,11 +39,10 @@ public class NewsServiceImpl
     @Override
     protected void beforeSave(News news, CreateNewsDTO newsDTO) {
         log.info("Creating news with title='{}'", newsDTO.getTitle());
-        Long authorId = ((UserDetailsImpl) SecurityContextHolder
-            .getContext()
-            .getAuthentication()
-            .getPrincipal())
-            .getId();
+
+        Long authorId = securityService.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException("User must be logged in to create news",
+                ErrorCode.ACCESS_DENIED));
 
         news.setAuthorId(authorId);
         applyPublishLogic(news, newsDTO.isPublishNow());

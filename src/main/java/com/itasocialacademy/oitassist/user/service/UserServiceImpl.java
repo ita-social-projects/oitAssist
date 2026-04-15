@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.user.service;
 
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
-import com.itasocialacademy.oitassist.user.api.dto.UserDetailsImpl;
+import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;

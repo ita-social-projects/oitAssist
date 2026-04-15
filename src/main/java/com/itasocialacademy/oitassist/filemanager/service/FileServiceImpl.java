@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.filemanager.service;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
@@ -17,6 +18,7 @@ import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService
 import com.itasocialacademy.oitassist.filemanager.validation.FileValidationStrategyResolver;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
 import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -36,6 +38,7 @@ public class FileServiceImpl implements FileService {
     private final FileValidationStrategyResolver validationStrategyResolver;
     private final FileRepository repository;
     private final FileMapper fileMapper;
+    private final SecurityService securityService;
 
     /**
      * {@inheritDoc}
@@ -48,7 +51,11 @@ public class FileServiceImpl implements FileService {
      */
     @Override
     @Transactional
-    public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto, Long userId) {
+    public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto) {
+        Long currentUserId = securityService.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException("User must be authenticated to upload files.",
+                ErrorCode.ACCESS_DENIED));
+
         FileValidationStrategy strategy = validationStrategyResolver.resolve(requestDto.getRelatedEntityType());
         ValidationResult result = strategy.validate(files, requestDto);
 
@@ -58,7 +65,7 @@ public class FileServiceImpl implements FileService {
                 ErrorCode.FILE_VALIDATION_FAILED);
         }
         return files.stream()
-            .map(file -> uploadSingle(file, requestDto, userId))
+            .map(file -> uploadSingle(file, requestDto, currentUserId))
             .toList();
     }
 
@@ -76,8 +83,7 @@ public class FileServiceImpl implements FileService {
         FileAsset file = repository.findById(fileId)
             .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
 
-        // Implement role check with security service.
-        // Throw exception if current user has insufficient authority
+        validateOwnerOrAdmin(file.getUserId());
 
         file.setStatus(FileStatus.SOFT_DELETED);
         file.setDeletedAt(OffsetDateTime.now());
@@ -96,8 +102,7 @@ public class FileServiceImpl implements FileService {
         FileAsset file = repository.findById(fileId)
             .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
 
-        // Implement role check with security service.
-        // Throw exception if current user has insufficient authority
+        validateAdmin();
 
         StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
 
@@ -127,7 +132,7 @@ public class FileServiceImpl implements FileService {
      *                             fails
      */
     private FileResponseDto uploadSingle(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
-        String originalFilename = file.getOriginalFilename();
+        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
         String storedFilename = generateStoredFilename(originalFilename);
         String relativePath = buildRelativePath(requestDto);
 
@@ -234,5 +239,52 @@ public class FileServiceImpl implements FileService {
         return requestDto.getRelatedEntityId() == null
             ? FileStatus.TEMPORARY
             : FileStatus.ATTACHED;
+    }
+
+    /**
+     * Validates that the current user has the authority to modify or delete a
+     * specific file.
+     *
+     * <p>
+     * Access is granted if the authenticated user is either the owner of the file
+     * or possesses the {@code ADMIN} role. If neither condition is met, a warning
+     * is logged and an authorization exception is thrown.
+     * </p>
+     *
+     * @param fileOwnerId the unique identifier of the user who owns the target file
+     *                    asset.
+     * @throws AuthorizationException if the user is neither the owner nor an
+     *                                administrator.
+     */
+    private void validateOwnerOrAdmin(Long fileOwnerId) {
+        boolean isOwner = securityService.isOwner(fileOwnerId);
+        boolean isAdmin = securityService.hasRole("ADMIN");
+
+        if (!isOwner && !isAdmin) {
+            log.warn("Security Breach: User attempted to access file owned by ID {}", fileOwnerId);
+            throw new AuthorizationException("You do not have permission to modify this file.",
+                ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    /**
+     * Restricts the subsequent operation to users with administrative privileges
+     * only.
+     *
+     * <p>
+     * This method performs a strict role check. Unlike
+     * {@link #validateOwnerOrAdmin(Long)}, regular users—even if they own the
+     * resource—will be denied access if they do not have the {@code ADMIN} role.
+     * </p>
+     *
+     * @throws AuthorizationException if the authenticated user does not have the
+     *                                {@code ADMIN} role.
+     */
+    private void validateAdmin() {
+        if (!securityService.hasRole("ADMIN")) {
+            log.warn("Security Breach: User attempted to access file with insufficient authorities");
+            throw new AuthorizationException("You do not have permission to modify this file.",
+                ErrorCode.ACCESS_DENIED);
+        }
     }
 }
