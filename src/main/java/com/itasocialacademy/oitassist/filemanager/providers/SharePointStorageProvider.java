@@ -87,6 +87,14 @@ public class SharePointStorageProvider implements StorageProvider {
         }
     }
 
+    /**
+     * Deletes a file from SharePoint storage using its relative storage key.
+     *
+     * @param storageKey the relative path of the file within the configured drive
+     * @throws InvalidFilePathException if the storage key is null or blank
+     * @throws FileDeleteException      if an error occurs during deletion via
+     *                                  Microsoft Graph API
+     */
     @Override
     public void deletePhysical(String storageKey) {
         if (storageKey == null || storageKey.isBlank()) {
