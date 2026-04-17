@@ -1,7 +1,9 @@
 package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileDeleteException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathException;
 import com.itasocialacademy.oitassist.filemanager.properties.GraphProperties;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
@@ -86,8 +88,26 @@ public class SharePointStorageProvider implements StorageProvider {
     }
 
     @Override
-    public void deletePhysical(String filePath) {
-        // Implement SharePoint deletion logic
+    public void deletePhysical(String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) {
+            throw new InvalidFilePathException("Cannot delete SharePoint file: blank storage key");
+        }
+
+        try {
+            String driveId = graphProperties.getDriveId();
+
+            graphClient
+                .drives()
+                .byDriveId(driveId)
+                .items()
+                .byDriveItemId("root:/" + storageKey + ":")
+                .delete();
+
+            log.info("File deleted from SharePoint: {}", storageKey);
+        } catch (Exception e) {
+            log.error("Unexpected error while deleting file: {}", storageKey, e);
+            throw new FileDeleteException("Failed to delete file from SharePoint", e);
+        }
     }
 
     @Override
