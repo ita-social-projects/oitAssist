@@ -7,6 +7,7 @@ import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathExce
 import com.itasocialacademy.oitassist.filemanager.properties.GraphProperties;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import com.microsoft.kiota.ApiException;
 import java.io.*;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -112,6 +113,13 @@ public class SharePointStorageProvider implements StorageProvider {
                 .delete();
 
             log.info("File deleted from SharePoint: {}", storageKey);
+        } catch (ApiException e) {
+            if (e.getResponseStatusCode() == 404) {
+                log.warn("File not found in SharePoint for deletion: {}", storageKey);
+                return;
+            }
+            log.error("Graph API error while deleting file: {}", storageKey, e);
+            throw new FileDeleteException("Failed to delete file from SharePoint", e);
         } catch (Exception e) {
             log.error("Unexpected error while deleting file: {}", storageKey, e);
             throw new FileDeleteException("Failed to delete file from SharePoint", e);
