@@ -13,7 +13,8 @@
         "core::LongEntity",
         "core::EntityRepository",
         "security::UserDetailsImpl",
-        "security::SecurityUserProvider"
+        "security::SecurityUserProvider",
+        "security::SecurityFacade"
     })
 package com.itasocialacademy.oitassist.user;
 
