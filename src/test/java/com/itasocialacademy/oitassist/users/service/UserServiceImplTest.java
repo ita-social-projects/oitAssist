@@ -1,0 +1,131 @@
+package com.itasocialacademy.oitassist.users.service;
+
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
+import com.itasocialacademy.oitassist.user.dao.enums.Role;
+import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
+import com.itasocialacademy.oitassist.user.dao.model.User;
+import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
+import com.itasocialacademy.oitassist.user.mapper.UserMapper;
+import com.itasocialacademy.oitassist.user.service.UserServiceImpl;
+import jakarta.persistence.EntityNotFoundException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("Unit test for UserServiceImpl")
+class UserServiceImplTest {
+    @Mock
+    private UserRepository repository;
+
+    @Mock
+    private UserMapper mapper;
+
+    @Mock
+    private SecurityFacade securityFacade;
+
+    @InjectMocks
+    private UserServiceImpl userService;
+
+    @Test
+    @DisplayName("loadUserByEmail should return DTO when user exists")
+    void loadUserByEmail_ShouldReturnResponseUserDto_IfUserExists() {
+        String email = "test@email.com";
+
+        User user = User.builder()
+            .email(email)
+            .build();
+
+        ResponseUserDTO expected = ResponseUserDTO.builder()
+            .email(email)
+            .build();
+
+        when(repository.findUserByEmail(email)).thenReturn(Optional.of(user));
+        when(mapper.toResponseUserDTO(user)).thenReturn(expected);
+
+        ResponseUserDTO result = userService.loadUserByEmail(email);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getEmail()).isEqualTo(email);
+
+        verify(repository, times(1)).findUserByEmail(email);
+        verify(mapper, times(1)).toResponseUserDTO(user);
+    }
+
+    @Test
+    @DisplayName("loadUserByEmail should throw EntityNotFoundException when user found")
+    void loadUserByEmail_ShouldThrowEntityNotFoundException_WhenUserNotFound() {
+        String email = "test@email.com";
+
+        when(repository.findUserByEmail(email)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.loadUserByEmail(email))
+            .isInstanceOf(EntityNotFoundException.class)
+            .hasMessageContaining("User not found: " + email);
+
+        verify(repository, times(1)).findUserByEmail(email);
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("getCurrentUserProfile should return profile when user is authenticated")
+    void getCurrentUserProfile_ShouldReturnResponseUserDto_WhenUserIsAuthenticated() {
+        String email = "test@email.com";
+
+        User user = User.builder()
+            .email(email)
+            .build();
+
+        ResponseUserDTO expected = ResponseUserDTO.builder()
+            .id(1L)
+            .email(email)
+            .firstName("Bob")
+            .lastName("Smith")
+            .role(Role.USER)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        when(securityFacade.getCurrentUserEmail()).thenReturn(Optional.of(email));
+        when(repository.findUserByEmail(email)).thenReturn(Optional.of(user));
+        when(mapper.toResponseUserDTO(user)).thenReturn(expected);
+
+        ResponseUserDTO result = userService.getCurrentUserProfile();
+
+        assertThat(result).isNotNull();
+        assertThat(result.getEmail()).isEqualTo(email);
+        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(result.getRole()).isEqualTo(Role.USER);
+        assertThat(result.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(result.getFirstName()).isEqualTo("Bob");
+        assertThat(result.getLastName()).isEqualTo("Smith");
+
+        verify(securityFacade, times(1)).getCurrentUserEmail();
+        verify(repository, times(1)).findUserByEmail(email);
+        verify(mapper, times(1)).toResponseUserDTO(user);
+    }
+
+    @Test
+    @DisplayName("getCurrentUserProfile should return profile when user is authenticated")
+    void getCurrentUserProfile_ShouldThrowEntityNotFoundException_WhenUserIsNotAuthenticated() {
+        when(securityFacade.getCurrentUserEmail()).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.getCurrentUserProfile())
+            .isInstanceOf(EntityNotFoundException.class)
+            .hasMessageContaining("No authenticated user");
+
+        verify(securityFacade, times(1)).getCurrentUserEmail();
+        verifyNoInteractions(repository, mapper);
+    }
+}
