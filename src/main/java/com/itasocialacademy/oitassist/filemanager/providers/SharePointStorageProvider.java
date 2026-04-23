@@ -1,10 +1,13 @@
 package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileDeleteException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathException;
 import com.itasocialacademy.oitassist.filemanager.properties.GraphProperties;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import com.microsoft.kiota.ApiException;
 import java.io.*;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -85,9 +88,42 @@ public class SharePointStorageProvider implements StorageProvider {
         }
     }
 
+    /**
+     * Deletes a file from SharePoint storage using its relative storage key.
+     *
+     * @param storageKey the relative path of the file within the configured drive
+     * @throws InvalidFilePathException if the storage key is null or blank
+     * @throws FileDeleteException      if an error occurs during deletion via
+     *                                  Microsoft Graph API
+     */
     @Override
-    public void deletePhysical(String filePath) {
-        // Implement SharePoint deletion logic
+    public void deletePhysical(String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) {
+            throw new InvalidFilePathException("Cannot delete SharePoint file: blank storage key");
+        }
+
+        try {
+            String driveId = graphProperties.getDriveId();
+
+            graphClient
+                .drives()
+                .byDriveId(driveId)
+                .items()
+                .byDriveItemId("root:/" + storageKey + ":")
+                .delete();
+
+            log.info("File deleted from SharePoint: {}", storageKey);
+        } catch (ApiException e) {
+            if (e.getResponseStatusCode() == 404) {
+                log.warn("File not found in SharePoint for deletion: {}", storageKey);
+                return;
+            }
+            log.error("Graph API error while deleting file: {}", storageKey, e);
+            throw new FileDeleteException("Failed to delete file from SharePoint", e);
+        } catch (Exception e) {
+            log.error("Unexpected error while deleting file: {}", storageKey, e);
+            throw new FileDeleteException("Failed to delete file from SharePoint", e);
+        }
     }
 
     @Override
