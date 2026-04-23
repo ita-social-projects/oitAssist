@@ -13,7 +13,7 @@ import com.itasocialacademy.oitassist.news.dao.repository.NewsRepository;
 import com.itasocialacademy.oitassist.news.dao.specification.NewsSpecification;
 import com.itasocialacademy.oitassist.news.mapper.request.NewsMapper;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
-import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.extern.slf4j.Slf4j;

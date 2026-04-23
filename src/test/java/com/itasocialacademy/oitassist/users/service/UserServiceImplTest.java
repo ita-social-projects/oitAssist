@@ -1,7 +1,6 @@
 package com.itasocialacademy.oitassist.users.service;
 
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
-import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;

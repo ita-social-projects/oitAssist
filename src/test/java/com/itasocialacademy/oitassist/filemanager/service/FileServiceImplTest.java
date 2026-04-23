@@ -18,7 +18,7 @@ import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProv
 import com.itasocialacademy.oitassist.filemanager.validation.FileValidationStrategyResolver;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
-import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

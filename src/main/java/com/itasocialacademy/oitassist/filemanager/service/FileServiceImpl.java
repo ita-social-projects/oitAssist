@@ -18,7 +18,7 @@ import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService
 import com.itasocialacademy.oitassist.filemanager.validation.FileValidationStrategyResolver;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
-import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
 import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;

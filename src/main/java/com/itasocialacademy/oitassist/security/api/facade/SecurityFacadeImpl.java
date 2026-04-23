@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.security.api.facade;
 
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
-import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

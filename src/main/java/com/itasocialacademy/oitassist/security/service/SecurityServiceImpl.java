@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.security.service;
 
-import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;

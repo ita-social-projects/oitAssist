@@ -7,7 +7,7 @@ import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.dao.model.News;
 import com.itasocialacademy.oitassist.news.dao.repository.NewsRepository;
 import com.itasocialacademy.oitassist.news.mapper.request.NewsMapper;
-import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
