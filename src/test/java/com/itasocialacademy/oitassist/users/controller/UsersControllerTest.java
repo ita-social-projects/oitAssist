@@ -32,7 +32,7 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
 
     @Test
     @DisplayName("GET /profile should return 200 with user profile when authenticated")
-    void getProfile_ShouldReturnCreatedWithBody_IfUserIsAuthenticated() throws Exception {
+    void getProfile_ShouldReturnOkWithBody_IfUserIsAuthenticated() throws Exception {
         // given
         ResponseUserDTO profile = ResponseUserDTO.builder()
             .id(1L)

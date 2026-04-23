@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.users.service;
 
+import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
@@ -64,7 +65,7 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("loadUserByEmail should throw EntityNotFoundException when user found")
+    @DisplayName("loadUserByEmail should throw EntityNotFoundException when user not found")
     void loadUserByEmail_ShouldThrowEntityNotFoundException_WhenUserNotFound() {
         String email = "test@email.com";
 
@@ -116,13 +117,13 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("getCurrentUserProfile should return profile when user is authenticated")
-    void getCurrentUserProfile_ShouldThrowEntityNotFoundException_WhenUserIsNotAuthenticated() {
+    @DisplayName("getCurrentUserProfile should throw AuthorizationException when user is not authenticated")
+    void getCurrentUserProfile_ShouldThrowAuthorizationException_WhenUserIsNotAuthenticated() {
         when(securityFacade.getCurrentUserEmail()).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.getCurrentUserProfile())
-            .isInstanceOf(EntityNotFoundException.class)
-            .hasMessageContaining("No authenticated user");
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessage("User is not authenticated");
 
         verify(securityFacade, times(1)).getCurrentUserEmail();
         verifyNoInteractions(repository, mapper);
