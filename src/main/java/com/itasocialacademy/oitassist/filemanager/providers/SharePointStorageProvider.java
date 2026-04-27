@@ -128,6 +128,20 @@ public class SharePointStorageProvider implements StorageProvider {
         }
     }
 
+    /**
+     * Recursively lists all physical file keys stored in the configured SharePoint
+     * drive.
+     *
+     * <p>
+     * Performs a recursive traversal starting from the drive root, handling
+     * paginated responses from the Graph API to ensure all files are collected
+     * regardless of folder size.
+     * </p>
+     *
+     * @return a {@link List} of relative storage keys (e.g., "news/image.jpg")
+     * @throws FileListingException if the Graph API returns an error during
+     *                              traversal
+     */
     @Override
     public List<String> listAllPhysicalKeys() {
         try {
@@ -144,6 +158,15 @@ public class SharePointStorageProvider implements StorageProvider {
         }
     }
 
+    /**
+     * Recursively collects relative storage keys for all files under a given drive
+     * item, handling pagination via {@code @odata.nextLink}.
+     *
+     * @param itemId  the ID of the current drive item to inspect
+     * @param path    the relative path accumulated so far
+     * @param driveId the configured SharePoint drive ID
+     * @param keys    the list being populated with discovered file keys
+     */
     private void traverseFolder(String itemId, String path, String driveId, List<String> keys) {
         var page = graphClient
             .drives()
@@ -185,6 +208,22 @@ public class SharePointStorageProvider implements StorageProvider {
         }
     }
 
+    /**
+     * Retrieves the last modified timestamp of a file in SharePoint using its
+     * relative storage key.
+     *
+     * <p>
+     * Returns {@code null} if the timestamp cannot be determined (file not found,
+     * or metadata unavailable). The caller ({@code FileCleanupServiceImpl}) treats
+     * {@code null} as "skip this file" — the safe, conservative path.
+     * </p>
+     *
+     * @param storageKey the relative path of the file as stored in the database
+     * @return the {@link OffsetDateTime} of the file's last modification, or
+     *         {@code null} if unavailable
+     * @throws InvalidFilePathException if the storage key is null or blank
+     * @throws FileListingException     if the Graph API returns an unexpected error
+     */
     @Override
     public OffsetDateTime getLastModified(String storageKey) {
         if (storageKey == null || storageKey.isBlank()) {
