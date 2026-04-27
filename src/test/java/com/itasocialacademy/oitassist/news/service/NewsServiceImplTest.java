@@ -7,7 +7,7 @@ import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.dao.model.News;
 import com.itasocialacademy.oitassist.news.dao.repository.NewsRepository;
 import com.itasocialacademy.oitassist.news.mapper.request.NewsMapper;
-import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -35,7 +35,7 @@ class NewsServiceImplTest {
     @Mock
     private NewsRepository newsRepository;
     @Mock
-    private SecurityService securityService;
+    private SecurityFacade securityFacade;
     @InjectMocks
     private NewsServiceImpl newsService;
 
@@ -223,6 +223,6 @@ class NewsServiceImplTest {
     }
 
     private void mockAuthenticatedUser(Long userId) {
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
     }
 }

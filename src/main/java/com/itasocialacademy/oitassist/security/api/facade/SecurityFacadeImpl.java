@@ -15,4 +15,19 @@ public class SecurityFacadeImpl implements SecurityFacade {
     public Optional<String> getCurrentUserEmail() {
         return securityService.getCurrentUserEmail();
     }
+
+    @Override
+    public Optional<Long> getCurrentUserId() {
+        return securityService.getCurrentUserId();
+    }
+
+    @Override
+    public boolean isOwner(Long ownerId) {
+        return securityService.isOwner(ownerId);
+    }
+
+    @Override
+    public boolean hasRole(String role) {
+        return securityService.hasRole(role);
+    }
 }

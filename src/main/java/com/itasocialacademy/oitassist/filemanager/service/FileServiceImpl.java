@@ -18,7 +18,7 @@ import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService
 import com.itasocialacademy.oitassist.filemanager.validation.FileValidationStrategyResolver;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
-import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -38,7 +38,7 @@ public class FileServiceImpl implements FileService {
     private final FileValidationStrategyResolver validationStrategyResolver;
     private final FileRepository repository;
     private final FileMapper fileMapper;
-    private final SecurityService securityService;
+    private final SecurityFacade securityFacade;
 
     /**
      * {@inheritDoc}
@@ -52,7 +52,7 @@ public class FileServiceImpl implements FileService {
     @Override
     @Transactional
     public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto) {
-        Long currentUserId = securityService.getCurrentUserId()
+        Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be authenticated to upload files.",
                 ErrorCode.ACCESS_DENIED));
 
@@ -257,8 +257,8 @@ public class FileServiceImpl implements FileService {
      *                                administrator.
      */
     private void validateOwnerOrAdmin(Long fileOwnerId) {
-        boolean isOwner = securityService.isOwner(fileOwnerId);
-        boolean isAdmin = securityService.hasRole("ADMIN");
+        boolean isOwner = securityFacade.isOwner(fileOwnerId);
+        boolean isAdmin = securityFacade.hasRole("ADMIN");
 
         if (!isOwner && !isAdmin) {
             log.warn("Security Breach: User attempted to access file owned by ID {}", fileOwnerId);
@@ -281,7 +281,7 @@ public class FileServiceImpl implements FileService {
      *                                {@code ADMIN} role.
      */
     private void validateAdmin() {
-        if (!securityService.hasRole("ADMIN")) {
+        if (!securityFacade.hasRole("ADMIN")) {
             log.warn("Security Breach: User attempted to access file with insufficient authorities");
             throw new AuthorizationException("You do not have permission to modify this file.",
                 ErrorCode.ACCESS_DENIED);

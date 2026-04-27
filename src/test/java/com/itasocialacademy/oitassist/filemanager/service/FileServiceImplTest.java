@@ -18,7 +18,7 @@ import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProv
 import com.itasocialacademy.oitassist.filemanager.validation.FileValidationStrategyResolver;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
-import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,7 +57,7 @@ class FileServiceImplTest {
     private FileMapper fileMapper;
 
     @Mock
-    private SecurityService securityService;
+    private SecurityFacade securityFacade;
 
     @InjectMocks
     private FileServiceImpl fileService;
@@ -85,7 +85,7 @@ class FileServiceImplTest {
     @Test
     void upload_ShouldReturnEmptyList_WhenNoFilesProvided() {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
 
@@ -101,7 +101,7 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -124,7 +124,7 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -147,7 +147,7 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -170,7 +170,7 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -192,7 +192,7 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -215,7 +215,7 @@ class FileServiceImplTest {
         FileAsset savedAsset = new FileAsset();
         FileResponseDto expectedDto = FileResponseDto.builder().id(10L).build();
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(RelatedEntityType.NEWS)).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -239,7 +239,7 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 5L);
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -269,7 +269,7 @@ class FileServiceImplTest {
         MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", new byte[512]);
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.TASK, 1L);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -289,7 +289,7 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -310,7 +310,7 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, null);
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -330,7 +330,7 @@ class FileServiceImplTest {
         MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", new byte[512]);
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(
             ValidationResult.fail("File size exceeded"));
@@ -349,7 +349,7 @@ class FileServiceImplTest {
         MultipartFile file = mock(MultipartFile.class);
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(file.getOriginalFilename()).thenReturn("photo.jpg");
         when(file.getInputStream()).thenThrow(new IOException("disk error"));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
@@ -370,7 +370,7 @@ class FileServiceImplTest {
         MultipartFile file2 = new MockMultipartFile("file", "b.jpg", "image/jpeg", new byte[512]);
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -396,7 +396,7 @@ class FileServiceImplTest {
         MultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", new byte[10]);
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
 
-        when(securityService.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
@@ -404,13 +404,13 @@ class FileServiceImplTest {
         when(fileRepository.save(any())).thenReturn(existingFile);
 
         assertDoesNotThrow(() -> fileService.upload(List.of(file), request));
-        verify(securityService).getCurrentUserId();
+        verify(securityFacade).getCurrentUserId();
     }
 
     @Test
     void upload_ShouldThrowAuthorizationException_WhenUserNotAuthenticated() {
         MultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", new byte[10]);
-        when(securityService.getCurrentUserId()).thenReturn(Optional.empty());
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
 
         List<MultipartFile> files = List.of(file);
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
@@ -426,7 +426,7 @@ class FileServiceImplTest {
         String originalKey = "news/photo.jpg";
         existingFile.setStorageKey(originalKey);
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityService.isOwner(userId)).thenReturn(true);
+        when(securityFacade.isOwner(userId)).thenReturn(true);
 
         fileService.deleteSoft(fileId);
 
@@ -450,7 +450,7 @@ class FileServiceImplTest {
     @Test
     void deleteSoft_ShouldSucceed_WhenUserIsOwner() {
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityService.isOwner(userId)).thenReturn(true);
+        when(securityFacade.isOwner(userId)).thenReturn(true);
 
         fileService.deleteSoft(fileId);
 
@@ -461,8 +461,8 @@ class FileServiceImplTest {
     @Test
     void deleteSoft_ShouldSucceed_WhenUserIsNotOwnerButIsAdmin() {
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityService.isOwner(userId)).thenReturn(false);
-        when(securityService.hasRole("ADMIN")).thenReturn(true);
+        when(securityFacade.isOwner(userId)).thenReturn(false);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
 
         fileService.deleteSoft(fileId);
 
@@ -473,8 +473,8 @@ class FileServiceImplTest {
     @Test
     void deleteSoft_ShouldThrowAuthorizationException_WhenUserIsNeitherOwnerNorAdmin() {
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityService.isOwner(userId)).thenReturn(false);
-        when(securityService.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.isOwner(userId)).thenReturn(false);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
 
         assertThrows(AuthorizationException.class, () -> fileService.deleteSoft(fileId));
         verify(fileRepository, never()).save(any());
@@ -487,7 +487,7 @@ class FileServiceImplTest {
         String testPath = "/tmp/storage/test.txt";
         existingFile.setStorageKey(testPath);
 
-        when(securityService.hasRole("ADMIN")).thenReturn(true);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
         when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
 
@@ -509,7 +509,7 @@ class FileServiceImplTest {
     void deleteHard_ShouldThrowUnsupportedStorageException_WhenResolverFails() {
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
         when(providerResolver.resolve(any())).thenThrow(UnsupportedStorageException.class);
-        when(securityService.hasRole("ADMIN")).thenReturn(true);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
 
         assertThrows(UnsupportedStorageException.class, () -> fileService.deleteHard(fileId));
 
@@ -521,7 +521,7 @@ class FileServiceImplTest {
         existingFile.setStorageKey("old/key");
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
         when(providerResolver.resolve(any())).thenReturn(storageProvider);
-        when(securityService.hasRole("ADMIN")).thenReturn(true);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
 
         fileService.deleteHard(fileId);
 
@@ -533,7 +533,7 @@ class FileServiceImplTest {
     void deleteHard_ShouldSetStatusToFailed_WhenPhysicalDeletionThrowsException() {
         String testPath = "path/to/fail";
         existingFile.setStorageKey(testPath);
-        when(securityService.hasRole("ADMIN")).thenReturn(true);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(providerResolver.resolve(any())).thenReturn(storageProvider);
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
 
@@ -565,7 +565,7 @@ class FileServiceImplTest {
     @Test
     void deleteHard_ShouldThrowException_WhenUserIsNotAdmin() {
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityService.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
 
         assertThrows(AuthorizationException.class, () -> fileService.deleteHard(fileId));
 

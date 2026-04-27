@@ -12,7 +12,6 @@ import org.springframework.modulith.NamedInterface;
  *          layers. Use this service instead to ensure consistent error
  *          handling, null-safety, and testability across the application.
  */
-@NamedInterface("SecurityService")
 public interface SecurityService {
     /**
      * Retrieves the unique identifier of the current user.
