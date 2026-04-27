@@ -1,7 +1,6 @@
 package com.itasocialacademy.oitassist.security.service.interfaces;
 
 import java.util.Optional;
-import org.springframework.modulith.NamedInterface;
 
 /**
  * Security interface for managing and retrieving information about the
