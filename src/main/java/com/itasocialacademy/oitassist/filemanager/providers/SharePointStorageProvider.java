@@ -26,6 +26,21 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class SharePointStorageProvider implements StorageProvider {
     /**
+     * Prefix used to address items by path relative to the SharePoint drive root.
+     */
+    private static final String DRIVE_ROOT_PREFIX = "root:/";
+
+    /**
+     * Suffix required to close the path-based item addressing syntax in Graph API.
+     */
+    private static final String DRIVE_ROOT_SUFFIX = ":";
+
+    /**
+     * Delimiter used to separate segments in SharePoint storage keys.
+     */
+    private static final String PATH_DELIMITER = "/";
+
+    /**
      * Microsoft Graph client used to interact with SharePoint resources.
      */
     private final GraphServiceClient graphClient;
@@ -75,7 +90,7 @@ public class SharePointStorageProvider implements StorageProvider {
                 .drives()
                 .byDriveId(driveId)
                 .items()
-                .byDriveItemId("root:/" + storageKey + ":")
+                .byDriveItemId(DRIVE_ROOT_PREFIX + storageKey + DRIVE_ROOT_SUFFIX)
                 .content()
                 .put(inputStream);
 
@@ -111,7 +126,7 @@ public class SharePointStorageProvider implements StorageProvider {
                 .drives()
                 .byDriveId(driveId)
                 .items()
-                .byDriveItemId("root:/" + storageKey + ":")
+                .byDriveItemId(DRIVE_ROOT_PREFIX + storageKey + DRIVE_ROOT_SUFFIX)
                 .delete();
 
             log.info("File deleted from SharePoint: {}", storageKey);
@@ -181,7 +196,7 @@ public class SharePointStorageProvider implements StorageProvider {
             for (var item : page.getValue()) {
                 String currentPath = path.isBlank()
                     ? item.getName()
-                    : path + "/" + item.getName();
+                    : path + PATH_DELIMITER + item.getName();
 
                 if (item.getFolder() != null) {
                     traverseFolder(item.getId(), currentPath, driveId, keys);
@@ -237,7 +252,7 @@ public class SharePointStorageProvider implements StorageProvider {
                 .drives()
                 .byDriveId(driveId)
                 .items()
-                .byDriveItemId("root:/" + storageKey + ":")
+                .byDriveItemId(DRIVE_ROOT_PREFIX + storageKey + DRIVE_ROOT_SUFFIX)
                 .get();
 
             if (item == null || item.getLastModifiedDateTime() == null) {
