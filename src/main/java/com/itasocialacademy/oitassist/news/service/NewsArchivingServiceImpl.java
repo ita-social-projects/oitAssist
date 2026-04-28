@@ -21,18 +21,18 @@ public class NewsArchivingServiceImpl implements NewsArchivingService {
     @Transactional
     @Override
     public int archiveExpiredPublishedNews() {
-        LocalDate todayInKyiv = LocalDate.now(clock);
+        OffsetDateTime nowKyiv = OffsetDateTime.now(clock);
+        LocalDate todayInKyiv = nowKyiv.toLocalDate();
         LocalDate thresholdDate = todayInKyiv.minusDays(30);
-        OffsetDateTime archivedAt = OffsetDateTime.now(clock);
 
         int archivedCount = newsRepository.archivedPublishedNewsOlderThanOneMonth(
             NewsStatus.PUBLISHED.name(),
             NewsStatus.ARCHIVED.name(),
             thresholdDate,
-            archivedAt);
+            nowKyiv);
 
         log.info(
-            "Archived {} published news item. todayInKyiv={}, thresholdDate={}",
+            "Archived {} published news items. todayInKyiv={}, thresholdDate={}",
             archivedCount,
             todayInKyiv,
             thresholdDate);

@@ -9,6 +9,6 @@ import org.springframework.context.annotation.Configuration;
 public class TimeConfig {
     @Bean
     public Clock kyivClock() {
-        return Clock.system(ZoneId.of("Europe/Kiev"));
+        return Clock.system(ZoneId.of("Europe/Kyiv"));
     }
 }
