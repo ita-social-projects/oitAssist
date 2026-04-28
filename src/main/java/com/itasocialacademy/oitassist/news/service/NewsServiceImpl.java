@@ -13,7 +13,7 @@ import com.itasocialacademy.oitassist.news.dao.repository.NewsRepository;
 import com.itasocialacademy.oitassist.news.dao.specification.NewsSpecification;
 import com.itasocialacademy.oitassist.news.mapper.request.NewsMapper;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
-import com.itasocialacademy.oitassist.security.api.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.extern.slf4j.Slf4j;
@@ -27,11 +27,11 @@ import org.springframework.stereotype.Service;
 public class NewsServiceImpl
     extends AbstractServiceImpl<Long, News, CreateNewsDTO, UpdateNewsDto, ResponseNewsDto, NewsRepository, NewsMapper>
     implements NewsService {
-    private final SecurityService securityService;
+    private final SecurityFacade securityFacade;
 
-    protected NewsServiceImpl(NewsRepository repository, NewsMapper mapper, SecurityService securityService) {
+    protected NewsServiceImpl(NewsRepository repository, NewsMapper mapper, SecurityFacade securityFacade) {
         super(repository, mapper);
-        this.securityService = securityService;
+        this.securityFacade = securityFacade;
     }
 
     private static final int PREVIEWS_LENGTH = 300;
@@ -40,7 +40,7 @@ public class NewsServiceImpl
     protected void beforeSave(News news, CreateNewsDTO newsDTO) {
         log.info("Creating news with title='{}'", newsDTO.getTitle());
 
-        Long authorId = securityService.getCurrentUserId()
+        Long authorId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be logged in to create news",
                 ErrorCode.ACCESS_DENIED));
 
