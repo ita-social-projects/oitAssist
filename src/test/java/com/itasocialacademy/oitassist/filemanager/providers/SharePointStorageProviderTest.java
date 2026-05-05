@@ -2,8 +2,16 @@ package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileDeleteException;
 import com.itasocialacademy.oitassist.filemanager.properties.GraphProperties;
+import com.microsoft.graph.drives.DrivesRequestBuilder;
+import com.microsoft.graph.drives.item.DriveItemRequestBuilder;
+import com.microsoft.graph.drives.item.items.ItemsRequestBuilder;
+import com.microsoft.graph.drives.item.items.item.DriveItemItemRequestBuilder;
+import com.microsoft.graph.drives.item.items.item.content.ContentRequestBuilder;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
+import com.microsoft.kiota.ApiException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,8 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -110,6 +118,82 @@ class SharePointStorageProviderTest {
     }
 
     //
+    // deletePhysical() SECTION TESTS
+    //
+
+    @Test
+    void deletePhysical_ShouldThrowException_WhenKeyIsNull() {
+        InvalidFilePathException exception = assertThrows(
+            InvalidFilePathException.class,
+            () -> sharePointStorageProvider.deletePhysical(null));
+
+        assertThat(exception).hasMessageContaining("blank storage key");
+    }
+
+    @Test
+    void deletePhysical_ShouldThrowException_WhenKeyIsBlank() {
+        InvalidFilePathException exception = assertThrows(
+            InvalidFilePathException.class,
+            () -> sharePointStorageProvider.deletePhysical("   "));
+
+        assertThat(exception).hasMessageContaining("blank storage key");
+    }
+
+    @Test
+    void deletePhysical_ShouldDeleteSuccessfully_WhenStorageKeyIsValid() {
+        String storageKey = "images/photo.jpg";
+
+        mockDeleteGraphClientChain();
+
+        assertThatNoException()
+            .isThrownBy(() -> sharePointStorageProvider.deletePhysical(storageKey));
+
+        verify(graphServiceClientMock.drives()
+            .byDriveId(anyString())
+            .items()
+            .byDriveItemId(anyString()))
+            .delete();
+    }
+
+    @Test
+    void deletePhysical_ShouldReturnSilently_WhenFileNotFoundInSharePoint() {
+        String storageKey = "missing/file.pdf";
+
+        ApiException notFound = mock(ApiException.class);
+        when(notFound.getResponseStatusCode()).thenReturn(404);
+
+        mockDeleteGraphClientChainToThrow(notFound);
+
+        assertThatNoException()
+            .isThrownBy(() -> sharePointStorageProvider.deletePhysical(storageKey));
+    }
+
+    @Test
+    void deletePhysical_ShouldThrowFileDeleteException_WhenApiExceptionIsNot404() {
+        String storageKey = "documents/report.docx";
+
+        ApiException serverError = mock(ApiException.class);
+        when(serverError.getResponseStatusCode()).thenReturn(500);
+
+        mockDeleteGraphClientChainToThrow(serverError);
+
+        assertThatThrownBy(() -> sharePointStorageProvider.deletePhysical(storageKey))
+            .isInstanceOf(FileDeleteException.class)
+            .hasMessageContaining("Failed to delete file from SharePoint")
+            .hasCause(serverError);
+    }
+
+    @Test
+    void deletePhysical_ShouldThrowFileDeleteException_WhenUnexpectedExceptionOccurs() {
+        String storageKey = "docs/contract.pdf";
+
+        mockDeleteGraphClientChainToThrow(new RuntimeException("Unexpected failure"));
+
+        assertThatThrownBy(() -> sharePointStorageProvider.deletePhysical(storageKey))
+            .isInstanceOf(FileDeleteException.class)
+            .hasMessageContaining("Failed to delete file from SharePoint");
+    }
+
     // HELPER METHODS
     //
 
@@ -120,12 +204,11 @@ class SharePointStorageProviderTest {
      */
     private void mockGraphClientChain() {
         when(graphPropertiesMock.getDriveId()).thenReturn("test-drive-id");
-        var drivesRequestBuilder = mock(com.microsoft.graph.drives.DrivesRequestBuilder.class);
-        var driveItemRequestBuilder = mock(com.microsoft.graph.drives.item.DriveItemRequestBuilder.class);
-        var itemsRequestBuilder = mock(com.microsoft.graph.drives.item.items.ItemsRequestBuilder.class);
-        var itemRequestBuilder = mock(com.microsoft.graph.drives.item.items.item.DriveItemItemRequestBuilder.class);
-        var contentRequestBuilder =
-            mock(com.microsoft.graph.drives.item.items.item.content.ContentRequestBuilder.class);
+        var drivesRequestBuilder = mock(DrivesRequestBuilder.class);
+        var driveItemRequestBuilder = mock(DriveItemRequestBuilder.class);
+        var itemsRequestBuilder = mock(ItemsRequestBuilder.class);
+        var itemRequestBuilder = mock(DriveItemItemRequestBuilder.class);
+        var contentRequestBuilder = mock(ContentRequestBuilder.class);
 
         when(graphServiceClientMock.drives()).thenReturn(drivesRequestBuilder);
         when(drivesRequestBuilder.byDriveId(anyString())).thenReturn(driveItemRequestBuilder);
@@ -143,12 +226,11 @@ class SharePointStorageProviderTest {
      */
     private void mockGraphClientChainToThrow(Exception exception) {
         when(graphPropertiesMock.getDriveId()).thenReturn("test-drive-id");
-        var drivesRequestBuilder = mock(com.microsoft.graph.drives.DrivesRequestBuilder.class);
-        var driveItemRequestBuilder = mock(com.microsoft.graph.drives.item.DriveItemRequestBuilder.class);
-        var itemsRequestBuilder = mock(com.microsoft.graph.drives.item.items.ItemsRequestBuilder.class);
-        var itemRequestBuilder = mock(com.microsoft.graph.drives.item.items.item.DriveItemItemRequestBuilder.class);
-        var contentRequestBuilder =
-            mock(com.microsoft.graph.drives.item.items.item.content.ContentRequestBuilder.class);
+        var drivesRequestBuilder = mock(DrivesRequestBuilder.class);
+        var driveItemRequestBuilder = mock(DriveItemRequestBuilder.class);
+        var itemsRequestBuilder = mock(ItemsRequestBuilder.class);
+        var itemRequestBuilder = mock(DriveItemItemRequestBuilder.class);
+        var contentRequestBuilder = mock(ContentRequestBuilder.class);
 
         when(graphServiceClientMock.drives()).thenReturn(drivesRequestBuilder);
         when(drivesRequestBuilder.byDriveId(anyString())).thenReturn(driveItemRequestBuilder);
@@ -156,5 +238,43 @@ class SharePointStorageProviderTest {
         when(itemsRequestBuilder.byDriveItemId(anyString())).thenReturn(itemRequestBuilder);
         when(itemRequestBuilder.content()).thenReturn(contentRequestBuilder);
         when(contentRequestBuilder.put(any(InputStream.class))).thenThrow(exception);
+    }
+
+    /**
+     * Mocks the Graph API delete chain to complete successfully. Sets up: drives()
+     * -> byDriveId() -> items() -> byDriveItemId() -> delete()
+     */
+    private void mockDeleteGraphClientChain() {
+        when(graphPropertiesMock.getDriveId()).thenReturn("test-drive-id");
+        var drivesRequestBuilder = mock(DrivesRequestBuilder.class);
+        var driveItemRequestBuilder = mock(DriveItemRequestBuilder.class);
+        var itemsRequestBuilder = mock(ItemsRequestBuilder.class);
+        var itemRequestBuilder = mock(DriveItemItemRequestBuilder.class);
+
+        when(graphServiceClientMock.drives()).thenReturn(drivesRequestBuilder);
+        when(drivesRequestBuilder.byDriveId(anyString())).thenReturn(driveItemRequestBuilder);
+        when(driveItemRequestBuilder.items()).thenReturn(itemsRequestBuilder);
+        when(itemsRequestBuilder.byDriveItemId(anyString())).thenReturn(itemRequestBuilder);
+        doNothing().when(itemRequestBuilder).delete();
+    }
+
+    /**
+     * Mocks the Graph API delete chain to throw an exception when delete() is
+     * called.
+     *
+     * @param exception the exception to throw
+     */
+    private void mockDeleteGraphClientChainToThrow(Exception exception) {
+        when(graphPropertiesMock.getDriveId()).thenReturn("test-drive-id");
+        var drivesRequestBuilder = mock(DrivesRequestBuilder.class);
+        var driveItemRequestBuilder = mock(DriveItemRequestBuilder.class);
+        var itemsRequestBuilder = mock(ItemsRequestBuilder.class);
+        var itemRequestBuilder = mock(DriveItemItemRequestBuilder.class);
+
+        when(graphServiceClientMock.drives()).thenReturn(drivesRequestBuilder);
+        when(drivesRequestBuilder.byDriveId(anyString())).thenReturn(driveItemRequestBuilder);
+        when(driveItemRequestBuilder.items()).thenReturn(itemsRequestBuilder);
+        when(itemsRequestBuilder.byDriveItemId(anyString())).thenReturn(itemRequestBuilder);
+        doThrow(exception).when(itemRequestBuilder).delete();
     }
 }
