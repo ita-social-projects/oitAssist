@@ -35,6 +35,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SharePointStorageProviderTest {
+    private static final String DRIVE_ID = "test-drive-id";
 
     private SharePointStorageProvider sharePointStorageProvider;
 
@@ -43,6 +44,21 @@ class SharePointStorageProviderTest {
 
     @Mock
     private GraphProperties graphPropertiesMock;
+
+    @Mock
+    private DrivesRequestBuilder drivesBuilder;
+
+    @Mock
+    private DriveItemRequestBuilder driveItemBuilder;
+
+    @Mock
+    private ItemsRequestBuilder itemsBuilder;
+
+    @Mock
+    private DriveItemItemRequestBuilder itemBuilder;
+
+    @Mock
+    private ContentRequestBuilder contentBuilder;
 
     @BeforeEach
     void setUp() {
@@ -66,11 +82,9 @@ class SharePointStorageProviderTest {
     void upload_ShouldReturnStorageKeyWithJustFileName_WhenPathIsNull() {
         String fileName = "document.pdf";
         InputStream inputStream = new ByteArrayInputStream("content".getBytes());
-
-        mockGraphClientChain();
+        stubUpload();
 
         String result = sharePointStorageProvider.upload(inputStream, fileName, null);
-
         assertThat(result).isEqualTo(fileName);
     }
 
@@ -78,11 +92,9 @@ class SharePointStorageProviderTest {
     void upload_ShouldReturnStorageKeyWithJustFileName_WhenPathIsBlank() {
         String fileName = "report.xlsx";
         InputStream inputStream = new ByteArrayInputStream("content".getBytes());
-
-        mockGraphClientChain();
+        stubUpload();
 
         String result = sharePointStorageProvider.upload(inputStream, fileName, "   ");
-
         assertThat(result).isEqualTo(fileName);
     }
 
@@ -91,11 +103,9 @@ class SharePointStorageProviderTest {
         String fileName = "photo.jpg";
         String path = "images/gallery";
         InputStream inputStream = new ByteArrayInputStream("image-data".getBytes());
-
-        mockGraphClientChain();
+        stubUpload();
 
         String result = sharePointStorageProvider.upload(inputStream, fileName, path);
-
         assertThat(result).isEqualTo("images/gallery/photo.jpg");
     }
 
@@ -116,7 +126,7 @@ class SharePointStorageProviderTest {
         String path = "files";
         InputStream inputStream = new ByteArrayInputStream("content".getBytes());
 
-        mockGraphClientChainToThrow(new RuntimeException("Network error"));
+        stubUploadToThrow(new RuntimeException("Network error"));
 
         assertThatThrownBy(() -> sharePointStorageProvider.upload(inputStream, fileName, path))
             .isInstanceOf(FileUploadException.class)
@@ -148,43 +158,29 @@ class SharePointStorageProviderTest {
 
     @Test
     void deletePhysical_ShouldDeleteSuccessfully_WhenStorageKeyIsValid() {
-        String storageKey = "images/photo.jpg";
-
-        mockDeleteGraphClientChain();
-
+        stubGraphChain();
         assertThatNoException()
-            .isThrownBy(() -> sharePointStorageProvider.deletePhysical(storageKey));
+            .isThrownBy(() -> sharePointStorageProvider.deletePhysical("images/photo.jpg"));
 
-        verify(graphServiceClientMock.drives()
-            .byDriveId(anyString())
-            .items()
-            .byDriveItemId(anyString()))
-            .delete();
+        verify(itemBuilder).delete();
     }
 
     @Test
     void deletePhysical_ShouldReturnSilently_WhenFileNotFoundInSharePoint() {
-        String storageKey = "missing/file.pdf";
-
-        ApiException notFound = mock(ApiException.class);
-        when(notFound.getResponseStatusCode()).thenReturn(404);
-
-        mockDeleteGraphClientChainToThrow(notFound);
+        stubGraphChain();
+        doThrow(apiException(404)).when(itemBuilder).delete();
 
         assertThatNoException()
-            .isThrownBy(() -> sharePointStorageProvider.deletePhysical(storageKey));
+            .isThrownBy(() -> sharePointStorageProvider.deletePhysical("missing/file.pdf"));
     }
 
     @Test
     void deletePhysical_ShouldThrowFileDeleteException_WhenApiExceptionIsNot404() {
-        String storageKey = "documents/report.docx";
+        stubGraphChain();
+        ApiException serverError = apiException(500);
+        doThrow(serverError).when(itemBuilder).delete();
 
-        ApiException serverError = mock(ApiException.class);
-        when(serverError.getResponseStatusCode()).thenReturn(500);
-
-        mockDeleteGraphClientChainToThrow(serverError);
-
-        assertThatThrownBy(() -> sharePointStorageProvider.deletePhysical(storageKey))
+        assertThatThrownBy(() -> sharePointStorageProvider.deletePhysical("documents/report.docx"))
             .isInstanceOf(FileDeleteException.class)
             .hasMessageContaining("Failed to delete file from SharePoint")
             .hasCause(serverError);
@@ -192,11 +188,10 @@ class SharePointStorageProviderTest {
 
     @Test
     void deletePhysical_ShouldThrowFileDeleteException_WhenUnexpectedExceptionOccurs() {
-        String storageKey = "docs/contract.pdf";
+        stubGraphChain();
+        doThrow(new RuntimeException("Unexpected failure")).when(itemBuilder).delete();
 
-        mockDeleteGraphClientChainToThrow(new RuntimeException("Unexpected failure"));
-
-        assertThatThrownBy(() -> sharePointStorageProvider.deletePhysical(storageKey))
+        assertThatThrownBy(() -> sharePointStorageProvider.deletePhysical("docs/contract.pdf"))
             .isInstanceOf(FileDeleteException.class)
             .hasMessageContaining("Failed to delete file from SharePoint");
     }
@@ -207,62 +202,54 @@ class SharePointStorageProviderTest {
 
     @Test
     void listAllPhysicalKeys_ShouldReturnFileKeys_WhenRootContainsOnlyFiles() {
-        DriveItem file1 = driveFile("report.pdf");
-        DriveItem file2 = driveFile("photo.jpg");
+        stubGraphChain();
+        stubChildren("root", List.of(driveFile("report.pdf"), driveFile("photo.jpg")), null);
 
-        var itemsBuilder = mockSharedChildrenSetup();
-        mockChildrenForItem(itemsBuilder, "root", List.of(file1, file2), null);
-
-        List<String> result = sharePointStorageProvider.listAllPhysicalKeys();
-
-        assertThat(result).containsExactlyInAnyOrder("report.pdf", "photo.jpg");
+        assertThat(sharePointStorageProvider.listAllPhysicalKeys())
+            .containsExactlyInAnyOrder("report.pdf", "photo.jpg");
     }
 
     @Test
     void listAllPhysicalKeys_ShouldReturnEmptyList_WhenRootIsEmpty() {
-        var itemsBuilder = mockSharedChildrenSetup();
-        mockChildrenForItem(itemsBuilder, "root", List.of(), null);
+        stubGraphChain();
+        stubChildren("root", List.of(), null);
 
-        List<String> result = sharePointStorageProvider.listAllPhysicalKeys();
-
-        assertThat(result).isEmpty();
+        assertThat(sharePointStorageProvider.listAllPhysicalKeys()).isEmpty();
     }
 
     @Test
     void listAllPhysicalKeys_ShouldFollowNextLink_WhenPageIsPaginated() {
-        DriveItem file1 = driveFile("file1.pdf");
-        DriveItem file2 = driveFile("file2.pdf");
+        stubGraphChain();
+        stubChildrenPaginated("root",
+            List.of(driveFile("file1.pdf")), "https://next-page-url",
+            List.of(driveFile("file2.pdf")));
 
-        var itemsBuilder = mockSharedChildrenSetup();
-        mockChildrenForItemWithPagination(itemsBuilder, "root",
-            List.of(file1), "https://next-page-url", List.of(file2));
-
-        List<String> result = sharePointStorageProvider.listAllPhysicalKeys();
-
-        assertThat(result).containsExactlyInAnyOrder("file1.pdf", "file2.pdf");
+        assertThat(sharePointStorageProvider.listAllPhysicalKeys())
+            .containsExactlyInAnyOrder("file1.pdf", "file2.pdf");
     }
 
     @Test
     void listAllPhysicalKeys_ShouldReturnNestedFileKeys_WhenRootContainsFolderWithFiles() {
-        DriveItem folder = driveFolder("images", "folder-id-1");
-        DriveItem nestedFile = driveFile("photo.jpg");
+        stubGraphChain();
+        stubChildren("root", List.of(driveFolder("images", "folder-id-1")), null);
+        stubChildren("folder-id-1", List.of(driveFile("photo.jpg")), null);
 
-        var itemsBuilder = mockSharedChildrenSetup();
-        mockChildrenForItem(itemsBuilder, "root", List.of(folder), null);
-        mockChildrenForItem(itemsBuilder, "folder-id-1", List.of(nestedFile), null);
-
-        List<String> result = sharePointStorageProvider.listAllPhysicalKeys();
-
-        assertThat(result).containsExactly("images/photo.jpg");
+        assertThat(sharePointStorageProvider.listAllPhysicalKeys())
+            .containsExactlyInAnyOrder("images/photo.jpg");
     }
 
     @Test
-    void getLastModified_ShouldThrowFileListingException_WhenUnexpectedExceptionOccurs() {
-        mockGetItemChainToThrow(new RuntimeException("Timeout"));
+    void listAllPhysicalKeys_ShouldThrowFileListingException_WhenGraphApiThrowsException() {
+        stubGraphChain();
+        var localItemBuilder = mock(DriveItemItemRequestBuilder.class);
+        var localChildrenBuilder = mock(ChildrenRequestBuilder.class);
+        when(itemsBuilder.byDriveItemId("root")).thenReturn(localItemBuilder);
+        when(localItemBuilder.children()).thenReturn(localChildrenBuilder);
+        when(localChildrenBuilder.get()).thenThrow(new RuntimeException("Network error"));
 
-        assertThatThrownBy(() -> sharePointStorageProvider.getLastModified("docs/file.pdf"))
+        assertThatThrownBy(() -> sharePointStorageProvider.listAllPhysicalKeys())
             .isInstanceOf(FileListingException.class)
-            .hasMessageContaining("Failed to get last modified from SharePoint")
+            .hasMessageContaining("Failed to list files from SharePoint")
             .hasCauseInstanceOf(RuntimeException.class);
     }
 
@@ -279,51 +266,48 @@ class SharePointStorageProviderTest {
 
     @Test
     void getLastModified_ShouldReturnDateTime_WhenFileExistsWithTimestamp() {
+        stubGraphChain();
         OffsetDateTime expectedTime = OffsetDateTime.parse("2024-06-01T10:00:00Z");
-
         DriveItem item = new DriveItem();
         item.setLastModifiedDateTime(expectedTime);
+        when(itemBuilder.get()).thenReturn(item);
 
-        mockGetItemChain(item);
-
-        OffsetDateTime result = sharePointStorageProvider.getLastModified("docs/file.pdf");
-
-        assertThat(result).isEqualTo(expectedTime);
+        assertThat(sharePointStorageProvider.getLastModified("docs/file.pdf"))
+            .isEqualTo(expectedTime);
     }
 
     @Test
     void getLastModified_ShouldReturnNull_WhenItemHasNoTimestamp() {
+        stubGraphChain();
         DriveItem item = new DriveItem();
         item.setLastModifiedDateTime(null);
-
-        mockGetItemChain(item);
+        when(itemBuilder.get()).thenReturn(item);
 
         assertThat(sharePointStorageProvider.getLastModified("docs/file.pdf")).isNull();
     }
 
     @Test
     void getLastModified_ShouldReturnNull_WhenItemIsNull() {
-        mockGetItemChain(null);
+        stubGraphChain();
+        when(itemBuilder.get()).thenReturn(null);
 
         assertThat(sharePointStorageProvider.getLastModified("docs/file.pdf")).isNull();
     }
 
     @Test
     void getLastModified_ShouldReturnNull_WhenFileNotFoundInSharePoint() {
-        ApiException notFound = mock(ApiException.class);
-        when(notFound.getResponseStatusCode()).thenReturn(404);
-
-        mockGetItemChainToThrow(notFound);
+        stubGraphChain();
+        ApiException exception = apiException(404);
+        when(itemBuilder.get()).thenThrow(exception);
 
         assertThat(sharePointStorageProvider.getLastModified("missing/file.pdf")).isNull();
     }
 
     @Test
     void getLastModified_ShouldThrowFileListingException_WhenApiExceptionIsNot404() {
-        ApiException serverError = mock(ApiException.class);
-        when(serverError.getResponseStatusCode()).thenReturn(503);
-
-        mockGetItemChainToThrow(serverError);
+        stubGraphChain();
+        ApiException serverError = apiException(503);
+        when(itemBuilder.get()).thenThrow(serverError);
 
         assertThatThrownBy(() -> sharePointStorageProvider.getLastModified("docs/file.pdf"))
             .isInstanceOf(FileListingException.class)
@@ -331,138 +315,78 @@ class SharePointStorageProviderTest {
             .hasCause(serverError);
     }
 
+    @Test
+    void getLastModified_ShouldThrowFileListingException_WhenUnexpectedExceptionOccurs() {
+        stubGraphChain();
+        when(itemBuilder.get()).thenThrow(new RuntimeException("Timeout"));
+
+        assertThatThrownBy(() -> sharePointStorageProvider.getLastModified("docs/file.pdf"))
+            .isInstanceOf(FileListingException.class)
+            .hasMessageContaining("Failed to get last modified from SharePoint")
+            .hasCauseInstanceOf(RuntimeException.class);
+    }
+
     //
     // HELPER METHODS
     //
 
     /**
-     * Mocks the Graph API chain to return successfully without exceptions. Sets up
-     * the entire fluent chain: drives() -> byDriveId() -> items() ->
-     * byDriveItemId() -> content() -> put()
+     * Stubs the shared Graph API fluent chain: drives() -> byDriveId() -> items()
+     * -> byDriveItemId().
      */
-    private void mockGraphClientChain() {
-        when(graphPropertiesMock.getDriveId()).thenReturn("test-drive-id");
-        var drivesRequestBuilder = mock(DrivesRequestBuilder.class);
-        var driveItemRequestBuilder = mock(DriveItemRequestBuilder.class);
-        var itemsRequestBuilder = mock(ItemsRequestBuilder.class);
-        var itemRequestBuilder = mock(DriveItemItemRequestBuilder.class);
-        var contentRequestBuilder = mock(ContentRequestBuilder.class);
-
-        when(graphServiceClientMock.drives()).thenReturn(drivesRequestBuilder);
-        when(drivesRequestBuilder.byDriveId(anyString())).thenReturn(driveItemRequestBuilder);
-        when(driveItemRequestBuilder.items()).thenReturn(itemsRequestBuilder);
-        when(itemsRequestBuilder.byDriveItemId(anyString())).thenReturn(itemRequestBuilder);
-        when(itemRequestBuilder.content()).thenReturn(contentRequestBuilder);
-        when(contentRequestBuilder.put(any(InputStream.class))).thenReturn(null);
-    }
-
-    /**
-     * Mocks the Graph API chain to throw an exception when the content().put() is
-     * called.
-     *
-     * @param exception the exception to throw
-     */
-    private void mockGraphClientChainToThrow(Exception exception) {
-        when(graphPropertiesMock.getDriveId()).thenReturn("test-drive-id");
-        var drivesRequestBuilder = mock(DrivesRequestBuilder.class);
-        var driveItemRequestBuilder = mock(DriveItemRequestBuilder.class);
-        var itemsRequestBuilder = mock(ItemsRequestBuilder.class);
-        var itemRequestBuilder = mock(DriveItemItemRequestBuilder.class);
-        var contentRequestBuilder = mock(ContentRequestBuilder.class);
-
-        when(graphServiceClientMock.drives()).thenReturn(drivesRequestBuilder);
-        when(drivesRequestBuilder.byDriveId(anyString())).thenReturn(driveItemRequestBuilder);
-        when(driveItemRequestBuilder.items()).thenReturn(itemsRequestBuilder);
-        when(itemsRequestBuilder.byDriveItemId(anyString())).thenReturn(itemRequestBuilder);
-        when(itemRequestBuilder.content()).thenReturn(contentRequestBuilder);
-        when(contentRequestBuilder.put(any(InputStream.class))).thenThrow(exception);
-    }
-
-    /**
-     * Mocks the Graph API delete chain to complete successfully. Sets up: drives()
-     * -> byDriveId() -> items() -> byDriveItemId() -> delete()
-     */
-    private void mockDeleteGraphClientChain() {
-        when(graphPropertiesMock.getDriveId()).thenReturn("test-drive-id");
-        var drivesRequestBuilder = mock(DrivesRequestBuilder.class);
-        var driveItemRequestBuilder = mock(DriveItemRequestBuilder.class);
-        var itemsRequestBuilder = mock(ItemsRequestBuilder.class);
-        var itemRequestBuilder = mock(DriveItemItemRequestBuilder.class);
-
-        when(graphServiceClientMock.drives()).thenReturn(drivesRequestBuilder);
-        when(drivesRequestBuilder.byDriveId(anyString())).thenReturn(driveItemRequestBuilder);
-        when(driveItemRequestBuilder.items()).thenReturn(itemsRequestBuilder);
-        when(itemsRequestBuilder.byDriveItemId(anyString())).thenReturn(itemRequestBuilder);
-        doNothing().when(itemRequestBuilder).delete();
-    }
-
-    /**
-     * Mocks the Graph API delete chain to throw an exception when delete() is
-     * called.
-     *
-     * @param exception the exception to throw
-     */
-    private void mockDeleteGraphClientChainToThrow(Exception exception) {
-        when(graphPropertiesMock.getDriveId()).thenReturn("test-drive-id");
-        var drivesRequestBuilder = mock(DrivesRequestBuilder.class);
-        var driveItemRequestBuilder = mock(DriveItemRequestBuilder.class);
-        var itemsRequestBuilder = mock(ItemsRequestBuilder.class);
-        var itemRequestBuilder = mock(DriveItemItemRequestBuilder.class);
-
-        when(graphServiceClientMock.drives()).thenReturn(drivesRequestBuilder);
-        when(drivesRequestBuilder.byDriveId(anyString())).thenReturn(driveItemRequestBuilder);
-        when(driveItemRequestBuilder.items()).thenReturn(itemsRequestBuilder);
-        when(itemsRequestBuilder.byDriveItemId(anyString())).thenReturn(itemRequestBuilder);
-        doThrow(exception).when(itemRequestBuilder).delete();
-    }
-
-    /**
-     * Sets up the shared trunk of the children chain (drives -> byDriveId -> items)
-     * and returns the shared ItemsRequestBuilder so multiple item IDs can be
-     * stubbed on the same instance without Mockito strict-stubbing conflicts.
-     */
-    private ItemsRequestBuilder mockSharedChildrenSetup() {
-        when(graphPropertiesMock.getDriveId()).thenReturn("test-drive-id");
-
-        var drivesBuilder = mock(DrivesRequestBuilder.class);
-        var driveBuilder = mock(DriveItemRequestBuilder.class);
-        var itemsBuilder = mock(ItemsRequestBuilder.class);
-
+    private void stubGraphChain() {
+        when(graphPropertiesMock.getDriveId()).thenReturn(DRIVE_ID);
         when(graphServiceClientMock.drives()).thenReturn(drivesBuilder);
-        when(drivesBuilder.byDriveId(anyString())).thenReturn(driveBuilder);
-        when(driveBuilder.items()).thenReturn(itemsBuilder);
-
-        return itemsBuilder;
+        when(drivesBuilder.byDriveId(anyString())).thenReturn(driveItemBuilder);
+        when(driveItemBuilder.items()).thenReturn(itemsBuilder);
+        when(itemsBuilder.byDriveItemId(anyString())).thenReturn(itemBuilder);
     }
 
     /**
-     * Stubs a single children page for a specific itemId on the shared
-     * ItemsRequestBuilder. Optionally configures a nextLink for pagination.
+     * Stubs the full upload chain to complete successfully via content().put().
      */
-    private void mockChildrenForItem(ItemsRequestBuilder itemsBuilder, String itemId, List<DriveItem> items,
-        String nextLink) {
-        var itemBuilder = mock(DriveItemItemRequestBuilder.class);
-        var childrenBuilder = mock(ChildrenRequestBuilder.class);
+    private void stubUpload() {
+        stubGraphChain();
+        when(itemBuilder.content()).thenReturn(contentBuilder);
+        when(contentBuilder.put(any(InputStream.class))).thenReturn(null);
+    }
+
+    /**
+     * Stubs the full upload chain to throw the given exception at content().put().
+     */
+    private void stubUploadToThrow(Exception ex) {
+        stubGraphChain();
+        when(itemBuilder.content()).thenReturn(contentBuilder);
+        when(contentBuilder.put(any(InputStream.class))).thenThrow(ex);
+    }
+
+    /**
+     * Stubs a single-page children listing for the given itemId; uses exact
+     * matching to support multiple IDs per test.
+     */
+    private void stubChildren(String itemId, List<DriveItem> items, String nextLink) {
+        var localItemBuilder = mock(DriveItemItemRequestBuilder.class);
+        var localChildrenBuilder = mock(ChildrenRequestBuilder.class);
 
         var page = mock(DriveItemCollectionResponse.class);
         when(page.getValue()).thenReturn(items);
         when(page.getOdataNextLink()).thenReturn(nextLink);
 
-        when(itemsBuilder.byDriveItemId(itemId)).thenReturn(itemBuilder);
-        when(itemBuilder.children()).thenReturn(childrenBuilder);
-        when(childrenBuilder.get()).thenReturn(page);
+        when(itemsBuilder.byDriveItemId(itemId)).thenReturn(localItemBuilder);
+        when(localItemBuilder.children()).thenReturn(localChildrenBuilder);
+        when(localChildrenBuilder.get()).thenReturn(page);
     }
 
     /**
-     * Stubs a paginated children response on the shared ItemsRequestBuilder. First
-     * page returns firstItems + nextLink; second page returns secondItems with no
-     * further link.
+     * Stubs a two-page paginated children listing: first page returns firstItems +
+     * nextLink, second page returns secondItems.
      */
-    private void mockChildrenForItemWithPagination(ItemsRequestBuilder itemsBuilder, String itemId,
-        List<DriveItem> firstItems, String nextLink, List<DriveItem> secondItems) {
-        var itemBuilder = mock(DriveItemItemRequestBuilder.class);
-        var childrenBuilder = mock(ChildrenRequestBuilder.class);
-        var nextBuilder = mock(ChildrenRequestBuilder.class);
+    private void stubChildrenPaginated(String itemId,
+        List<DriveItem> firstItems, String nextLink,
+        List<DriveItem> secondItems) {
+        var localItemBuilder = mock(DriveItemItemRequestBuilder.class);
+        var firstChildrenBuilder = mock(ChildrenRequestBuilder.class);
+        var nextChildrenBuilder = mock(ChildrenRequestBuilder.class);
 
         var firstPage = mock(DriveItemCollectionResponse.class);
         when(firstPage.getValue()).thenReturn(firstItems);
@@ -472,53 +396,25 @@ class SharePointStorageProviderTest {
         when(secondPage.getValue()).thenReturn(secondItems);
         when(secondPage.getOdataNextLink()).thenReturn(null);
 
-        when(itemsBuilder.byDriveItemId(itemId)).thenReturn(itemBuilder);
-        when(itemBuilder.children()).thenReturn(childrenBuilder);
-        when(childrenBuilder.get()).thenReturn(firstPage);
-        when(childrenBuilder.withUrl(nextLink)).thenReturn(nextBuilder);
-        when(nextBuilder.get()).thenReturn(secondPage);
+        when(itemsBuilder.byDriveItemId(itemId)).thenReturn(localItemBuilder);
+        when(localItemBuilder.children()).thenReturn(firstChildrenBuilder);
+        when(firstChildrenBuilder.get()).thenReturn(firstPage);
+        when(firstChildrenBuilder.withUrl(nextLink)).thenReturn(nextChildrenBuilder);
+        when(nextChildrenBuilder.get()).thenReturn(secondPage);
     }
 
     /**
-     * Stubs the item .get() chain to return the given DriveItem.
+     * Creates a mock ApiException with the given HTTP status code.
      */
-    private void mockGetItemChain(DriveItem item) {
-        when(graphPropertiesMock.getDriveId()).thenReturn("test-drive-id");
-
-        var itemRequestBuilder = mockSharedGraphChain();
-        when(itemRequestBuilder.get()).thenReturn(item);
+    private static ApiException apiException(int statusCode) {
+        ApiException ex = mock(ApiException.class);
+        when(ex.getResponseStatusCode()).thenReturn(statusCode);
+        return ex;
     }
 
     /**
-     * Stubs the item .get() chain to throw the given exception.
+     * Creates a mock DriveItem representing a plain file (no folder metadata).
      */
-    private void mockGetItemChainToThrow(Exception exception) {
-        when(graphPropertiesMock.getDriveId()).thenReturn("test-drive-id");
-
-        var itemRequestBuilder = mockSharedGraphChain();
-        when(itemRequestBuilder.get()).thenThrow(exception);
-    }
-
-    /**
-     * Sets up the shared graph chain for getLastModified operations: drives() ->
-     * byDriveId() -> items() -> byDriveItemId() and returns the
-     * DriveItemItemRequestBuilder for further stubbing.
-     */
-    private DriveItemItemRequestBuilder mockSharedGraphChain() {
-        var drivesBuilder = mock(DrivesRequestBuilder.class);
-        var driveBuilder = mock(DriveItemRequestBuilder.class);
-        var itemsBuilder = mock(ItemsRequestBuilder.class);
-        var itemBuilder = mock(DriveItemItemRequestBuilder.class);
-
-        when(graphServiceClientMock.drives()).thenReturn(drivesBuilder);
-        when(drivesBuilder.byDriveId(anyString())).thenReturn(driveBuilder);
-        when(driveBuilder.items()).thenReturn(itemsBuilder);
-        when(itemsBuilder.byDriveItemId(anyString())).thenReturn(itemBuilder);
-
-        return itemBuilder;
-    }
-
-    /** Creates a mock DriveItem representing a plain file (no folder metadata). */
     private DriveItem driveFile(String name) {
         DriveItem item = new DriveItem();
         item.setName(name);
