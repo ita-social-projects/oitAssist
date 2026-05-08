@@ -1,8 +1,9 @@
 package com.itasocialacademy.oitassist.auth.controller;
 
 import com.itasocialacademy.oitassist.auth.dto.request.RegisterRequest;
-import com.itasocialacademy.oitassist.auth.service.interfaces.RegistrationService;
+import com.itasocialacademy.oitassist.auth.mapper.RegisterRequestToCommandMapper;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
+import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -18,31 +19,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * REST controller responsible for user registration operations. Provides API
- * endpoints for creating new users in the system. All incoming requests are
- * validated before being processed.
- */
 @RestController
 @Tag(name = "Registration API")
 @RequestMapping("/api/v1/registration")
 @RequiredArgsConstructor
 public class RegistrationController {
-    /**
-     * Service responsible for handling registration business logic.
-     */
-    private final RegistrationService registrationService;
+    private final UserFacade userFacade;
+    private final RegisterRequestToCommandMapper mapper;
 
-    /**
-     * Creates a new user account. Accepts user registration data, validates it, and
-     * delegates user creation to the {@link RegistrationService}.
-     *
-     * @param request the user registration request containing personal data and
-     *                credentials
-     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create a new user account",
+    @Operation(
+        summary = "Create a new user account",
         description = "Creates a new user account with the provided registration data.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "User created"),
@@ -59,7 +47,7 @@ public class RegistrationController {
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public void createUser(@RequestBody @Valid RegisterRequest request) {
-        registrationService.createUser(request);
+    public void register(@RequestBody @Valid RegisterRequest request) {
+        userFacade.register(mapper.toCommand(request));
     }
 }
