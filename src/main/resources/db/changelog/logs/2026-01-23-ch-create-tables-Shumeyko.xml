@@ -127,6 +127,7 @@
             </column>
             <column name="published_at"
                     type="TIMESTAMPTZ"/>
+            <column name="archived_at" type="TIMESTAMPTZ"/>
             <column name="author_id" type="BIGINT">
                 <constraints nullable="false" foreignKeyName="fk_news_author" referencedTableName="users" referencedColumnNames="id" deleteCascade="false"/>
             </column>
@@ -137,6 +138,17 @@
                 ADD CONSTRAINT chk_news_status
                     CHECK (status IN ('DRAFT','PUBLISHED','ARCHIVED'));
         </sql>
+    </changeSet>
+
+    <changeSet id="create-news-status-published-at-index" author="Pavlo Cherniavskyi">
+        <createIndex indexName="idx_news_status_published_at" tableName="news">
+            <column name="status"/>
+            <column name="published_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_news_status_published_at" tableName="news"/>
+        </rollback>
     </changeSet>
 
     <changeSet id="create-messages-table" author="Mykola Shumeyko">

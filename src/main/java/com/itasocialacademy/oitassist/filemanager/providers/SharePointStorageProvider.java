@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileDeleteException;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileListingException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathException;
 import com.itasocialacademy.oitassist.filemanager.properties.GraphProperties;
@@ -10,6 +11,7 @@ import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import java.io.*;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,21 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class SharePointStorageProvider implements StorageProvider {
+    /**
+     * Prefix used to address items by path relative to the SharePoint drive root.
+     */
+    private static final String DRIVE_ROOT_PREFIX = "root:/";
+
+    /**
+     * Suffix required to close the path-based item addressing syntax in Graph API.
+     */
+    private static final String DRIVE_ROOT_SUFFIX = ":";
+
+    /**
+     * Delimiter used to separate segments in SharePoint storage keys.
+     */
+    private static final String PATH_DELIMITER = "/";
+
     /**
      * Microsoft Graph client used to interact with SharePoint resources.
      */
@@ -73,7 +90,7 @@ public class SharePointStorageProvider implements StorageProvider {
                 .drives()
                 .byDriveId(driveId)
                 .items()
-                .byDriveItemId("root:/" + storageKey + ":")
+                .byDriveItemId(DRIVE_ROOT_PREFIX + storageKey + DRIVE_ROOT_SUFFIX)
                 .content()
                 .put(inputStream);
 
@@ -109,7 +126,7 @@ public class SharePointStorageProvider implements StorageProvider {
                 .drives()
                 .byDriveId(driveId)
                 .items()
-                .byDriveItemId("root:/" + storageKey + ":")
+                .byDriveItemId(DRIVE_ROOT_PREFIX + storageKey + DRIVE_ROOT_SUFFIX)
                 .delete();
 
             log.info("File deleted from SharePoint: {}", storageKey);
@@ -126,13 +143,132 @@ public class SharePointStorageProvider implements StorageProvider {
         }
     }
 
+    /**
+     * Recursively lists all physical file keys stored in the configured SharePoint
+     * drive.
+     *
+     * <p>
+     * Performs a recursive traversal starting from the drive root, handling
+     * paginated responses from the Graph API to ensure all files are collected
+     * regardless of folder size.
+     * </p>
+     *
+     * @return a {@link List} of relative storage keys (e.g., "news/image.jpg")
+     * @throws FileListingException if the Graph API returns an error during
+     *                              traversal
+     */
     @Override
     public List<String> listAllPhysicalKeys() {
-        return List.of();
+        try {
+            List<String> keys = new ArrayList<>();
+
+            String driveId = graphProperties.getDriveId();
+
+            traverseFolder("root", "", driveId, keys);
+
+            log.debug("Found {} files in SharePoint storage", keys.size());
+            return keys;
+        } catch (Exception e) {
+            throw new FileListingException("Failed to list files from SharePoint", e);
+        }
     }
 
+    /**
+     * Recursively collects relative storage keys for all files under a given drive
+     * item, handling pagination via {@code @odata.nextLink}.
+     *
+     * @param itemId  the ID of the current drive item to inspect
+     * @param path    the relative path accumulated so far
+     * @param driveId the configured SharePoint drive ID
+     * @param keys    the list being populated with discovered file keys
+     */
+    private void traverseFolder(String itemId, String path, String driveId, List<String> keys) {
+        var page = graphClient
+            .drives()
+            .byDriveId(driveId)
+            .items()
+            .byDriveItemId(itemId)
+            .children()
+            .get();
+
+        while (page != null && page.getValue() != null) {
+            log.debug("Processing page for path: {}", path);
+            for (var item : page.getValue()) {
+                String currentPath = path.isBlank()
+                    ? item.getName()
+                    : path + PATH_DELIMITER + item.getName();
+
+                if (item.getFolder() != null) {
+                    traverseFolder(item.getId(), currentPath, driveId, keys);
+                } else {
+                    keys.add(currentPath);
+                }
+            }
+
+            String nextLink = page.getOdataNextLink();
+            if (nextLink == null) {
+                break;
+            }
+
+            log.debug("Fetching next page...");
+
+            page = graphClient
+                .drives()
+                .byDriveId(driveId)
+                .items()
+                .byDriveItemId(itemId)
+                .children()
+                .withUrl(nextLink)
+                .get();
+        }
+    }
+
+    /**
+     * Retrieves the last modified timestamp of a file in SharePoint using its
+     * relative storage key.
+     *
+     * <p>
+     * Returns {@code null} if the timestamp cannot be determined (file not found,
+     * or metadata unavailable). The caller ({@code FileCleanupServiceImpl}) treats
+     * {@code null} as "skip this file" — the safe, conservative path.
+     * </p>
+     *
+     * @param storageKey the relative path of the file as stored in the database
+     * @return the {@link OffsetDateTime} of the file's last modification, or
+     *         {@code null} if unavailable
+     * @throws InvalidFilePathException if the storage key is null or blank
+     * @throws FileListingException     if the Graph API returns an unexpected error
+     */
     @Override
     public OffsetDateTime getLastModified(String storageKey) {
-        return null;
+        if (storageKey == null || storageKey.isBlank()) {
+            throw new InvalidFilePathException("Cannot get last modified: blank storage key");
+        }
+
+        try {
+            String driveId = graphProperties.getDriveId();
+
+            var item = graphClient
+                .drives()
+                .byDriveId(driveId)
+                .items()
+                .byDriveItemId(DRIVE_ROOT_PREFIX + storageKey + DRIVE_ROOT_SUFFIX)
+                .get();
+
+            if (item == null || item.getLastModifiedDateTime() == null) {
+                return null;
+            }
+            return item.getLastModifiedDateTime();
+        } catch (ApiException e) {
+            if (e.getResponseStatusCode() == 404) {
+                log.warn("File not found in SharePoint when retrieving lastModified: {}", storageKey);
+                return null;
+            }
+            log.error("Graph API error while retrieving lastModified for file: {}", storageKey, e);
+            throw new FileListingException("Failed to get last modified from SharePoint", e);
+        } catch (Exception e) {
+            log.error("Unexpected error while retrieving lastModified for file: {}", storageKey, e);
+            throw new FileListingException("Failed to get last modified from SharePoint", e);
+        }
     }
 }
