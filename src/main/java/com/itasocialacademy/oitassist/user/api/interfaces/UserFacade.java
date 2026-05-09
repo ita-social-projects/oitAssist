@@ -1,44 +1,108 @@
 package com.itasocialacademy.oitassist.user.api.interfaces;
 
-import com.itasocialacademy.oitassist.user.api.dto.CreateUserCommand;
-import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
-import com.itasocialacademy.oitassist.user.api.dto.UserDto;
-import com.itasocialacademy.oitassist.user.api.dto.UserPublicDto;
-import java.util.Optional;
-import java.util.UUID;
+import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
+import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import org.springframework.modulith.NamedInterface;
+import java.util.Optional;
 
+/**
+ * Cross-module entry point into the {@code user} module.
+ *
+ * <p>
+ * This facade is the only sanctioned way for other Spring application modules
+ * (e.g. {@code auth}, {@code security}) to invoke {@code user}-owned use cases.
+ * It deliberately exposes a narrow, use-case-shaped surface — not generic CRUD
+ * — so that internal {@code user} concerns (entities, repositories, mappers,
+ * domain services) can evolve without breaking external callers.
+ * </p>
+ *
+ * <p>
+ * Every method on this interface has a real, current cross-module caller.
+ * Methods that have no external consumer (profile self-view, internal lookups
+ * by id, etc.) are intentionally absent: they live on {@code UserService} and
+ * are reachable only from inside {@code user}.
+ * </p>
+ *
+ * <h2>Boundary discipline</h2>
+ * <ul>
+ * <li>Inputs are {@code @NamedInterface} DTOs from {@code user.api.dto}. Other
+ * modules construct these directly from their own request DTOs.</li>
+ * <li>Outputs are either {@code void} or {@code @NamedInterface} DTOs from
+ * {@code user.api.dto}. Internal types ({@code User} entity,
+ * {@code UserActivationToken}, etc.) never leak across this boundary.</li>
+ * <li>Exceptions thrown are caught generically by
+ * {@code core::GlobalExceptionHandler} and mapped to HTTP responses; callers
+ * should not catch specific exception types.</li>
+ * </ul>
+ */
 @NamedInterface("UserFacade")
 public interface UserFacade {
     /**
-     * Creates a new user. Used by external modules (e.g. Auth, Order).
+     * Registers a new user account in {@code PENDING} status, generates an
+     * activation token, and triggers an activation email (asynchronously, after the
+     * registration transaction commits).
+     *
+     * <p>
+     * Called by {@code auth.RegistrationController} when a user submits the
+     * registration form.
+     * </p>
+     *
+     * @param command the registration data
+     * @throws com.itasocialacademy.oitassist.user.exceptions.UserAlreadyExistsException if
+     *                                                                                   an
+     *                                                                                   active
+     *                                                                                   account
+     *                                                                                   with
+     *                                                                                   the
+     *                                                                                   given
+     *                                                                                   email
+     *                                                                                   already
+     *                                                                                   exists
      */
-    UserDto createUser(CreateUserCommand command);
+    void register(RegisterCommand command);
 
     /**
-     * Returns user by id. Read-only operation for other modules.
+     * Activates a user account by consuming an activation token. Transitions the
+     * user from {@code PENDING} to {@code ACTIVE} and removes the token so it
+     * cannot be reused.
+     *
+     * <p>
+     * Called by {@code auth.UserActivationController} when a user clicks the
+     * verification link in their activation email.
+     * </p>
+     *
+     * @param token the activation token from the email link
      */
-    UserDto getUserById(UUID userId);
+    void activate(String token);
 
     /**
-     * Checks whether a user exists by email. Used for cross-module validation.
+     * Resends an activation email to a user whose account is still {@code PENDING}.
+     * If the existing token has expired, a fresh one is generated; otherwise the
+     * resend cooldown is enforced.
+     *
+     * <p>
+     * Called by {@code auth.UserActivationController} when a user requests a new
+     * activation email.
+     * </p>
+     *
+     * @param email the email address of the pending user
      */
-    boolean existsByEmail(String email);
+    void resendActivation(String email);
 
     /**
-     * Returns user by email with fields for security. Read-only operation for other
-     * modules.
+     * Looks up a user by email and returns the authentication-side projection
+     * needed by {@code security}.
+     *
+     * <p>
+     * Called by {@code security.UserDetailsServiceImpl} during the Spring Security
+     * authentication flow. The returned DTO carries the encoded password —
+     * {@code security} maps it into its own {@code UserDetails} implementation and
+     * never propagates the raw fields further.
+     * </p>
+     *
+     * @param email the user's email
+     * @return the auth-side projection, or empty if no user exists with the given
+     *         email
      */
-    UserDetailsImpl getUserByEmail(String email);
-
-    /**
-     * Returns public user info (safe for sharing). Should not expose internal
-     * fields.
-     */
-    Optional<UserPublicDto> getPublicUser(UUID userId);
-
-    /**
-     * Disables user account. Used by admin or moderation flows.
-     */
-    void disableUser(UUID userId);
+    Optional<UserAuthDetails> findByEmail(String email);
 }

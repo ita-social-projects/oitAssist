@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
@@ -26,6 +27,21 @@ public class UserServiceImpl
     protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade) {
         super(repository, mapper);
         this.securityFacade = securityFacade;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Looks up the user by email and maps to {@link UserAuthDetails} via
+     * {@link UserMapper#toUserAuthDetails}. No {@code security}-owned types are
+     * involved in this path.
+     * </p>
+     */
+    @Override
+    public Optional<UserAuthDetails> findAuthDetailsByEmail(String email) {
+        return repository.findUserByEmail(email)
+            .map(mapper::toUserAuthDetails);
     }
 
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {
