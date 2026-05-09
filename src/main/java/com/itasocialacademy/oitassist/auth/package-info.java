@@ -2,11 +2,9 @@
     displayName = "Auth",
     allowedDependencies = {
         "core",
-        "user::UserEntity",
-        "user::UserRepository",
-        "user::UserAlreadyExistsException",
-        "user::UserNotFoundException"
-    })
+        "user :: RegisterCommand",
+        "user :: UserFacade",
+        "user :: UserRegisteredEvent"})
 package com.itasocialacademy.oitassist.auth;
 
 import org.springframework.modulith.ApplicationModule;

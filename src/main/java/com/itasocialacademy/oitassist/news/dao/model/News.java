@@ -40,6 +40,9 @@ public class News implements LongEntity {
     @Column(name = "published_at")
     private OffsetDateTime publishedAt;
 
+    @Column(name = "archived_at")
+    private OffsetDateTime archivedAt;
+
     @Column(name = "author_id", nullable = false)
     private Long authorId;
 }

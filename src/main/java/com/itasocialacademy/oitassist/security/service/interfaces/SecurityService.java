@@ -1,7 +1,6 @@
-package com.itasocialacademy.oitassist.security.api.interfaces;
+package com.itasocialacademy.oitassist.security.service.interfaces;
 
 import java.util.Optional;
-import org.springframework.modulith.NamedInterface;
 
 /**
  * Security interface for managing and retrieving information about the
@@ -12,7 +11,6 @@ import org.springframework.modulith.NamedInterface;
  *          layers. Use this service instead to ensure consistent error
  *          handling, null-safety, and testability across the application.
  */
-@NamedInterface("SecurityService")
 public interface SecurityService {
     /**
      * Retrieves the unique identifier of the current user.

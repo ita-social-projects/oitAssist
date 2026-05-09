@@ -11,7 +11,7 @@
     "core::LongEntity",
     "core::EntityRepository",
     "security::UserDetailsImpl",
-    "security::SecurityService"
+    "security::SecurityFacade"
 })
 package com.itasocialacademy.oitassist.news;
 

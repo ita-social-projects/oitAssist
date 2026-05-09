@@ -1,8 +1,8 @@
 package com.itasocialacademy.oitassist.auth.listener;
 
-import com.itasocialacademy.oitassist.auth.dto.event.ActivationAccountEvent;
 import com.itasocialacademy.oitassist.core.properties.WebClientProperties;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
+import com.itasocialacademy.oitassist.user.api.events.UserRegisteredEvent;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,34 +13,45 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
- * Spring event listener responsible for sending account activation emails.
- * Listens for
- * {@link com.itasocialacademy.oitassist.auth.dto.event.ActivationAccountEvent}
- * events published after a successful transaction commit and dispatches a
- * verification email containing the activation link. The handler runs
- * asynchronously to avoid blocking the originating transaction thread.
+ * Listens for {@link UserRegisteredEvent} published by the {@code user} module
+ * and sends the account activation email asynchronously after the publishing
+ * transaction commits.
+ *
+ * <p>
+ * This listener is the only {@code auth}-side consumer of
+ * {@link UserRegisteredEvent}. Keeping it in {@code auth} maintains the
+ * separation: {@code user} owns the domain event (published after state
+ * transitions on the {@code User} aggregate), while {@code auth} owns the email
+ * delivery infrastructure.
+ * </p>
+ *
+ * <p>
+ * The handler is async ({@code @Async}) so that email delivery does not block
+ * the originating registration or resend transaction thread. The
+ * {@code AFTER_COMMIT} phase guarantees the event is only processed when the
+ * user and token are safely persisted.
+ * </p>
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ActivationAccountListener {
     private final EmailService emailService;
-
     private final WebClientProperties webClientProperties;
 
     private static final String CONFIRM_REGISTRATION_PATH = "/confirm_registration";
 
     /**
-     * Handles an {@link ActivationAccountEvent} after the publishing transaction
-     * has committed. Builds a time-limited activation URL from the event token,
-     * then renders and sends the registration confirmation email to the user.
+     * Handles a {@link UserRegisteredEvent} after the publishing transaction has
+     * committed. Builds the activation URL from the event token and sends the
+     * registration confirmation email.
      *
-     * @param event the activation event carrying the recipient email, first name,
-     *              and raw activation token
+     * @param event the event carrying the recipient email, first name, and raw
+     *              activation token
      */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handleUserRegistered(ActivationAccountEvent event) {
+    public void handleUserRegistered(UserRegisteredEvent event) {
         log.info("Handling UserRegisteredEvent for email={}", event.email());
 
         String activationLink = UriComponentsBuilder

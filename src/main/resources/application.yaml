@@ -118,3 +118,6 @@ app:
       expired-hours: ${APP_FILEMANAGER_CLEANUP_EXPIRED_HOURS:720}
       rogue-grace-hours: ${APP_FILEMANAGER_CLEANUP_ROGUE_GRACE_HOURS:1}
       cron: ${APP_FILEMANAGER_CLEANUP_CRON:0 0 3 * * *}
+  news:
+    archiving:
+      cron: ${APP_NEWS_ARCHIVING_CRON:0 5 0 * * *}
