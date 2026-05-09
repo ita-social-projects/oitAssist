@@ -33,6 +33,6 @@ public record UserAuthDetails(
     @Override
     @NonNull
     public String toString() {
-        return "UserAuthDetails[id=" + id + ", email=" + email + ", password=REDACTED, role=" + role + "]";
+        return "UserAuthDetails[id=" + id + ", email=" + email + ", credentials=REDACTED, role=" + role + "]";
     }
 }
