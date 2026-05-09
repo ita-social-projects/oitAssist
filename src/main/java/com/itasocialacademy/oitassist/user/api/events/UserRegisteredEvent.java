@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.user.api.events;
 
+import org.jspecify.annotations.NonNull;
 import org.springframework.modulith.NamedInterface;
 
 /**
@@ -30,4 +31,9 @@ public record UserRegisteredEvent(
     String email,
     String firstName,
     String token) {
+    @Override
+    @NonNull
+    public String toString() {
+        return "UserRegisteredEvent[email=" + email + ", firstName=" + firstName + ", token=REDACTED]";
+    }
 }

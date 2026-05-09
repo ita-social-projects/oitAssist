@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.user.api.dto;
 
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import lombok.Builder;
+import org.jspecify.annotations.NonNull;
 import org.springframework.modulith.NamedInterface;
 
 /**
@@ -29,4 +30,9 @@ public record UserAuthDetails(
     String email,
     String password,
     Role role) {
+    @Override
+    @NonNull
+    public String toString() {
+        return "UserAuthDetails[id=" + id + ", email=" + email + ", password=REDACTED, role=" + role + "]";
+    }
 }
