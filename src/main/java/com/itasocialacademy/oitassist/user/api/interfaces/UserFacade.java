@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.user.api.interfaces;
 
+import com.itasocialacademy.oitassist.user.api.dto.OAuthProvisionCommand;
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import org.springframework.modulith.NamedInterface;
@@ -105,4 +106,27 @@ public interface UserFacade {
      *         email
      */
     Optional<UserAuthDetails> findByEmail(String email);
+
+    /**
+     * Looks up or provisions a user from a verified OAuth2 / OIDC identity.
+     *
+     * <p>
+     * Called by {@code security.OAuth2SuccessHandler} after Spring Security's
+     * OAuth2 login filter has authenticated the user at Google or Microsoft. The
+     * caller is responsible for confirming the provider has verified the email
+     * ({@code email_verified} claim or provider equivalent) before constructing the
+     * command.
+     * </p>
+     *
+     * <p>
+     * Behavior: if a user with the command's email exists, the existing projection
+     * is returned unchanged (auto-link). Otherwise a new user is created in
+     * {@code ACTIVE} status with {@code Role.USER} and an unguessable random
+     * password hash, then its projection is returned.
+     * </p>
+     *
+     * @param command the verified OAuth2 identity
+     * @return the auth-side projection for the existing or newly created user
+     */
+    UserAuthDetails provisionOAuthUser(OAuthProvisionCommand command);
 }
