@@ -1,14 +1,19 @@
 package com.itasocialacademy.oitassist.user.service;
 
+import com.itasocialacademy.oitassist.user.api.dto.OAuthProvisionCommand;
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
+import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import com.itasocialacademy.oitassist.user.dao.model.User;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.exceptions.UserAlreadyExistsException;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotActivatedException;
+import com.itasocialacademy.oitassist.user.mapper.OAuthProvisionCommandMapper;
 import com.itasocialacademy.oitassist.user.mapper.RegisterCommandMapper;
+import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.service.interfaces.RegistrationService;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserActivationService;
+import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,9 +26,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RegistrationServiceImpl implements RegistrationService {
     private final UserRepository userRepository;
+    private final UserService userService;
     private final RegisterCommandMapper registerCommandMapper;
     private final PasswordEncoder passwordEncoder;
     private final UserActivationService userActivationService;
+    private final OAuthProvisionCommandMapper oauthProvisionCommandMapper;
+    private final UserMapper userMapper;
+    private final RandomPasswordGenerator randomPasswordGenerator;
 
     /**
      * {@inheritDoc}
@@ -61,6 +70,46 @@ public class RegistrationServiceImpl implements RegistrationService {
             log.warn("Registration failed due to data integrity violation for email={}",
                 command.email(), e);
             throw new UserAlreadyExistsException();
+        }
+    }
+
+    /**
+     * Provisions a new OAuth user or retrieves the existing user based on the
+     * provided OAuth command. If a user with the given email already exists, their
+     * authentication details are returned. Otherwise, a new user is created and
+     * their authentication details are returned.
+     *
+     * @param command the command containing the required OAuth user details, such
+     *                as email and profile information
+     * @return the authentication details of the newly created or existing user
+     */
+    @Override
+    @Transactional
+    public UserAuthDetails provisionOAuthUser(OAuthProvisionCommand command) {
+        log.info("OAuth2 provisioning attempt for email={}", command.email());
+
+        return userService.findAuthDetailsByEmail(command.email())
+            .map(existing -> {
+                log.debug("OAuth2 login matched existing user email={}", command.email());
+                return existing;
+            })
+            .orElseGet(() -> createNewOAuthUser(command));
+    }
+
+    private UserAuthDetails createNewOAuthUser(OAuthProvisionCommand command) {
+        try {
+            User user = oauthProvisionCommandMapper.toEntity(command);
+            user.setPassword(passwordEncoder.encode(randomPasswordGenerator.generate()));
+
+            User saved = userRepository.save(user);
+            log.info("OAuth2 user provisioned email={} id={}", saved.getEmail(), saved.getId());
+            return userMapper.toUserAuthDetails(saved);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Concurrent OAuth2 provisioning for email={}; resolving by re-read",
+                command.email(), e);
+            return userService.findAuthDetailsByEmail(command.email())
+                .orElseThrow(() -> new IllegalStateException(
+                    "Unique constraint violated but no row found for email " + command.email(), e));
         }
     }
 
