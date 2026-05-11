@@ -43,9 +43,22 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-          github:
+            scope: openid, email, profile
+          microsoft:
+            provider: microsoft
             client-id: ${MICROSOFT_CLIENT_ID}
             client-secret: ${MICROSOFT_CLIENT_SECRET}
+            scope: openid, email, profile
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            client-name: Microsoft
+        provider:
+          microsoft:
+            authorization-uri: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+            token-uri: https://login.microsoftonline.com/common/oauth2/v2.0/token
+            jwk-set-uri: https://login.microsoftonline.com/common/discovery/v2.0/keys
+            user-info-uri: https://graph.microsoft.com/oidc/userinfo
+            user-name-attribute: email
 
 oit:
   swagger:
@@ -88,6 +101,7 @@ springdoc:
 
 web_client:
   origin: ${WEB_CLIENT_ORIGIN}
+  oauth-callback-path: ${WEB_CLIENT_OAUTH_CALLBACK_PATH:/oauth/callback}
 
 management:
   endpoints:
