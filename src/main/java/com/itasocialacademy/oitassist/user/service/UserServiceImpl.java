@@ -135,21 +135,21 @@ public class UserServiceImpl
         User user = repository.findById(currentUserId)
             .orElseThrow(() -> new EntityNotFoundException("User not found: " + currentUserId));
 
+        if (hasAnyRequestsToday(currentUserId)) {
+            throw new ProfileUpdateRequestException("User already had a request today",
+                    ErrorCode.PROFILE_UPDATE_REQUEST_DAILY_LIMIT);
+        }
+
         boolean hasAnyPendingReq =
             profileUpdateRequestRepository.existsByUserIdAndStatus(currentUserId, UpdateRequestStatus.PENDING);
 
-        boolean hasAnyCompetitions = userCompetitionFacade.hasActiveCompetitions(currentUserId,
-            List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS));
-
-        if (hasAnyRequestsToday(currentUserId)) {
-            throw new ProfileUpdateRequestException("User already had a request today",
-                ErrorCode.PROFILE_UPDATE_REQUEST_DAILY_LIMIT);
-        }
-
         if (hasAnyPendingReq) {
             throw new ProfileUpdateRequestException("User already have a pending update request",
-                ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
+                    ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
         }
+
+        boolean hasAnyCompetitions = userCompetitionFacade.hasActiveCompetitions(currentUserId,
+            List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS));
 
         UpdateRequestStatus status = hasAnyCompetitions ? UpdateRequestStatus.PENDING : UpdateRequestStatus.APPROVED;
 
