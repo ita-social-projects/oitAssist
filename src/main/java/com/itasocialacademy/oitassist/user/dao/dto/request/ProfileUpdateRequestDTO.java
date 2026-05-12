@@ -25,7 +25,6 @@ public class ProfileUpdateRequestDTO implements CreateEntityDTO<Long> {
     @Schema(description = "User Last name", example = "Bob")
     private String lastName;
 
-    @NotBlank
     @Size(max = 50, message = "Middle name must be at most 50 characters")
     @Schema(description = "User Middle name", example = "Bob")
     private String middleName;
