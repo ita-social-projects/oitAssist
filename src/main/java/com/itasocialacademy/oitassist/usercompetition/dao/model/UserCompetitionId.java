@@ -1,9 +1,16 @@
 package com.itasocialacademy.oitassist.usercompetition.dao.model;
 
 import jakarta.persistence.Column;
-
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import java.io.Serializable;
 
+@Embeddable
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
 public class UserCompetitionId implements Serializable {
     @Column(name = "author_id")
     private Long authorId;
