@@ -1,7 +1,6 @@
 package com.itasocialacademy.oitassist.usercompetition.dao.model;
 
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
-import com.itasocialacademy.oitassist.user.dao.model.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,14 +16,11 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class UserCompetition {
-
     @EmbeddedId
     private UserCompetitionId id;
 
-    @ManyToOne(optional = false)
-    @MapsId("authorId")
-    @JoinColumn(name = "author_id", nullable = false)
-    private User authorId;
+    @Column(name = "author_id", nullable = false, insertable = false, updatable = false)
+    private Long authorId;
 
     @ManyToOne(optional = false)
     @MapsId("competitionId")
