@@ -43,7 +43,7 @@ public class Competition {
     private CompetitionLevel level;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "competition_status")
+    @Column(name = "competition_status", columnDefinition = "competition_status")
     private CompetitionStatus competitionStatus;
 
     @Column(name = "year", nullable = false)
