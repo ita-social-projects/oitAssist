@@ -4,5 +4,5 @@ import org.springframework.modulith.NamedInterface;
 
 @NamedInterface("CompetitionStatus")
 public enum CompetitionStatus {
-    INCOMING, INPROGRESS, FINISED, ARCHIVED
+    INCOMING, INPROGRESS, FINISHED, ARCHIVED
 }
