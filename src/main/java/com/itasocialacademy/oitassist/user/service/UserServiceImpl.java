@@ -137,7 +137,7 @@ public class UserServiceImpl
 
         if (hasAnyRequestsToday(currentUserId)) {
             throw new ProfileUpdateRequestException("User already had a request today",
-                    ErrorCode.PROFILE_UPDATE_REQUEST_DAILY_LIMIT);
+                ErrorCode.PROFILE_UPDATE_REQUEST_DAILY_LIMIT);
         }
 
         boolean hasAnyPendingReq =
@@ -145,7 +145,7 @@ public class UserServiceImpl
 
         if (hasAnyPendingReq) {
             throw new ProfileUpdateRequestException("User already have a pending update request",
-                    ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
+                ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
         }
 
         boolean hasAnyCompetitions = userCompetitionFacade.hasActiveCompetitions(currentUserId,

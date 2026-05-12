@@ -232,8 +232,6 @@ class UserServiceImplTest {
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(user.getId()));
         when(repository.findById(user.getId())).thenReturn(Optional.of(user));
-        when(profileUpdateRequestRepository.existsByUserIdAndStatus(user.getId(), UpdateRequestStatus.PENDING))
-            .thenReturn(false);
         when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any()))
             .thenReturn(true);
 
