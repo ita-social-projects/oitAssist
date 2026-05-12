@@ -53,5 +53,16 @@
                                  constraintName="FK_PROFILE_UPDATE_REQUESTS_ON_USER" referencedColumnNames="id"
                                  referencedTableName="users"/>
     </changeSet>
+    <changeSet id="1777547976872-11" author="adamogorodnik">
+        <sql>
+            CREATE UNIQUE INDEX uq_profile_update_requests_pending
+                ON profile_update_requests (user_id)
+                WHERE status = 'PENDING';
+        </sql>
+        <sql>
+            CREATE UNIQUE INDEX uq_profile_update_requests_per_day
+                ON profile_update_requests (user_id, DATE(requested_at));
+        </sql>
+    </changeSet>
 
 </databaseChangeLog>

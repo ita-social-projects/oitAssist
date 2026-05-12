@@ -23,6 +23,7 @@ import com.itasocialacademy.oitassist.usercompetition.api.interfaces.UserCompeti
 import jakarta.persistence.EntityNotFoundException;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
@@ -166,7 +167,17 @@ public class UserServiceImpl
             .requestedAt(Instant.now())
             .build();
 
-        profileUpdateRequestRepository.save(profileUpdateRequest);
+        try {
+            profileUpdateRequestRepository.save(profileUpdateRequest);
+        } catch (DataIntegrityViolationException e) {
+            String message = e.getMessage();
+            if (message != null && message.contains("uq_profile_update_requests_per_day")) {
+                throw new ProfileUpdateRequestException("User already had a request today",
+                    ErrorCode.PROFILE_UPDATE_REQUEST_DAILY_LIMIT);
+            }
+            throw new ProfileUpdateRequestException("User already have a pending update request",
+                ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
+        }
 
         if (status == UpdateRequestStatus.APPROVED) {
             applyProfileUpdate(user, request);
