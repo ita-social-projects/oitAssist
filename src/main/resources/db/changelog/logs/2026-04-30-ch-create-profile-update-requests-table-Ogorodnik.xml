@@ -64,5 +64,13 @@
                 ON profile_update_requests (user_id, DATE(requested_at));
         </sql>
     </changeSet>
+    <changeSet id="1777547976872-12" author="adamogorodnik">
+        <addForeignKeyConstraint
+                baseColumnNames="reviewed_by"
+                baseTableName="profile_update_requests"
+                constraintName="FK_PROFILE_UPDATE_REQUESTS_ON_REVIEWED_BY"
+                referencedColumnNames="id"
+                referencedTableName="users"/>
+    </changeSet>
 
 </databaseChangeLog>
