@@ -47,7 +47,10 @@ public enum ErrorCode {
     ACTIVATION_EMAIL_SENDING_TIMEOUT(ErrorCategory.VALIDATION),
     USER_ALREADY_ACTIVATED(ErrorCategory.CONFLICT),
     USER_NOT_ACTIVATED(ErrorCategory.CONFLICT),
-    ACCESS_DENIED(ErrorCategory.AUTHORIZATION);
+    ACCESS_DENIED(ErrorCategory.AUTHORIZATION),
+
+    PROFILE_UPDATE_REQUEST_ALREADY_PENDING(ErrorCategory.CONFLICT),
+    PROFILE_UPDATE_REQUEST_DAILY_LIMIT(ErrorCategory.CONFLICT);
 
     private final ErrorCategory category;
 }
