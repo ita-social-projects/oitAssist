@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.user.controller;
 
 import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
+import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
@@ -11,10 +12,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Tag(name = "Users v1", description = "Operations related to users")
@@ -49,5 +50,50 @@ public class UserController
     })
     public ResponseEntity<ResponseUserDTO> getProfile() {
         return ResponseEntity.ok(service.getCurrentUserProfile());
+    }
+
+    @PostMapping("/profile/update-request")
+    @Operation(
+            summary = "Creates request for updating current user profile",
+            description = "Returns Created(201) status")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "User profile update request successfully created"),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized - token is missing or invalid",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(example = """
+                                {
+                                    "message": "Full authentication is required to access this resource"
+                                }
+                            """))),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Conflict",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(example = """
+                                {
+                                    "message": "You already have a pending update request | You already have a request today"
+                                }
+                            """))),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid request data",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(example = """
+                                {
+                                    "message": "Validation failed"
+                                }
+                            """)))
+    })
+    public ResponseEntity<Void>  createProfileUpdateRequest(@Valid @RequestBody ProfileUpdateRequestDTO request) {
+        service.createProfileUpdateRequest(request);
+
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 }
