@@ -45,7 +45,7 @@
             </column>
             <column name="reviewed_at" type="DATETIME"/>
             <column name="reviewed_by" type="BIGINT"/>
-            <column name="reject_reason" type="VARCHAR(255)"/>
+            <column name="reject_reason" type="VARCHAR(500)"/>
         </createTable>
     </changeSet>
     <changeSet id="1777547976872-10" author="adamogorodnik">
