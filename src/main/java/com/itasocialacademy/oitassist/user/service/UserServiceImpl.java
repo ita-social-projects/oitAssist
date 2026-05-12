@@ -25,7 +25,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -41,7 +40,8 @@ public class UserServiceImpl
     private final ProfileUpdateRequestRepository profileUpdateRequestRepository;
     private final UserCompetitionFacade userCompetitionFacade;
 
-    protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade, ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade) {
+    protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade,
+        ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade) {
         super(repository, mapper);
         this.securityFacade = securityFacade;
         this.profileUpdateRequestRepository = profileUpdateRequestRepository;
@@ -68,7 +68,9 @@ public class UserServiceImpl
         return user.map(mapper::toUserDetails).orElse(null);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @NonNull
     public ResponseUserDTO loadUserByEmail(@NonNull String email) {
@@ -78,7 +80,9 @@ public class UserServiceImpl
             .orElseThrow(() -> new EntityNotFoundException("User not found: " + email));
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @NonNull
     public ResponseUserDTO getCurrentUserProfile() {
@@ -91,7 +95,7 @@ public class UserServiceImpl
     /**
      * Applies profile changes for the user.
      *
-     * @param user current authenticated user
+     * @param user    current authenticated user
      * @param request new user data
      */
     private void applyProfileUpdate(User user, ProfileUpdateRequestDTO request) {
@@ -103,7 +107,8 @@ public class UserServiceImpl
     }
 
     /**
-     * Checks if the user has had any profile update requests during the current day.
+     * Checks if the user has had any profile update requests during the current
+     * day.
      *
      * @param currentUserId the ID of the current authenticated user
      * @return true if the user already submitted a request today, false otherwise
@@ -117,47 +122,53 @@ public class UserServiceImpl
         return profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(currentUserId, startOfDay, endOfDay);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public void createProfileUpdateRequest(@NotNull ProfileUpdateRequestDTO request) {
         Long currentUserId = securityFacade.getCurrentUserId()
-                .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
+            .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
 
         User user = repository.findById(currentUserId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + currentUserId));
+            .orElseThrow(() -> new EntityNotFoundException("User not found: " + currentUserId));
 
-        boolean hasAnyPendingReq = profileUpdateRequestRepository.existsByUserIdAndStatus(currentUserId, UpdateRequestStatus.PENDING);
+        boolean hasAnyPendingReq =
+            profileUpdateRequestRepository.existsByUserIdAndStatus(currentUserId, UpdateRequestStatus.PENDING);
 
-        boolean hasAnyCompetitions = userCompetitionFacade.hasActiveCompetitions(currentUserId, List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS));
+        boolean hasAnyCompetitions = userCompetitionFacade.hasActiveCompetitions(currentUserId,
+            List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS));
 
         if (hasAnyRequestsToday(currentUserId)) {
-            throw new ProfileUpdateRequestException("User already had a request today", ErrorCode.PROFILE_UPDATE_REQUEST_DAILY_LIMIT);
+            throw new ProfileUpdateRequestException("User already had a request today",
+                ErrorCode.PROFILE_UPDATE_REQUEST_DAILY_LIMIT);
         }
 
         if (hasAnyPendingReq) {
-            throw new ProfileUpdateRequestException("User already have a pending update request", ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
+            throw new ProfileUpdateRequestException("User already have a pending update request",
+                ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
         }
 
         UpdateRequestStatus status = hasAnyCompetitions ? UpdateRequestStatus.PENDING : UpdateRequestStatus.APPROVED;
 
         ProfileUpdateRequest profileUpdateRequest = ProfileUpdateRequest.builder()
-                .user(user)
-                .status(status)
-                .oldFirstName(user.getFirstName())
-                .oldLastName(user.getSurname())
-                .oldMiddleName(user.getMiddleName())
-                .oldPhoneNumber(user.getPhoneNumber())
-                .newFirstName(request.getFirstName())
-                .newLastName(request.getLastName())
-                .newMiddleName(request.getMiddleName())
-                .newPhoneNumber(request.getPhoneNumber())
-                .requestedAt(Instant.now())
-                .build();
+            .user(user)
+            .status(status)
+            .oldFirstName(user.getFirstName())
+            .oldLastName(user.getSurname())
+            .oldMiddleName(user.getMiddleName())
+            .oldPhoneNumber(user.getPhoneNumber())
+            .newFirstName(request.getFirstName())
+            .newLastName(request.getLastName())
+            .newMiddleName(request.getMiddleName())
+            .newPhoneNumber(request.getPhoneNumber())
+            .requestedAt(Instant.now())
+            .build();
 
         profileUpdateRequestRepository.save(profileUpdateRequest);
 
-        if(status == UpdateRequestStatus.APPROVED) {
+        if (status == UpdateRequestStatus.APPROVED) {
             applyProfileUpdate(user, request);
         }
     }

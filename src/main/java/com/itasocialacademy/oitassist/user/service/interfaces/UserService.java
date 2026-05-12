@@ -48,14 +48,16 @@ public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUser
     ResponseUserDTO getCurrentUserProfile();
 
     /**
-     * Creates a profile update request for the current authenticated user.
-     * If user has active competitions — request goes to PENDING (requires admin approval).
-     * If no active competitions — request is auto-approved.
-     * User can submit only one profile update request per day.
+     * Creates a profile update request for the current authenticated user. If user
+     * has active competitions — request goes to PENDING (requires admin approval).
+     * If no active competitions — request is auto-approved. User can submit only
+     * one profile update request per day.
      *
      * @param request the new profile data
-     * @throws AuthorizationException if user is not authenticated
-     * @throws ProfileUpdateRequestException if user already has a pending request or has already submitted a request today
+     * @throws AuthorizationException        if user is not authenticated
+     * @throws ProfileUpdateRequestException if user already has a pending request
+     *                                       or has already submitted a request
+     *                                       today
      */
     void createProfileUpdateRequest(@NonNull ProfileUpdateRequestDTO request);
 }

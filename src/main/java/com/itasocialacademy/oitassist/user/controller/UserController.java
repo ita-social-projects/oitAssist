@@ -54,44 +54,44 @@ public class UserController
 
     @PostMapping("/profile/update-request")
     @Operation(
-            summary = "Creates request for updating current user profile",
-            description = "Returns Created(201) status")
+        summary = "Creates request for updating current user profile",
+        description = "Returns Created(201) status")
     @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "201",
-                    description = "User profile update request successfully created"),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Unauthorized - token is missing or invalid",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(example = """
-                                {
-                                    "message": "Full authentication is required to access this resource"
-                                }
-                            """))),
-            @ApiResponse(
-                    responseCode = "409",
-                    description = "Conflict",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(example = """
-                                {
-                                    "message": "You already have a pending update request | You already have a request today"
-                                }
-                            """))),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid request data",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(example = """
-                                {
-                                    "message": "Validation failed"
-                                }
-                            """)))
+        @ApiResponse(
+            responseCode = "201",
+            description = "User profile update request successfully created"),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized - token is missing or invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(example = """
+                        {
+                            "message": "Full authentication is required to access this resource"
+                        }
+                    """))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Conflict",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(example = """
+                        {
+                            "message": "You already have a pending update request | You already have a request today"
+                        }
+                    """))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request data",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(example = """
+                        {
+                            "message": "Validation failed"
+                        }
+                    """)))
     })
-    public ResponseEntity<Void>  createProfileUpdateRequest(@Valid @RequestBody ProfileUpdateRequestDTO request) {
+    public ResponseEntity<Void> createProfileUpdateRequest(@Valid @RequestBody ProfileUpdateRequestDTO request) {
         service.createProfileUpdateRequest(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).build();

@@ -1,11 +1,9 @@
 package com.itasocialacademy.oitassist.user.dao.model;
 
 import com.itasocialacademy.oitassist.core.rest.entity.LongEntity;
-import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.Instant;
 
 @Entity
