@@ -3,15 +3,29 @@ package com.itasocialacademy.oitassist.user.service.interfaces;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.rest.service.interfaces.BaseService;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
+import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.exceptions.ProfileUpdateRequestException;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.Optional;
 import org.jspecify.annotations.NonNull;
 
 public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUserDTO, ResponseUserDTO> {
+    /**
+     * Looks up a user by email and returns the auth-side projection required by
+     * {@code UserFacade.findByEmail}. Returns empty if no user exists.
+     *
+     * <p>
+     * This is the canonical lookup path for the {@code security} module from Phase
+     * 1.3 onward. It replaces the pre-refactor {@link #loadUserByUsername} path
+     * which returned a {@code security}-owned type directly.
+     * </p>
+     */
+    Optional<UserAuthDetails> findAuthDetailsByEmail(String email);
+
     UserDetailsImpl loadUserByUsername(String username);
 
     /**
