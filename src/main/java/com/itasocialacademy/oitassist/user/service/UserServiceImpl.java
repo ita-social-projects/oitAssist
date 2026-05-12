@@ -1,20 +1,35 @@
 package com.itasocialacademy.oitassist.user.service;
 
+import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
+import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
+import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
+import com.itasocialacademy.oitassist.user.dao.model.ProfileUpdateRequest;
 import com.itasocialacademy.oitassist.user.dao.model.User;
+import com.itasocialacademy.oitassist.user.dao.repository.ProfileUpdateRequestRepository;
+import com.itasocialacademy.oitassist.user.exceptions.ProfileUpdateRequestException;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
+import com.itasocialacademy.oitassist.usercompetition.api.interfaces.UserCompetitionFacade;
 import jakarta.persistence.EntityNotFoundException;
+import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -22,10 +37,14 @@ public class UserServiceImpl
     extends AbstractServiceImpl<Long, User, CreateUserDTO, UpdateUserDTO, ResponseUserDTO, UserRepository, UserMapper>
     implements UserService {
     private final SecurityFacade securityFacade;
+    private final ProfileUpdateRequestRepository profileUpdateRequestRepository;
+    private final UserCompetitionFacade userCompetitionFacade;
 
-    protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade) {
+    protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade, ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade) {
         super(repository, mapper);
         this.securityFacade = securityFacade;
+        this.profileUpdateRequestRepository = profileUpdateRequestRepository;
+        this.userCompetitionFacade = userCompetitionFacade;
     }
 
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {
@@ -33,6 +52,7 @@ public class UserServiceImpl
         return user.map(mapper::toUserDetails).orElse(null);
     }
 
+    /** {@inheritDoc} */
     @Override
     @NonNull
     public ResponseUserDTO loadUserByEmail(@NonNull String email) {
@@ -42,6 +62,7 @@ public class UserServiceImpl
             .orElseThrow(() -> new EntityNotFoundException("User not found: " + email));
     }
 
+    /** {@inheritDoc} */
     @Override
     @NonNull
     public ResponseUserDTO getCurrentUserProfile() {
@@ -49,5 +70,79 @@ public class UserServiceImpl
             .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
 
         return loadUserByEmail(email);
+    }
+
+    /**
+     * Applies profile changes for the user.
+     *
+     * @param user current authenticated user
+     * @param request new user data
+     */
+    private void applyProfileUpdate(User user, ProfileUpdateRequestDTO request) {
+        user.setFirstName(request.getFirstName());
+        user.setSurname(request.getLastName());
+        user.setMiddleName(request.getMiddleName());
+        user.setPhoneNumber(request.getPhoneNumber());
+        repository.save(user);
+    }
+
+    /**
+     * Checks if the user has had any profile update requests during the current day.
+     *
+     * @param currentUserId the ID of the current authenticated user
+     * @return true if the user already submitted a request today, false otherwise
+     */
+    private boolean hasAnyRequestsToday(Long currentUserId) {
+        ZoneId zoneId = ZoneId.of("Europe/Kiev");
+        ZonedDateTime now = ZonedDateTime.now(zoneId);
+        Instant startOfDay = now.toLocalDate().atStartOfDay(zoneId).toInstant();
+        Instant endOfDay = startOfDay.plus(1, ChronoUnit.DAYS);
+
+        return profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(currentUserId, startOfDay, endOfDay);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional
+    public void createProfileUpdateRequest(@NotNull ProfileUpdateRequestDTO request) {
+        Long currentUserId = securityFacade.getCurrentUserId()
+                .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
+
+        User user = repository.findById(currentUserId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + currentUserId));
+
+        boolean hasAnyPendingReq = profileUpdateRequestRepository.existsByUserIdAndStatus(currentUserId, UpdateRequestStatus.PENDING);
+
+        boolean hasAnyCompetitions = userCompetitionFacade.hasActiveCompetitions(currentUserId, List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS));
+
+        if (hasAnyRequestsToday(currentUserId)) {
+            throw new ProfileUpdateRequestException("User already had a request today", ErrorCode.PROFILE_UPDATE_REQUEST_DAILY_LIMIT);
+        }
+
+        if (hasAnyPendingReq) {
+            throw new ProfileUpdateRequestException("User already have a pending update request", ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
+        }
+
+        UpdateRequestStatus status = hasAnyCompetitions ? UpdateRequestStatus.PENDING : UpdateRequestStatus.APPROVED;
+
+        ProfileUpdateRequest profileUpdateRequest = ProfileUpdateRequest.builder()
+                .user(user)
+                .status(status)
+                .oldFirstName(user.getFirstName())
+                .oldLastName(user.getSurname())
+                .oldMiddleName(user.getMiddleName())
+                .oldPhoneNumber(user.getPhoneNumber())
+                .newFirstName(request.getFirstName())
+                .newLastName(request.getLastName())
+                .newMiddleName(request.getMiddleName())
+                .newPhoneNumber(request.getPhoneNumber())
+                .requestedAt(Instant.now())
+                .build();
+
+        profileUpdateRequestRepository.save(profileUpdateRequest);
+
+        if(status == UpdateRequestStatus.APPROVED) {
+            applyProfileUpdate(user, request);
+        }
     }
 }
