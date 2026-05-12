@@ -1,14 +1,9 @@
 package com.itasocialacademy.oitassist.usercompetition.service.interfaces;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
-import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
-import jakarta.persistence.EntityNotFoundException;
-import org.jspecify.annotations.NonNull;
-import org.springframework.data.repository.query.Param;
-
 import java.util.List;
 
-public interface UserCompetitionService{
+public interface UserCompetitionService {
     /**
      * Checks if user has competitions with given statuses.
      *

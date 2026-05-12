@@ -5,7 +5,6 @@ import com.itasocialacademy.oitassist.usercompetition.api.interfaces.UserCompeti
 import com.itasocialacademy.oitassist.usercompetition.service.interfaces.UserCompetitionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 
 @Service
