@@ -149,30 +149,31 @@ class UserServiceImplTest {
         String email = "test@email.com";
 
         User user = User.builder()
-                .id(1L)
-                .email(email)
-                .build();
+            .id(1L)
+            .email(email)
+            .build();
 
         ProfileUpdateRequestDTO request = ProfileUpdateRequestDTO.builder()
-                .firstName("Bob")
-                .lastName("Smith")
-                .middleName("John")
-                .phoneNumber("380931111111")
-                .build();
+            .firstName("Bob")
+            .lastName("Smith")
+            .middleName("John")
+            .phoneNumber("380931111111")
+            .build();
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(user.getId()));
         when(repository.findById(user.getId())).thenReturn(Optional.of(user));
-        when(profileUpdateRequestRepository.existsByUserIdAndStatus(user.getId(), UpdateRequestStatus.PENDING)).thenReturn(false);
-        when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any())).thenReturn(false);
-        when(userCompetitionFacade.hasActiveCompetitions(user.getId(), List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS))).thenReturn(true);
+        when(profileUpdateRequestRepository.existsByUserIdAndStatus(user.getId(), UpdateRequestStatus.PENDING))
+            .thenReturn(false);
+        when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any()))
+            .thenReturn(false);
+        when(userCompetitionFacade.hasActiveCompetitions(user.getId(),
+            List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS))).thenReturn(true);
 
         // when
         userService.createProfileUpdateRequest(request);
 
         // then
-        verify(profileUpdateRequestRepository).save(argThat(req ->
-                req.getStatus() == UpdateRequestStatus.PENDING
-        ));
+        verify(profileUpdateRequestRepository).save(argThat(req -> req.getStatus() == UpdateRequestStatus.PENDING));
         verify(repository, never()).save(any());
     }
 
@@ -183,30 +184,31 @@ class UserServiceImplTest {
         String email = "test@email.com";
 
         User user = User.builder()
-                .id(1L)
-                .email(email)
-                .build();
+            .id(1L)
+            .email(email)
+            .build();
 
         ProfileUpdateRequestDTO request = ProfileUpdateRequestDTO.builder()
-                .firstName("Bob")
-                .lastName("Smith")
-                .middleName("John")
-                .phoneNumber("380931111111")
-                .build();
+            .firstName("Bob")
+            .lastName("Smith")
+            .middleName("John")
+            .phoneNumber("380931111111")
+            .build();
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(user.getId()));
         when(repository.findById(user.getId())).thenReturn(Optional.of(user));
-        when(profileUpdateRequestRepository.existsByUserIdAndStatus(user.getId(), UpdateRequestStatus.PENDING)).thenReturn(false);
-        when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any())).thenReturn(false);
-        when(userCompetitionFacade.hasActiveCompetitions(user.getId(), List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS))).thenReturn(false);
+        when(profileUpdateRequestRepository.existsByUserIdAndStatus(user.getId(), UpdateRequestStatus.PENDING))
+            .thenReturn(false);
+        when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any()))
+            .thenReturn(false);
+        when(userCompetitionFacade.hasActiveCompetitions(user.getId(),
+            List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS))).thenReturn(false);
 
         // when
         userService.createProfileUpdateRequest(request);
 
         // then
-        verify(profileUpdateRequestRepository).save(argThat(req ->
-                req.getStatus() == UpdateRequestStatus.APPROVED
-        ));
+        verify(profileUpdateRequestRepository).save(argThat(req -> req.getStatus() == UpdateRequestStatus.APPROVED));
         verify(repository, times(1)).save(any());
     }
 
@@ -217,26 +219,28 @@ class UserServiceImplTest {
         String email = "test@email.com";
 
         User user = User.builder()
-                .id(1L)
-                .email(email)
-                .build();
+            .id(1L)
+            .email(email)
+            .build();
 
         ProfileUpdateRequestDTO request = ProfileUpdateRequestDTO.builder()
-                .firstName("Bob")
-                .lastName("Smith")
-                .middleName("John")
-                .phoneNumber("380931111111")
-                .build();
+            .firstName("Bob")
+            .lastName("Smith")
+            .middleName("John")
+            .phoneNumber("380931111111")
+            .build();
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(user.getId()));
         when(repository.findById(user.getId())).thenReturn(Optional.of(user));
-        when(profileUpdateRequestRepository.existsByUserIdAndStatus(user.getId(), UpdateRequestStatus.PENDING)).thenReturn(false);
-        when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any())).thenReturn(true);
+        when(profileUpdateRequestRepository.existsByUserIdAndStatus(user.getId(), UpdateRequestStatus.PENDING))
+            .thenReturn(false);
+        when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any()))
+            .thenReturn(true);
 
         // when
         assertThatThrownBy(() -> userService.createProfileUpdateRequest(request))
-                .isInstanceOf(ProfileUpdateRequestException.class)
-                .hasMessage("User already had a request today");
+            .isInstanceOf(ProfileUpdateRequestException.class)
+            .hasMessage("User already had a request today");
 
         // then
         verify(profileUpdateRequestRepository, never()).save(any());
@@ -249,26 +253,28 @@ class UserServiceImplTest {
         String email = "test@email.com";
 
         User user = User.builder()
-                .id(1L)
-                .email(email)
-                .build();
+            .id(1L)
+            .email(email)
+            .build();
 
         ProfileUpdateRequestDTO request = ProfileUpdateRequestDTO.builder()
-                .firstName("Bob")
-                .lastName("Smith")
-                .middleName("John")
-                .phoneNumber("380931111111")
-                .build();
+            .firstName("Bob")
+            .lastName("Smith")
+            .middleName("John")
+            .phoneNumber("380931111111")
+            .build();
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(user.getId()));
         when(repository.findById(user.getId())).thenReturn(Optional.of(user));
-        when(profileUpdateRequestRepository.existsByUserIdAndStatus(user.getId(), UpdateRequestStatus.PENDING)).thenReturn(true);
-        when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any())).thenReturn(false);
+        when(profileUpdateRequestRepository.existsByUserIdAndStatus(user.getId(), UpdateRequestStatus.PENDING))
+            .thenReturn(true);
+        when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any()))
+            .thenReturn(false);
 
         // when
         assertThatThrownBy(() -> userService.createProfileUpdateRequest(request))
-                .isInstanceOf(ProfileUpdateRequestException.class)
-                .hasMessage("User already have a pending update request");
+            .isInstanceOf(ProfileUpdateRequestException.class)
+            .hasMessage("User already have a pending update request");
 
         // then
         verify(profileUpdateRequestRepository, never()).save(any());
@@ -279,16 +285,16 @@ class UserServiceImplTest {
     void createProfileUpdateRequest_ShouldThrow401_WhenUserIsNotAuthenticated() {
         // given
         ProfileUpdateRequestDTO request = ProfileUpdateRequestDTO.builder()
-                .firstName("Bob")
-                .lastName("Smith")
-                .middleName("John")
-                .phoneNumber("380931111111")
-                .build();
+            .firstName("Bob")
+            .lastName("Smith")
+            .middleName("John")
+            .phoneNumber("380931111111")
+            .build();
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
 
         // when and then
         assertThatThrownBy(() -> userService.createProfileUpdateRequest(request))
-                .isInstanceOf(AuthorizationException.class);
+            .isInstanceOf(AuthorizationException.class);
     }
 }

@@ -74,21 +74,21 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
     void createProfileUpdateRequest_ShouldReturnCreated_whenRequestIsValid() throws Exception {
         // given
         ProfileUpdateRequestDTO request = ProfileUpdateRequestDTO.builder()
-                .firstName("Bob")
-                .lastName("Smith")
-                .middleName("John")
-                .phoneNumber("380931111111")
-                .build();
+            .firstName("Bob")
+            .lastName("Smith")
+            .middleName("John")
+            .phoneNumber("380931111111")
+            .build();
 
         // when
         doNothing().when(userService).createProfileUpdateRequest(request);
 
         mockMvc.perform(
-                        post("/api/v1/users/profile/update-request")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
-                // then
-                .andExpect(status().isCreated());
+            post("/api/v1/users/profile/update-request")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            // then
+            .andExpect(status().isCreated());
 
         verify(userService, times(1)).createProfileUpdateRequest(request);
     }
@@ -98,22 +98,23 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
     void createProfileUpdateRequest_shouldThrow_whenPendingExists() throws Exception {
         // given
         ProfileUpdateRequestDTO request = ProfileUpdateRequestDTO.builder()
-                .firstName("Bob")
-                .lastName("Smith")
-                .middleName("John")
-                .phoneNumber("380931111111")
-                .build();
+            .firstName("Bob")
+            .lastName("Smith")
+            .middleName("John")
+            .phoneNumber("380931111111")
+            .build();
 
         // when
-        doThrow(new ProfileUpdateRequestException("User already have a pending update request", ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING))
-                .when(userService).createProfileUpdateRequest(request);
+        doThrow(new ProfileUpdateRequestException("User already have a pending update request",
+            ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING))
+            .when(userService).createProfileUpdateRequest(request);
 
         mockMvc.perform(
-                        post("/api/v1/users/profile/update-request")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
-                // then
-                .andExpect(status().isConflict());
+            post("/api/v1/users/profile/update-request")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            // then
+            .andExpect(status().isConflict());
 
         verify(userService, times(1)).createProfileUpdateRequest(request);
     }
@@ -123,22 +124,23 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
     void createProfileUpdateRequest_shouldThrow_whenAlreadyHadARequestToday() throws Exception {
         // given
         ProfileUpdateRequestDTO request = ProfileUpdateRequestDTO.builder()
-                .firstName("Bob")
-                .lastName("Smith")
-                .middleName("John")
-                .phoneNumber("380931111111")
-                .build();
+            .firstName("Bob")
+            .lastName("Smith")
+            .middleName("John")
+            .phoneNumber("380931111111")
+            .build();
 
         // when
-        doThrow(new ProfileUpdateRequestException("User already had a request today", ErrorCode.PROFILE_UPDATE_REQUEST_DAILY_LIMIT))
-                .when(userService).createProfileUpdateRequest(request);
+        doThrow(new ProfileUpdateRequestException("User already had a request today",
+            ErrorCode.PROFILE_UPDATE_REQUEST_DAILY_LIMIT))
+            .when(userService).createProfileUpdateRequest(request);
 
         mockMvc.perform(
-                        post("/api/v1/users/profile/update-request")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
-                // then
-                .andExpect(status().isConflict());
+            post("/api/v1/users/profile/update-request")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            // then
+            .andExpect(status().isConflict());
 
         verify(userService, times(1)).createProfileUpdateRequest(request);
     }
@@ -148,18 +150,18 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
     void createProfileUpdateRequest_shouldReturn400_whenBodyIsIncorrect() throws Exception {
         // given
         ProfileUpdateRequestDTO request = ProfileUpdateRequestDTO.builder()
-                .lastName("Smith")
-                .middleName("John")
-                .phoneNumber("380931111111")
-                .build();
+            .lastName("Smith")
+            .middleName("John")
+            .phoneNumber("380931111111")
+            .build();
 
         // when
         mockMvc.perform(
-                        post("/api/v1/users/profile/update-request")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
-                // then
-                .andExpect(status().isBadRequest());
+            post("/api/v1/users/profile/update-request")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            // then
+            .andExpect(status().isBadRequest());
 
         verify(userService, never()).createProfileUpdateRequest(any());
     }
