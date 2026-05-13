@@ -7,11 +7,19 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
+import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
+import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
 import com.itasocialacademy.oitassist.user.exceptions.ProfileUpdateRequestException;
 import jakarta.persistence.EntityNotFoundException;
+
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUserDTO, ResponseUserDTO> {
     /**
@@ -60,4 +68,6 @@ public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUser
      *                                       today
      */
     void createProfileUpdateRequest(@NonNull ProfileUpdateRequestDTO request);
+
+    Page<ResponseProfileUpdateRequestDTO> getProfileUpdateRequests(UpdateRequestStatus status, Pageable pageable);
 }

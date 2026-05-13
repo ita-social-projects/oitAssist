@@ -3,6 +3,8 @@ package com.itasocialacademy.oitassist.user.dao.repository;
 import com.itasocialacademy.oitassist.core.rest.repository.EntityRepository;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
 import com.itasocialacademy.oitassist.user.dao.model.ProfileUpdateRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import java.time.Instant;
 
@@ -16,4 +18,6 @@ public interface ProfileUpdateRequestRepository extends EntityRepository<Profile
      * specified time range.
      */
     boolean existsByUserIdAndRequestedAtBetween(Long userId, Instant start, Instant end);
+
+    Page<ProfileUpdateRequest> findByStatus(UpdateRequestStatus status, Pageable pageable);
 }

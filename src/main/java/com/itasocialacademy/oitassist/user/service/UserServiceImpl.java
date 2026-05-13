@@ -10,12 +10,14 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
+import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
 import com.itasocialacademy.oitassist.user.dao.model.ProfileUpdateRequest;
 import com.itasocialacademy.oitassist.user.dao.model.User;
 import com.itasocialacademy.oitassist.user.dao.repository.ProfileUpdateRequestRepository;
 import com.itasocialacademy.oitassist.user.exceptions.ProfileUpdateRequestException;
+import com.itasocialacademy.oitassist.user.mapper.ProfileUpdateRequestMapper;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
@@ -24,6 +26,8 @@ import jakarta.persistence.EntityNotFoundException;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
@@ -40,13 +44,15 @@ public class UserServiceImpl
     private final SecurityFacade securityFacade;
     private final ProfileUpdateRequestRepository profileUpdateRequestRepository;
     private final UserCompetitionFacade userCompetitionFacade;
+    private final ProfileUpdateRequestMapper ProfileUpdateRequestMapper;
 
     protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade,
-        ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade) {
+                              ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade, ProfileUpdateRequestMapper profileUpdateRequestMapper) {
         super(repository, mapper);
         this.securityFacade = securityFacade;
         this.profileUpdateRequestRepository = profileUpdateRequestRepository;
         this.userCompetitionFacade = userCompetitionFacade;
+        ProfileUpdateRequestMapper = profileUpdateRequestMapper;
     }
 
     /**
@@ -182,5 +188,13 @@ public class UserServiceImpl
         if (status == UpdateRequestStatus.APPROVED) {
             applyProfileUpdate(user, request);
         }
+    }
+
+    public Page<ResponseProfileUpdateRequestDTO> getProfileUpdateRequests(UpdateRequestStatus status, Pageable pageable) {
+        Page<ProfileUpdateRequest> result = status == null
+                ? profileUpdateRequestRepository.findAll(pageable)
+                : profileUpdateRequestRepository.findByStatus(status, pageable);
+
+        return result.map(ProfileUpdateRequestMapper::toResponseProfileUpdateRequestDTO);
     }
 }
