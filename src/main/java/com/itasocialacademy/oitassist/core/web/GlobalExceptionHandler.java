@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.*;
 import com.itasocialacademy.oitassist.core.exceptions.SecurityException;
 import com.itasocialacademy.oitassist.core.exceptions.TechnicalException;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -194,6 +195,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, message,
                         HttpStatus.BAD_REQUEST.value(), null));
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEntityNotFound(
+            EntityNotFoundException ex, HttpServletRequest request) {
+        log.warn("Entity not found: traceId={}", MDC.get(TRACE_ID_MDC));
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(buildResponse(request, ErrorCode.ENTITY_NOT_FOUND, ex.getMessage(),
+                        HttpStatus.NOT_FOUND.value(), null));
     }
 
     @ExceptionHandler(Exception.class)

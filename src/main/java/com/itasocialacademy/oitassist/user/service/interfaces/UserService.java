@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
+import com.itasocialacademy.oitassist.user.dao.dto.request.ReviewRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
@@ -47,6 +48,15 @@ public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUser
     ResponseUserDTO loadUserByEmail(String email);
 
     /**
+     * Finds a user by their ID and returns their profile.
+     *
+     * @param id the unique identifier of the user
+     * @return the user's profile DTO
+     * @throws EntityNotFoundException if no user is found with the given ID
+     */
+    ResponseUserDTO loadUserById(Long id);
+
+    /**
      * Finds a current authenticated user and returns their profile.
      *
      * @return the user's profile DTO
@@ -69,5 +79,30 @@ public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUser
      */
     void createProfileUpdateRequest(@NonNull ProfileUpdateRequestDTO request);
 
+    /**
+     * Returns a paginated list of profile update requests, optionally filtered by
+     * status. Supports sorting only by {@code requestedAt} and {@code status} fields.
+     *
+     * @param status   the status to filter by, or {@code null} to return all requests
+     * @param pageable pagination and sorting parameters(requestedAt or status)
+     * @return a page of {@link ResponseProfileUpdateRequestDTO}
+     * @throws IllegalArgumentException if sorting is applied on a disallowed field
+     */
     Page<ResponseProfileUpdateRequestDTO> getProfileUpdateRequests(UpdateRequestStatus status, Pageable pageable);
+
+
+    /**
+     * Reviews a profile update request by approving or rejecting it. If approved,
+     * the user's profile is updated immediately. If rejected, a non-blank rejection
+     * reason must be provided. Only requests with {@code PENDING} status can be reviewed.
+     *
+     * @param id   the unique identifier of the profile update request
+     * @param body the review decision containing the new status and optional rejection reason
+     * @throws EntityNotFoundException       if no request is found with the given ID,
+     *                                       or if the associated user no longer exists
+     * @throws ProfileUpdateRequestException if the request has already been reviewed
+     * @throws IllegalArgumentException      if the status is not APPROVED or REJECTED,
+     *                                       or if the rejection reason is blank when rejecting
+     */
+    void reviewProfileUpdateRequests(Long id, ReviewRequestDTO body);
 }

@@ -4,31 +4,36 @@ import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
+import com.itasocialacademy.oitassist.user.dao.dto.request.ReviewRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
+import com.itasocialacademy.oitassist.user.dao.model.ProfileUpdateRequest;
 import com.itasocialacademy.oitassist.user.dao.model.User;
 import com.itasocialacademy.oitassist.user.dao.repository.ProfileUpdateRequestRepository;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
+import com.itasocialacademy.oitassist.user.exceptions.InvalidSortFieldException;
 import com.itasocialacademy.oitassist.user.exceptions.ProfileUpdateRequestException;
+import com.itasocialacademy.oitassist.user.mapper.ProfileUpdateRequestMapper;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.service.UserServiceImpl;
 import com.itasocialacademy.oitassist.usercompetition.api.interfaces.UserCompetitionFacade;
 import jakarta.persistence.EntityNotFoundException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.springframework.data.domain.*;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,8 +54,16 @@ class UserServiceImplTest {
     @Mock
     private UserCompetitionFacade userCompetitionFacade;
 
+    @Mock
+    private ProfileUpdateRequestMapper profileUpdateRequestMapper;
+
     @InjectMocks
     private UserServiceImpl userService;
+
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(userService, "timezone", "Europe/Kiev");
+    }
 
     @Test
     @DisplayName("loadUserByEmail should return DTO when user exists")
@@ -294,5 +307,190 @@ class UserServiceImplTest {
         // when and then
         assertThatThrownBy(() -> userService.createProfileUpdateRequest(request))
             .isInstanceOf(AuthorizationException.class);
+    }
+
+    @Test
+    @DisplayName("Should return page when sort field is valid (requestedAt)")
+    void getProfileUpdateRequests_shouldReturnPage_whenSortByRequestedAt() {
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("requestedAt"));
+
+        Page<ProfileUpdateRequest> repoPage = new PageImpl<>(List.of());
+        when(profileUpdateRequestRepository.findByStatus(UpdateRequestStatus.PENDING, pageable)).thenReturn(repoPage);
+
+        assertThatNoException()
+                .isThrownBy(() -> userService.getProfileUpdateRequests(UpdateRequestStatus.PENDING, pageable));
+    }
+
+    @Test
+    @DisplayName("Should return page when sort field is valid (status)")
+    void getProfileUpdateRequests_shouldReturnPage_whenSortByStatus() {
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("status"));
+
+        Page<ProfileUpdateRequest> repoPage = new PageImpl<>(List.of());
+        when(profileUpdateRequestRepository.findByStatus(UpdateRequestStatus.PENDING, pageable)).thenReturn(repoPage);
+
+        assertThatNoException()
+                .isThrownBy(() -> userService.getProfileUpdateRequests(UpdateRequestStatus.PENDING, pageable));
+    }
+
+    @Test
+    @DisplayName("getProfileUpdateRequests - should call findAll when status is null")
+    void getProfileUpdateRequests_shouldCallFindAll_whenStatusIsNull() {
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("requestedAt"));
+        when(profileUpdateRequestRepository.findAll(pageable)).thenReturn(Page.empty());
+
+        userService.getProfileUpdateRequests(null, pageable);
+
+        verify(profileUpdateRequestRepository).findAll(pageable);
+        verify(profileUpdateRequestRepository, never()).findByStatus(any(), any());
+    }
+
+    @Test
+    @DisplayName("getProfileUpdateRequests - should throw InvalidSortFieldException when sort field is invalid")
+    void getProfileUpdateRequests_shouldThrow_whenSortFieldIsInvalid() {
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("invalidField"));
+
+        assertThatThrownBy(() -> userService.getProfileUpdateRequests(UpdateRequestStatus.PENDING, pageable))
+                .isInstanceOf(InvalidSortFieldException.class)
+                .hasMessageContaining("invalidField");
+    }
+
+    @Test
+    @DisplayName("reviewProfileUpdateRequests - should approve request successfully")
+    void reviewProfileUpdateRequests_shouldApprove_whenRequestIsPending() {
+        // given
+        Long id = 1L;
+        ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.APPROVED, null);
+
+        User user = User.builder().id(10L).build();
+        ProfileUpdateRequest request = ProfileUpdateRequest.builder()
+                .id(id)
+                .status(UpdateRequestStatus.PENDING)
+                .user(user)
+                .build();
+
+        when(profileUpdateRequestRepository.findById(id)).thenReturn(Optional.of(request));
+        when(repository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        // when
+        userService.reviewProfileUpdateRequests(id, body);
+
+        // then
+        verify(profileUpdateRequestRepository).save(request);
+        assertThat(request.getStatus()).isEqualTo(UpdateRequestStatus.APPROVED);
+    }
+
+    @Test
+    @DisplayName("reviewProfileUpdateRequests - should reject request with reason successfully")
+    void reviewProfileUpdateRequests_shouldReject_whenReasonProvided() {
+        // given
+        Long id = 1L;
+        ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.REJECTED, "Wrong data");
+
+        User user = User.builder().id(10L).build();
+        ProfileUpdateRequest request = ProfileUpdateRequest.builder()
+                .id(id)
+                .status(UpdateRequestStatus.PENDING)
+                .user(user)
+                .build();
+
+        when(profileUpdateRequestRepository.findById(id)).thenReturn(Optional.of(request));
+        when(repository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        // when
+        userService.reviewProfileUpdateRequests(id, body);
+
+        // then
+        verify(profileUpdateRequestRepository).save(request);
+        assertThat(request.getStatus()).isEqualTo(UpdateRequestStatus.REJECTED);
+        assertThat(request.getRejectReason()).isEqualTo("Wrong data");
+    }
+
+    @Test
+    @DisplayName("reviewProfileUpdateRequests - should throw when reject reason is blank")
+    void reviewProfileUpdateRequests_shouldThrow_whenRejectReasonIsBlank() {
+        // given
+        Long id = 1L;
+        ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.REJECTED, "");
+
+        // when & then
+        assertThatThrownBy(() -> userService.reviewProfileUpdateRequests(id, body))
+                .isInstanceOf(ProfileUpdateRequestException.class)
+                .hasMessageContaining("Rejection reason cannot be blank");
+
+        verifyNoInteractions(profileUpdateRequestRepository);
+    }
+
+    @Test
+    @DisplayName("reviewProfileUpdateRequests - should throw when reject reason is null")
+    void reviewProfileUpdateRequests_shouldThrow_whenRejectReasonIsNull() {
+        // given
+        Long id = 1L;
+        ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.REJECTED, null);
+
+        // when & then
+        assertThatThrownBy(() -> userService.reviewProfileUpdateRequests(id, body))
+                .isInstanceOf(ProfileUpdateRequestException.class)
+                .hasMessageContaining("Rejection reason cannot be blank");
+
+        verifyNoInteractions(profileUpdateRequestRepository);
+    }
+
+    @Test
+    @DisplayName("reviewProfileUpdateRequests - should throw EntityNotFoundException when request not found")
+    void reviewProfileUpdateRequests_shouldThrow_whenRequestNotFound() {
+        // given
+        Long id = 999L;
+        ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.APPROVED, null);
+
+        when(profileUpdateRequestRepository.findById(id)).thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> userService.reviewProfileUpdateRequests(id, body))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("Request not found: " + id);
+    }
+
+    @Test
+    @DisplayName("reviewProfileUpdateRequests - should throw ProfileUpdateRequestException when request already reviewed")
+    void reviewProfileUpdateRequests_shouldThrow_whenRequestAlreadyReviewed() {
+        // given
+        Long id = 1L;
+        ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.APPROVED, null);
+
+        ProfileUpdateRequest request = ProfileUpdateRequest.builder()
+                .id(id)
+                .status(UpdateRequestStatus.APPROVED)
+                .build();
+
+        when(profileUpdateRequestRepository.findById(id)).thenReturn(Optional.of(request));
+
+        // when & then
+        assertThatThrownBy(() -> userService.reviewProfileUpdateRequests(id, body))
+                .isInstanceOf(ProfileUpdateRequestException.class)
+                .hasMessageContaining("Request is already reviewed");
+    }
+
+    @Test
+    @DisplayName("reviewProfileUpdateRequests - should throw EntityNotFoundException when user not found")
+    void reviewProfileUpdateRequests_shouldThrow_whenUserNotFound() {
+        // given
+        Long id = 1L;
+        ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.APPROVED, null);
+
+        User user = User.builder().id(10L).build();
+        ProfileUpdateRequest request = ProfileUpdateRequest.builder()
+                .id(id)
+                .status(UpdateRequestStatus.PENDING)
+                .user(user)
+                .build();
+
+        when(profileUpdateRequestRepository.findById(id)).thenReturn(Optional.of(request));
+        when(repository.findById(user.getId())).thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> userService.reviewProfileUpdateRequests(id, body))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("User not found");
     }
 }

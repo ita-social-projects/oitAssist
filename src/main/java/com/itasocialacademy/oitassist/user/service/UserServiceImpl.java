@@ -9,6 +9,7 @@ import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
+import com.itasocialacademy.oitassist.user.dao.dto.request.ReviewRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
@@ -16,6 +17,7 @@ import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
 import com.itasocialacademy.oitassist.user.dao.model.ProfileUpdateRequest;
 import com.itasocialacademy.oitassist.user.dao.model.User;
 import com.itasocialacademy.oitassist.user.dao.repository.ProfileUpdateRequestRepository;
+import com.itasocialacademy.oitassist.user.exceptions.InvalidSortFieldException;
 import com.itasocialacademy.oitassist.user.exceptions.ProfileUpdateRequestException;
 import com.itasocialacademy.oitassist.user.mapper.ProfileUpdateRequestMapper;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
@@ -30,12 +32,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class UserServiceImpl
@@ -44,7 +48,7 @@ public class UserServiceImpl
     private final SecurityFacade securityFacade;
     private final ProfileUpdateRequestRepository profileUpdateRequestRepository;
     private final UserCompetitionFacade userCompetitionFacade;
-    private final ProfileUpdateRequestMapper ProfileUpdateRequestMapper;
+    private final ProfileUpdateRequestMapper profileUpdateRequestMapper;
 
     protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade,
                               ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade, ProfileUpdateRequestMapper profileUpdateRequestMapper) {
@@ -52,8 +56,11 @@ public class UserServiceImpl
         this.securityFacade = securityFacade;
         this.profileUpdateRequestRepository = profileUpdateRequestRepository;
         this.userCompetitionFacade = userCompetitionFacade;
-        ProfileUpdateRequestMapper = profileUpdateRequestMapper;
+        this.profileUpdateRequestMapper = profileUpdateRequestMapper;
     }
+
+    @Value("${app.timezone}")
+    private String timezone;
 
     /**
      * {@inheritDoc}
@@ -70,9 +77,21 @@ public class UserServiceImpl
             .map(mapper::toUserAuthDetails);
     }
 
+    @Override
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {
         Optional<User> user = repository.findUserByEmail(username);
         return user.map(mapper::toUserDetails).orElse(null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public ResponseUserDTO loadUserById(Long id) {
+        Optional<User> user = repository.findById(id);
+
+        return user.map(mapper::toResponseUserDTO)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + id));
     }
 
     /**
@@ -105,11 +124,11 @@ public class UserServiceImpl
      * @param user    current authenticated user
      * @param request new user data
      */
-    private void applyProfileUpdate(User user, ProfileUpdateRequestDTO request) {
-        user.setFirstName(request.getFirstName());
-        user.setSurname(request.getLastName());
-        user.setMiddleName(request.getMiddleName());
-        user.setPhoneNumber(request.getPhoneNumber());
+    private void applyProfileUpdate(User user, ProfileUpdateRequest request) {
+        user.setFirstName(request.getNewFirstName());
+        user.setSurname(request.getNewLastName());
+        user.setMiddleName(request.getNewMiddleName());
+        user.setPhoneNumber(request.getNewPhoneNumber());
         repository.save(user);
     }
 
@@ -121,7 +140,7 @@ public class UserServiceImpl
      * @return true if the user already submitted a request today, false otherwise
      */
     private boolean hasAnyRequestsToday(Long currentUserId) {
-        ZoneId zoneId = ZoneId.of("Europe/Kiev");
+        ZoneId zoneId = ZoneId.of(timezone);
         ZonedDateTime now = ZonedDateTime.now(zoneId);
         Instant startOfDay = now.toLocalDate().atStartOfDay(zoneId).toInstant();
         Instant endOfDay = startOfDay.plus(1, ChronoUnit.DAYS);
@@ -139,7 +158,7 @@ public class UserServiceImpl
             .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
 
         User user = repository.findById(currentUserId)
-            .orElseThrow(() -> new EntityNotFoundException("User not found: " + currentUserId));
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + currentUserId));
 
         if (hasAnyRequestsToday(currentUserId)) {
             throw new ProfileUpdateRequestException("User already had a request today",
@@ -186,15 +205,79 @@ public class UserServiceImpl
         }
 
         if (status == UpdateRequestStatus.APPROVED) {
-            applyProfileUpdate(user, request);
+            applyProfileUpdate(user, profileUpdateRequest);
         }
     }
 
+    /**
+     * Validates that all sort fields in the given {@link Pageable} are allowed.
+     * Permitted sort fields are {@code requestedAt} and {@code status}.
+     *
+     * @param pageable the pagination and sorting parameters to validate
+     * @throws InvalidSortFieldException if any sort field is not in the allowed set
+     */
+    private void validateSort(Pageable pageable) {
+        pageable.getSort().forEach((sortOrder) -> {
+            if (!sortOrder.getProperty().equals("requestedAt") && !sortOrder.getProperty().equals("status")) {
+                throw new InvalidSortFieldException(sortOrder.getProperty());
+            }
+        });
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Page<ResponseProfileUpdateRequestDTO> getProfileUpdateRequests(UpdateRequestStatus status, Pageable pageable) {
+        validateSort(pageable);
+
         Page<ProfileUpdateRequest> result = status == null
                 ? profileUpdateRequestRepository.findAll(pageable)
                 : profileUpdateRequestRepository.findByStatus(status, pageable);
 
-        return result.map(ProfileUpdateRequestMapper::toResponseProfileUpdateRequestDTO);
+        return result.map(profileUpdateRequestMapper::toResponseProfileUpdateRequestDTO);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Transactional
+    @Override
+    public void reviewProfileUpdateRequests(Long id, ReviewRequestDTO body) {
+        if(!body.status().equals(UpdateRequestStatus.REJECTED) && !body.status().equals(UpdateRequestStatus.APPROVED)) {
+            throw new ProfileUpdateRequestException(
+                    "Status must be APPROVED or REJECTED",
+                    ErrorCode.COMMON_VALIDATION_FAILED
+            );
+        }
+
+        if(body.status().equals(UpdateRequestStatus.REJECTED) && (body.rejectReason() == null || body.rejectReason().isBlank())) {
+            throw new ProfileUpdateRequestException(
+                    "Rejection reason cannot be blank",
+                    ErrorCode.COMMON_VALIDATION_FAILED
+            );
+        }
+
+        ProfileUpdateRequest profileUpdateRequest =  profileUpdateRequestRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Request not found: " + id));
+
+        if (!profileUpdateRequest.getStatus().equals(UpdateRequestStatus.PENDING)) {
+            throw new ProfileUpdateRequestException("Request is already reviewed",  ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_REVIEWED);
+        }
+
+        if (body.status() == UpdateRequestStatus.REJECTED) {
+            profileUpdateRequest.setRejectReason(body.rejectReason());
+        }
+
+        profileUpdateRequest.setStatus(body.status());
+        profileUpdateRequest.setReviewedAt(Instant.now());
+        profileUpdateRequestRepository.save(profileUpdateRequest);
+
+        User user = repository.findById(profileUpdateRequest.getUser().getId())
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        if (profileUpdateRequest.getStatus() == UpdateRequestStatus.APPROVED) {
+            applyProfileUpdate(user, profileUpdateRequest);
+        }
     }
 }

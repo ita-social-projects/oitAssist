@@ -26,10 +26,8 @@ public class ResponseUserDTO implements EntityDTO<Long> {
     @NotBlank
     @Schema(description = "User Last name", example = "Bob")
     private String lastName;
-    @NotBlank
     @Schema(description = "User Middle name", example = "Bob")
     private String middleName;
-    @NotBlank
     @Schema(description = "User Phone Number", example = "380931111111")
     private String phoneNumber;
     @NotBlank

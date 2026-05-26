@@ -32,10 +32,10 @@ public class ProfileUpdateRequest implements LongEntity {
     @Column(name = "old_last_name", nullable = false)
     private String oldLastName;
 
-    @Column(name = "old_middle_name", nullable = false)
+    @Column(name = "old_middle_name")
     private String oldMiddleName;
 
-    @Column(name = "old_phone_number", nullable = false)
+    @Column(name = "old_phone_number")
     private String oldPhoneNumber;
 
     @Column(name = "new_first_name", nullable = false)
@@ -44,10 +44,10 @@ public class ProfileUpdateRequest implements LongEntity {
     @Column(name = "new_last_name", nullable = false)
     private String newLastName;
 
-    @Column(name = "new_middle_name", nullable = false)
+    @Column(name = "new_middle_name")
     private String newMiddleName;
 
-    @Column(name = "new_phone_number", nullable = false)
+    @Column(name = "new_phone_number")
     private String newPhoneNumber;
 
     @Column(name = "requested_at", nullable = false, updatable = false)
@@ -55,10 +55,6 @@ public class ProfileUpdateRequest implements LongEntity {
 
     @Column(name = "reviewed_at")
     private Instant reviewedAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewed_by")
-    private User reviewedBy;
 
     @Column(name = "reject_reason", length = 500)
     private String rejectReason;

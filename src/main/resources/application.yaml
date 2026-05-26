@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: ${APP_NAME:oit-assist}
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+        default-page-size: 20
 
   datasource:
     url: ${DATASOURCE_URL}
@@ -111,3 +116,4 @@ app:
   news:
     archiving:
       cron: ${APP_NEWS_ARCHIVING_CRON:0 5 0 * * *}
+  timezone: ${APP_TIMEZONE:Europe/Kiev}

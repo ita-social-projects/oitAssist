@@ -54,7 +54,7 @@ public class User implements LongEntity {
     @Column(name = "surname", nullable = false)
     private String surname;
 
-    @Column(name = "middle_name", nullable = false)
+    @Column(name = "middle_name")
     private String middleName;
 
     @Column(name = "phone_number")
