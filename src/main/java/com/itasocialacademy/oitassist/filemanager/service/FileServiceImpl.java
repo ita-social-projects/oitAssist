@@ -156,7 +156,9 @@ public class FileServiceImpl implements FileService {
             provider.getType());
 
         FileAsset saved = repository.save(fileAsset);
-        return fileMapper.toDto(saved);
+        FileResponseDto dto = fileMapper.toDto(saved);
+        dto.setUrl(provider.getFileUrl(storageKey));
+        return dto;
     }
 
     /**
