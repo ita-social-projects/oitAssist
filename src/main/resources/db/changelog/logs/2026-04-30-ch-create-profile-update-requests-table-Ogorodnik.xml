@@ -13,7 +13,7 @@
             <column name="user_id" type="BIGINT">
                 <constraints nullable="false"/>
             </column>
-            <column name="status" type="VARCHAR(255)">
+            <column name="status" type="VARCHAR(30)">
                 <constraints nullable="false"/>
             </column>
             <column name="old_first_name" type="VARCHAR(255)">
@@ -23,10 +23,10 @@
                 <constraints nullable="false"/>
             </column>
             <column name="old_middle_name" type="VARCHAR(255)">
-                <constraints nullable="false"/>
+                <constraints />
             </column>
             <column name="old_phone_number" type="VARCHAR(255)">
-                <constraints nullable="false"/>
+                <constraints />
             </column>
             <column name="new_first_name" type="VARCHAR(255)">
                 <constraints nullable="false"/>
@@ -35,16 +35,15 @@
                 <constraints nullable="false"/>
             </column>
             <column name="new_middle_name" type="VARCHAR(255)">
-                <constraints nullable="false"/>
+                <constraints />
             </column>
             <column name="new_phone_number" type="VARCHAR(255)">
-                <constraints nullable="false"/>
+                <constraints />
             </column>
             <column name="requested_at" type="DATETIME">
                 <constraints nullable="false"/>
             </column>
             <column name="reviewed_at" type="DATETIME"/>
-            <column name="reviewed_by" type="BIGINT"/>
             <column name="reject_reason" type="VARCHAR(500)"/>
         </createTable>
     </changeSet>
@@ -63,14 +62,6 @@
             CREATE UNIQUE INDEX uq_profile_update_requests_per_day
                 ON profile_update_requests (user_id, DATE(requested_at));
         </sql>
-    </changeSet>
-    <changeSet id="1777547976872-12" author="adamogorodnik">
-        <addForeignKeyConstraint
-                baseColumnNames="reviewed_by"
-                baseTableName="profile_update_requests"
-                constraintName="FK_PROFILE_UPDATE_REQUESTS_ON_REVIEWED_BY"
-                referencedColumnNames="id"
-                referencedTableName="users"/>
     </changeSet>
 
 </databaseChangeLog>
