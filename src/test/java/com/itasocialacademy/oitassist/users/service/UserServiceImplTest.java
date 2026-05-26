@@ -318,7 +318,7 @@ class UserServiceImplTest {
         when(profileUpdateRequestRepository.findByStatus(UpdateRequestStatus.PENDING, pageable)).thenReturn(repoPage);
 
         assertThatNoException()
-                .isThrownBy(() -> userService.getProfileUpdateRequests(UpdateRequestStatus.PENDING, pageable));
+            .isThrownBy(() -> userService.getProfileUpdateRequests(UpdateRequestStatus.PENDING, pageable));
     }
 
     @Test
@@ -330,7 +330,7 @@ class UserServiceImplTest {
         when(profileUpdateRequestRepository.findByStatus(UpdateRequestStatus.PENDING, pageable)).thenReturn(repoPage);
 
         assertThatNoException()
-                .isThrownBy(() -> userService.getProfileUpdateRequests(UpdateRequestStatus.PENDING, pageable));
+            .isThrownBy(() -> userService.getProfileUpdateRequests(UpdateRequestStatus.PENDING, pageable));
     }
 
     @Test
@@ -351,8 +351,8 @@ class UserServiceImplTest {
         Pageable pageable = PageRequest.of(0, 10, Sort.by("invalidField"));
 
         assertThatThrownBy(() -> userService.getProfileUpdateRequests(UpdateRequestStatus.PENDING, pageable))
-                .isInstanceOf(InvalidSortFieldException.class)
-                .hasMessageContaining("invalidField");
+            .isInstanceOf(InvalidSortFieldException.class)
+            .hasMessageContaining("invalidField");
     }
 
     @Test
@@ -364,10 +364,10 @@ class UserServiceImplTest {
 
         User user = User.builder().id(10L).build();
         ProfileUpdateRequest request = ProfileUpdateRequest.builder()
-                .id(id)
-                .status(UpdateRequestStatus.PENDING)
-                .user(user)
-                .build();
+            .id(id)
+            .status(UpdateRequestStatus.PENDING)
+            .user(user)
+            .build();
 
         when(profileUpdateRequestRepository.findById(id)).thenReturn(Optional.of(request));
         when(repository.findById(user.getId())).thenReturn(Optional.of(user));
@@ -389,10 +389,10 @@ class UserServiceImplTest {
 
         User user = User.builder().id(10L).build();
         ProfileUpdateRequest request = ProfileUpdateRequest.builder()
-                .id(id)
-                .status(UpdateRequestStatus.PENDING)
-                .user(user)
-                .build();
+            .id(id)
+            .status(UpdateRequestStatus.PENDING)
+            .user(user)
+            .build();
 
         when(profileUpdateRequestRepository.findById(id)).thenReturn(Optional.of(request));
         when(repository.findById(user.getId())).thenReturn(Optional.of(user));
@@ -415,8 +415,8 @@ class UserServiceImplTest {
 
         // when & then
         assertThatThrownBy(() -> userService.reviewProfileUpdateRequests(id, body))
-                .isInstanceOf(ProfileUpdateRequestException.class)
-                .hasMessageContaining("Rejection reason cannot be blank");
+            .isInstanceOf(ProfileUpdateRequestException.class)
+            .hasMessageContaining("Rejection reason cannot be blank");
 
         verifyNoInteractions(profileUpdateRequestRepository);
     }
@@ -430,8 +430,8 @@ class UserServiceImplTest {
 
         // when & then
         assertThatThrownBy(() -> userService.reviewProfileUpdateRequests(id, body))
-                .isInstanceOf(ProfileUpdateRequestException.class)
-                .hasMessageContaining("Rejection reason cannot be blank");
+            .isInstanceOf(ProfileUpdateRequestException.class)
+            .hasMessageContaining("Rejection reason cannot be blank");
 
         verifyNoInteractions(profileUpdateRequestRepository);
     }
@@ -447,8 +447,8 @@ class UserServiceImplTest {
 
         // when & then
         assertThatThrownBy(() -> userService.reviewProfileUpdateRequests(id, body))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("Request not found: " + id);
+            .isInstanceOf(EntityNotFoundException.class)
+            .hasMessageContaining("Request not found: " + id);
     }
 
     @Test
@@ -459,16 +459,16 @@ class UserServiceImplTest {
         ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.APPROVED, null);
 
         ProfileUpdateRequest request = ProfileUpdateRequest.builder()
-                .id(id)
-                .status(UpdateRequestStatus.APPROVED)
-                .build();
+            .id(id)
+            .status(UpdateRequestStatus.APPROVED)
+            .build();
 
         when(profileUpdateRequestRepository.findById(id)).thenReturn(Optional.of(request));
 
         // when & then
         assertThatThrownBy(() -> userService.reviewProfileUpdateRequests(id, body))
-                .isInstanceOf(ProfileUpdateRequestException.class)
-                .hasMessageContaining("Request is already reviewed");
+            .isInstanceOf(ProfileUpdateRequestException.class)
+            .hasMessageContaining("Request is already reviewed");
     }
 
     @Test
@@ -480,17 +480,17 @@ class UserServiceImplTest {
 
         User user = User.builder().id(10L).build();
         ProfileUpdateRequest request = ProfileUpdateRequest.builder()
-                .id(id)
-                .status(UpdateRequestStatus.PENDING)
-                .user(user)
-                .build();
+            .id(id)
+            .status(UpdateRequestStatus.PENDING)
+            .user(user)
+            .build();
 
         when(profileUpdateRequestRepository.findById(id)).thenReturn(Optional.of(request));
         when(repository.findById(user.getId())).thenReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> userService.reviewProfileUpdateRequests(id, body))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("User not found");
+            .isInstanceOf(EntityNotFoundException.class)
+            .hasMessageContaining("User not found");
     }
 }

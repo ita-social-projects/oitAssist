@@ -186,42 +186,41 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
         UpdateRequestStatus status = UpdateRequestStatus.PENDING;
 
         ResponseProfileUpdateRequestDTO requestDTO = ResponseProfileUpdateRequestDTO.builder()
-                .id(1L)
-                .status(UpdateRequestStatus.PENDING)
-                .oldFirstName("Bob")
-                .oldLastName("Smith")
-                .oldMiddleName("John")
-                .oldPhoneNumber("380931111111")
-                .newFirstName("Alice")
-                .newLastName("Johnson")
-                .newMiddleName("Marie")
-                .newPhoneNumber("380932222222")
-                .requestedAt(Instant.parse("2024-01-01T00:00:00Z"))
-                .build();
+            .id(1L)
+            .status(UpdateRequestStatus.PENDING)
+            .oldFirstName("Bob")
+            .oldLastName("Smith")
+            .oldMiddleName("John")
+            .oldPhoneNumber("380931111111")
+            .newFirstName("Alice")
+            .newLastName("Johnson")
+            .newMiddleName("Marie")
+            .newPhoneNumber("380932222222")
+            .requestedAt(Instant.parse("2024-01-01T00:00:00Z"))
+            .build();
 
         Page<ResponseProfileUpdateRequestDTO> page = new PageImpl<>(
-                List.of(requestDTO),
-                PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "requestedAt")),
-                1
-        );
+            List.of(requestDTO),
+            PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "requestedAt")),
+            1);
 
         // when
         when(userService.getProfileUpdateRequests(eq(status), any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(
-                get("/api/v1/users/profile/update-request")
-                        .param("status", "PENDING")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isArray())
-                .andExpect(jsonPath("$.content[0].id").value(1L))
-                .andExpect(jsonPath("$.content[0].status").value("PENDING"))
-                .andExpect(jsonPath("$.content[0].oldFirstName").value("Bob"))
-                .andExpect(jsonPath("$.content[0].oldLastName").value("Smith"))
-                .andExpect(jsonPath("$.content[0].newFirstName").value("Alice"))
-                .andExpect(jsonPath("$.content[0].newLastName").value("Johnson"))
-                .andExpect(jsonPath("$.content[0].requestedAt").value("2024-01-01T00:00:00Z"))
-                .andExpect(jsonPath("$.totalElements").value(1));
+            get("/api/v1/users/profile/update-request")
+                .param("status", "PENDING")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content[0].id").value(1L))
+            .andExpect(jsonPath("$.content[0].status").value("PENDING"))
+            .andExpect(jsonPath("$.content[0].oldFirstName").value("Bob"))
+            .andExpect(jsonPath("$.content[0].oldLastName").value("Smith"))
+            .andExpect(jsonPath("$.content[0].newFirstName").value("Alice"))
+            .andExpect(jsonPath("$.content[0].newLastName").value("Johnson"))
+            .andExpect(jsonPath("$.content[0].requestedAt").value("2024-01-01T00:00:00Z"))
+            .andExpect(jsonPath("$.totalElements").value(1));
 
         verify(userService, times(1)).getProfileUpdateRequests(eq(status), any(Pageable.class));
     }
@@ -231,10 +230,10 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
     void getProfileUpdateRequests_ShouldReturn400_whenStatusIsWrong() throws Exception {
         // when & then
         mockMvc.perform(
-                        get("/api/v1/users/profile/update-request")
-                                .param("status", "INVALID")
-                                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+            get("/api/v1/users/profile/update-request")
+                .param("status", "INVALID")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
 
         verifyNoInteractions(userService);
     }
@@ -244,14 +243,14 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
     void getProfileUpdateRequests_ShouldReturn400_whenSortingIsWrong() throws Exception {
         // when
         when(userService.getProfileUpdateRequests(any(), any(Pageable.class)))
-                .thenThrow(new InvalidSortFieldException("invalidField"));
+            .thenThrow(new InvalidSortFieldException("invalidField"));
 
         mockMvc.perform(
-                        get("/api/v1/users/profile/update-request")
-                                .param("status", "PENDING")
-                                .param("sort", "invalidField,desc")
-                                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+            get("/api/v1/users/profile/update-request")
+                .param("status", "PENDING")
+                .param("sort", "invalidField,desc")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -264,10 +263,10 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
         doNothing().when(userService).reviewProfileUpdateRequests(id, body);
 
         mockMvc.perform(
-                patch("/api/v1/users/profile/update-request/{id}/review", id)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isNoContent());
+            patch("/api/v1/users/profile/update-request/{id}/review", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isNoContent());
 
         verify(userService, times(1)).reviewProfileUpdateRequests(id, body);
     }
@@ -280,13 +279,13 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
         ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.APPROVED, null);
 
         doThrow(new EntityNotFoundException("Request not found: " + id))
-                .when(userService).reviewProfileUpdateRequests(id, body);
+            .when(userService).reviewProfileUpdateRequests(id, body);
 
         mockMvc.perform(
-                        patch("/api/v1/users/profile/update-request/{id}/review", id)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isNotFound());
+            patch("/api/v1/users/profile/update-request/{id}/review", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isNotFound());
 
         verify(userService, times(1)).reviewProfileUpdateRequests(id, body);
     }
@@ -299,14 +298,14 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
         ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.APPROVED, null);
 
         doThrow(new EntityNotFoundException("User not found"))
-                .when(userService).reviewProfileUpdateRequests(id, body);
+            .when(userService).reviewProfileUpdateRequests(id, body);
 
         // when & then
         mockMvc.perform(
-                        patch("/api/v1/users/profile/update-request/{id}/review", id)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isNotFound());
+            patch("/api/v1/users/profile/update-request/{id}/review", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isNotFound());
 
         verify(userService, times(1)).reviewProfileUpdateRequests(id, body);
     }
@@ -318,15 +317,16 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
         Long id = 1L;
         ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.APPROVED, null);
 
-        doThrow(new ProfileUpdateRequestException("Request is already reviewed",  ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_REVIEWED))
-                .when(userService).reviewProfileUpdateRequests(id, body);
+        doThrow(new ProfileUpdateRequestException("Request is already reviewed",
+            ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_REVIEWED))
+            .when(userService).reviewProfileUpdateRequests(id, body);
 
         // when & then
         mockMvc.perform(
-                        patch("/api/v1/users/profile/update-request/{id}/review", id)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isConflict());
+            patch("/api/v1/users/profile/update-request/{id}/review", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isConflict());
 
         verify(userService, times(1)).reviewProfileUpdateRequests(id, body);
     }
@@ -339,15 +339,15 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
         ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.REJECTED, null);
 
         doThrow(new ProfileUpdateRequestException("Rejection reason cannot be blank",
-                ErrorCode.COMMON_VALIDATION_FAILED))
-                .when(userService).reviewProfileUpdateRequests(id, body);
+            ErrorCode.COMMON_VALIDATION_FAILED))
+            .when(userService).reviewProfileUpdateRequests(id, body);
 
         // when & then
         mockMvc.perform(
-                        patch("/api/v1/users/profile/update-request/{id}/review", id)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest());
+            patch("/api/v1/users/profile/update-request/{id}/review", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isBadRequest());
 
         verify(userService, times(1)).reviewProfileUpdateRequests(id, body);
     }
@@ -362,10 +362,10 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
 
         // when & then
         mockMvc.perform(
-                        patch("/api/v1/users/profile/update-request/{id}/review", id)
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest());
+            patch("/api/v1/users/profile/update-request/{id}/review", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isBadRequest());
 
         verifyNoInteractions(userService);
     }

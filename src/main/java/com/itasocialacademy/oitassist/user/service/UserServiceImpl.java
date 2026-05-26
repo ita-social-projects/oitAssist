@@ -39,7 +39,6 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 public class UserServiceImpl
@@ -51,7 +50,8 @@ public class UserServiceImpl
     private final ProfileUpdateRequestMapper profileUpdateRequestMapper;
 
     protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade,
-                              ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade, ProfileUpdateRequestMapper profileUpdateRequestMapper) {
+        ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade,
+        ProfileUpdateRequestMapper profileUpdateRequestMapper) {
         super(repository, mapper);
         this.securityFacade = securityFacade;
         this.profileUpdateRequestRepository = profileUpdateRequestRepository;
@@ -91,7 +91,7 @@ public class UserServiceImpl
         Optional<User> user = repository.findById(id);
 
         return user.map(mapper::toResponseUserDTO)
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + id));
+            .orElseThrow(() -> new EntityNotFoundException("User not found: " + id));
     }
 
     /**
@@ -158,7 +158,7 @@ public class UserServiceImpl
             .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
 
         User user = repository.findById(currentUserId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + currentUserId));
+            .orElseThrow(() -> new EntityNotFoundException("User not found: " + currentUserId));
 
         if (hasAnyRequestsToday(currentUserId)) {
             throw new ProfileUpdateRequestException("User already had a request today",
@@ -228,12 +228,13 @@ public class UserServiceImpl
      * {@inheritDoc}
      */
     @Override
-    public Page<ResponseProfileUpdateRequestDTO> getProfileUpdateRequests(UpdateRequestStatus status, Pageable pageable) {
+    public Page<ResponseProfileUpdateRequestDTO> getProfileUpdateRequests(UpdateRequestStatus status,
+        Pageable pageable) {
         validateSort(pageable);
 
         Page<ProfileUpdateRequest> result = status == null
-                ? profileUpdateRequestRepository.findAll(pageable)
-                : profileUpdateRequestRepository.findByStatus(status, pageable);
+            ? profileUpdateRequestRepository.findAll(pageable)
+            : profileUpdateRequestRepository.findByStatus(status, pageable);
 
         return result.map(profileUpdateRequestMapper::toResponseProfileUpdateRequestDTO);
     }
@@ -244,25 +245,26 @@ public class UserServiceImpl
     @Transactional
     @Override
     public void reviewProfileUpdateRequests(Long id, ReviewRequestDTO body) {
-        if(!body.status().equals(UpdateRequestStatus.REJECTED) && !body.status().equals(UpdateRequestStatus.APPROVED)) {
+        if (!body.status().equals(UpdateRequestStatus.REJECTED)
+            && !body.status().equals(UpdateRequestStatus.APPROVED)) {
             throw new ProfileUpdateRequestException(
-                    "Status must be APPROVED or REJECTED",
-                    ErrorCode.COMMON_VALIDATION_FAILED
-            );
+                "Status must be APPROVED or REJECTED",
+                ErrorCode.COMMON_VALIDATION_FAILED);
         }
 
-        if(body.status().equals(UpdateRequestStatus.REJECTED) && (body.rejectReason() == null || body.rejectReason().isBlank())) {
+        if (body.status().equals(UpdateRequestStatus.REJECTED)
+            && (body.rejectReason() == null || body.rejectReason().isBlank())) {
             throw new ProfileUpdateRequestException(
-                    "Rejection reason cannot be blank",
-                    ErrorCode.COMMON_VALIDATION_FAILED
-            );
+                "Rejection reason cannot be blank",
+                ErrorCode.COMMON_VALIDATION_FAILED);
         }
 
-        ProfileUpdateRequest profileUpdateRequest =  profileUpdateRequestRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Request not found: " + id));
+        ProfileUpdateRequest profileUpdateRequest = profileUpdateRequestRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Request not found: " + id));
 
         if (!profileUpdateRequest.getStatus().equals(UpdateRequestStatus.PENDING)) {
-            throw new ProfileUpdateRequestException("Request is already reviewed",  ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_REVIEWED);
+            throw new ProfileUpdateRequestException("Request is already reviewed",
+                ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_REVIEWED);
         }
 
         if (body.status() == UpdateRequestStatus.REJECTED) {
@@ -274,7 +276,7 @@ public class UserServiceImpl
         profileUpdateRequestRepository.save(profileUpdateRequest);
 
         User user = repository.findById(profileUpdateRequest.getUser().getId())
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         if (profileUpdateRequest.getStatus() == UpdateRequestStatus.APPROVED) {
             applyProfileUpdate(user, profileUpdateRequest);

@@ -20,7 +20,8 @@ public interface ProfileUpdateRequestRepository extends EntityRepository<Profile
     boolean existsByUserIdAndRequestedAtBetween(Long userId, Instant start, Instant end);
 
     /**
-     * Returns a paginated list of profile update requests filtered by the given status.
+     * Returns a paginated list of profile update requests filtered by the given
+     * status.
      */
     Page<ProfileUpdateRequest> findByStatus(UpdateRequestStatus status, Pageable pageable);
 }

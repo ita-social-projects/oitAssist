@@ -4,7 +4,6 @@ import com.itasocialacademy.oitassist.core.rest.dto.CreateEntityDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
-
 import java.time.Instant;
 
 @Builder
@@ -15,7 +14,6 @@ import java.time.Instant;
 @EqualsAndHashCode
 @Schema(description = "Profile change request DTO for response")
 public class ResponseProfileUpdateRequestDTO implements CreateEntityDTO<Long> {
-
     @Schema(description = "Request ID", example = "1")
     private Long id;
 

@@ -13,12 +13,8 @@ import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
 import com.itasocialacademy.oitassist.user.exceptions.ProfileUpdateRequestException;
 import jakarta.persistence.EntityNotFoundException;
-
-import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 
@@ -81,28 +77,34 @@ public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUser
 
     /**
      * Returns a paginated list of profile update requests, optionally filtered by
-     * status. Supports sorting only by {@code requestedAt} and {@code status} fields.
+     * status. Supports sorting only by {@code requestedAt} and {@code status}
+     * fields.
      *
-     * @param status   the status to filter by, or {@code null} to return all requests
+     * @param status   the status to filter by, or {@code null} to return all
+     *                 requests
      * @param pageable pagination and sorting parameters(requestedAt or status)
      * @return a page of {@link ResponseProfileUpdateRequestDTO}
      * @throws IllegalArgumentException if sorting is applied on a disallowed field
      */
     Page<ResponseProfileUpdateRequestDTO> getProfileUpdateRequests(UpdateRequestStatus status, Pageable pageable);
 
-
     /**
      * Reviews a profile update request by approving or rejecting it. If approved,
      * the user's profile is updated immediately. If rejected, a non-blank rejection
-     * reason must be provided. Only requests with {@code PENDING} status can be reviewed.
+     * reason must be provided. Only requests with {@code PENDING} status can be
+     * reviewed.
      *
      * @param id   the unique identifier of the profile update request
-     * @param body the review decision containing the new status and optional rejection reason
-     * @throws EntityNotFoundException       if no request is found with the given ID,
-     *                                       or if the associated user no longer exists
-     * @throws ProfileUpdateRequestException if the request has already been reviewed
-     * @throws IllegalArgumentException      if the status is not APPROVED or REJECTED,
-     *                                       or if the rejection reason is blank when rejecting
+     * @param body the review decision containing the new status and optional
+     *             rejection reason
+     * @throws EntityNotFoundException       if no request is found with the given
+     *                                       ID, or if the associated user no longer
+     *                                       exists
+     * @throws ProfileUpdateRequestException if the request has already been
+     *                                       reviewed
+     * @throws IllegalArgumentException      if the status is not APPROVED or
+     *                                       REJECTED, or if the rejection reason is
+     *                                       blank when rejecting
      */
     void reviewProfileUpdateRequests(Long id, ReviewRequestDTO body);
 }
