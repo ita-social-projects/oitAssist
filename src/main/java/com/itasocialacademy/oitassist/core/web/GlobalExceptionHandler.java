@@ -22,6 +22,8 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /**
@@ -180,6 +182,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, "Request body is missing or malformed",
                 HttpStatus.BAD_REQUEST.value(), null));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        log.warn("Method argument type mismatch: traceId={}, param={}, value={}",
+                MDC.get(TRACE_ID_MDC), ex.getName(), ex.getValue());
+
+        String message = String.format("Invalid value '%s' for parameter '%s'", ex.getValue(), ex.getName());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, message,
+                        HttpStatus.BAD_REQUEST.value(), null));
     }
 
     @ExceptionHandler(Exception.class)
