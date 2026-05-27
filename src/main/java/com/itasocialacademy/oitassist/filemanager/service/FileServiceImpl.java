@@ -121,6 +121,16 @@ public class FileServiceImpl implements FileService {
         repository.save(file);
     }
 
+    /**
+     * Transitions a batch of {@link FileStatus#TEMPORARY} files to
+     * {@link FileStatus#ATTACHED} and establishes their relationship with the
+     * specified entity.
+     *
+     * @param entityId   the ID of the entity to link files to
+     * @param entityType the type of the related entity
+     * @param fileIds    the IDs of the files to attach; no-op if {@code null} or
+     *                   empty
+     */
     @Override
     @Transactional
     public void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds) {

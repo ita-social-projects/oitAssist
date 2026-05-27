@@ -35,5 +35,14 @@ public interface FileService {
      */
     void deleteHard(Long fileId);
 
+    /**
+     * Transitions a batch of TEMPORARY files to ATTACHED and establishes their
+     * relationship with the specified entity.
+     *
+     * @param entityId   the ID of the entity to link files to
+     * @param entityType the type of the related entity
+     * @param fileIds    the IDs of the files to attach; no-op if {@code null} or
+     *                   empty
+     */
     void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds);
 }
