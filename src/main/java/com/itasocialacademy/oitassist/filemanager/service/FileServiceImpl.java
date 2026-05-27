@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
@@ -118,6 +119,29 @@ public class FileServiceImpl implements FileService {
         }
 
         repository.save(file);
+    }
+
+    @Override
+    @Transactional
+    public void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            log.debug("No files to link to entity {} with id={}", entityType, entityId);
+            return;
+        }
+
+        List<FileAsset> files = repository.findAllById(fileIds);
+
+        for (FileAsset file : files) {
+            if (file.getStatus() == FileStatus.TEMPORARY) {
+                file.setStatus(FileStatus.ATTACHED);
+                file.setRelatedEntityId(entityId);
+                file.setRelatedEntityType(entityType);
+                log.debug("Linked file id={} to {} with id={}", file.getId(), entityType, entityId);
+            } else {
+                log.warn("Skipped file id={} with status={} (expected TEMPORARY)", file.getId(), file.getStatus());
+            }
+        }
+        repository.saveAll(files);
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.filemanager.service.interfaces;
 
+import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import java.util.List;
@@ -33,4 +34,6 @@ public interface FileService {
      * @param fileId id of the file record in the db.
      */
     void deleteHard(Long fileId);
+
+    void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds);
 }

@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.rest.dto.CreateEntityDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -33,4 +34,8 @@ public class CreateNewsDTO implements CreateEntityDTO<Long> {
         description = "If true, news will be published immediately. Otherwise saved as draft",
         example = "true")
     private boolean publishNow;
+    @Schema(
+        description = "IDs of temporarily uploaded files to attach to this news",
+        example = "[1, 2, 3]")
+    private List<Long> fileIds;
 }
