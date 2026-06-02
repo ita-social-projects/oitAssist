@@ -42,6 +42,12 @@ public class FileServiceImpl implements FileService {
     private final SecurityFacade securityFacade;
 
     /**
+     * Role identifier for administrative users.
+     * Used for role-based access control checks throughout this service.
+     */
+    private static final String ROLE_ADMIN = "ADMIN";
+
+    /**
      * {@inheritDoc}
      *
      * <p>
@@ -141,7 +147,7 @@ public class FileServiceImpl implements FileService {
             return;
         }
 
-        boolean isAdmin = securityFacade.hasRole("ADMIN");
+        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
         List<FileAsset> files = repository.findAllById(fileIds);
 
         for (FileAsset file : files) {
@@ -298,7 +304,7 @@ public class FileServiceImpl implements FileService {
      */
     private void validateOwnerOrAdmin(Long fileOwnerId) {
         boolean isOwner = securityFacade.isOwner(fileOwnerId);
-        boolean isAdmin = securityFacade.hasRole("ADMIN");
+        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
 
         if (!isOwner && !isAdmin) {
             log.warn("Security Breach: User attempted to access file owned by ID {}", fileOwnerId);
@@ -321,7 +327,7 @@ public class FileServiceImpl implements FileService {
      *                                {@code ADMIN} role.
      */
     private void validateAdmin() {
-        if (!securityFacade.hasRole("ADMIN")) {
+        if (!securityFacade.hasRole(ROLE_ADMIN)) {
             log.warn("Security Breach: User attempted to access file with insufficient authorities");
             throw new AuthorizationException("You do not have permission to modify this file.",
                 ErrorCode.ACCESS_DENIED);
