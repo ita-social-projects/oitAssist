@@ -43,6 +43,7 @@ public interface FileService {
      * @param entityType the type of the related entity
      * @param fileIds    the IDs of the files to attach; no-op if {@code null} or
      *                   empty
+     * @param userId     the ID of the user performing the file linking operation
      */
-    void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds);
+    void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds, Long userId);
 }

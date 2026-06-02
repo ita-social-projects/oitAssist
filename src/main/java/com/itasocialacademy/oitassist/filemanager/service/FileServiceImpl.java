@@ -130,18 +130,22 @@ public class FileServiceImpl implements FileService {
      * @param entityType the type of the related entity
      * @param fileIds    the IDs of the files to attach; no-op if {@code null} or
      *                   empty
+     * @param userId     the ID of the user performing the file linking operation;
+     *                   must own all files or possess the ADMIN role
      */
     @Override
     @Transactional
-    public void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds) {
+    public void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds, Long userId) {
         if (fileIds == null || fileIds.isEmpty()) {
             log.debug("No files to link to entity {} with id={}", entityType, entityId);
             return;
         }
 
+        boolean isAdmin = securityFacade.hasRole("ADMIN");
         List<FileAsset> files = repository.findAllById(fileIds);
 
         for (FileAsset file : files) {
+            validateFileOwnership(file, userId, isAdmin);
             if (file.getStatus() == FileStatus.TEMPORARY) {
                 file.setStatus(FileStatus.ATTACHED);
                 file.setRelatedEntityId(entityId);
@@ -320,6 +324,25 @@ public class FileServiceImpl implements FileService {
         if (!securityFacade.hasRole("ADMIN")) {
             log.warn("Security Breach: User attempted to access file with insufficient authorities");
             throw new AuthorizationException("You do not have permission to modify this file.",
+                ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    /**
+     * Validates that the file belongs to the current user or they are an admin.
+     * Same logic as {@link #validateOwnerOrAdmin(Long)}.
+     *
+     * @param file   the file to validate
+     * @param userId the current user ID
+     * @throws AuthorizationException if validation fails
+     */
+    private void validateFileOwnership(FileAsset file, Long userId, boolean isAdmin) {
+        boolean isOwner = file.getUserId().equals(userId);
+        if (!isOwner && !isAdmin) {
+            log.warn("Security Breach: User {} attempted to attach file {} owned by {}",
+                userId, file.getId(), file.getUserId());
+            throw new AuthorizationException(
+                "You do not have permission to attach this file",
                 ErrorCode.ACCESS_DENIED);
         }
     }

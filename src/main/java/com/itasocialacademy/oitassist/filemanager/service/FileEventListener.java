@@ -37,6 +37,6 @@ public class FileEventListener {
         log.debug("Received FilesAttachRequestedEvent for entity type={} id={}, fileIds={}",
             event.entityType(), event.entityId(), event.fileIds());
 
-        fileService.linkFilesToEntity(event.entityId(), event.entityType(), event.fileIds());
+        fileService.linkFilesToEntity(event.entityId(), event.entityType(), event.fileIds(), event.userId());
     }
 }

@@ -82,11 +82,15 @@ public class NewsServiceImpl
     public ResponseNewsDto save(CreateNewsDTO dto) {
         ResponseNewsDto saved = super.save(dto);
         if (dto.getFileIds() != null && !dto.getFileIds().isEmpty()) {
+            Long authorId = securityFacade.getCurrentUserId()
+                .orElseThrow(() -> new AuthorizationException(
+                    "User must be logged in to create news", ErrorCode.ACCESS_DENIED));
             eventPublisher.publishEvent(
                 new FilesAttachRequestedEvent(
                     saved.getId(),
                     RelatedEntityType.NEWS,
-                    dto.getFileIds()));
+                    dto.getFileIds(),
+                    authorId));
         }
         return saved;
     }
