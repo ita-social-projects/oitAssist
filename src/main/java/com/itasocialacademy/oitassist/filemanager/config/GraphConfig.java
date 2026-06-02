@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Configuration class for Microsoft Graph integration. Creates and configures a
  * {@link GraphServiceClient} bean using client credentials (client ID, secret,
- * tenant ID).
+ * tenant ID configuration).
  */
 @Configuration
 public class GraphConfig {
