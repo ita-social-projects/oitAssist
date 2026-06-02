@@ -65,14 +65,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/registration/**",
                     "/api/v1/security/signIn",
-                    "/api/v1/security/refresh",
-                    "/api/v1/news",
-                    "/api/v1/files")
+                    "/api/v1/security/refresh")
                 .permitAll()
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/news/**",
-                    "/api/v1/user-activation/verify",
-                    "/uploads/**")
+                    "/api/v1/user-activation/verify")
                 .permitAll()
                 .requestMatchers(
                     "/actuator/health/**",
