@@ -159,6 +159,7 @@ class NewsControllerTest {
             .andExpect(jsonPath("$.content[0].id").value(1))
             .andExpect(jsonPath("$.content[0].title").value("Published news title"))
             .andExpect(jsonPath("$.content[0].contentPreview").value("Short preview text..."))
+            .andExpect(jsonPath("$.content[0].archivedAt").isEmpty())
             .andExpect(jsonPath("$.pageNumber").value(0))
             .andExpect(jsonPath("$.pageSize").value(5))
             .andExpect(jsonPath("$.totalPages").value(1))
@@ -212,6 +213,7 @@ class NewsControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content[0].id").value(10))
             .andExpect(jsonPath("$.content[0].title").value("Tech News"))
+            .andExpect(jsonPath("$.content[0].archivedAt").isEmpty())
             .andExpect(jsonPath("$.totalElements").value(1));
 
         verify(newsService).getPublishedNews(any(), eq(search), eq(null));

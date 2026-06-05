@@ -122,6 +122,23 @@ class NewsArchivingServiceImplTest {
         assertEquals("News 2025 December", result.get(1).months().get(0).news().get(0).getTitle());
     }
 
+    @Test
+    void getArchivedNewsGroupedByYearAndMonth_ShouldGroupByKyivTimezone() {
+        News news = buildArchivedNews(
+            1L,
+            "Kyiv timezone news",
+            OffsetDateTime.parse("2026-04-30T22:30:00Z")
+        );
+
+        when(newsRepository.findArchivedNewsOrderByArchivedAtDesc()).thenReturn(List.of(news));
+
+        List<ArchivedNewsByYearDto> result = newsArchivingService.getArchivedNewsGroupedByYearAndMonth();
+
+        assertEquals(1, result.size());
+        assertEquals(2026, result.get(0).year());
+        assertEquals(5, result.get(0).months().get(0).month());
+    }
+
     private News buildArchivedNews(Long id, String title, OffsetDateTime archivedAt) {
         News news = new News();
         news.setId(id);

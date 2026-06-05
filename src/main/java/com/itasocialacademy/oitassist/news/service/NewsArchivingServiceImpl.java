@@ -51,7 +51,7 @@ public class NewsArchivingServiceImpl implements NewsArchivingService {
             Comparator.reverseOrder());
 
         for (News news : archivedNews) {
-            YearMonth yearMonth = YearMonth.from(news.getArchivedAt().atZoneSameInstant(ZoneId.of("Europe/Kiev")));
+            YearMonth yearMonth = YearMonth.from(news.getArchivedAt().atZoneSameInstant(ZoneId.of("Europe/Kyiv")));
 
             grouped
                 .computeIfAbsent(yearMonth.getYear(), year -> new TreeMap<>(Comparator.reverseOrder()))
