@@ -144,7 +144,8 @@ class NewsControllerTest {
             1L,
             "Published news title",
             "Short preview text...",
-            OffsetDateTime.parse("2026-03-12T13:44:56Z"));
+            OffsetDateTime.parse("2026-03-12T13:44:56Z"),
+            null);
 
         Page<ResponseNewsListItemDto> page = new PageImpl<>(
             List.of(newsItem),
@@ -196,7 +197,8 @@ class NewsControllerTest {
             10L,
             "Tech News",
             "Latest on technology...",
-            OffsetDateTime.parse("2026-03-20T15:30:00Z"));
+            OffsetDateTime.parse("2026-03-20T15:30:00Z"),
+            null);
 
         Page<ResponseNewsListItemDto> page = new PageImpl<>(
             List.of(item),
