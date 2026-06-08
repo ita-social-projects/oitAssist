@@ -47,7 +47,7 @@ class NewsServiceImplTest {
     @Test
     void shouldCreateDraftNewsAndSave() {
         mockAuthenticatedUser(1L);
-        CreateNewsDTO dto = new CreateNewsDTO("Title", "Content", false);
+        CreateNewsDTO dto = new CreateNewsDTO("Title", "Content", false, null);
 
         News news = new News();
         when(newsMapper.toEntity(dto)).thenReturn(news);
@@ -63,7 +63,7 @@ class NewsServiceImplTest {
     @Test
     void shouldCreatePublishedNewsAndSave() {
         mockAuthenticatedUser(1L);
-        CreateNewsDTO dto = new CreateNewsDTO("Title", "Content", true);
+        CreateNewsDTO dto = new CreateNewsDTO("Title", "Content", true, null);
 
         News news = new News();
         when(newsMapper.toEntity(dto)).thenReturn(news);

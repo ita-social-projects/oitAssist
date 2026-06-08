@@ -401,7 +401,9 @@ class FileServiceImplTest {
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("path/key");
+        when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
         when(fileRepository.save(any())).thenReturn(existingFile);
+        when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
 
         assertDoesNotThrow(() -> fileService.upload(List.of(file), request));
         verify(securityFacade).getCurrentUserId();
