@@ -42,8 +42,8 @@ public class FileServiceImpl implements FileService {
     private final SecurityFacade securityFacade;
 
     /**
-     * Role identifier for administrative users.
-     * Used for role-based access control checks throughout this service.
+     * Role identifier for administrative users. Used for role-based access control
+     * checks throughout this service.
      */
     private static final String ROLE_ADMIN = "ADMIN";
 
