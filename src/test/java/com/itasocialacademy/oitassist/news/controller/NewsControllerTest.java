@@ -51,7 +51,7 @@ class NewsControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void testCreateNews() throws Exception {
-        CreateNewsDTO dto = new CreateNewsDTO("Title", "Content", false);
+        CreateNewsDTO dto = new CreateNewsDTO("Title", "Content", false, List.of(1L, 2L));
 
         ResponseNewsDto response = new ResponseNewsDto(
             1L,
@@ -130,7 +130,7 @@ class NewsControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void testCreateNewsValidationError() throws Exception {
-        CreateNewsDTO createNewsDTO = new CreateNewsDTO("", "", false);
+        CreateNewsDTO createNewsDTO = new CreateNewsDTO("", "", false, null);
 
         mockMvc.perform(post("/api/v1/news")
             .contentType(MediaType.APPLICATION_JSON)

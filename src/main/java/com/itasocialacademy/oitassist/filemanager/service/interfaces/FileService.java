@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.filemanager.service.interfaces;
 
+import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import java.util.List;
@@ -33,4 +34,16 @@ public interface FileService {
      * @param fileId id of the file record in the db.
      */
     void deleteHard(Long fileId);
+
+    /**
+     * Transitions a batch of TEMPORARY files to ATTACHED and establishes their
+     * relationship with the specified entity.
+     *
+     * @param entityId   the ID of the entity to link files to
+     * @param entityType the type of the related entity
+     * @param fileIds    the IDs of the files to attach; no-op if {@code null} or
+     *                   empty
+     * @param userId     the ID of the user performing the file linking operation
+     */
+    void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds, Long userId);
 }

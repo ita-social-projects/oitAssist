@@ -271,4 +271,38 @@ public class SharePointStorageProvider implements StorageProvider {
             throw new FileListingException("Failed to get last modified from SharePoint", e);
         }
     }
+
+    /**
+     * Constructs a URL for accessing the file in SharePoint based on its storage
+     * key.
+     *
+     * @param storageKey the relative path of the file within the configured drive
+     * @return a URL string that can be used to access the file in SharePoint
+     */
+    @Override
+    public String getFileUrl(String storageKey) {
+        try {
+            String driveId = graphProperties.getDriveId();
+
+            var item = graphClient
+                .drives()
+                .byDriveId(driveId)
+                .items()
+                .byDriveItemId(DRIVE_ROOT_PREFIX + storageKey + DRIVE_ROOT_SUFFIX)
+                .get();
+
+            if (item == null || item.getWebUrl() == null) {
+                log.warn("Could not retrieve webUrl for file: {}", storageKey);
+                return null;
+            }
+
+            return item.getWebUrl();
+        } catch (ApiException e) {
+            log.error("Graph API error while retrieving webUrl for: {}", storageKey, e);
+            return null;
+        } catch (Exception e) {
+            log.error("Unexpected error while retrieving webUrl for: {}", storageKey, e);
+            return null;
+        }
+    }
 }

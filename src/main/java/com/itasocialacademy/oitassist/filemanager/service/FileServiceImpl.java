@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
@@ -39,6 +40,12 @@ public class FileServiceImpl implements FileService {
     private final FileRepository repository;
     private final FileMapper fileMapper;
     private final SecurityFacade securityFacade;
+
+    /**
+     * Role identifier for administrative users.
+     * Used for role-based access control checks throughout this service.
+     */
+    private static final String ROLE_ADMIN = "ADMIN";
 
     /**
      * {@inheritDoc}
@@ -121,6 +128,43 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
+     * Transitions a batch of {@link FileStatus#TEMPORARY} files to
+     * {@link FileStatus#ATTACHED} and establishes their relationship with the
+     * specified entity.
+     *
+     * @param entityId   the ID of the entity to link files to
+     * @param entityType the type of the related entity
+     * @param fileIds    the IDs of the files to attach; no-op if {@code null} or
+     *                   empty
+     * @param userId     the ID of the user performing the file linking operation;
+     *                   must own all files or possess the ADMIN role
+     */
+    @Override
+    @Transactional
+    public void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds, Long userId) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            log.debug("No files to link to entity {} with id={}", entityType, entityId);
+            return;
+        }
+
+        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
+        List<FileAsset> files = repository.findAllById(fileIds);
+
+        for (FileAsset file : files) {
+            validateFileOwnership(file, userId, isAdmin);
+            if (file.getStatus() == FileStatus.TEMPORARY) {
+                file.setStatus(FileStatus.ATTACHED);
+                file.setRelatedEntityId(entityId);
+                file.setRelatedEntityType(entityType);
+                log.debug("Linked file id={} to {} with id={}", file.getId(), entityType, entityId);
+            } else {
+                log.warn("Skipped file id={} with status={} (expected TEMPORARY)", file.getId(), file.getStatus());
+            }
+        }
+        repository.saveAll(files);
+    }
+
+    /**
      * Uploads a single file to the default storage provider and persists its
      * metadata.
      *
@@ -156,7 +200,9 @@ public class FileServiceImpl implements FileService {
             provider.getType());
 
         FileAsset saved = repository.save(fileAsset);
-        return fileMapper.toDto(saved);
+        FileResponseDto dto = fileMapper.toDto(saved);
+        dto.setUrl(provider.getFileUrl(storageKey));
+        return dto;
     }
 
     /**
@@ -258,7 +304,7 @@ public class FileServiceImpl implements FileService {
      */
     private void validateOwnerOrAdmin(Long fileOwnerId) {
         boolean isOwner = securityFacade.isOwner(fileOwnerId);
-        boolean isAdmin = securityFacade.hasRole("ADMIN");
+        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
 
         if (!isOwner && !isAdmin) {
             log.warn("Security Breach: User attempted to access file owned by ID {}", fileOwnerId);
@@ -281,9 +327,28 @@ public class FileServiceImpl implements FileService {
      *                                {@code ADMIN} role.
      */
     private void validateAdmin() {
-        if (!securityFacade.hasRole("ADMIN")) {
+        if (!securityFacade.hasRole(ROLE_ADMIN)) {
             log.warn("Security Breach: User attempted to access file with insufficient authorities");
             throw new AuthorizationException("You do not have permission to modify this file.",
+                ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    /**
+     * Validates that the file belongs to the current user or they are an admin.
+     * Same logic as {@link #validateOwnerOrAdmin(Long)}.
+     *
+     * @param file   the file to validate
+     * @param userId the current user ID
+     * @throws AuthorizationException if validation fails
+     */
+    private void validateFileOwnership(FileAsset file, Long userId, boolean isAdmin) {
+        boolean isOwner = file.getUserId().equals(userId);
+        if (!isOwner && !isAdmin) {
+            log.warn("Security Breach: User {} attempted to attach file {} owned by {}",
+                userId, file.getId(), file.getUserId());
+            throw new AuthorizationException(
+                "You do not have permission to attach this file",
                 ErrorCode.ACCESS_DENIED);
         }
     }
