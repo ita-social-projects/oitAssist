@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.rest.repository.EntityRepository;
 import com.itasocialacademy.oitassist.news.dao.model.News;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -28,4 +29,13 @@ public interface NewsRepository
         @Param("archivedStatus") String archivedStatus,
         @Param("thresholdDate") LocalDate thresholdDate,
         @Param("archivedAt") OffsetDateTime archivedAt);
+
+    @Query("""
+            SELECT n
+            FROM News n
+            WHERE n.status = com.itasocialacademy.oitassist.news.dao.enums.NewsStatus.ARCHIVED
+              AND n.archivedAt IS NOT NULL
+            ORDER BY n.archivedAt DESC
+        """)
+    List<News> findArchivedNewsOrderByArchivedAtDesc();
 }

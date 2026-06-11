@@ -109,7 +109,8 @@ public class NewsServiceImpl
             news.getId(),
             news.getTitle(),
             buildPreview(news.getContent()),
-            news.getPublishedAt());
+            news.getPublishedAt(),
+            news.getArchivedAt());
     }
 
     private String buildPreview(String content) {
