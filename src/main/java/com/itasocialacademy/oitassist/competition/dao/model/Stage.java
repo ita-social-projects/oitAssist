@@ -1,11 +1,12 @@
 package com.itasocialacademy.oitassist.competition.dao.model;
 
-import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
+import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -13,21 +14,28 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
-import org.springframework.modulith.NamedInterface;
 
 @Entity
-@Table(name = "competitions")
+@Table(
+    name = "stages",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"competition_id", "title"})
+)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString()
+@ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-@NamedInterface("CompetitionEntity")
-public class Competition extends CompetitionEvent {
+public class Stage extends CompetitionEvent {
+
+    @Column(name = "competition_id", nullable = false)
+    private Long competitionId;
+
+    @Column(name = "sort_position", nullable = false)
+    private Short sortPosition;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "competition_status", nullable = false)
-    private CompetitionStatus competitionStatus;
+    @Column(name = "scope", nullable = false)
+    private StageScope scope;
 }

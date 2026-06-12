@@ -1,8 +1,9 @@
 package com.itasocialacademy.oitassist.competition.dao.enums;
 
-public enum CompetitionLevel {
+public enum StageScope {
     CITY,
     REGION,
     NATIONAL,
+    FOREIGN,
     OPEN
 }
