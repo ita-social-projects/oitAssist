@@ -18,8 +18,7 @@ import lombok.experimental.SuperBuilder;
 @Entity
 @Table(
     name = "stages",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"competition_id", "title"})
-)
+    uniqueConstraints = @UniqueConstraint(columnNames = {"competition_id", "title"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -28,7 +27,6 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 public class Stage extends CompetitionEvent {
-
     @Column(name = "competition_id", nullable = false)
     private Long competitionId;
 

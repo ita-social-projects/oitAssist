@@ -10,5 +10,5 @@ public record TourResponse(
     ZonedDateTime dateStart,
     ZonedDateTime dateFinish,
     Short sortPosition,
-    String location
-) {}
+    String location) {
+}

@@ -10,5 +10,5 @@ public record CreateStageRequest(
     ZonedDateTime dateStart,
     ZonedDateTime dateFinish,
     Short sortPosition,
-    StageScope scope
-) {}
+    StageScope scope) {
+}

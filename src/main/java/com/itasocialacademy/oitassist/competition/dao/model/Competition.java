@@ -26,7 +26,6 @@ import org.springframework.modulith.NamedInterface;
 @SuperBuilder
 @NamedInterface("CompetitionEntity")
 public class Competition extends CompetitionEvent {
-
     @Enumerated(EnumType.STRING)
     @Column(name = "competition_status", nullable = false)
     private CompetitionStatus competitionStatus;

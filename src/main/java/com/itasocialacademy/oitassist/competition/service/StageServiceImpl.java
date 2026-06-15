@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class StageServiceImpl implements StageService {
-
     private final StageRepository stageRepository;
     private final CompetitionService competitionService;
     private final StageMapper mapper;
@@ -55,12 +54,11 @@ public class StageServiceImpl implements StageService {
     }
 
     private void validateDates(CompetitionResponse parent, Stage child) {
-        if (child.getDateStart().isBefore(parent.dateStart()) ||
-            child.getDateFinish().isAfter(parent.dateFinish())) {
+        if (child.getDateStart().isBefore(parent.dateStart())
+            || child.getDateFinish().isAfter(parent.dateFinish())) {
             throw new CompetitionHierarchyValidationException(
                 "Stage dates (%s - %s) must be within Competition dates (%s - %s)".formatted(
-                    child.getDateStart(), child.getDateFinish(), parent.dateStart(), parent.dateFinish())
-            );
+                    child.getDateStart(), child.getDateFinish(), parent.dateStart(), parent.dateFinish()));
         }
     }
 }

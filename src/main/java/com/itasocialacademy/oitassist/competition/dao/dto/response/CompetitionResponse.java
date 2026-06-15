@@ -11,5 +11,5 @@ public record CompetitionResponse(
     ZonedDateTime dateFinish,
     CompetitionStatus status,
     Long createdBy,
-    Long updatedBy
-) {}
+    Long updatedBy) {
+}

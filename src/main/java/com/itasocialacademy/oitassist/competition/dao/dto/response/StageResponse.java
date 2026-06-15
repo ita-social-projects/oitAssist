@@ -11,5 +11,5 @@ public record StageResponse(
     ZonedDateTime dateStart,
     ZonedDateTime dateFinish,
     Short sortPosition,
-    StageScope scope
-) {}
+    StageScope scope) {
+}

@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 @Configuration
 @EnableJpaAuditing(auditorAwareRef = "auditorProvider")
 public class JpaAuditingConfig {
-
     @Bean
     public AuditorAware<Long> auditorProvider(SecurityFacade securityFacade) {
         return securityFacade::getCurrentUserId;

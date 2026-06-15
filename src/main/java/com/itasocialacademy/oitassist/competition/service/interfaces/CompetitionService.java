@@ -10,9 +10,10 @@ public interface CompetitionService {
     CompetitionResponse getById(Long id);
 
     /**
-     * Checks whether it is allowed to change the hierarchy (add/remove stages and tours).
+     * Checks whether it is allowed to change the hierarchy (add/remove stages and
+     * tours).
      *
-     * @param competitionId
+     * @param competitionId ID
      * @throws CompetitionHierarchyValidationException if changes are prohibited
      */
     void validateHierarchyImmutability(Long competitionId);

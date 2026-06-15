@@ -49,8 +49,7 @@ public class CompetitionServiceImpl implements CompetitionService {
 
             if (hasActiveParticipations) {
                 throw new CompetitionHierarchyValidationException(
-                    "Cannot modify hierarchy: The competition is PUBLISHED and has active participations."
-                );
+                    "Cannot modify hierarchy: The competition is PUBLISHED and has active participations.");
             }
         }
     }

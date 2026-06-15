@@ -27,7 +27,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @AllArgsConstructor
 @SuperBuilder
 public abstract class CompetitionEvent {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

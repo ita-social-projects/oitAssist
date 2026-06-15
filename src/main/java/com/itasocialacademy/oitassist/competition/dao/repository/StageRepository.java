@@ -7,14 +7,15 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface StageRepository extends JpaRepository<Stage, Long> {
-
     /**
-     * Checks whether a stage with that name already exists within a specific Competition.
+     * Checks whether a stage with that name already exists within a specific
+     * Competition.
      */
     boolean existsByCompetitionIdAndTitle(Long competitionId, String title);
 
     /**
-     * Returns all stages of the Competition sorted by their position (from smallest to largest).
+     * Returns all stages of the Competition sorted by their position (from smallest
+     * to largest).
      */
     List<Stage> findAllByCompetitionIdOrderBySortPositionAsc(Long competitionId);
 

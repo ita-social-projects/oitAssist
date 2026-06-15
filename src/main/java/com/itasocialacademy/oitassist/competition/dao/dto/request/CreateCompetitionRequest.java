@@ -6,5 +6,5 @@ public record CreateCompetitionRequest(
     String title,
     String description,
     ZonedDateTime dateStart,
-    ZonedDateTime dateFinish
-) {}
+    ZonedDateTime dateFinish) {
+}
