@@ -127,8 +127,7 @@ class NewsArchivingServiceImplTest {
         News news = buildArchivedNews(
             1L,
             "Kyiv timezone news",
-            OffsetDateTime.parse("2026-04-30T22:30:00Z")
-        );
+            OffsetDateTime.parse("2026-04-30T22:30:00Z"));
 
         when(newsRepository.findArchivedNewsOrderByArchivedAtDesc()).thenReturn(List.of(news));
 
