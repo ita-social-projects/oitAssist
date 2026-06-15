@@ -74,7 +74,7 @@ public class FileController {
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
-    // @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FileResponseDto>> upload(
         @RequestPart("files") List<MultipartFile> files,
         @RequestPart("metadata") @Valid FileUploadRequestDto requestDto) {
@@ -163,6 +163,13 @@ public class FileController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Retrieves all files with status ATTACHED for the specified entity.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the related entity
+     * @return HTTP 200 with the list of attached files (empty list if none found)
+     */
     @Operation(
         summary = "Get files by entity",
         description = """

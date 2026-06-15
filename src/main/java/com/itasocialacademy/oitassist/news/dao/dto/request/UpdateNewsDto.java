@@ -46,6 +46,7 @@ public class UpdateNewsDto implements UpdateEntityDTO<Long> {
         example = "[1, 2, 3]")
     private List<Long> fileIds;
     @Schema(
-        description = "IDs of files removed from content")
+        description = "IDs of files removed from content",
+        example = "[4, 5]")
     private List<Long> removedFileIds;
 }
