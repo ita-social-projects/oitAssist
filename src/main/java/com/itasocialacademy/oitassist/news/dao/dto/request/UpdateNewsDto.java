@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -40,4 +41,11 @@ public class UpdateNewsDto implements UpdateEntityDTO<Long> {
         description = "If true, news will be published immediately",
         example = "true")
     private boolean publishNow;
+    @Schema(
+        description = "IDs of uploaded files",
+        example = "[1, 2, 3]")
+    private List<Long> fileIds;
+    @Schema(
+        description = "IDs of files removed from content")
+    private List<Long> removedFileIds;
 }

@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequestedEvent;
+import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
@@ -18,6 +19,7 @@ import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -81,18 +83,17 @@ public class NewsServiceImpl
     @Transactional
     public ResponseNewsDto save(CreateNewsDTO dto) {
         ResponseNewsDto saved = super.save(dto);
-        if (dto.getFileIds() != null && !dto.getFileIds().isEmpty()) {
-            Long authorId = securityFacade.getCurrentUserId()
-                .orElseThrow(() -> new AuthorizationException(
-                    "User must be logged in to create news", ErrorCode.ACCESS_DENIED));
-            eventPublisher.publishEvent(
-                new FilesAttachRequestedEvent(
-                    saved.getId(),
-                    RelatedEntityType.NEWS,
-                    dto.getFileIds(),
-                    authorId));
-        }
+        publishAttachEvent(saved.getId(), dto.getFileIds());
         return saved;
+    }
+
+    @Override
+    @Transactional
+    public ResponseNewsDto update(UpdateNewsDto dto) {
+        ResponseNewsDto updated = super.update(dto);
+        publishAttachEvent(updated.getId(), dto.getFileIds());
+        publishDetachEvent(dto.getRemovedFileIds());
+        return updated;
     }
 
     @Override
@@ -102,6 +103,31 @@ public class NewsServiceImpl
             search,
             date);
         return repository.findAll(spec, pageable).map(this::toNewsListItemDto);
+    }
+
+    private void publishAttachEvent(Long newsId, List<Long> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return;
+        }
+
+        Long authorId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException("User must be logged in to create news",
+                ErrorCode.ACCESS_DENIED));
+
+        eventPublisher.publishEvent(
+            new FilesAttachRequestedEvent(newsId, RelatedEntityType.NEWS, fileIds, authorId));
+    }
+
+    private void publishDetachEvent(List<Long> removedFileIds) {
+        if (removedFileIds == null || removedFileIds.isEmpty()) {
+            return;
+        }
+
+        Long userId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException("User must be logged in to create news",
+                ErrorCode.ACCESS_DENIED));
+
+        eventPublisher.publishEvent(new FilesDetachRequestedEvent(removedFileIds, userId));
     }
 
     private ResponseNewsListItemDto toNewsListItemDto(News news) {

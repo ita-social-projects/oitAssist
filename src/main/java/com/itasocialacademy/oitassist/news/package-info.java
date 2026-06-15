@@ -13,6 +13,7 @@
     "security::UserDetailsImpl",
     "security::SecurityFacade",
     "filemanager::FilesAttachRequestedEvent",
+    "filemanager::FilesDetachRequestedEvent",
     "filemanager::RelatedEntityType"
 })
 package com.itasocialacademy.oitassist.news;
