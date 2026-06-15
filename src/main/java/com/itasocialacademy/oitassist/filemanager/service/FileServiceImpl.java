@@ -171,8 +171,7 @@ public class FileServiceImpl implements FileService {
     /**
      * Marks a batch of files as {@link FileStatus#SOFT_DELETED}. Called via event
      * after a news update removes files from content. Validates ownership for each
-     * file using the explicitly provided userId, since this runs outside the HTTP
-     * Security Context (async event listener).
+     * file using the explicitly provided userId.
      *
      * @param fileIds the IDs of files to soft-delete
      * @param userId  the ID of the user who triggered detach (from the event)

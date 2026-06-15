@@ -111,7 +111,7 @@ public class NewsServiceImpl
         }
 
         Long authorId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User must be logged in to create news",
+            .orElseThrow(() -> new AuthorizationException("User must be logged in to modify news",
                 ErrorCode.ACCESS_DENIED));
 
         eventPublisher.publishEvent(
@@ -124,7 +124,7 @@ public class NewsServiceImpl
         }
 
         Long userId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User must be logged in to create news",
+            .orElseThrow(() -> new AuthorizationException("User must be logged in to modify news",
                 ErrorCode.ACCESS_DENIED));
 
         eventPublisher.publishEvent(new FilesDetachRequestedEvent(removedFileIds, userId));
