@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.filemanager.controller;
 
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
@@ -22,12 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
@@ -78,7 +74,7 @@ public class FileController {
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PreAuthorize("isAuthenticated()")
+    // @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<FileResponseDto>> upload(
         @RequestPart("files") List<MultipartFile> files,
         @RequestPart("metadata") @Valid FileUploadRequestDto requestDto) {
@@ -165,5 +161,39 @@ public class FileController {
         log.info("Admin triggered manual file cleanup.");
         cleanupService.runFullCleanup();
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+        summary = "Get files by entity",
+        description = """
+            Returns all files with status ATTACHED for the given entity type and ID.
+            Returns an empty list if no files are found — this is not an error condition.
+            """)
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Files retrieved successfully. Empty list if none found.",
+            content = @Content(
+                mediaType = "application/json",
+                array = @ArraySchema(schema = @Schema(implementation = FileResponseDto.class)))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid entityType value",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','ORG')")
+    public ResponseEntity<List<FileResponseDto>> getFiles(
+        @RequestParam RelatedEntityType entityType,
+        @RequestParam Long entityId) {
+        return ResponseEntity.ok(fileService.getFilesByEntity(entityType, entityId));
     }
 }

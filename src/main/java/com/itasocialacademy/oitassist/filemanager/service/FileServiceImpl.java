@@ -60,7 +60,8 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto) {
         Long currentUserId = securityFacade.getCurrentUserId()
-            .orElse(1L);
+            .orElseThrow(() -> new AuthorizationException(
+                "Not authenticated", ErrorCode.ACCESS_DENIED));
 
         FileValidationStrategy strategy = validationStrategyResolver.resolve(requestDto.getRelatedEntityType());
         ValidationResult result = strategy.validate(files, requestDto);
@@ -192,6 +193,31 @@ public class FileServiceImpl implements FileService {
             file.setDeletedAt(OffsetDateTime.now());
         }
         repository.saveAll(files);
+    }
+
+    /**
+     * Returns all {@link FileStatus#ATTACHED} files for the given entity, enriched
+     * with their publicly accessible URLs resolved from the storage provider.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the related entity
+     * @return list of file DTOs with resolved URLs
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<FileResponseDto> getFilesByEntity(RelatedEntityType entityType, Long entityId) {
+        List<FileAsset> files = repository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                entityType, entityId, FileStatus.ATTACHED);
+
+        return files.stream()
+            .map(file -> {
+                FileResponseDto dto = fileMapper.toDto(file);
+                StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+                dto.setUrl(provider.getFileUrl(file.getStorageKey()));
+                return dto;
+            })
+            .toList();
     }
 
     /**
