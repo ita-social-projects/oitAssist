@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+  <changeSet id="create-stages-table" author="Anton Pampukha">
+    <createTable tableName="stages">
+      <column name="id" type="BIGINT" autoIncrement="true">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="competition_id" type="BIGINT">
+        <constraints nullable="false"
+          foreignKeyName="fk_stages_competition"
+          referencedTableName="competitions"
+          referencedColumnNames="id"
+          deleteCascade="true"/>
+      </column>
+      <column name="title" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="description" type="TEXT"/>
+      <column name="date_start" type="TIMESTAMPTZ">
+        <constraints nullable="false"/>
+      </column>
+      <column name="date_finish" type="TIMESTAMPTZ">
+        <constraints nullable="false"/>
+      </column>
+      <column name="sort_position" type="SMALLINT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="scope" type="VARCHAR(50)">
+        <constraints nullable="false"/>
+      </column>
+
+      <column name="created_by" type="BIGINT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+      <column name="updated_by" type="BIGINT"/>
+      <column name="updated_at" type="TIMESTAMPTZ"/>
+    </createTable>
+
+    <addUniqueConstraint tableName="stages"
+      columnNames="competition_id, title"
+      constraintName="uk_stages_competition_id_title"/>
+
+    <sql>
+      ALTER TABLE stages
+        ADD CONSTRAINT chk_stages_scope
+          CHECK (scope IN ('NATIONAL', 'REGIONAL', 'CITY', 'FOREIGN', 'OPEN'));
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>
