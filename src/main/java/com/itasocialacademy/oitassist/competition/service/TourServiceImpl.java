@@ -51,7 +51,7 @@ public class TourServiceImpl implements TourService {
             || child.getDateFinish().isAfter(parent.dateFinish())) {
             throw new CompetitionHierarchyValidationException(
                 "Tour dates (%s - %s) must be within Stage dates (%s - %s)".formatted(
-                    child.getDateStart(), child.getDateFinish(), parent.dateStart(), parent.dateStart()));
+                    child.getDateStart(), child.getDateFinish(), parent.dateStart(), parent.dateFinish()));
         }
     }
 }

@@ -23,4 +23,10 @@ public interface StageRepository extends JpaRepository<Stage, Long> {
      * Find the stage with the maximum sort_position within the Competition.
      */
     Stage findTopByCompetitionIdOrderBySortPositionDesc(Long competitionId);
+
+    /**
+     * Checks whether a stage with that sort position already exists within a
+     * specific Competition.
+     */
+    boolean existsByCompetitionIdAndSortPosition(Long competitionId, Short sortPosition);
 }

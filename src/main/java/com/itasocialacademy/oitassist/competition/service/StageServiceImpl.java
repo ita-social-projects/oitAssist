@@ -37,11 +37,17 @@ public class StageServiceImpl implements StageService {
             throw new CompetitionHierarchyValidationException("Stage title already exists in this competition.");
         }
 
-        if (stage.getSortPosition() == null) {
+        if (stage.getSortPosition() != null) {
+            boolean positionExists =
+                stageRepository.existsByCompetitionIdAndSortPosition(competitionId, stage.getSortPosition());
+            if (positionExists) {
+                throw new CompetitionHierarchyValidationException(
+                    "Sort position " + stage.getSortPosition() + " is already taken in this competition.");
+            }
+        } else {
             Stage lastStage = stageRepository.findTopByCompetitionIdOrderBySortPositionDesc(competitionId);
             stage.setSortPosition(lastStage != null ? (short) (lastStage.getSortPosition() + 1) : 1);
         }
-
         return mapper.toResponse(stageRepository.save(stage));
     }
 
