@@ -173,12 +173,14 @@ public class FileServiceImpl implements FileService {
      * after a news update removes files from content. Validates ownership for each
      * file using the explicitly provided userId.
      *
-     * @param fileIds the IDs of files to soft-delete
-     * @param userId  the ID of the user who triggered detach (from the event)
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity to detach files to
+     * @param fileIds    the IDs of files to soft-delete
+     * @param userId     the ID of the user who triggered detach (from the event)
      */
     @Override
     @Transactional
-    public void detachFiles(List<Long> fileIds, Long userId) {
+    public void detachFiles(RelatedEntityType entityType, Long entityId, List<Long> fileIds, Long userId) {
         if (fileIds == null || fileIds.isEmpty()) {
             return;
         }
@@ -187,6 +189,12 @@ public class FileServiceImpl implements FileService {
         List<FileAsset> files = repository.findAllById(fileIds);
 
         for (FileAsset file : files) {
+            if (!entityType.equals(file.getRelatedEntityType())
+                || !entityId.equals(file.getRelatedEntityId())) {
+                throw new ValidationException(
+                    "File id=" + file.getId() + " does not belong to " + entityType + " id=" + entityId,
+                    ErrorCode.FILE_VALIDATION_FAILED);
+            }
             checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
             file.setStatus(FileStatus.SOFT_DELETED);
             file.setDeletedAt(OffsetDateTime.now());

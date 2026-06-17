@@ -92,7 +92,7 @@ public class NewsServiceImpl
     public ResponseNewsDto update(UpdateNewsDto dto) {
         ResponseNewsDto updated = super.update(dto);
         publishAttachEvent(updated.getId(), dto.getFileIds());
-        publishDetachEvent(dto.getRemovedFileIds());
+        publishDetachEvent(updated.getId(), dto.getRemovedFileIds());
         return updated;
     }
 
@@ -118,7 +118,7 @@ public class NewsServiceImpl
             new FilesAttachRequestedEvent(newsId, RelatedEntityType.NEWS, fileIds, authorId));
     }
 
-    private void publishDetachEvent(List<Long> removedFileIds) {
+    private void publishDetachEvent(Long newsId, List<Long> removedFileIds) {
         if (removedFileIds == null || removedFileIds.isEmpty()) {
             return;
         }
@@ -127,7 +127,8 @@ public class NewsServiceImpl
             .orElseThrow(() -> new AuthorizationException("User must be logged in to modify news",
                 ErrorCode.ACCESS_DENIED));
 
-        eventPublisher.publishEvent(new FilesDetachRequestedEvent(removedFileIds, userId));
+        eventPublisher
+            .publishEvent(new FilesDetachRequestedEvent(RelatedEntityType.NEWS, newsId, removedFileIds, userId));
     }
 
     private ResponseNewsListItemDto toNewsListItemDto(News news) {

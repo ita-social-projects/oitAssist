@@ -52,10 +52,12 @@ public interface FileService {
      * Marks a batch of files as SOFT_DELETED. Called when files are removed from
      * content. Validates ownership for each file using the provided userId.
      *
-     * @param fileIds the IDs of files to soft-delete
-     * @param userId  the ID of the user who triggered detach
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity to detach files to
+     * @param fileIds    the IDs of files to soft-delete
+     * @param userId     the ID of the user who triggered detach
      */
-    void detachFiles(List<Long> fileIds, Long userId);
+    void detachFiles(RelatedEntityType entityType, Long entityId, List<Long> fileIds, Long userId);
 
     /**
      * Returns all {@link FileStatus#ATTACHED} files for the given entity.

@@ -55,6 +55,6 @@ public class FileEventListener {
     public void onFileDetachRequested(FilesDetachRequestedEvent event) {
         log.debug("Received FilesDetachRequestedEvent for fileIds={}", event.fileIds());
 
-        fileService.detachFiles(event.fileIds(), event.userId());
+        fileService.detachFiles(event.entityType(), event.entityId(), event.fileIds(), event.userId());
     }
 }
