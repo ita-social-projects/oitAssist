@@ -73,27 +73,34 @@ public class RegistrationServiceImpl implements RegistrationService {
         }
     }
 
-    /**
-     * Provisions a new OAuth user or retrieves the existing user based on the
-     * provided OAuth command. If a user with the given email already exists, their
-     * authentication details are returned. Otherwise, a new user is created and
-     * their authentication details are returned.
-     *
-     * @param command the command containing the required OAuth user details, such
-     *                as email and profile information
-     * @return the authentication details of the newly created or existing user
-     */
     @Override
     @Transactional
     public UserAuthDetails provisionOAuthUser(OAuthProvisionCommand command) {
         log.info("OAuth2 provisioning attempt for email={}", command.email());
 
-        return userService.findAuthDetailsByEmail(command.email())
-            .map(existing -> {
-                log.debug("OAuth2 login matched existing user email={}", command.email());
-                return existing;
-            })
+        return userRepository.findUserByEmail(command.email())
+            .map(this::resolveExistingUser)
             .orElseGet(() -> createNewOAuthUser(command));
+    }
+
+    private UserAuthDetails resolveExistingUser(User user) {
+        return switch (user.getUserStatus()) {
+            case ACTIVE -> {
+                log.debug("OAuth2 login matched existing active user email={}", user.getEmail());
+                yield userMapper.toUserAuthDetails(user);
+            }
+            case PENDING -> {
+                log.info("Auto-activating pending user via OAuth2 email={}", user.getEmail());
+                user.setUserStatus(UserStatus.ACTIVE);
+                user.setUserActivationToken(null);
+                yield userMapper.toUserAuthDetails(userRepository.save(user));
+            }
+            default -> {
+                log.warn("OAuth2 login rejected — user email={} status={}",
+                    user.getEmail(), user.getUserStatus());
+                throw new UserNotActivatedException();
+            }
+        };
     }
 
     private UserAuthDetails createNewOAuthUser(OAuthProvisionCommand command) {
