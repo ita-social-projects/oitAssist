@@ -2,7 +2,7 @@ name: PR to Discord
 
 on:
   pull_request:
-    types: [opened, closed]
+    types: [ opened, reopened, closed ]
     branches: [ dev ]
 
 permissions:
@@ -17,21 +17,23 @@ jobs:
 
       # --- STEP 1: OPENED ---
       - name: Notify and Label
-        if: github.event.action == 'opened'
+        if: github.event.action == 'opened' || github.event.action == 'reopened'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISCORD_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          RESPONSE=$(curl -s -X POST "${DISCORD_URL}?wait=true" \
-            -H "Content-Type: application/json" \
-            -d @- <<EOF
-          {
-            "content": "🚀 **New PR #${{ github.event.pull_request.number }}**\n👀**Title:** ${{ github.event.pull_request.title }}\n👤**Author:** ${{ github.event.pull_request.user.login }}\n🔗**Link:** ${{ github.event.pull_request.html_url }}"
-          }
-          EOF
-          )
+          PAYLOAD=$(jq -n \
+            --arg content "🚀 **New PR #${{ github.event.pull_request.number }}**
+          👀**Title:** ${{ github.event.pull_request.title }}
+          👤**Author:** ${{ github.event.pull_request.user.login }}
+          🔗**Link:** ${{ github.event.pull_request.html_url }}" \
+          '{content: $content}')
           
-          MSG_ID=$(echo $RESPONSE | jq -r '.id')
+          RESPONSE=$(curl -s -X POST "${DISCORD_URL}?wait=true" \
+          -H "Content-Type: application/json" \
+          -d "$PAYLOAD")
+          
+          MSG_ID=$(echo "$RESPONSE" | jq -r '.id')
           
           if [ "$MSG_ID" == "null" ] || [ -z "$MSG_ID" ]; then
             echo "Error: Discord did not return a Message ID. Response was: $RESPONSE"
