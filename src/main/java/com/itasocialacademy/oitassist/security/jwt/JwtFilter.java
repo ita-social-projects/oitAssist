@@ -96,7 +96,10 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getServletPath().equals("/api/v1/security/refresh");
+        String path = request.getServletPath();
+        return path.equals("/api/v1/security/refresh")
+            || path.startsWith("/oauth2/")
+            || path.startsWith("/login/oauth2/");
     }
 
     private void setError(HttpServletRequest request, HttpServletResponse response, String message, ErrorCode errorCode)
