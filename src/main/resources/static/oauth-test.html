@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>OAuth2 Test</h2>
+<pre id="output">Reading tokens...</pre>
+<script>
+    const fragment = window.location.hash.substring(1);
+    const params = Object.fromEntries(new URLSearchParams(fragment));
+    document.getElementById('output').textContent =
+        JSON.stringify(params, null, 2);
+</script>
+</body>
+</html>
