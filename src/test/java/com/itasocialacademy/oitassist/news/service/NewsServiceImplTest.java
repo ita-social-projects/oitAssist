@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.news.service;
 
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.dao.model.News;
@@ -12,11 +13,12 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -36,7 +38,9 @@ class NewsServiceImplTest {
     private NewsRepository newsRepository;
     @Mock
     private SecurityFacade securityFacade;
-    @InjectMocks
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private NewsServiceImpl newsService;
 
     @AfterEach
@@ -44,13 +48,23 @@ class NewsServiceImplTest {
         SecurityContextHolder.clearContext();
     }
 
+    @BeforeEach
+    void setUp() {
+        newsService = new NewsServiceImpl(newsRepository, newsMapper, securityFacade, eventPublisher);
+    }
+
     @Test
     void shouldCreateDraftNewsAndSave() {
         mockAuthenticatedUser(1L);
-        CreateNewsDTO dto = new CreateNewsDTO("Title", "Content", false, null);
+        CreateNewsDTO dto = new CreateNewsDTO("Title", "Content", false, List.of(1L));
 
         News news = new News();
         when(newsMapper.toEntity(dto)).thenReturn(news);
+        when(newsRepository.save(news)).thenReturn(news);
+
+        ResponseNewsDto response = new ResponseNewsDto();
+        response.setId(1L);
+        when(newsMapper.toDto(news)).thenReturn(response);
 
         newsService.save(dto);
 
@@ -67,6 +81,11 @@ class NewsServiceImplTest {
 
         News news = new News();
         when(newsMapper.toEntity(dto)).thenReturn(news);
+        when(newsRepository.save(news)).thenReturn(news);
+
+        ResponseNewsDto response = new ResponseNewsDto();
+        response.setId(1L);
+        when(newsMapper.toDto(news)).thenReturn(response);
 
         newsService.save(dto);
 
@@ -79,8 +98,8 @@ class NewsServiceImplTest {
 
     @Test
     void shouldReturnPublishedNewsToDraftOnUpdate() {
-
-        UpdateNewsDto dto = new UpdateNewsDto(1L, "Title", "Content", false);
+        mockAuthenticatedUser(1L);
+        UpdateNewsDto dto = new UpdateNewsDto(1L, "Title", "Content", false, List.of(1L, 2L), List.of());
 
         News existing = new News();
         existing.setId(1L);
@@ -88,40 +107,47 @@ class NewsServiceImplTest {
         existing.setPublishedAt(OffsetDateTime.now());
 
         when(newsRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(newsRepository.save(existing)).thenReturn(existing);
+
+        ResponseNewsDto response = new ResponseNewsDto();
+        response.setId(1L);
+        when(newsMapper.toDto(existing)).thenReturn(response);
 
         newsService.update(dto);
 
         assertEquals(NewsStatus.DRAFT, existing.getStatus());
         assertNull(existing.getPublishedAt());
-
         verify(newsRepository).save(existing);
     }
 
     @Test
     void shouldPublishDraftNewsOnUpdate() {
-
-        UpdateNewsDto dto = new UpdateNewsDto(1L, "Title", "Content", true);
+        mockAuthenticatedUser(1L);
+        UpdateNewsDto dto = new UpdateNewsDto(1L, "Title", "Content", true, List.of(1L, 2L), List.of());
 
         News existing = new News();
         existing.setId(1L);
         existing.setStatus(NewsStatus.DRAFT);
 
         when(newsRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(newsRepository.save(existing)).thenReturn(existing);
+
+        ResponseNewsDto response = new ResponseNewsDto();
+        response.setId(1L);
+        when(newsMapper.toDto(existing)).thenReturn(response);
 
         newsService.update(dto);
 
         assertEquals(NewsStatus.PUBLISHED, existing.getStatus());
         assertNotNull(existing.getPublishedAt());
-
         verify(newsRepository).save(existing);
     }
 
     @Test
     void shouldNotOverwritePublishedDateIfAlreadyPublished() {
-
+        mockAuthenticatedUser(1L);
         OffsetDateTime originalDate = OffsetDateTime.now().minusDays(1);
-
-        UpdateNewsDto dto = new UpdateNewsDto(1L, "Title", "Content", true);
+        UpdateNewsDto dto = new UpdateNewsDto(1L, "Title", "Content", true, List.of(1L, 2L), List.of());
 
         News existing = new News();
         existing.setId(1L);
@@ -129,12 +155,16 @@ class NewsServiceImplTest {
         existing.setPublishedAt(originalDate);
 
         when(newsRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(newsRepository.save(existing)).thenReturn(existing);
+
+        ResponseNewsDto response = new ResponseNewsDto();
+        response.setId(1L);
+        when(newsMapper.toDto(existing)).thenReturn(response);
 
         newsService.update(dto);
 
         assertEquals(NewsStatus.PUBLISHED, existing.getStatus());
         assertEquals(originalDate, existing.getPublishedAt());
-
         verify(newsRepository).save(existing);
     }
 

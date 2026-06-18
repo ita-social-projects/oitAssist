@@ -60,8 +60,8 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto) {
         Long currentUserId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User must be authenticated to upload files.",
-                ErrorCode.ACCESS_DENIED));
+            .orElseThrow(() -> new AuthorizationException(
+                "Not authenticated", ErrorCode.ACCESS_DENIED));
 
         FileValidationStrategy strategy = validationStrategyResolver.resolve(requestDto.getRelatedEntityType());
         ValidationResult result = strategy.validate(files, requestDto);
@@ -87,10 +87,14 @@ public class FileServiceImpl implements FileService {
     @Override
     @Transactional
     public void deleteSoft(Long fileId) {
+        Long currentUserId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException(
+                "Not authenticated", ErrorCode.ACCESS_DENIED));
+
         FileAsset file = repository.findById(fileId)
             .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
 
-        validateOwnerOrAdmin(file.getUserId());
+        checkOwnerOrAdmin(file.getUserId(), currentUserId);
 
         file.setStatus(FileStatus.SOFT_DELETED);
         file.setDeletedAt(OffsetDateTime.now());
@@ -151,7 +155,7 @@ public class FileServiceImpl implements FileService {
         List<FileAsset> files = repository.findAllById(fileIds);
 
         for (FileAsset file : files) {
-            validateFileOwnership(file, userId, isAdmin);
+            checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
             if (file.getStatus() == FileStatus.TEMPORARY) {
                 file.setStatus(FileStatus.ATTACHED);
                 file.setRelatedEntityId(entityId);
@@ -162,6 +166,65 @@ public class FileServiceImpl implements FileService {
             }
         }
         repository.saveAll(files);
+    }
+
+    /**
+     * Marks a batch of files as {@link FileStatus#SOFT_DELETED}. Called via event
+     * after a news update removes files from content. Validates ownership for each
+     * file using the explicitly provided userId.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity to detach files to
+     * @param fileIds    the IDs of files to soft-delete
+     * @param userId     the ID of the user who triggered detach (from the event)
+     */
+    @Override
+    @Transactional
+    public void detachFiles(RelatedEntityType entityType, Long entityId, List<Long> fileIds, Long userId) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return;
+        }
+
+        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
+        List<FileAsset> files = repository.findAllById(fileIds);
+
+        for (FileAsset file : files) {
+            if (!entityType.equals(file.getRelatedEntityType())
+                || !entityId.equals(file.getRelatedEntityId())) {
+                throw new ValidationException(
+                    "File id=" + file.getId() + " does not belong to " + entityType + " id=" + entityId,
+                    ErrorCode.FILE_VALIDATION_FAILED);
+            }
+            checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
+            file.setStatus(FileStatus.SOFT_DELETED);
+            file.setDeletedAt(OffsetDateTime.now());
+        }
+        repository.saveAll(files);
+    }
+
+    /**
+     * Returns all {@link FileStatus#ATTACHED} files for the given entity, enriched
+     * with their publicly accessible URLs resolved from the storage provider.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the related entity
+     * @return list of file DTOs with resolved URLs
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<FileResponseDto> getFilesByEntity(RelatedEntityType entityType, Long entityId) {
+        List<FileAsset> files = repository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                entityType, entityId, FileStatus.ATTACHED);
+
+        return files.stream()
+            .map(file -> {
+                FileResponseDto dto = fileMapper.toDto(file);
+                StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+                dto.setUrl(provider.getFileUrl(file.getStorageKey()));
+                return dto;
+            })
+            .toList();
     }
 
     /**
@@ -288,67 +351,52 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Validates that the current user has the authority to modify or delete a
-     * specific file.
+     * Core authorization check — verifies that the given user is either the file
+     * owner or an administrator. Used in batch operations where {@code isAdmin} is
+     * resolved once outside the loop to avoid redundant Security Context calls.
      *
-     * <p>
-     * Access is granted if the authenticated user is either the owner of the file
-     * or possesses the {@code ADMIN} role. If neither condition is met, a warning
-     * is logged and an authorization exception is thrown.
-     * </p>
-     *
-     * @param fileOwnerId the unique identifier of the user who owns the target file
-     *                    asset.
-     * @throws AuthorizationException if the user is neither the owner nor an
-     *                                administrator.
+     * @param fileOwnerId   the ID of the user who owns the file
+     * @param currentUserId the ID of the user performing the operation
+     * @param isAdmin       whether the current user has the ADMIN role
+     * @throws AuthorizationException if the user is neither owner nor admin
      */
-    private void validateOwnerOrAdmin(Long fileOwnerId) {
-        boolean isOwner = securityFacade.isOwner(fileOwnerId);
-        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
-
+    private void checkOwnerOrAdmin(Long fileOwnerId, Long currentUserId, boolean isAdmin) {
+        boolean isOwner = fileOwnerId.equals(currentUserId);
         if (!isOwner && !isAdmin) {
-            log.warn("Security Breach: User attempted to access file owned by ID {}", fileOwnerId);
-            throw new AuthorizationException("You do not have permission to modify this file.",
+            log.warn("Security Breach: User {} attempted to access file owned by {}",
+                currentUserId, fileOwnerId);
+            throw new AuthorizationException(
+                "You do not have permission to modify this file.",
                 ErrorCode.ACCESS_DENIED);
         }
     }
 
     /**
-     * Restricts the subsequent operation to users with administrative privileges
-     * only.
+     * Convenience overload for single-file operations where {@code isAdmin} is
+     * resolved internally. Used in {@link #deleteSoft} where only one file is
+     * processed and a single Security Context call is acceptable.
      *
-     * <p>
-     * This method performs a strict role check. Unlike
-     * {@link #validateOwnerOrAdmin(Long)}, regular users—even if they own the
-     * resource—will be denied access if they do not have the {@code ADMIN} role.
-     * </p>
+     * @param fileOwnerId   the ID of the user who owns the file
+     * @param currentUserId the ID of the user performing the operation
+     * @throws AuthorizationException if the user is neither owner nor admin
+     */
+    private void checkOwnerOrAdmin(Long fileOwnerId, Long currentUserId) {
+        checkOwnerOrAdmin(fileOwnerId, currentUserId, securityFacade.hasRole(ROLE_ADMIN));
+    }
+
+    /**
+     * Restricts the operation to administrators only. Used exclusively by
+     * {@link #deleteHard} which requires elevated privileges regardless of
+     * ownership.
      *
      * @throws AuthorizationException if the authenticated user does not have the
-     *                                {@code ADMIN} role.
+     *                                ADMIN role
      */
     private void validateAdmin() {
         if (!securityFacade.hasRole(ROLE_ADMIN)) {
             log.warn("Security Breach: User attempted to access file with insufficient authorities");
-            throw new AuthorizationException("You do not have permission to modify this file.",
-                ErrorCode.ACCESS_DENIED);
-        }
-    }
-
-    /**
-     * Validates that the file belongs to the current user or they are an admin.
-     * Same logic as {@link #validateOwnerOrAdmin(Long)}.
-     *
-     * @param file   the file to validate
-     * @param userId the current user ID
-     * @throws AuthorizationException if validation fails
-     */
-    private void validateFileOwnership(FileAsset file, Long userId, boolean isAdmin) {
-        boolean isOwner = file.getUserId().equals(userId);
-        if (!isOwner && !isAdmin) {
-            log.warn("Security Breach: User {} attempted to attach file {} owned by {}",
-                userId, file.getId(), file.getUserId());
             throw new AuthorizationException(
-                "You do not have permission to attach this file",
+                "You do not have permission to modify this file.",
                 ErrorCode.ACCESS_DENIED);
         }
     }

@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.filemanager.service.interfaces;
 
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
@@ -46,4 +47,24 @@ public interface FileService {
      * @param userId     the ID of the user performing the file linking operation
      */
     void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds, Long userId);
+
+    /**
+     * Marks a batch of files as SOFT_DELETED. Called when files are removed from
+     * content. Validates ownership for each file using the provided userId.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity to detach files to
+     * @param fileIds    the IDs of files to soft-delete
+     * @param userId     the ID of the user who triggered detach
+     */
+    void detachFiles(RelatedEntityType entityType, Long entityId, List<Long> fileIds, Long userId);
+
+    /**
+     * Returns all {@link FileStatus#ATTACHED} files for the given entity.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the related entity
+     * @return list of file DTOs with resolved URLs
+     */
+    List<FileResponseDto> getFilesByEntity(RelatedEntityType entityType, Long entityId);
 }
