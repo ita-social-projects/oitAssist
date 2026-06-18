@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+  <changeSet id="refactor-competitions-table" author="Anton Pampukha">
+
+    <sql dbms="postgresql">
+      ALTER TABLE competitions
+      ALTER COLUMN competition_status TYPE VARCHAR(50)
+                USING (
+                    CASE competition_status::text
+                        WHEN 'INCOMING' THEN 'DRAFT'
+                        WHEN 'INPROGRESS' THEN 'PUBLISHED'
+                        WHEN 'FINISED' THEN 'FINISHED'
+                        WHEN 'ARCHIVED' THEN 'ARCHIVED'
+                        ELSE 'DRAFT'
+                    END
+                );
+
+      ALTER TABLE competitions
+        ADD CONSTRAINT chk_competitions_status
+          CHECK (competition_status IN ('DRAFT', 'PUBLISHED', 'FINISHED', 'ARCHIVED'));
+    </sql>
+
+    <dropColumn tableName="competitions" columnName="level"/>
+    <dropColumn tableName="competitions" columnName="year"/>
+
+    <sql dbms="postgresql">
+      DROP TYPE IF EXISTS competition_level;
+      DROP TYPE IF EXISTS competition_status;
+    </sql>
+
+    <renameColumn tableName="competitions" oldColumnName="name" newColumnName="title" columnDataType="VARCHAR(255)"/>
+    <renameColumn tableName="competitions" oldColumnName="start_at" newColumnName="date_start" columnDataType="TIMESTAMPTZ"/>
+    <renameColumn tableName="competitions" oldColumnName="end_at" newColumnName="date_finish" columnDataType="TIMESTAMPTZ"/>
+
+    <addColumn tableName="competitions">
+      <column name="description" type="TEXT"/>
+
+      <column name="created_by" type="BIGINT" defaultValueNumeric="1">
+        <constraints nullable="false"/>
+      </column>
+      <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
+        <constraints nullable="false"/>
+      </column>
+
+      <column name="updated_by" type="BIGINT"/>
+      <column name="updated_at" type="TIMESTAMPTZ"/>
+    </addColumn>
+
+    <dropDefaultValue tableName="competitions" columnName="created_by"/>
+
+  </changeSet>
+
+</databaseChangeLog>
