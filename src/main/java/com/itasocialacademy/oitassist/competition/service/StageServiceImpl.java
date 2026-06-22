@@ -26,7 +26,7 @@ public class StageServiceImpl implements StageService {
     public StageResponse create(Long competitionId, CreateStageRequest request) {
         competitionService.validateHierarchyImmutability(competitionId);
 
-        CompetitionResponse competition = competitionService.getById(competitionId);
+        CompetitionResponse competition = competitionService.getVisibleById(competitionId);
 
         Stage stage = mapper.toEntity(request);
         stage.setCompetitionId(competitionId);
