@@ -191,4 +191,17 @@ public class LocalStorageProvider implements StorageProvider {
             throw new FileListingException("Could not read file metadata for: " + storageKey, e);
         }
     }
+
+    /**
+     * Constructs a URL for accessing the file based on its storage key. This
+     * assumes that the application is configured to serve static files from the
+     * "/uploads/**" path, which maps to the local storage root directory.
+     *
+     * @param storageKey the relative path of the file as stored in the database
+     * @return a URL string that can be used to access the file via HTTP
+     */
+    @Override
+    public String getFileUrl(String storageKey) {
+        return "/uploads/" + storageKey;
+    }
 }

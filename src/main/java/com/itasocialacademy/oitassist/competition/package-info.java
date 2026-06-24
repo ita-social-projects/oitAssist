@@ -1,4 +1,6 @@
 @ApplicationModule(allowedDependencies = {
+    "security::SecurityFacade",
+    "core"
 })
 package com.itasocialacademy.oitassist.competition;
 

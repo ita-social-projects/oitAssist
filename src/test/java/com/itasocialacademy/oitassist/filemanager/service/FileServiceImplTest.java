@@ -401,7 +401,9 @@ class FileServiceImplTest {
         when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("path/key");
+        when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
         when(fileRepository.save(any())).thenReturn(existingFile);
+        when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
 
         assertDoesNotThrow(() -> fileService.upload(List.of(file), request));
         verify(securityFacade).getCurrentUserId();
@@ -425,8 +427,11 @@ class FileServiceImplTest {
     void deleteSoft_ShouldUpdateStatusAndTimestamp_WhenFileExists() {
         String originalKey = "news/photo.jpg";
         existingFile.setStorageKey(originalKey);
+        existingFile.setUserId(userId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityFacade.isOwner(userId)).thenReturn(true);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
 
         fileService.deleteSoft(fileId);
 
@@ -441,6 +446,7 @@ class FileServiceImplTest {
 
     @Test
     void deleteSoft_ShouldThrowException_WhenFileNotFound() {
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(fileRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
         assertThrows(FileAssetNotFoundException.class, () -> fileService.deleteSoft(nonExistentId));
@@ -449,8 +455,11 @@ class FileServiceImplTest {
 
     @Test
     void deleteSoft_ShouldSucceed_WhenUserIsOwner() {
+        existingFile.setUserId(userId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityFacade.isOwner(userId)).thenReturn(true);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
 
         fileService.deleteSoft(fileId);
 
@@ -460,8 +469,11 @@ class FileServiceImplTest {
 
     @Test
     void deleteSoft_ShouldSucceed_WhenUserIsNotOwnerButIsAdmin() {
+        Long otherUserId = 99L;
+        existingFile.setUserId(otherUserId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityFacade.isOwner(userId)).thenReturn(false);
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
 
         fileService.deleteSoft(fileId);
@@ -472,8 +484,11 @@ class FileServiceImplTest {
 
     @Test
     void deleteSoft_ShouldThrowAuthorizationException_WhenUserIsNeitherOwnerNorAdmin() {
+        Long otherUserId = 99L;
+        existingFile.setUserId(otherUserId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityFacade.isOwner(userId)).thenReturn(false);
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
 
         assertThrows(AuthorizationException.class, () -> fileService.deleteSoft(fileId));

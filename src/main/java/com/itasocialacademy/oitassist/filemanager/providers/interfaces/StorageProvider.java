@@ -51,4 +51,12 @@ public interface StorageProvider {
      * @throws FileListingException if the file metadata cannot be accessed
      */
     OffsetDateTime getLastModified(String storageKey);
+
+    /**
+     * Retrieves the publicly accessible URL for a file.
+     *
+     * @param storageKey the relative path of the file
+     * @return the URL string to access the file
+     */
+    String getFileUrl(String storageKey);
 }

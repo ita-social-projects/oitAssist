@@ -13,4 +13,5 @@ public class FileResponseDto implements EntityDTO<Long> {
     private String storageKey;
     private String mimeType;
     private Long size;
+    private String url;
 }

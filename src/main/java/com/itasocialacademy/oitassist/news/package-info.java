@@ -11,7 +11,10 @@
     "core::LongEntity",
     "core::EntityRepository",
     "security::UserDetailsImpl",
-    "security::SecurityFacade"
+    "security::SecurityFacade",
+    "filemanager::FilesAttachRequestedEvent",
+    "filemanager::FilesDetachRequestedEvent",
+    "filemanager::RelatedEntityType"
 })
 package com.itasocialacademy.oitassist.news;
 

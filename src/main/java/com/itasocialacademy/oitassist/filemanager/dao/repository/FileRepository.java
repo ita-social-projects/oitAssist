@@ -1,6 +1,8 @@
 package com.itasocialacademy.oitassist.filemanager.dao.repository;
 
 import com.itasocialacademy.oitassist.core.rest.repository.EntityRepository;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -29,4 +31,11 @@ public interface FileRepository extends EntityRepository<FileAsset, Long>, JpaSp
     /** Find all files that claim to be attached to something. */
     @Query("SELECT f FROM FileAsset f WHERE f.status = 'ATTACHED'")
     List<FileAsset> findAllAttachedFiles();
+
+    /**
+     * Find all ATTACHED files for a specific entity. Returns empty list if none
+     * found.
+     */
+    List<FileAsset> findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+        RelatedEntityType type, Long entityId, FileStatus status);
 }

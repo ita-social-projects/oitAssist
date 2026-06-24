@@ -4,8 +4,10 @@ import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ArchivedNewsByYearDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
+import com.itasocialacademy.oitassist.news.service.interfaces.NewsArchivingService;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
+import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -28,8 +31,11 @@ import static org.springframework.data.domain.Sort.Direction.DESC;
 @RequestMapping("/api/v1/news")
 public class NewsController
     extends AbstractRestControllerImpl<Long, CreateNewsDTO, UpdateNewsDto, ResponseNewsDto, NewsService> {
-    protected NewsController(NewsService service) {
+    private final NewsArchivingService newsArchivingService;
+
+    protected NewsController(NewsService service, NewsArchivingService newsArchivingService) {
         super(service);
+        this.newsArchivingService = newsArchivingService;
     }
 
     @Operation(summary = "Create news", description = "Creates a new news item")
@@ -108,5 +114,17 @@ public class NewsController
         @RequestParam(required = false) String search,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(PageResponse.from(service.getPublishedNews(pageable, search, date)));
+    }
+
+    @Operation(
+        summary = "Get archived news",
+        description = "Returns list of archived news grouped by year and month")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Archived news retrieved successfully")
+    })
+    @GetMapping("/archive")
+    @PreAuthorize("hasAnyRole('ADMIN','ORG')")
+    public ResponseEntity<List<ArchivedNewsByYearDto>> getArchivedNews() {
+        return ResponseEntity.ok(newsArchivingService.getArchivedNewsGroupedByYearAndMonth());
     }
 }
