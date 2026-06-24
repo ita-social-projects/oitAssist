@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.users.service;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ReviewRequestDTO;
@@ -30,6 +31,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,6 +59,9 @@ class UserServiceImplTest {
 
     @Mock
     private ProfileUpdateRequestMapper profileUpdateRequestMapper;
+
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -199,6 +205,7 @@ class UserServiceImplTest {
         User user = User.builder()
             .id(1L)
             .email(email)
+            .firstName("Bob")
             .build();
 
         ProfileUpdateRequestDTO request = ProfileUpdateRequestDTO.builder()
@@ -362,11 +369,15 @@ class UserServiceImplTest {
         Long id = 1L;
         ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.APPROVED, null);
 
-        User user = User.builder().id(10L).build();
+        User user = User.builder().id(10L).firstName("Bob").email("test@email.com").build();
+
         ProfileUpdateRequest request = ProfileUpdateRequest.builder()
             .id(id)
             .status(UpdateRequestStatus.PENDING)
             .user(user)
+            .reviewedAt(LocalDateTime.now().toInstant(ZoneOffset.UTC))
+            .newFirstName("Bob")
+            .newLastName("Smith")
             .build();
 
         when(profileUpdateRequestRepository.findById(id)).thenReturn(Optional.of(request));
@@ -387,11 +398,13 @@ class UserServiceImplTest {
         Long id = 1L;
         ReviewRequestDTO body = new ReviewRequestDTO(UpdateRequestStatus.REJECTED, "Wrong data");
 
-        User user = User.builder().id(10L).build();
+        User user = User.builder().id(10L).firstName("Bob").build();
+
         ProfileUpdateRequest request = ProfileUpdateRequest.builder()
             .id(id)
             .status(UpdateRequestStatus.PENDING)
             .user(user)
+            .reviewedAt(LocalDateTime.now().toInstant(ZoneOffset.UTC))
             .build();
 
         when(profileUpdateRequestRepository.findById(id)).thenReturn(Optional.of(request));

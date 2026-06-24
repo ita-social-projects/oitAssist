@@ -26,7 +26,6 @@ import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import com.itasocialacademy.oitassist.usercompetition.api.interfaces.UserCompetitionFacade;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -54,8 +53,8 @@ public class UserServiceImpl
     private final EmailService emailService;
 
     protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade,
-                              ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade,
-                              ProfileUpdateRequestMapper profileUpdateRequestMapper, EmailService emailService) {
+        ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade,
+        ProfileUpdateRequestMapper profileUpdateRequestMapper, EmailService emailService) {
         super(repository, mapper);
         this.securityFacade = securityFacade;
         this.profileUpdateRequestRepository = profileUpdateRequestRepository;
@@ -195,6 +194,7 @@ public class UserServiceImpl
             .newMiddleName(request.getMiddleName())
             .newPhoneNumber(request.getPhoneNumber())
             .requestedAt(Instant.now())
+            .reviewedAt(status == UpdateRequestStatus.APPROVED ? Instant.now() : null)
             .build();
 
         try {
@@ -210,9 +210,6 @@ public class UserServiceImpl
         }
 
         if (status == UpdateRequestStatus.APPROVED) {
-            profileUpdateRequest.setReviewedAt(Instant.now());
-            profileUpdateRequestRepository.save(profileUpdateRequest);
-
             applyProfileUpdate(user, profileUpdateRequest);
 
             sendProfileUpdateEmail(user, profileUpdateRequest);
@@ -286,10 +283,9 @@ public class UserServiceImpl
         profileUpdateRequestRepository.save(profileUpdateRequest);
 
         User user = repository.findById(profileUpdateRequest.getUser().getId())
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         if (profileUpdateRequest.getStatus() == UpdateRequestStatus.APPROVED) {
-
             applyProfileUpdate(user, profileUpdateRequest);
         }
 
@@ -298,21 +294,19 @@ public class UserServiceImpl
 
     private void sendProfileUpdateEmail(User user, ProfileUpdateRequest request) {
         String status = request.getStatus() == UpdateRequestStatus.APPROVED
-                ? "Успішно змінено"
-                : "Відхилено";
+            ? "Успішно змінено"
+            : "Відхилено";
 
         Map<String, String> root = Map.of(
-                "firstName", user.getFirstName(),
-                "status", status,
-                "processedAt", request.getReviewedAt().toString(),
-                "rejectionReason", request.getRejectReason() != null ? request.getRejectReason() : ""
-        );
+            "firstName", user.getFirstName(),
+            "status", status,
+            "processedAt", request.getReviewedAt().toString(),
+            "rejectionReason", request.getRejectReason() != null ? request.getRejectReason() : "");
 
         emailService.sendTemplateEmail(
-                user.getEmail(),
-                "profile-update-status.ftlh",
-                "Зміна даних профілю",
-                root
-        );
+            user.getEmail(),
+            "profile-update-status.ftlh",
+            "Зміна даних профілю",
+            root);
     }
 }
