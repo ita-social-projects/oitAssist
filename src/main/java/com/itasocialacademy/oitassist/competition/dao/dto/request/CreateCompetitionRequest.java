@@ -1,10 +1,12 @@
 package com.itasocialacademy.oitassist.competition.dao.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.ZonedDateTime;
 
 public record CreateCompetitionRequest(
-    String title,
+    @NotBlank String title,
     String description,
-    ZonedDateTime dateStart,
-    ZonedDateTime dateFinish) {
+    @NotNull ZonedDateTime dateStart,
+    @NotNull ZonedDateTime dateFinish) {
 }
