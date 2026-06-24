@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
+import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
@@ -25,6 +26,7 @@ import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import com.itasocialacademy.oitassist.usercompetition.api.interfaces.UserCompetitionFacade;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -38,6 +40,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -48,15 +51,17 @@ public class UserServiceImpl
     private final ProfileUpdateRequestRepository profileUpdateRequestRepository;
     private final UserCompetitionFacade userCompetitionFacade;
     private final ProfileUpdateRequestMapper profileUpdateRequestMapper;
+    private final EmailService emailService;
 
     protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade,
-        ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade,
-        ProfileUpdateRequestMapper profileUpdateRequestMapper) {
+                              ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade,
+                              ProfileUpdateRequestMapper profileUpdateRequestMapper, EmailService emailService) {
         super(repository, mapper);
         this.securityFacade = securityFacade;
         this.profileUpdateRequestRepository = profileUpdateRequestRepository;
         this.userCompetitionFacade = userCompetitionFacade;
         this.profileUpdateRequestMapper = profileUpdateRequestMapper;
+        this.emailService = emailService;
     }
 
     @Value("${app.timezone}")
@@ -205,7 +210,12 @@ public class UserServiceImpl
         }
 
         if (status == UpdateRequestStatus.APPROVED) {
+            profileUpdateRequest.setReviewedAt(Instant.now());
+            profileUpdateRequestRepository.save(profileUpdateRequest);
+
             applyProfileUpdate(user, profileUpdateRequest);
+
+            sendProfileUpdateEmail(user, profileUpdateRequest);
         }
     }
 
@@ -276,10 +286,33 @@ public class UserServiceImpl
         profileUpdateRequestRepository.save(profileUpdateRequest);
 
         User user = repository.findById(profileUpdateRequest.getUser().getId())
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         if (profileUpdateRequest.getStatus() == UpdateRequestStatus.APPROVED) {
+
             applyProfileUpdate(user, profileUpdateRequest);
         }
+
+        sendProfileUpdateEmail(user, profileUpdateRequest);
+    }
+
+    private void sendProfileUpdateEmail(User user, ProfileUpdateRequest request) {
+        String status = request.getStatus() == UpdateRequestStatus.APPROVED
+                ? "Успішно змінено"
+                : "Відхилено";
+
+        Map<String, String> root = Map.of(
+                "firstName", user.getFirstName(),
+                "status", status,
+                "processedAt", request.getReviewedAt().toString(),
+                "rejectionReason", request.getRejectReason() != null ? request.getRejectReason() : ""
+        );
+
+        emailService.sendTemplateEmail(
+                user.getEmail(),
+                "profile-update-status.ftlh",
+                "Зміна даних профілю",
+                root
+        );
     }
 }
