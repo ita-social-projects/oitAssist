@@ -2,7 +2,9 @@ package com.itasocialacademy.oitassist.competition.dao.dto.response;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
 import java.time.ZonedDateTime;
+import lombok.Builder;
 
+@Builder
 public record StageResponse(
     Long id,
     Long competitionId,
