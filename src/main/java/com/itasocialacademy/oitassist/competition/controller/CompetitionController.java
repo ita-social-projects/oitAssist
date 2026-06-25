@@ -36,8 +36,8 @@ public class CompetitionController {
 
     @Operation(
         summary = "Create a new competition",
-        description = "Creates a new competition structure. The newly created competition will initially have the DRAFT status."
-    )
+        description = "Creates a new competition structure. "
+            + "The newly created competition will initially have the DRAFT status.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Competition created successfully",
             content = @Content(mediaType = "application/json",
@@ -55,8 +55,8 @@ public class CompetitionController {
 
     @Operation(
         summary = "Get all visible competitions",
-        description = "Retrieves a paginated list of competitions. Visibility depends on user role (e.g., USER sees only PUBLISHED/ARCHIVED, ORG sees their DRAFTs)."
-    )
+        description = "Retrieves a paginated list of competitions. "
+            + "Visibility depends on user role (e.g., USER sees only PUBLISHED/ARCHIVED, ORG sees their DRAFTs).")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Competitions retrieved successfully")
     })
@@ -69,8 +69,8 @@ public class CompetitionController {
 
     @Operation(
         summary = "Get archived competitions",
-        description = "Retrieves a paginated list of competitions that have been archived. Accessed via a separate endpoint as per archive policy."
-    )
+        description = "Retrieves a paginated list of competitions that have been archived. "
+            + "Accessed via a separate endpoint as per archive policy.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Archived competitions retrieved successfully")
     })
@@ -83,8 +83,8 @@ public class CompetitionController {
 
     @Operation(
         summary = "Get competition details by ID",
-        description = "Retrieves details of a specific competition. Access to DRAFT competitions is restricted to ADMINs or the ORG who created it."
-    )
+        description = "Retrieves details of a specific competition. "
+            + "Access to DRAFT competitions is restricted to ADMINs or the ORG who created it.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Competition retrieved successfully",
             content = @Content(mediaType = "application/json",
@@ -102,14 +102,15 @@ public class CompetitionController {
 
     @Operation(
         summary = "Change competition status",
-        description = "Transitions the competition to a new status. Publishing requires at least one Stage and one Tour. Archived competitions are read-only."
-    )
+        description = "Transitions the competition to a new status. "
+            + "Publishing requires at least one Stage and one Tour. Archived competitions are read-only.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Status updated successfully",
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = CompetitionResponse.class))),
         @ApiResponse(responseCode = "400",
-            description = "Hierarchy validation failed (e.g., trying to publish an empty competition or invalid state transition)",
+            description = "Hierarchy validation failed "
+                + "(e.g., trying to publish an empty competition or invalid state transition)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),

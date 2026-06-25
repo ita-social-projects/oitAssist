@@ -8,7 +8,8 @@ import org.springframework.data.jpa.domain.Specification;
 @NoArgsConstructor
 public class CompetitionSpecification {
     /**
-     * For public viewing (Role USER). Only published or finished Competitions are visible.
+     * For public viewing (Role USER). Only published or finished Competitions are
+     * visible.
      */
     public static Specification<Competition> isVisibleToUser() {
         return (root, query, cb) -> root.get("competitionStatus")
@@ -16,7 +17,8 @@ public class CompetitionSpecification {
     }
 
     /**
-     * For administrators (Role ADMIN). All Competitions are visible except archived.
+     * For administrators (Role ADMIN). All Competitions are visible except
+     * archived.
      */
     public static Specification<Competition> isVisibleToAdmin() {
         return (root, query, cb) -> root.get("competitionStatus")
@@ -24,17 +26,15 @@ public class CompetitionSpecification {
     }
 
     /**
-     * For organizers (Role ORG). Published or finished Competitions are visible. Also, self-created (DRAFT) competitions
-     * are visible.
+     * For organizers (Role ORG). Published or finished Competitions are visible.
+     * Also, self-created (DRAFT) competitions are visible.
      */
     public static Specification<Competition> isVisibleToOrg(Long currentUserId) {
         return (root, query, cb) -> cb.or(
             root.get("competitionStatus").in(CompetitionStatus.PUBLISHED, CompetitionStatus.FINISHED),
             cb.and(
                 cb.equal(root.get("competitionStatus"), CompetitionStatus.DRAFT),
-                cb.equal(root.get("createdBy"), currentUserId)
-            )
-        );
+                cb.equal(root.get("createdBy"), currentUserId)));
     }
 
     /**

@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/stages/{stageId}/tours")
 @RequiredArgsConstructor
 public class TourController {
-
     private final TourService tourService;
 
     @PostMapping

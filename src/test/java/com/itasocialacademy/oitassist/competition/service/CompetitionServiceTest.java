@@ -122,8 +122,7 @@ class CompetitionServiceTest {
     void create_validRequest_shouldSetDraftStatusAndSave() {
         // Arrange
         CreateCompetitionRequest request = new CreateCompetitionRequest(
-            "New Comp", "Desc", ZonedDateTime.now(), ZonedDateTime.now().plusDays(5)
-        );
+            "New Comp", "Desc", ZonedDateTime.now(), ZonedDateTime.now().plusDays(5));
 
         Competition mappedEntity = new Competition();
         mappedEntity.setTitle("New Comp");
@@ -277,7 +276,6 @@ class CompetitionServiceTest {
             testDateStart.plusDays(10),
             CompetitionStatus.DRAFT,
             100L,
-            100L
-        );
+            100L);
     }
 }

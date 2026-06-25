@@ -51,8 +51,8 @@ public class CompetitionServiceImpl implements CompetitionService {
         Competition competition = competitionRepository.findById(id)
             .orElseThrow(() -> new CompetitionNotFoundException("Competition with id " + id + " not found"));
         boolean isAdmin = securityFacade.hasRole("ADMIN");
-        boolean isOwner = securityFacade.hasRole("ORG") &&
-            competition.getCreatedBy().equals(securityFacade.getCurrentUserId().orElse(-1L));
+        boolean isOwner = securityFacade.hasRole("ORG")
+            && competition.getCreatedBy().equals(securityFacade.getCurrentUserId().orElse(-1L));
 
         if (competition.getCompetitionStatus() == CompetitionStatus.DRAFT) {
             if (!isAdmin && !isOwner) {
@@ -73,8 +73,8 @@ public class CompetitionServiceImpl implements CompetitionService {
                 "Cannot modify hierarchy: Competition is ARCHIVED (read-only).");
         }
 
-        if (competition.getCompetitionStatus() == CompetitionStatus.PUBLISHED ||
-            competition.getCompetitionStatus() == CompetitionStatus.FINISHED) {
+        if (competition.getCompetitionStatus() == CompetitionStatus.PUBLISHED
+            || competition.getCompetitionStatus() == CompetitionStatus.FINISHED) {
             // TODO: Epic Requirement - "restricted if active participations exist"
             // STUB for future integration w ParticipationRequest
             boolean hasActiveParticipations = false;
@@ -96,7 +96,7 @@ public class CompetitionServiceImpl implements CompetitionService {
         } else if (securityFacade.hasRole("ORG")) {
             Long currentUserId = securityFacade.getCurrentUserId()
                 .orElseThrow(() -> new IllegalStateException(
-                    "User ID not found in security context")); //TODO: better to use custom ex
+                    "User ID not found in security context")); // TODO: better to use custom ex
             spec = CompetitionSpecification.isVisibleToOrg(currentUserId);
         } else {
             spec = CompetitionSpecification.isVisibleToUser();
@@ -144,8 +144,7 @@ public class CompetitionServiceImpl implements CompetitionService {
 
         if (!isValid) {
             throw new CompetitionHierarchyValidationException(
-                "Invalid status transition from " + current + " to " + target
-            );
+                "Invalid status transition from " + current + " to " + target);
         }
     }
 
@@ -158,8 +157,7 @@ public class CompetitionServiceImpl implements CompetitionService {
         long emptyStages = stageRepository.countStagesWithoutTours(competitionId);
         if (emptyStages > 0) {
             throw new CompetitionHierarchyValidationException(
-                "Cannot publish: All stages must have at least one tour. Found " + emptyStages + " empty stage(s)."
-            );
+                "Cannot publish: All stages must have at least one tour. Found " + emptyStages + " empty stage(s).");
         }
     }
 }

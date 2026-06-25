@@ -50,8 +50,8 @@ public class TourControllerTest extends ControllerUnitTest<TourController> {
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/stages/{stageId}/tours", stageId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestJson))
             .andExpect(status().isCreated());
 
         verify(tourService).create(eq(stageId), any(CreateTourRequest.class));

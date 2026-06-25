@@ -9,7 +9,6 @@ public record ChangeStatusRequest(
     @Schema(
         description = "The target status to transition the competition into (e.g., PUBLISHED, FINISHED, ARCHIVED)",
         example = "PUBLISHED",
-        requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotNull(message = "New status cannot be null")
-    CompetitionStatus newStatus
-) {}
+        requiredMode = Schema.RequiredMode.REQUIRED) @NotNull(
+            message = "New status cannot be null") CompetitionStatus newStatus) {
+}

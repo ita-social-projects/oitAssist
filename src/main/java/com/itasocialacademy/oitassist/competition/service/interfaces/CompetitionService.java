@@ -11,14 +11,14 @@ public interface CompetitionService {
     /**
      * Creates a new competition.
      *
-     * @param request
+     * @param request has data about Competition
      */
     CompetitionResponse create(CreateCompetitionRequest request);
 
     /**
      * Retrieve a competition by ID w/o checking access role.
      *
-     * @param id
+     * @param id Competition ID
      */
     CompetitionResponse getById(Long id);
 
@@ -54,7 +54,6 @@ public interface CompetitionService {
     /**
      * Retrieves a paginated list of competitions that have been archived.
      *
-     * @param pageable
      */
     Page<CompetitionResponse> getArchived(Pageable pageable);
 }

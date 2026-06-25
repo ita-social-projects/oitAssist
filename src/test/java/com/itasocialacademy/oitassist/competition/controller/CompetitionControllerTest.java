@@ -26,7 +26,6 @@ import org.mockito.Mock;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 
 public class CompetitionControllerTest extends ControllerUnitTest<CompetitionController> {
@@ -59,8 +58,7 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
             testDateFinish,
             CompetitionStatus.DRAFT,
             100L,
-            100L
-        );
+            100L);
     }
 
     @Test
@@ -69,14 +67,13 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
             "Всеукраїнська Олімпіада 2026",
             "Опис тестової олімпіади",
             testDateStart,
-            testDateFinish
-        );
+            testDateFinish);
 
         when(competitionService.create(any(CreateCompetitionRequest.class))).thenReturn(mockCompetitionResponse);
 
         mockMvc.perform(post("/api/v1/competitions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(1L))
             .andExpect(jsonPath("$.title").value("Всеукраїнська Олімпіада 2026"))
@@ -91,8 +88,8 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         when(competitionService.getAllVisible(any(PageRequest.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/competitions")
-                .param("page", "0")
-                .param("size", "20"))
+            .param("page", "0")
+            .param("size", "20"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content[0].id").value(1L))
@@ -115,14 +112,13 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
             mockCompetitionResponse.dateFinish(),
             CompetitionStatus.PUBLISHED,
             mockCompetitionResponse.createdBy(),
-            mockCompetitionResponse.updatedBy()
-        );
+            mockCompetitionResponse.updatedBy());
 
         when(competitionService.changeStatus(eq(1L), eq(CompetitionStatus.PUBLISHED))).thenReturn(publishedResponse);
 
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1L))
             .andExpect(jsonPath("$.status").value("PUBLISHED"));
@@ -135,8 +131,8 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         ChangeStatusRequest request = new ChangeStatusRequest(null);
 
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
     }
 }

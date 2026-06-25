@@ -50,8 +50,8 @@ public class StageControllerTest extends ControllerUnitTest<StageController> {
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/competitions/{competitionId}/stages", competitionId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestJson))
             .andExpect(status().isCreated());
 
         verify(stageService).create(eq(competitionId), any(CreateStageRequest.class));
