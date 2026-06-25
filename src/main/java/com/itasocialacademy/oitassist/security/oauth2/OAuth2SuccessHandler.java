@@ -40,8 +40,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     @Override
     public void onAuthenticationSuccess(@NonNull HttpServletRequest request,
-                                        HttpServletResponse response,
-                                        @NonNull Authentication authentication) throws IOException {
+        HttpServletResponse response,
+        @NonNull Authentication authentication) throws IOException {
         OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
         OAuth2User principal = token.getPrincipal();
         String registrationId = token.getAuthorizedClientRegistrationId();
