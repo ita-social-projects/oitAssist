@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Extracts user identity attributes from an OIDC-authenticated principal and
- * converts them into an {@link OAuthProvisionCommand}.
+ * converts them into an {@link OidcIdentity}.
  *
  * <p>
  * Both supported providers (Google, Microsoft Entra ID) are full OIDC
