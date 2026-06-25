@@ -2,7 +2,7 @@ package com.itasocialacademy.oitassist.user.service.interfaces;
 
 import com.itasocialacademy.oitassist.user.api.dto.OAuthProvisionCommand;
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
-import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.dao.model.User;
 
 /**
  * Internal {@code user}-module service responsible for registering new user
@@ -68,7 +68,7 @@ public interface RegistrationService {
      * </p>
      *
      * @param command the verified OAuth2 identity; must not be null
-     * @return the auth-side projection for the existing or newly created user
+     * @return the persisted or located {@link User} entity for the given identity
      */
-    UserAuthDetails provisionOAuthUser(OAuthProvisionCommand command);
+    User provisionOAuthUser(OAuthProvisionCommand command);
 }

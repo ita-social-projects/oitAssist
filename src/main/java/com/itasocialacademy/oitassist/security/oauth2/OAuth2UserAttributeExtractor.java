@@ -1,7 +1,6 @@
 package com.itasocialacademy.oitassist.security.oauth2;
 
 import com.itasocialacademy.oitassist.security.exceptions.UnverifiedEmailException;
-import com.itasocialacademy.oitassist.user.api.dto.OAuthProvisionCommand;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -33,15 +32,15 @@ public class OAuth2UserAttributeExtractor {
      * Extracts identity attributes from the given principal.
      *
      * @param principal the authenticated principal from Spring Security
-     * @return a fully populated command ready to pass to
-     *         {@code UserFacade.provisionOAuthUser}
+     * @return identity attributes ready to pass to
+     *         {@code OAuthUserProvisioningPort.provisionOAuthUser}
      * @throws UnverifiedEmailException if {@code email_verified} is explicitly
      *                                  {@code false}
      * @throws IllegalArgumentException if the principal is not an {@link OidcUser}
      *                                  — indicates a misconfigured non-OIDC
      *                                  provider
      */
-    public OAuthProvisionCommand extract(OAuth2User principal) {
+    OidcIdentity extract(OAuth2User principal) {
         if (!(principal instanceof OidcUser oidcUser)) {
             throw new IllegalArgumentException(
                 "Expected OidcUser but received " + principal.getClass().getSimpleName()
@@ -54,11 +53,7 @@ public class OAuth2UserAttributeExtractor {
         }
 
         String email = oidcUser.getEmail();
-        return OAuthProvisionCommand.builder()
-            .email(email)
-            .firstName(resolveFirstName(oidcUser, email))
-            .surname(oidcUser.getFamilyName())
-            .build();
+        return new OidcIdentity(email, resolveFirstName(oidcUser, email), oidcUser.getFamilyName());
     }
 
     private String resolveFirstName(OidcUser oidcUser, String email) {

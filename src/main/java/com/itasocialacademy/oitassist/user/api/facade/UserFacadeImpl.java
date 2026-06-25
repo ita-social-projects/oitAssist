@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.user.api.facade;
 
-import com.itasocialacademy.oitassist.user.api.dto.OAuthProvisionCommand;
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
@@ -73,10 +72,5 @@ public class UserFacadeImpl implements UserFacade {
     @Override
     public Optional<UserAuthDetails> findByEmail(String email) {
         return userService.findAuthDetailsByEmail(email);
-    }
-
-    @Override
-    public UserAuthDetails provisionOAuthUser(OAuthProvisionCommand command) {
-        return registrationService.provisionOAuthUser(command);
     }
 }

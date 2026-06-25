@@ -14,7 +14,8 @@
         "core::EntityRepository",
         "security::UserDetailsImpl",
         "security::SecurityUserProvider",
-        "security::SecurityFacade"
+        "security::SecurityFacade",
+        "security::OAuthUserProvisioningPort"
     })
 package com.itasocialacademy.oitassist.user;
 
