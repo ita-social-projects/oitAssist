@@ -11,6 +11,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarch
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
 import com.itasocialacademy.oitassist.competition.mapper.CompetitionMapper;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
+import com.itasocialacademy.oitassist.core.exceptions.UserContextNotFoundException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -93,8 +94,7 @@ public class CompetitionServiceImpl implements CompetitionService {
             spec = CompetitionSpecification.isVisibleToAdmin();
         } else if (securityFacade.hasRole("ORG")) {
             Long currentUserId = securityFacade.getCurrentUserId()
-                .orElseThrow(() -> new IllegalStateException(
-                    "User ID not found in security context")); // TODO: better to use custom ex
+                .orElseThrow(() -> new UserContextNotFoundException("User ID not found in security context"));
             spec = CompetitionSpecification.isVisibleToOrg(currentUserId);
         } else {
             spec = CompetitionSpecification.isVisibleToUser();
