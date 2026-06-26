@@ -11,7 +11,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -25,8 +28,21 @@ import java.io.IOException;
  * <p>
  * Depends only on {@link OAuthUserProvisioningPort} — not on {@code
  * UserFacade} or any {@code user}-owned DTO — to keep {@code security} free of
- * a compile-time dependency on {@code user}. See
- * {@code OAuthUserProvisioningPort} for the full rationale.
+ * a compile-time dependency on {@code user}.
+ * </p>
+ *
+ * <p>
+ * <b>Why the try/catch:</b> Spring Security's
+ * {@code AbstractAuthenticationProcessingFilter} only wraps the authentication
+ * <i>attempt</i> in a catch for {@link AuthenticationException} — once
+ * authentication is deemed successful, this handler runs with no surrounding
+ * exception handling from the framework. Any exception thrown here (e.g.
+ * {@code UnverifiedEmailException} from a missing email claim, or an unexpected
+ * failure from {@link OAuthUserProvisioningPort}) would otherwise escape as a
+ * raw, unhandled 500 instead of the clean redirect-with-error that
+ * {@link OAuth2FailureHandler} provides for failures during the authentication
+ * attempt itself. Catching here and delegating to the same failure handler
+ * keeps both failure paths consistent for the frontend.
  * </p>
  */
 @Slf4j
@@ -37,11 +53,27 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private final OAuthUserProvisioningPort provisioningPort;
     private final JwtTokenIssuer jwtTokenIssuer;
     private final WebClientProperties webClientProperties;
+    private final OAuth2FailureHandler failureHandler;
 
     @Override
     public void onAuthenticationSuccess(@NonNull HttpServletRequest request,
-        HttpServletResponse response,
+        @NonNull HttpServletResponse response,
         @NonNull Authentication authentication) throws IOException {
+        try {
+            handleSuccess(response, authentication);
+        } catch (AuthenticationException ex) {
+            log.warn("OAuth2 post-authentication processing rejected: {}", ex.getMessage());
+            failureHandler.onAuthenticationFailure(request, response, ex);
+        } catch (RuntimeException ex) {
+            log.error("Unexpected error during OAuth2 post-authentication processing", ex);
+            failureHandler.onAuthenticationFailure(request, response,
+                new OAuth2AuthenticationException(
+                    new OAuth2Error("provisioning_failed"), "provisioning_failed", ex));
+        }
+    }
+
+    private void handleSuccess(HttpServletResponse response,
+        Authentication authentication) throws IOException {
         OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
         OAuth2User principal = token.getPrincipal();
         String registrationId = token.getAuthorizedClientRegistrationId();

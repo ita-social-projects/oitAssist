@@ -53,6 +53,10 @@ public class OAuth2UserAttributeExtractor {
         }
 
         String email = oidcUser.getEmail();
+        if (email == null || email.isBlank()) {
+            log.warn("OAuth2 login rejected — email claim is absent");
+            throw new UnverifiedEmailException();
+        }
         return new OidcIdentity(email, resolveFirstName(oidcUser, email), oidcUser.getFamilyName());
     }
 
