@@ -178,7 +178,6 @@ class CompetitionServiceTest {
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
         when(securityFacade.hasRole("ORG")).thenReturn(true);
-        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(5L));
         when(mapper.toResponse(competition)).thenReturn(getCompetitionResponse());
 
         // Act
@@ -211,9 +210,6 @@ class CompetitionServiceTest {
         // Arrange
         competition.setCompetitionStatus(CompetitionStatus.PUBLISHED);
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
-        // role checks can return false
-        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
-        when(securityFacade.hasRole("ORG")).thenReturn(false);
         when(mapper.toResponse(competition)).thenReturn(getCompetitionResponse());
 
         // Act

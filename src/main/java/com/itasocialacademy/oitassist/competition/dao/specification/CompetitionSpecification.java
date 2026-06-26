@@ -2,17 +2,20 @@ package com.itasocialacademy.oitassist.competition.dao.specification;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
-import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 
-@NoArgsConstructor
-public class CompetitionSpecification {
+public final class CompetitionSpecification {
+    public static final String COMPETITION_STATUS = "competitionStatus";
+
+    private CompetitionSpecification() {
+    }
+
     /**
      * For public viewing (Role USER). Only published or finished Competitions are
      * visible.
      */
     public static Specification<Competition> isVisibleToUser() {
-        return (root, query, cb) -> root.get("competitionStatus")
+        return (root, query, cb) -> root.get(COMPETITION_STATUS)
             .in(CompetitionStatus.PUBLISHED, CompetitionStatus.FINISHED);
     }
 
@@ -21,7 +24,7 @@ public class CompetitionSpecification {
      * archived.
      */
     public static Specification<Competition> isVisibleToAdmin() {
-        return (root, query, cb) -> root.get("competitionStatus")
+        return (root, query, cb) -> root.get(COMPETITION_STATUS)
             .in(CompetitionStatus.DRAFT, CompetitionStatus.PUBLISHED, CompetitionStatus.FINISHED);
     }
 
@@ -31,9 +34,9 @@ public class CompetitionSpecification {
      */
     public static Specification<Competition> isVisibleToOrg(Long currentUserId) {
         return (root, query, cb) -> cb.or(
-            root.get("competitionStatus").in(CompetitionStatus.PUBLISHED, CompetitionStatus.FINISHED),
+            root.get(COMPETITION_STATUS).in(CompetitionStatus.PUBLISHED, CompetitionStatus.FINISHED),
             cb.and(
-                cb.equal(root.get("competitionStatus"), CompetitionStatus.DRAFT),
+                cb.equal(root.get(COMPETITION_STATUS), CompetitionStatus.DRAFT),
                 cb.equal(root.get("createdBy"), currentUserId)));
     }
 
@@ -41,6 +44,6 @@ public class CompetitionSpecification {
      * For a separate archive endpoint.
      */
     public static Specification<Competition> isArchived() {
-        return (root, query, cb) -> cb.equal(root.get("competitionStatus"), CompetitionStatus.ARCHIVED);
+        return (root, query, cb) -> cb.equal(root.get(COMPETITION_STATUS), CompetitionStatus.ARCHIVED);
     }
 }

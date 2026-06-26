@@ -41,7 +41,7 @@ public class CompetitionServiceImpl implements CompetitionService {
     @Transactional(readOnly = true)
     public CompetitionResponse getById(Long id) {
         Competition competition = competitionRepository.findById(id)
-            .orElseThrow(() -> new CompetitionNotFoundException("Competition with id " + id + " not found"));
+            .orElseThrow(() -> new CompetitionNotFoundException(id));
         return mapper.toResponse(competition);
     }
 
@@ -49,13 +49,11 @@ public class CompetitionServiceImpl implements CompetitionService {
     @Transactional(readOnly = true)
     public CompetitionResponse getVisibleById(Long id) {
         Competition competition = competitionRepository.findById(id)
-            .orElseThrow(() -> new CompetitionNotFoundException("Competition with id " + id + " not found"));
-        boolean isAdmin = securityFacade.hasRole("ADMIN");
-        boolean isOwner = securityFacade.hasRole("ORG")
-            && competition.getCreatedBy().equals(securityFacade.getCurrentUserId().orElse(-1L));
+            .orElseThrow(() -> new CompetitionNotFoundException(id));
 
         if (competition.getCompetitionStatus() == CompetitionStatus.DRAFT) {
-            if (!isAdmin && !isOwner) {
+            boolean hasAccessToDraft = securityFacade.hasRole("ADMIN") || securityFacade.hasRole("ORG");
+            if (!hasAccessToDraft) {
                 throw new AccessDeniedException("You do not have permission to view this draft competition");
             }
         }
@@ -66,7 +64,7 @@ public class CompetitionServiceImpl implements CompetitionService {
     @Transactional(readOnly = true)
     public void validateHierarchyImmutability(Long competitionId) {
         Competition competition = competitionRepository.findById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException("Competition with id " + competitionId + " not found"));
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
 
         if (competition.getCompetitionStatus() == CompetitionStatus.ARCHIVED) {
             throw new CompetitionHierarchyValidationException(
@@ -116,7 +114,7 @@ public class CompetitionServiceImpl implements CompetitionService {
     @Transactional
     public CompetitionResponse changeStatus(Long id, CompetitionStatus newStatus) {
         Competition competition = competitionRepository.findById(id)
-            .orElseThrow(() -> new CompetitionNotFoundException("Competition not found"));
+            .orElseThrow(() -> new CompetitionNotFoundException(id));
 
         CompetitionStatus currentStatus = competition.getCompetitionStatus();
 

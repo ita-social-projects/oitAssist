@@ -22,7 +22,7 @@ public record CreateCompetitionRequest(
         requiredMode = Schema.RequiredMode.REQUIRED) @NotNull ZonedDateTime dateStart,
 
     @Schema(
-        description = "Start date and time of the competition",
-        example = "2026-09-01T09:00:00Z",
+        description = "End date and time of the competition",
+        example = "2026-09-02T09:00:00Z",
         requiredMode = Schema.RequiredMode.REQUIRED) @NotNull ZonedDateTime dateFinish) {
 }
