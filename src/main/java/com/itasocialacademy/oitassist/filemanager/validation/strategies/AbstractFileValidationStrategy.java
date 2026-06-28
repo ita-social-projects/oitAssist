@@ -16,25 +16,16 @@ import org.springframework.web.multipart.MultipartFile;
 
 public abstract class AbstractFileValidationStrategy implements FileValidationStrategy {
     /**
-     * Returns the {@link FilePolicy} applicable to the given related entity.
-     *
-     * @param relatedEntityId the ID of the related entity, or {@code null} for
-     *                        temporary uploads
-     * @return the file policy to apply during validation
-     */
-    protected abstract FilePolicy resolvePolicy(Long relatedEntityId);
-
-    /**
      * {@inheritDoc}
      *
      * <p>
      * Applies policy-based rules in order: file count, extension, size, and
-     * optional filename constraint.
+     * optional filename constraint, against the already-resolved
+     * {@code policy}
      * </p>
      */
     @Override
-    public ValidationResult validate(List<MultipartFile> files, FileUploadRequestDto requestDto) {
-        FilePolicy policy = resolvePolicy(requestDto.getRelatedEntityId());
+    public ValidationResult validate(List<MultipartFile> files, FileUploadRequestDto requestDto, FilePolicy policy) {
         List<String> violations = new ArrayList<>();
 
         validateFileCount(files, policy, violations);
