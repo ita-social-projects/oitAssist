@@ -1,29 +1,29 @@
-package com.itasocialacademy.oitassist.filemanager.validation.policy;
+package com.itasocialacademy.oitassist.filemanager.validation.resolvers;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
-import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FilePolicy;
+import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class FilePolicyResolver {
-    private final List<FilePolicy> filePolicies;
+public class FileValidationStrategyResolver {
+    private final List<FileValidationStrategy> strategies;
 
     /**
-     * Resolves the {@link FilePolicy} registered for the given entity type
-     * and file role.
+     * Resolves the {@link FileValidationStrategy} registered for the given entity
+     * type and file role.
      *
-     * @param entityType the entity type for which a policy is required
-     * @param role       the role the uploaded file plays for that entity
-     * @return the matching {@link FilePolicy}
+     * @param type the entity type for which a validation strategy is required
+     * @param role the role the uploaded file plays for that entity
+     * @return the matching {@link FileValidationStrategy}
      * @throws com.itasocialacademy.oitassist.core.exceptions.ValidationException if
      *                                                                            no
-     *                                                                            policy
+     *                                                                            strategy
      *                                                                            is
      *                                                                            registered
      *                                                                            for
@@ -31,12 +31,12 @@ public class FilePolicyResolver {
      *                                                                            given
      *                                                                            combination
      */
-    public FilePolicy resolve(RelatedEntityType entityType, FileRole role) {
-        return filePolicies.stream()
-            .filter(p -> p.supports(entityType, role))
+    public FileValidationStrategy resolve(RelatedEntityType type, FileRole role) {
+        return strategies.stream()
+            .filter(s -> s.supports(type, role))
             .findFirst()
             .orElseThrow(() -> new ValidationException(
-                "No file policy registered for: %s/%s".formatted(entityType, role),
+                "No file validation strategy registered for: " + type,
                 ErrorCode.FILE_VALIDATION_FAILED));
     }
 }

@@ -15,7 +15,7 @@ import com.itasocialacademy.oitassist.filemanager.exceptions.UnsupportedStorageE
 import com.itasocialacademy.oitassist.filemanager.mapper.FileMapper;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
-import com.itasocialacademy.oitassist.filemanager.validation.FileValidationStrategyResolver;
+import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileValidationStrategyResolver;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
