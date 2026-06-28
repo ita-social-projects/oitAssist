@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.filemanager.service;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
@@ -17,8 +18,10 @@ import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StoragePr
 import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
 import com.itasocialacademy.oitassist.filemanager.validation.FileValidationStrategyResolver;
+import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FilePolicy;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
+import com.itasocialacademy.oitassist.filemanager.validation.policy.FilePolicyResolver;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.io.IOException;
 import java.time.OffsetDateTime;
@@ -40,6 +43,7 @@ public class FileServiceImpl implements FileService {
     private final FileRepository repository;
     private final FileMapper fileMapper;
     private final SecurityFacade securityFacade;
+    private final FilePolicyResolver filePolicyResolver;
 
     /**
      * Role identifier for administrative users. Used for role-based access control
@@ -63,8 +67,12 @@ public class FileServiceImpl implements FileService {
             .orElseThrow(() -> new AuthorizationException(
                 "Not authenticated", ErrorCode.ACCESS_DENIED));
 
-        FileValidationStrategy strategy = validationStrategyResolver.resolve(requestDto.getRelatedEntityType());
-        ValidationResult result = strategy.validate(files, requestDto);
+        RelatedEntityType entityType = requestDto.getRelatedEntityType();
+        FileRole role =  requestDto.getFileRole();
+
+        FileValidationStrategy strategy = validationStrategyResolver.resolve(entityType, role);
+        FilePolicy policy = filePolicyResolver.resolve(entityType, role);
+        ValidationResult result = strategy.validate(files, requestDto, policy);
 
         if (!result.valid()) {
             throw new ValidationException(
