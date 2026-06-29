@@ -51,8 +51,8 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
         when(userService.getCurrentUserProfile()).thenReturn(profile);
 
         mockMvc.perform(
-                get("/api/v1/users/profile")
-                    .contentType(MediaType.APPLICATION_JSON))
+            get("/api/v1/users/profile")
+                .contentType(MediaType.APPLICATION_JSON))
             // then
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1L))
@@ -83,8 +83,8 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
             .thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/users/{id}/role", userId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(userId))
             .andExpect(jsonPath("$.role").value("ORG"));
@@ -97,8 +97,8 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
     void changeUserRole_ShouldReturnBadRequest_WhenRequestIsInvalid() throws Exception {
 
         mockMvc.perform(patch("/api/v1/users/{id}/role", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{}"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
             .andExpect(status().isBadRequest());
 
         verifyNoInteractions(userService);

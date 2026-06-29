@@ -54,11 +54,12 @@ public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUser
      * @param userId  target user identifier
      * @param newRole new role to assign
      * @return updated user profile
-     *
-     * @throws AuthorizationException if user is not authenticated
-     * @throws UserNotFoundException if user with given id does not exist
-     * @throws UserRoleSelfChangeException if user is trying to change his own role
-     * @throws AdminRoleModificationException if user is trying to change the role of another Admin
+     * @throws AuthorizationException         if user is not authenticated
+     * @throws UserNotFoundException          if user with given id does not exist
+     * @throws UserRoleSelfChangeException    if user is trying to change his own
+     *                                        role
+     * @throws AdminRoleModificationException if user is trying to change the role
+     *                                        of another Admin
      */
     @NonNull
     ResponseUserDTO changeUserRole(@NonNull Long userId, @NonNull Role newRole);
