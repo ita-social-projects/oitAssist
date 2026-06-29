@@ -341,6 +341,7 @@ public class FileServiceImpl implements FileService {
             .storageKey(storageKey)
             .mimeType(file.getContentType())
             .size(file.getSize())
+            .fileRole(requestDto.getFileRole())
             .build();
     }
 
