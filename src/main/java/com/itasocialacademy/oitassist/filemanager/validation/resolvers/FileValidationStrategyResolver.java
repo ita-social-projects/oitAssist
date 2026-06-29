@@ -36,7 +36,7 @@ public class FileValidationStrategyResolver {
             .filter(s -> s.supports(type, role))
             .findFirst()
             .orElseThrow(() -> new ValidationException(
-                "No file validation strategy registered for: " + type,
+                "No file validation strategy registered for: %s/%s".formatted(type, role),
                 ErrorCode.FILE_VALIDATION_FAILED));
     }
 }
