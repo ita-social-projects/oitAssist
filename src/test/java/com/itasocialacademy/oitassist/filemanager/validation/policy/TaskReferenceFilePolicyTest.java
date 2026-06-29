@@ -10,33 +10,32 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.util.unit.DataSize;
 
-class NewsFilePolicyTest {
-    private final NewsFilePolicy policy = new NewsFilePolicy();
+class TaskReferenceFilePolicyTest {
+    private final TaskReferenceFilePolicy policy = new TaskReferenceFilePolicy();
 
     @Test
-    void supports_ShouldReturnTrue_ForNewsWithGenericRole() {
-        assertTrue(policy.supports(RelatedEntityType.NEWS, FileRole.GENERIC));
+    void supports_ShouldReturnTrue_ForTaskWithReferenceRole() {
+        assertTrue(policy.supports(RelatedEntityType.TASK, FileRole.REFERENCE));
     }
 
     @ParameterizedTest
-    @EnumSource(value = FileRole.class, names = "GENERIC", mode = EnumSource.Mode.EXCLUDE)
-    void supports_ShouldReturnFalse_ForNewsWithNonGenericRole(FileRole role) {
-        assertFalse(policy.supports(RelatedEntityType.NEWS, role));
+    @EnumSource(value = FileRole.class, names = "REFERENCE", mode = EnumSource.Mode.EXCLUDE)
+    void supports_ShouldReturnFalse_ForAnyOtherRole(FileRole role) {
+        assertFalse(policy.supports(RelatedEntityType.TASK, role));
     }
 
     @Test
-    void supports_ShouldReturnFalse_ForNonNewsEntity() {
-        assertFalse(policy.supports(RelatedEntityType.TASK, FileRole.GENERIC));
+    void supports_ShouldReturnFalse_ForNonTaskEntity() {
+        assertFalse(policy.supports(RelatedEntityType.NEWS, FileRole.REFERENCE));
     }
 
     @Test
     void getAllowedExtensions_ShouldReturnExpectedExtensions_WhenCalled() {
         Set<AllowedExtension> expected = Set.of(
-            AllowedExtension.JPG,
-            AllowedExtension.JPEG,
-            AllowedExtension.PNG,
-            AllowedExtension.GIF,
-            AllowedExtension.WEBP);
+            AllowedExtension.DOCX,
+            AllowedExtension.XLSX,
+            AllowedExtension.PPTX,
+            AllowedExtension.ACCDB);
 
         Set<AllowedExtension> actual = policy.getAllowedExtensions();
 
@@ -51,9 +50,9 @@ class NewsFilePolicyTest {
     }
 
     @Test
-    void getMaxFileSize_ShouldReturnTenMegabytes_WhenCalled() {
+    void getMaxFileSize_ShouldReturnFiftyMegabytes_WhenCalled() {
         DataSize actual = policy.getMaxFileSize();
 
-        assertEquals(DataSize.ofMegabytes(10), actual);
+        assertEquals(DataSize.ofMegabytes(50), actual);
     }
 }
