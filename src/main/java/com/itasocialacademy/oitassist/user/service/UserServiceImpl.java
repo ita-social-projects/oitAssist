@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.user.service;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -77,6 +78,9 @@ public class UserServiceImpl
             .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED))
             .equals(userId)) {
             throw new UserRoleSelfChangeException();
+        }
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
         }
         User user = repository.findById(userId)
             .orElseThrow(UserNotFoundException::new);

@@ -74,6 +74,16 @@ public class UserController
                         }
                     """))),
         @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized - token is missing or invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(example = """
+                        {
+                            "message": "Full authentication is required to access this resource"
+                        }
+                    """))),
+        @ApiResponse(
             responseCode = "403",
             description = "Forbidden - insufficient permissions or attempt to modify restricted user",
             content = @Content(

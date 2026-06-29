@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.users.service;
 
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
@@ -132,8 +133,8 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("changeUserRole should update user role when request is valid")
-    void changeUserRole_ShouldUpdateUserRole_WhenRequestIsValid() {
+    @DisplayName("changeUserRole should update user role when user is admin and request is valid")
+    void changeUserRole_ShouldUpdatedUserRole_WhenUserIsAdminAndRequestIsValid() {
         Long currentUserId = 1L;
         Long targetUserId = 2L;
 
@@ -147,6 +148,7 @@ class UserServiceImplTest {
             .role(Role.ORG)
             .build();
 
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
         when(repository.findById(targetUserId)).thenReturn(Optional.of(user));
         when(repository.save(user)).thenReturn(user);
@@ -158,6 +160,7 @@ class UserServiceImplTest {
         assertThat(result.getRole()).isEqualTo(Role.ORG);
         assertThat(user.getRole()).isEqualTo(Role.ORG);
 
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
         verify(securityFacade).getCurrentUserId();
         verify(repository).findById(targetUserId);
         verify(repository).save(user);
@@ -185,6 +188,7 @@ class UserServiceImplTest {
         Long currentUserId = 1L;
         Long targetUserId = 2L;
 
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
         when(repository.findById(targetUserId)).thenReturn(Optional.empty());
 
@@ -192,6 +196,7 @@ class UserServiceImplTest {
             .isInstanceOf(UserNotFoundException.class)
             .hasMessage("User not found");
 
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
         verify(securityFacade).getCurrentUserId();
         verify(repository).findById(targetUserId);
         verifyNoMoreInteractions(repository);
@@ -209,6 +214,7 @@ class UserServiceImplTest {
             .role(Role.ADMIN)
             .build();
 
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
         when(repository.findById(targetUserId)).thenReturn(Optional.of(admin));
 
@@ -216,6 +222,7 @@ class UserServiceImplTest {
             .isInstanceOf(AdminRoleModificationException.class)
             .hasMessage("Cannot modify role of another administrator");
 
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
         verify(securityFacade).getCurrentUserId();
         verify(repository).findById(targetUserId);
         verify(repository, never()).save(any());
@@ -231,6 +238,24 @@ class UserServiceImplTest {
             .isInstanceOf(AuthorizationException.class)
             .hasMessage("User is not authenticated");
 
+        verify(securityFacade).getCurrentUserId();
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserRole should throw InsufficientPermissionsException when user is not admin")
+    void changeUserRole_ShouldThrowInsufficientPermissionsException_WhenUserIsNotAdmin() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+
+        assertThatThrownBy(() -> userService.changeUserRole(targetUserId, Role.ORG))
+            .isInstanceOf(InsufficientPermissionsException.class)
+            .hasMessage("You do not have enough permissions to perform this action");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
         verify(securityFacade).getCurrentUserId();
         verifyNoInteractions(repository, mapper);
     }
