@@ -10,7 +10,7 @@ import lombok.*;
 @Setter
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class FileUploadRequestDto implements CreateEntityDTO<Long> {
     @NotNull
     private RelatedEntityType relatedEntityType;
