@@ -12,7 +12,6 @@ import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import com.itasocialacademy.oitassist.user.exceptions.UserRoleSelfChangeException;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.service.UserServiceImpl;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
