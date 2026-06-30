@@ -9,8 +9,8 @@ import org.springframework.util.unit.DataSize;
 
 public interface FilePolicy {
     /**
-     * Indicates whether this policy's rules apply to the given combination
-     * of entity type and file role.
+     * Indicates whether this policy's rules apply to the given combination of
+     * entity type and file role.
      *
      * @param entityType the related entity type of the upload
      * @param role       the role the uploaded file plays for that entity

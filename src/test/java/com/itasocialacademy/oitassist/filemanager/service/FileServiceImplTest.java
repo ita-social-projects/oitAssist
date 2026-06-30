@@ -502,7 +502,8 @@ class FileServiceImplTest {
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
         when(filePolicyResolver.resolve(any(), any()))
-            .thenThrow(new ValidationException("No file policy registered for: TASK/PROBLEM", ErrorCode.FILE_VALIDATION_FAILED));
+            .thenThrow(new ValidationException("No file policy registered for: TASK/PROBLEM",
+                ErrorCode.FILE_VALIDATION_FAILED));
 
         List<MultipartFile> files = List.of(file);
         assertThrows(ValidationException.class, () -> fileService.upload(files, request));

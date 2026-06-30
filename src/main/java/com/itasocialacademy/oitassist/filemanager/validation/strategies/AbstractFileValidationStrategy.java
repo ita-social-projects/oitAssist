@@ -20,8 +20,7 @@ public abstract class AbstractFileValidationStrategy implements FileValidationSt
      *
      * <p>
      * Applies policy-based rules in order: file count, extension, size, and
-     * optional filename constraint, against the already-resolved
-     * {@code policy}
+     * optional filename constraint, against the already-resolved {@code policy}
      * </p>
      */
     @Override

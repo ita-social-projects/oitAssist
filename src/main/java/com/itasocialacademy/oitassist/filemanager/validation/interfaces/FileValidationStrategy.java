@@ -9,8 +9,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface FileValidationStrategy {
     /**
-     * Indicates whether this strategy handles validation for the given
-     * combination of entity type and file role.
+     * Indicates whether this strategy handles validation for the given combination
+     * of entity type and file role.
      */
     boolean supports(RelatedEntityType entityType, FileRole role);
 
@@ -19,8 +19,8 @@ public interface FileValidationStrategy {
      *
      * @param files      the files to validate
      * @param requestDto the upload request
-     * @param policy     the policy already resolved for this request's
-     *                   entity type and file role
+     * @param policy     the policy already resolved for this request's entity type
+     *                   and file role
      * @return the validation outcome
      */
     ValidationResult validate(List<MultipartFile> files, FileUploadRequestDto requestDto, FilePolicy policy);

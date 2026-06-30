@@ -15,8 +15,8 @@ public class FilePolicyResolver {
     private final List<FilePolicy> filePolicies;
 
     /**
-     * Resolves the {@link FilePolicy} registered for the given entity type
-     * and file role.
+     * Resolves the {@link FilePolicy} registered for the given entity type and file
+     * role.
      *
      * @param entityType the entity type for which a policy is required
      * @param role       the role the uploaded file plays for that entity
