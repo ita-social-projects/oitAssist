@@ -13,6 +13,7 @@ import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.SignatureException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -45,6 +46,8 @@ public class TokenServiceImpl implements TokenService {
                 .getPrincipal();
         } catch (BadCredentialsException e) {
             throw new AuthenticationException("Bad credentials", ErrorCode.BAD_CREDENTIAL);
+        } catch (DisabledException e) {
+            throw new AuthenticationException("Account is not activated", ErrorCode.USER_NOT_ACTIVATED);
         }
 
         return getTokenResponse(Objects.requireNonNull(userDetails));
