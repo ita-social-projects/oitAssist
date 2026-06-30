@@ -17,11 +17,11 @@ import com.itasocialacademy.oitassist.filemanager.mapper.FileMapper;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
-import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileValidationStrategyResolver;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FilePolicy;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
 import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FilePolicyResolver;
+import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileValidationStrategyResolver;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.io.IOException;
 import java.time.OffsetDateTime;
@@ -46,8 +46,7 @@ public class FileServiceImpl implements FileService {
     private final FilePolicyResolver filePolicyResolver;
 
     /**
-     * Role identifier for administrative users. Used for role-based access control
-     * checks throughout this service.
+     * Role identifier for administrative users. Used for role-based access control checks throughout this service.
      */
     private static final String ROLE_ADMIN = "ADMIN";
 
@@ -55,9 +54,8 @@ public class FileServiceImpl implements FileService {
      * {@inheritDoc}
      *
      * <p>
-     * Resolves the validation strategy for the given entity type, validates all
-     * files against the applicable policy, then delegates each file to
-     * {@link #uploadSingle}.
+     * Resolves the validation strategy for the given entity type, validates all files against the applicable policy,
+     * then delegates each file to {@link #uploadSingle}.
      * </p>
      */
     @Override
@@ -68,7 +66,7 @@ public class FileServiceImpl implements FileService {
                 "Not authenticated", ErrorCode.ACCESS_DENIED));
 
         RelatedEntityType entityType = requestDto.getRelatedEntityType();
-        FileRole role =  requestDto.getFileRole();
+        FileRole role = requestDto.getFileRole();
 
         FileValidationStrategy strategy = validationStrategyResolver.resolve(entityType, role);
         FilePolicy policy = filePolicyResolver.resolve(entityType, role);
@@ -85,9 +83,8 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Method to perform a status change of the file. It marks the file as
-     * SOFT_DELETED, which can be used in further storage cleanup operations either
-     * manual, or scheduled. The physical record of the file after method execution
+     * Method to perform a status change of the file. It marks the file as SOFT_DELETED, which can be used in further
+     * storage cleanup operations either manual, or scheduled. The physical record of the file after method execution
      * remains intact.
      *
      * @param fileId id of the file.
@@ -110,8 +107,8 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Method to handle physical deletion of a file. Used for permanent deletion,
-     * cleanup scheduling or orphaned files' cleanup.
+     * Method to handle physical deletion of a file. Used for permanent deletion, cleanup scheduling or orphaned files'
+     * cleanup.
      *
      * @param fileId id of the file.
      */
@@ -140,16 +137,14 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Transitions a batch of {@link FileStatus#TEMPORARY} files to
-     * {@link FileStatus#ATTACHED} and establishes their relationship with the
-     * specified entity.
+     * Transitions a batch of {@link FileStatus#TEMPORARY} files to {@link FileStatus#ATTACHED} and establishes their
+     * relationship with the specified entity.
      *
      * @param entityId   the ID of the entity to link files to
      * @param entityType the type of the related entity
-     * @param fileIds    the IDs of the files to attach; no-op if {@code null} or
-     *                   empty
-     * @param userId     the ID of the user performing the file linking operation;
-     *                   must own all files or possess the ADMIN role
+     * @param fileIds    the IDs of the files to attach; no-op if {@code null} or empty
+     * @param userId     the ID of the user performing the file linking operation; must own all files or possess the
+     *                   ADMIN role
      */
     @Override
     @Transactional
@@ -177,9 +172,8 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Marks a batch of files as {@link FileStatus#SOFT_DELETED}. Called via event
-     * after a news update removes files from content. Validates ownership for each
-     * file using the explicitly provided userId.
+     * Marks a batch of files as {@link FileStatus#SOFT_DELETED}. Called via event after a news update removes files
+     * from content. Validates ownership for each file using the explicitly provided userId.
      *
      * @param entityType the type of the related entity
      * @param entityId   the ID of the entity to detach files to
@@ -211,8 +205,8 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Returns all {@link FileStatus#ATTACHED} files for the given entity, enriched
-     * with their publicly accessible URLs resolved from the storage provider.
+     * Returns all {@link FileStatus#ATTACHED} files for the given entity, enriched with their publicly accessible URLs
+     * resolved from the storage provider.
      *
      * @param entityType the type of the related entity
      * @param entityId   the ID of the related entity
@@ -236,15 +230,13 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Uploads a single file to the default storage provider and persists its
-     * metadata.
+     * Uploads a single file to the default storage provider and persists its metadata.
      *
      * @param file       the file to upload
      * @param requestDto upload context metadata
      * @param userId     the ID of the uploading user
      * @return the persisted file record as a {@link FileResponseDto}
-     * @throws FileUploadException if the file stream cannot be read or the upload
-     *                             fails
+     * @throws FileUploadException if the file stream cannot be read or the upload fails
      */
     private FileResponseDto uploadSingle(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
@@ -277,8 +269,7 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Generates a unique filename by prepending a UUID to the original file
-     * extension.
+     * Generates a unique filename by prepending a UUID to the original file extension.
      *
      * @param originalFilename the original name of the uploaded file
      * @return a unique filename safe for storage
@@ -346,9 +337,8 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Determines the initial {@link FileStatus} based on whether the upload is
-     * linked to a specific entity. Returns {@code TEMPORARY} when no entity ID is
-     * present, or {@code ATTACHED} when linked.
+     * Determines the initial {@link FileStatus} based on whether the upload is linked to a specific entity. Returns
+     * {@code TEMPORARY} when no entity ID is present, or {@code ATTACHED} when linked.
      *
      * @param requestDto the upload request metadata
      * @return the appropriate initial file status
@@ -360,9 +350,9 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Core authorization check — verifies that the given user is either the file
-     * owner or an administrator. Used in batch operations where {@code isAdmin} is
-     * resolved once outside the loop to avoid redundant Security Context calls.
+     * Core authorization check — verifies that the given user is either the file owner or an administrator. Used in
+     * batch operations where {@code isAdmin} is resolved once outside the loop to avoid redundant Security Context
+     * calls.
      *
      * @param fileOwnerId   the ID of the user who owns the file
      * @param currentUserId the ID of the user performing the operation
@@ -381,9 +371,8 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Convenience overload for single-file operations where {@code isAdmin} is
-     * resolved internally. Used in {@link #deleteSoft} where only one file is
-     * processed and a single Security Context call is acceptable.
+     * Convenience overload for single-file operations where {@code isAdmin} is resolved internally. Used in
+     * {@link #deleteSoft} where only one file is processed and a single Security Context call is acceptable.
      *
      * @param fileOwnerId   the ID of the user who owns the file
      * @param currentUserId the ID of the user performing the operation
@@ -394,12 +383,10 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Restricts the operation to administrators only. Used exclusively by
-     * {@link #deleteHard} which requires elevated privileges regardless of
-     * ownership.
+     * Restricts the operation to administrators only. Used exclusively by {@link #deleteHard} which requires elevated
+     * privileges regardless of ownership.
      *
-     * @throws AuthorizationException if the authenticated user does not have the
-     *                                ADMIN role
+     * @throws AuthorizationException if the authenticated user does not have the ADMIN role
      */
     private void validateAdmin() {
         if (!securityFacade.hasRole(ROLE_ADMIN)) {
