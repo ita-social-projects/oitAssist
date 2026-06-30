@@ -56,10 +56,10 @@ public class StageServiceImpl implements StageService {
 
     @Override
     @Transactional(readOnly = true)
-    public StageResponse getById(Long id) {
-        return stageRepository.findById(id)
+    public StageResponse getById(Long stageId) {
+        return stageRepository.findById(stageId)
             .map(mapper::toResponse)
-            .orElseThrow(() -> new StageNotFoundException(id));
+            .orElseThrow(() -> new StageNotFoundException(stageId));
     }
 
     @Override
@@ -127,16 +127,21 @@ public class StageServiceImpl implements StageService {
     }
 
     /**
+     * Validates that the stage belongs to the competition specified in the request path. Prevents cross-competition
+     * manipulation (e.g., updating Stage 5 via /competitions/999/stages/5).
      *
-     * @param pathCompetitionId Competition ID was taken from URI as a path variable
-     * @param entityCompetitionId Competition ID was taken from entity
+     * @param pathCompetitionId   Competition ID taken from URI as a path variable
+     * @param entityCompetitionId Competition ID extracted from the fetched Stage entity
      */
     private void validateStageEligibility(Long pathCompetitionId, Long entityCompetitionId) {
-        if (pathCompetitionId.equals(entityCompetitionId)) {
+        if (!pathCompetitionId.equals(entityCompetitionId)) {
             throw new CompetitionHierarchyValidationException("Stage does not belong to this competition");
         }
     }
 
+    /**
+     * Validates that the child Stage's dates are strictly within the boundaries of the parent Competition.
+     */
     private void validateDates(CompetitionResponse parent, Stage child) {
         if (child.getDateStart().isBefore(parent.dateStart())
             || child.getDateFinish().isAfter(parent.dateFinish())) {
