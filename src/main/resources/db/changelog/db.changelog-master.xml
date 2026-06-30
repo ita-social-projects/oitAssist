@@ -11,4 +11,5 @@
     <include file="/db/changelog/logs/2026-06-15-ch-refactor-competitions-Pampukha.xml"/>
     <include file="/db/changelog/logs/2026-06-15-ch-create-stages-Pampukha.xml"/>
     <include file="/db/changelog/logs/2026-06-15-ch-create-tours-Pampukha.xml"/>
+    <include file="/db/changelog/logs/2026-06-28-ch-add-file-role-to-file-assets-Selianyk.xml"/>
 </databaseChangeLog>
