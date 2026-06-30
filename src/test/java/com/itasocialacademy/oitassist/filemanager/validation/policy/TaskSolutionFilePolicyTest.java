@@ -43,14 +43,14 @@ class TaskSolutionFilePolicyTest {
     }
 
     @Test
-    void getMaxFileCount_ShouldReturnOne_WhenCalled() {
+    void getMaxFileCount_ShouldReturnFive_WhenCalled() {
         int actual = policy.getMaxFileCount();
 
         assertEquals(5, actual);
     }
 
     @Test
-    void getMaxFileSize_ShouldReturnHundredMegabytes_WhenCalled() {
+    void getMaxFileSize_ShouldReturnFiftyMegabytes_WhenCalled() {
         DataSize actual = policy.getMaxFileSize();
 
         assertEquals(DataSize.ofMegabytes(50), actual);

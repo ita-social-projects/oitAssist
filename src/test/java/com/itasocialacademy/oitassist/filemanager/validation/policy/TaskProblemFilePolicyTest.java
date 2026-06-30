@@ -43,7 +43,7 @@ class TaskProblemFilePolicyTest {
     }
 
     @Test
-    void getMaxFileCount_ShouldReturnOne_WhenCalled() {
+    void getMaxFileCount_ShouldReturnTen_WhenCalled() {
         int actual = policy.getMaxFileCount();
 
         assertEquals(10, actual);
