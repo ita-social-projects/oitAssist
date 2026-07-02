@@ -122,8 +122,6 @@ public class StageServiceImpl implements StageService {
         validateStageEligibility(compId, competitionId);
         competitionService.validateHierarchyImmutability(competitionId);
 
-        //TODO: need invoke method here that delete all tours related to this stage
-        // or db manage it (check migration)?
         stageRepository.delete(stage);
     }
 
