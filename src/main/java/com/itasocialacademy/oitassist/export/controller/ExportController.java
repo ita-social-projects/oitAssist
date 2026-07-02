@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,16 +21,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Export v1", description = "Operations related to exporting evaluation results")
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/export")
 public class ExportController {
     private final ExportService exportService;
     private final ExporterResolver exporterResolver;
-
-    public ExportController(ExportService exportService, ExporterResolver exporterResolver) {
-        this.exportService = exportService;
-        this.exporterResolver = exporterResolver;
-    }
 
     @Operation(
         summary = "Export evaluation results",
