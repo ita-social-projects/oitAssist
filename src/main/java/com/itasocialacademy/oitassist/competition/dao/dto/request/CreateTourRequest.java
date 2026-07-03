@@ -1,5 +1,7 @@
 package com.itasocialacademy.oitassist.competition.dao.dto.request;
 
+import com.itasocialacademy.oitassist.competition.dao.dto.validation.HasDateRange;
+import com.itasocialacademy.oitassist.competition.dao.dto.validation.ValidDateRange;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -8,6 +10,7 @@ import java.time.ZonedDateTime;
 
 @Schema(description = "DTO for creating a new Tour within a Stage. "
     + "Tour dates must fall within the parent Stage's date range.")
+@ValidDateRange
 public record CreateTourRequest(
     @Schema(
         description = "Title of the tour",
@@ -37,5 +40,5 @@ public record CreateTourRequest(
 
     @Schema(
         description = "Physical or virtual location where the tour takes place",
-        example = "Actual online platform") @NotBlank String location) {
+        example = "Actual online platform") @NotBlank String location) implements HasDateRange {
 }

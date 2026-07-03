@@ -1,5 +1,7 @@
 package com.itasocialacademy.oitassist.competition.dao.dto.request;
 
+import com.itasocialacademy.oitassist.competition.dao.dto.validation.HasDateRange;
+import com.itasocialacademy.oitassist.competition.dao.dto.validation.ValidDateRange;
 import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
@@ -9,6 +11,7 @@ import java.time.ZonedDateTime;
 
 @Schema(description = "DTO for creating a new Stage within a Competition. "
     + "Stage dates must fall within the parent Competition's date range.")
+@ValidDateRange
 public record CreateStageRequest(
     @Schema(
         description = "Title of the stage",
@@ -38,5 +41,5 @@ public record CreateStageRequest(
 
     @Schema(
         description = "Scope of the stage.",
-        requiredMode = Schema.RequiredMode.NOT_REQUIRED) @NotNull StageScope scope) {
+        requiredMode = Schema.RequiredMode.NOT_REQUIRED) @NotNull StageScope scope) implements HasDateRange {
 }
