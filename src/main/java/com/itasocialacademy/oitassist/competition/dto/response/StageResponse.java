@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.competition.dao.dto.response;
+package com.itasocialacademy.oitassist.competition.dto.response;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
 import java.time.ZonedDateTime;

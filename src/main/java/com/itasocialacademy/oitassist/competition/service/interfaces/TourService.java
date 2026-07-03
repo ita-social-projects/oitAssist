@@ -1,8 +1,8 @@
 package com.itasocialacademy.oitassist.competition.service.interfaces;
 
-import com.itasocialacademy.oitassist.competition.api.dto.UpdateTourRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateTourRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.TourResponse;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateTourRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.CreateTourRequest;
+import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
 import java.util.List;
 
 public interface TourService {

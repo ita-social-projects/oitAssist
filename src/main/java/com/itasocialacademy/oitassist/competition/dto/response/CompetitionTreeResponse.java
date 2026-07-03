@@ -1,6 +1,5 @@
-package com.itasocialacademy.oitassist.competition.api.dto;
+package com.itasocialacademy.oitassist.competition.dto.response;
 
-import com.itasocialacademy.oitassist.competition.dao.dto.response.CompetitionResponse;
 import java.util.List;
 import lombok.Builder;
 

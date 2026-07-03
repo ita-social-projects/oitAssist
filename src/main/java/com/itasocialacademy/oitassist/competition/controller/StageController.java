@@ -1,8 +1,8 @@
 package com.itasocialacademy.oitassist.competition.controller;
 
-import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateStageRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.request.UpdateStageRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.StageResponse;
+import com.itasocialacademy.oitassist.competition.dto.request.CreateStageRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateStageRequest;
+import com.itasocialacademy.oitassist.competition.dto.response.StageResponse;
 import com.itasocialacademy.oitassist.competition.service.interfaces.StageService;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;

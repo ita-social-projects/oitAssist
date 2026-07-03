@@ -1,9 +1,9 @@
 package com.itasocialacademy.oitassist.competition.controller;
 
-import com.itasocialacademy.oitassist.competition.api.dto.ChangeStatusRequest;
-import com.itasocialacademy.oitassist.competition.api.dto.CompetitionTreeResponse;
-import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetitionRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.CompetitionResponse;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeStatusRequest;
+import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
+import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
+import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;

@@ -1,8 +1,8 @@
 package com.itasocialacademy.oitassist.competition.service.interfaces;
 
-import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateStageRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.request.UpdateStageRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.StageResponse;
+import com.itasocialacademy.oitassist.competition.dto.request.CreateStageRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateStageRequest;
+import com.itasocialacademy.oitassist.competition.dto.response.StageResponse;
 import java.util.List;
 
 public interface StageService {

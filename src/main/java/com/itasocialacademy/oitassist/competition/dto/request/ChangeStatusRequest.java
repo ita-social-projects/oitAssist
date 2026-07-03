@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.competition.api.dto;
+package com.itasocialacademy.oitassist.competition.dto.request;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import io.swagger.v3.oas.annotations.media.Schema;

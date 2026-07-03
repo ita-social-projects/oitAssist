@@ -1,8 +1,8 @@
 package com.itasocialacademy.oitassist.competition.service.interfaces;
 
-import com.itasocialacademy.oitassist.competition.api.dto.CompetitionTreeResponse;
-import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetitionRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.CompetitionResponse;
+import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
+import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
+import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

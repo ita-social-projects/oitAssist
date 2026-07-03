@@ -11,9 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
-import com.itasocialacademy.oitassist.competition.api.dto.ChangeStatusRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetitionRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.CompetitionResponse;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeStatusRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
+import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import java.time.ZoneId;

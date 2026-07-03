@@ -1,7 +1,7 @@
-package com.itasocialacademy.oitassist.competition.dao.dto.request;
+package com.itasocialacademy.oitassist.competition.dto.request;
 
-import com.itasocialacademy.oitassist.competition.dao.dto.validation.HasDateRange;
-import com.itasocialacademy.oitassist.competition.dao.dto.validation.ValidDateRange;
+import com.itasocialacademy.oitassist.competition.dto.validation.HasDateRange;
+import com.itasocialacademy.oitassist.competition.dto.validation.ValidDateRange;
 import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;

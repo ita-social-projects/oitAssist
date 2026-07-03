@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.competition.dao.dto.validation;
+package com.itasocialacademy.oitassist.competition.dto.validation;
 
 import com.itasocialacademy.oitassist.competition.validation.DateRangeValidator;
 import jakarta.validation.Constraint;

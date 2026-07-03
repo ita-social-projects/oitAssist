@@ -8,8 +8,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
-import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateStageRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.StageResponse;
+import com.itasocialacademy.oitassist.competition.dto.request.CreateStageRequest;
+import com.itasocialacademy.oitassist.competition.dto.response.StageResponse;
 import com.itasocialacademy.oitassist.competition.service.interfaces.StageService;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
