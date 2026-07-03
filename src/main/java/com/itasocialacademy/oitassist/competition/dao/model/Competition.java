@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
-import org.springframework.modulith.NamedInterface;
 
 @Entity
 @Table(name = "competitions")
@@ -24,7 +23,6 @@ import org.springframework.modulith.NamedInterface;
 @ToString()
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-@NamedInterface("CompetitionEntity")
 public class Competition extends CompetitionEvent {
     @Enumerated(EnumType.STRING)
     @Column(name = "competition_status", nullable = false)
