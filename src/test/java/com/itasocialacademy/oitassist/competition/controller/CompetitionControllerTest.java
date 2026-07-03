@@ -11,10 +11,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
+import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dto.request.ChangeStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
-import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -26,6 +26,7 @@ import org.mockito.Mock;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 
 public class CompetitionControllerTest extends ControllerUnitTest<CompetitionController> {
@@ -50,15 +51,13 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         testDateStart = ZonedDateTime.of(2026, 6, 25, 10, 0, 0, 0, ZoneId.of("UTC"));
         testDateFinish = testDateStart.plusDays(10);
 
-        mockCompetitionResponse = new CompetitionResponse(
-            1L,
-            "Всеукраїнська Олімпіада 2026",
-            "Опис тестової олімпіади",
-            testDateStart,
-            testDateFinish,
-            CompetitionStatus.DRAFT,
-            100L,
-            100L);
+        mockCompetitionResponse = CompetitionResponse.builder()
+            .id(1L)
+            .title("Всеукраїнська Олімпіада 2026")
+            .description("Опис тестової олімпіади")
+            .dateStart(testDateStart)
+            .dateFinish(testDateFinish).competitionStatus(CompetitionStatus.DRAFT).createdBy(100L).updatedBy(100L)
+            .build();
     }
 
     @Test
@@ -72,12 +71,12 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         when(competitionService.create(any(CreateCompetitionRequest.class))).thenReturn(mockCompetitionResponse);
 
         mockMvc.perform(post("/api/v1/competitions")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(1L))
             .andExpect(jsonPath("$.title").value("Всеукраїнська Олімпіада 2026"))
-            .andExpect(jsonPath("$.status").value("DRAFT"));
+            .andExpect(jsonPath("$.competitionStatus").value("DRAFT"));
 
         verify(competitionService).create(any(CreateCompetitionRequest.class));
     }
@@ -88,8 +87,8 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         when(competitionService.getAllVisible(any(PageRequest.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/competitions")
-            .param("page", "0")
-            .param("size", "20"))
+                .param("page", "0")
+                .param("size", "20"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content[0].id").value(1L))
@@ -117,11 +116,11 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         when(competitionService.changeStatus(eq(1L), eq(CompetitionStatus.PUBLISHED))).thenReturn(publishedResponse);
 
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1L))
-            .andExpect(jsonPath("$.status").value("PUBLISHED"));
+            .andExpect(jsonPath("$.competitionStatus").value("PUBLISHED"));
 
         verify(competitionService).changeStatus(1L, CompetitionStatus.PUBLISHED);
     }
@@ -131,8 +130,42 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         ChangeStatusRequest request = new ChangeStatusRequest(null);
 
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
+    }
+
+    // ---- getArchived ----
+    @Test
+    void getAllArchived_shouldReturnPageResponseAnd200() throws Exception {
+        Page<CompetitionResponse> page = new PageImpl<>(List.of(getArchivedCompetitionResponse()));
+
+        when(competitionService.getArchived(any(PageRequest.class))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/competitions/archived")
+                .param("page", "0")
+                .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content[0].id").value(1L))
+            .andExpect(jsonPath("$.content[0].title").value("Всеукраїнська Олімпіада 2026"))
+            .andExpect(jsonPath("$.content[0].competitionStatus").value("ARCHIVED"))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(competitionService).getArchived(any(Pageable.class));
+    }
+
+    private CompetitionResponse getArchivedCompetitionResponse() {
+
+        return new CompetitionResponse(
+            1L,
+            "Всеукраїнська Олімпіада 2026",
+            "Опис тестової олімпіади",
+            ZonedDateTime.of(2026, 6, 25, 10, 0, 0, 0, ZoneId.of("UTC")),
+            ZonedDateTime.of(2026, 6, 25, 10, 0, 0, 0, ZoneId.of("UTC")).plusDays(10),
+            CompetitionStatus.ARCHIVED,
+            100L,
+            100L);
     }
 }
