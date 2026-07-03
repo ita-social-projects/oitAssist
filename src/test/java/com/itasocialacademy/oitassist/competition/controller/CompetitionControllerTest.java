@@ -71,8 +71,8 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         when(competitionService.create(any(CreateCompetitionRequest.class))).thenReturn(mockCompetitionResponse);
 
         mockMvc.perform(post("/api/v1/competitions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(1L))
             .andExpect(jsonPath("$.title").value("Всеукраїнська Олімпіада 2026"))
@@ -87,8 +87,8 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         when(competitionService.getAllVisible(any(PageRequest.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/competitions")
-                .param("page", "0")
-                .param("size", "20"))
+            .param("page", "0")
+            .param("size", "20"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content[0].id").value(1L))
@@ -116,8 +116,8 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         when(competitionService.changeStatus(eq(1L), eq(CompetitionStatus.PUBLISHED))).thenReturn(publishedResponse);
 
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1L))
             .andExpect(jsonPath("$.competitionStatus").value("PUBLISHED"));
@@ -130,8 +130,8 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         ChangeStatusRequest request = new ChangeStatusRequest(null);
 
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
     }
 
@@ -143,8 +143,8 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         when(competitionService.getArchived(any(PageRequest.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/competitions/archived")
-                .param("page", "0")
-                .param("size", "20"))
+            .param("page", "0")
+            .param("size", "20"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content[0].id").value(1L))
