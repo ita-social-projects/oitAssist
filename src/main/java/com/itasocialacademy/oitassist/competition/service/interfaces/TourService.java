@@ -17,7 +17,8 @@ public interface TourService {
     TourResponse getById(Long tourId);
 
     /**
-     * Retrieves all Tours belonging to a specific Stage, ordered by their sort position.
+     * Retrieves all Tours belonging to a specific Stage, ordered by their sort
+     * position.
      *
      * @param stageId the ID of the parent stage
      * @return a list of tour response DTOs

@@ -2,15 +2,14 @@ package com.itasocialacademy.oitassist.competition.service;
 
 import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateStageRequest;
 import com.itasocialacademy.oitassist.competition.dao.dto.request.UpdateStageRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dao.dto.response.StageResponse;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.competition.mapper.StageMapper;
-import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.competition.service.interfaces.StageService;
+import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -21,21 +20,20 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class StageServiceImpl implements StageService {
     private final StageRepository stageRepository;
-    private final CompetitionService competitionService;
+    private final HierarchyValidator validator;
     private final StageMapper mapper;
 
     @Override
     @Transactional
     public StageResponse create(Long competitionId, CreateStageRequest request) {
-        competitionService.validateHierarchyImmutability(competitionId);
-
-        CompetitionResponse competition = competitionService.getById(competitionId);
+        validator.validateImmutabilityByCompetitionId(competitionId);
+        validator.validateStageDates(competitionId, request.dateStart(), request.dateFinish());
 
         Stage stage = mapper.toEntity(request);
         stage.setCompetitionId(competitionId);
 
-        validateDates(competition, stage);
-
+        // TODO: validation by title must be more flexible (e.g. if exists "Lviv 1" ->
+        // can't create "Lviv 2")
         if (stageRepository.existsByCompetitionIdAndTitle(competitionId, stage.getTitle())) {
             throw new CompetitionHierarchyValidationException("Stage title already exists in this competition.");
         }
@@ -57,14 +55,17 @@ public class StageServiceImpl implements StageService {
     @Override
     @Transactional(readOnly = true)
     public StageResponse getById(Long stageId) {
-        return stageRepository.findById(stageId)
-            .map(mapper::toResponse)
+        Stage stage = stageRepository.findById(stageId)
             .orElseThrow(() -> new StageNotFoundException(stageId));
+
+        validator.checkVisibilityAccess(stage.getCompetitionId());
+        return mapper.toResponse(stage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<StageResponse> getAllByCompetitionId(Long competitionId) {
+        validator.checkVisibilityAccess(competitionId);
         return stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(competitionId)
             .stream()
             .map(mapper::toResponse)
@@ -77,11 +78,9 @@ public class StageServiceImpl implements StageService {
         Stage stage = stageRepository.findById(stageId)
             .orElseThrow(() -> new StageNotFoundException(stageId));
 
-        Long competitionId = stage.getCompetitionId();
-        validateStageEligibility(compId, competitionId);
-
-        competitionService.validateHierarchyImmutability(competitionId);
-        CompetitionResponse competition = competitionService.getById(competitionId);
+        validator.validateStageEligibility(compId, stage.getCompetitionId());
+        validator.validateImmutabilityByCompetitionId(stage.getCompetitionId());
+        validator.validateStageDates(stage.getCompetitionId(), request.dateStart(), request.dateFinish());
 
         stage.setTitle(request.title());
         stage.setDescription(request.description());
@@ -93,9 +92,7 @@ public class StageServiceImpl implements StageService {
             stage.setSortPosition(request.sortPosition());
         }
 
-        validateDates(competition, stage);
-
-        stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(competitionId)
+        stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(stage.getCompetitionId())
             .stream()
             .filter(existing -> !existing.getId().equals(stageId))
             .forEach(existing -> {
@@ -117,36 +114,10 @@ public class StageServiceImpl implements StageService {
     public void delete(Long compId, Long stageId) {
         Stage stage = stageRepository.findById(stageId)
             .orElseThrow(() -> new StageNotFoundException(stageId));
-        Long competitionId = stage.getCompetitionId();
 
-        validateStageEligibility(compId, competitionId);
-        competitionService.validateHierarchyImmutability(competitionId);
+        validator.validateStageEligibility(compId, stage.getCompetitionId());
+        validator.validateImmutabilityByCompetitionId(stage.getCompetitionId());
 
         stageRepository.delete(stage);
-    }
-
-    /**
-     * Validates that the stage belongs to the competition specified in the request path. Prevents cross-competition
-     * manipulation (e.g., updating Stage 5 via /competitions/999/stages/5).
-     *
-     * @param pathCompetitionId   Competition ID taken from URI as a path variable
-     * @param entityCompetitionId Competition ID extracted from the fetched Stage entity
-     */
-    private void validateStageEligibility(Long pathCompetitionId, Long entityCompetitionId) {
-        if (!pathCompetitionId.equals(entityCompetitionId)) {
-            throw new CompetitionHierarchyValidationException("Stage does not belong to this competition");
-        }
-    }
-
-    /**
-     * Validates that the child Stage's dates are strictly within the boundaries of the parent Competition.
-     */
-    private void validateDates(CompetitionResponse parent, Stage child) {
-        if (child.getDateStart().isBefore(parent.dateStart())
-            || child.getDateFinish().isAfter(parent.dateFinish())) {
-            throw new CompetitionHierarchyValidationException(
-                "Stage dates (%s - %s) must be within Competition dates (%s - %s)".formatted(
-                    child.getDateStart(), child.getDateFinish(), parent.dateStart(), parent.dateFinish()));
-        }
     }
 }
