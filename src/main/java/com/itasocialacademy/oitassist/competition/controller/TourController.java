@@ -61,6 +61,7 @@ public class TourController {
         @ApiResponse(responseCode = "200", description = "Tour updated successfully"),
         @ApiResponse(responseCode = "400", description = "Validation failed",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "404", description = "Tour not found")
     })
     @PutMapping("/stages/{stageId}/tours/{tourId}")
@@ -77,6 +78,7 @@ public class TourController {
         @ApiResponse(responseCode = "204", description = "Tour deleted successfully"),
         @ApiResponse(responseCode = "400", description = "Cannot delete (competition is locked)",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
         @ApiResponse(responseCode = "404", description = "Tour not found")
     })
     @DeleteMapping("/stages/{stageId}/tours/{tourId}")

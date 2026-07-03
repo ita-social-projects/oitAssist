@@ -33,6 +33,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class StageController {
     private final StageService stageService;
 
+    @Operation(
+        summary = "Create a new stage",
+        description = "Adds a new stage to a competition's hierarchy. "
+            + "Stage dates must fall within the parent competition's date range, and the competition "
+            + "must not be ARCHIVED (or PUBLISHED/FINISHED with active participations).")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Stage created successfully"),
+        @ApiResponse(responseCode = "400",
+            description = "Validation failed (e.g., dates outside competition range, duplicate title/sort "
+                + "position, or competition hierarchy is locked)",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Competition not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/competitions/{competitionId}/stages")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<StageResponse> createStage(
