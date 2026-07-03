@@ -4,7 +4,6 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.NotFoundException;
 
 public class TourNotFoundException extends NotFoundException {
-
     public static final String ERROR_MESSAGE = "Tour with id: %d not found";
 
     public TourNotFoundException(Long id) {
