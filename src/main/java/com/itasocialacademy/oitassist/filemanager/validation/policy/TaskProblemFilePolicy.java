@@ -1,14 +1,21 @@
 package com.itasocialacademy.oitassist.filemanager.validation.policy;
 
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.validation.enums.AllowedExtension;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FilePolicy;
 import java.util.Set;
+import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
-public final class TaskFilePolicy implements FilePolicy {
-    public static final TaskFilePolicy INSTANCE = new TaskFilePolicy();
-
-    private TaskFilePolicy() {
+@Component
+public class TaskProblemFilePolicy implements FilePolicy {
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean supports(RelatedEntityType entityType, FileRole role) {
+        return entityType == RelatedEntityType.TASK && role == FileRole.PROBLEM;
     }
 
     /**
@@ -28,10 +35,9 @@ public final class TaskFilePolicy implements FilePolicy {
      */
     @Override
     public int getMaxFileCount() {
-        return 1;
+        return 10;
     }
 
-    // TODO: confirm size limit with business
     /**
      * {@inheritDoc}
      */

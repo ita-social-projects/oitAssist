@@ -174,4 +174,78 @@ public class CompetitionServiceImpl implements CompetitionService {
                 "Cannot publish: All stages must have at least one tour. Found " + emptyStages + " empty stage(s).");
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CompetitionResponse> getAllVisible(Pageable pageable) {
+        Specification<Competition> spec;
+
+        if (securityFacade.hasRole("ADMIN")) {
+            spec = CompetitionSpecification.isVisibleToAdmin();
+        } else if (securityFacade.hasRole("ORG")) {
+            Long currentUserId = securityFacade.getCurrentUserId()
+                .orElseThrow(() -> new UserContextNotFoundException("User ID not found in security context"));
+            spec = CompetitionSpecification.isVisibleToOrg(currentUserId);
+        } else {
+            spec = CompetitionSpecification.isVisibleToUser();
+        }
+
+        return competitionRepository.findAll(spec, pageable).map(mapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CompetitionResponse> getArchived(Pageable pageable) {
+        return competitionRepository.findAll(CompetitionSpecification.isArchived(), pageable)
+            .map(mapper::toResponse);
+    }
+
+    @Override
+    @Transactional
+    public CompetitionResponse changeStatus(Long id, CompetitionStatus newStatus) {
+        Competition competition = competitionRepository.findById(id)
+            .orElseThrow(() -> new CompetitionNotFoundException(id));
+
+        CompetitionStatus currentStatus = competition.getCompetitionStatus();
+
+        validateStatusTransition(currentStatus, newStatus);
+
+        if (newStatus == CompetitionStatus.PUBLISHED) {
+            validatePublishingRequirements(id);
+        }
+
+        competition.setCompetitionStatus(newStatus);
+        return mapper.toResponse(competitionRepository.save(competition));
+    }
+
+    private void validateStatusTransition(CompetitionStatus current, CompetitionStatus target) {
+        if (current == target) {
+            return;
+        }
+
+        boolean isValid = switch (current) {
+            case DRAFT -> target == CompetitionStatus.PUBLISHED;
+            case PUBLISHED -> target == CompetitionStatus.FINISHED;
+            case FINISHED -> target == CompetitionStatus.ARCHIVED;
+            case ARCHIVED -> false;
+        };
+
+        if (!isValid) {
+            throw new CompetitionHierarchyValidationException(
+                "Invalid status transition from " + current + " to " + target);
+        }
+    }
+
+    private void validatePublishingRequirements(Long competitionId) {
+        if (!stageRepository.existsByCompetitionId(competitionId)) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot publish: Competition must have at least one stage.");
+        }
+
+        long emptyStages = stageRepository.countStagesWithoutTours(competitionId);
+        if (emptyStages > 0) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot publish: All stages must have at least one tour. Found " + emptyStages + " empty stage(s).");
+        }
+    }
 }

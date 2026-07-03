@@ -9,13 +9,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
 
 @Component
-public class NewsFilePolicy implements FilePolicy {
+public class TaskReferenceFilePolicy implements FilePolicy {
     /**
      * {@inheritDoc}
      */
     @Override
     public boolean supports(RelatedEntityType entityType, FileRole role) {
-        return entityType == RelatedEntityType.NEWS && role == FileRole.GENERIC;
+        return entityType == RelatedEntityType.TASK && role == FileRole.REFERENCE;
     }
 
     /**
@@ -24,11 +24,10 @@ public class NewsFilePolicy implements FilePolicy {
     @Override
     public Set<AllowedExtension> getAllowedExtensions() {
         return Set.of(
-            AllowedExtension.JPG,
-            AllowedExtension.JPEG,
-            AllowedExtension.PNG,
-            AllowedExtension.GIF,
-            AllowedExtension.WEBP);
+            AllowedExtension.DOCX,
+            AllowedExtension.XLSX,
+            AllowedExtension.PPTX,
+            AllowedExtension.ACCDB);
     }
 
     /**
@@ -39,13 +38,11 @@ public class NewsFilePolicy implements FilePolicy {
         return 10;
     }
 
-    // TODO: confirm size limit with business
-
     /**
      * {@inheritDoc}
      */
     @Override
     public DataSize getMaxFileSize() {
-        return DataSize.ofMegabytes(10);
+        return DataSize.ofMegabytes(50);
     }
 }

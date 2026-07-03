@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -12,6 +13,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetitionRequest;
+import com.itasocialacademy.oitassist.competition.dao.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
@@ -48,6 +51,7 @@ import org.springframework.security.access.AccessDeniedException;
 
 @ExtendWith(MockitoExtension.class)
 class CompetitionServiceTest {
+
     @Mock
     private CompetitionRepository competitionRepository;
     @Mock
@@ -83,20 +87,24 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_draftToPublished_withValidHierarchy_shouldSucceed() {
+        // Arrange
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
         when(stageRepository.existsByCompetitionId(1L)).thenReturn(true);
         when(stageRepository.countStagesWithoutTours(1L)).thenReturn(0L);
         when(competitionRepository.save(any(Competition.class))).thenReturn(competition);
         when(mapper.toResponse(any(Competition.class))).thenReturn(getCompetitionResponse());
 
+        // Act
         competitionService.changeStatus(1L, CompetitionStatus.PUBLISHED);
 
+        // Assert
         assertEquals(CompetitionStatus.PUBLISHED, competition.getCompetitionStatus());
         verify(competitionRepository).save(competition);
     }
 
     @Test
     void changeStatus_draftToPublished_withNoStages_shouldThrowException() {
+        // Arrange
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
         when(stageRepository.existsByCompetitionId(1L)).thenReturn(false);
 
@@ -110,6 +118,7 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_draftToPublished_withEmptyStages_shouldThrowException() {
+        // Arrange
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
         when(stageRepository.existsByCompetitionId(1L)).thenReturn(true);
         when(stageRepository.countStagesWithoutTours(1L)).thenReturn(2L);
@@ -124,6 +133,7 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_invalidTransition_publishedToDraft_shouldThrowException() {
+        // Arrange
         competition.setCompetitionStatus(CompetitionStatus.PUBLISHED);
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
 
@@ -139,22 +149,28 @@ class CompetitionServiceTest {
 
     @Test
     void create_validRequest_shouldSetDraftStatusAndSave() {
+        // Arrange
         CreateCompetitionRequest request = new CreateCompetitionRequest(
             "New Comp", "Desc", ZonedDateTime.now(), ZonedDateTime.now().plusDays(5));
 
         Competition mappedEntity = new Competition();
         mappedEntity.setTitle("New Comp");
 
+        CompetitionResponse expectedResponse = getCompetitionResponse();
+
         when(mapper.toEntity(request)).thenReturn(mappedEntity);
         when(competitionRepository.save(any(Competition.class))).thenReturn(mappedEntity);
         when(mapper.toResponse(mappedEntity)).thenReturn(getCompetitionResponse());
 
+        // Act
         CompetitionResponse actualResponse = competitionService.create(request);
 
+        // Assert
         assertNotNull(actualResponse);
 
         ArgumentCaptor<Competition> captor = ArgumentCaptor.forClass(Competition.class);
         verify(competitionRepository).save(captor.capture());
+
         assertEquals(CompetitionStatus.DRAFT, captor.getValue().getCompetitionStatus());
     }
 
@@ -165,6 +181,11 @@ class CompetitionServiceTest {
         doThrow(new AccessDeniedException("You do not have permission to view this draft competition"))
             .when(validator).checkVisibilityAccess(1L);
 
+        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.hasRole("ORG")).thenReturn(false);
+
+        // Act & Assert
         AccessDeniedException exception = assertThrows(AccessDeniedException.class,
             () -> competitionService.getVisibleById(1L));
 
@@ -185,8 +206,10 @@ class CompetitionServiceTest {
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
         when(mapper.toResponse(competition)).thenReturn(getCompetitionResponse());
 
+        // Act
         CompetitionResponse response = competitionService.getVisibleById(1L);
 
+        // Assert
         assertNotNull(response);
         verify(validator).checkVisibilityAccess(1L);
     }
