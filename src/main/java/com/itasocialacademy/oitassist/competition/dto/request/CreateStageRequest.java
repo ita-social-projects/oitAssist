@@ -1,9 +1,10 @@
 package com.itasocialacademy.oitassist.competition.dto.request;
 
+import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
 import com.itasocialacademy.oitassist.competition.dto.validation.HasDateRange;
 import com.itasocialacademy.oitassist.competition.dto.validation.ValidDateRange;
-import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -41,6 +42,6 @@ public record CreateStageRequest(
 
     @Schema(
         description = "Scope of the stage.",
-        requiredMode = Schema.RequiredMode.NOT_REQUIRED) @NotNull StageScope scope)
+        requiredMode = RequiredMode.REQUIRED) @NotNull StageScope scope)
     implements HasDateRange {
 }
