@@ -1,10 +1,12 @@
 package com.itasocialacademy.oitassist.competition.controller;
 
 import com.itasocialacademy.oitassist.competition.api.dto.ChangeStatusRequest;
+import com.itasocialacademy.oitassist.competition.api.dto.CompetitionTreeResponse;
 import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dao.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
+import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -18,7 +20,6 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/competitions")
 @RequiredArgsConstructor
-@Tag(name = "Competition Manager V1", description = "Operations related to competition management")
+@Tag(name = "Competition Management V1", description = "Operations related to competition management")
 public class CompetitionController {
     private final CompetitionService competitionService;
 
@@ -84,7 +85,7 @@ public class CompetitionController {
     @Operation(
         summary = "Get competition details by ID",
         description = "Retrieves details of a specific competition. "
-            + "Access to DRAFT competitions is restricted to ADMINs or the ORG who created it.")
+            + "Access to DRAFT competitions is restricted to ADMINs or the ORG.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Competition retrieved successfully",
             content = @Content(mediaType = "application/json",
@@ -94,10 +95,30 @@ public class CompetitionController {
         @ApiResponse(responseCode = "404", description = "Competition not found",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @GetMapping("/{id}")
+    @GetMapping("/{competitionId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<CompetitionResponse> getCompetitionById(@PathVariable Long id) {
-        return ResponseEntity.ok(competitionService.getVisibleById(id));
+    public ResponseEntity<CompetitionResponse> getCompetitionById(@PathVariable Long competitionId) {
+        return ResponseEntity.ok(competitionService.getVisibleById(competitionId));
+    }
+
+    @Operation(
+        summary = "Get full competition tree (Competition -> Stages -> Tours)",
+        description = "Retrieves the competition together with its full hierarchy of stages and tours "
+            + "in a single nested response. Access to a DRAFT competition's tree follows the same "
+            + "visibility rules as viewing the competition itself.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Competition tree retrieved successfully",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = CompetitionTreeResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied (e.g., attempt to view another's DRAFT)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Competition not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/{competitionId}/tree")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<CompetitionTreeResponse> getCompetitionTree(@PathVariable Long competitionId) {
+        return ResponseEntity.ok(competitionService.getCompetitionTree(competitionId));
     }
 
     @Operation(
@@ -117,11 +138,11 @@ public class CompetitionController {
         @ApiResponse(responseCode = "404", description = "Competition not found",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PatchMapping("/{id}/status")
+    @PatchMapping("/{competitionId}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<CompetitionResponse> changeStatus(
-        @PathVariable Long id,
+        @PathVariable Long competitionId,
         @Valid @RequestBody ChangeStatusRequest request) {
-        return ResponseEntity.ok(competitionService.changeStatus(id, request.newStatus()));
+        return ResponseEntity.ok(competitionService.changeStatus(competitionId, request.newStatus()));
     }
 }
