@@ -20,7 +20,6 @@ import jakarta.validation.ConstraintValidatorContext;
  * @see HasDateRange
  */
 public class DateRangeValidator implements ConstraintValidator<ValidDateRange, HasDateRange> {
-
     @Override
     public boolean isValid(HasDateRange value, ConstraintValidatorContext context) {
         if (value.dateStart() == null || value.dateFinish() == null) {

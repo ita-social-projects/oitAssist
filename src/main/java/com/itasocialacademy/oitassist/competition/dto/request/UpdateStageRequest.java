@@ -26,6 +26,6 @@ public record UpdateStageRequest(
     @Schema(description = "Scope of the stage", example = "NATIONAL",
         requiredMode = Schema.RequiredMode.REQUIRED) @NotNull StageScope scope,
 
-    @Schema(description = "Order of the stage in the hierarchy", example = "2")
-    @Min(1) Short sortPosition) implements HasDateRange {
+    @Schema(description = "Order of the stage in the hierarchy", example = "2") @Min(1) Short sortPosition)
+    implements HasDateRange {
 }

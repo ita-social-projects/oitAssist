@@ -41,5 +41,6 @@ public record CreateStageRequest(
 
     @Schema(
         description = "Scope of the stage.",
-        requiredMode = Schema.RequiredMode.NOT_REQUIRED) @NotNull StageScope scope) implements HasDateRange {
+        requiredMode = Schema.RequiredMode.NOT_REQUIRED) @NotNull StageScope scope)
+    implements HasDateRange {
 }

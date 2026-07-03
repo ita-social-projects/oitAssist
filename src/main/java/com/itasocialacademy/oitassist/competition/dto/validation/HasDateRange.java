@@ -10,8 +10,8 @@ import java.time.ZonedDateTime;
  * Implemented by request records (e.g. {@code CreateCompetitionRequest},
  * {@code CreateStageRequest}, {@code CreateTourRequest} and their corresponding
  * update variants) so that a single {@link DateRangeValidator} can validate the
- * {@code dateStart}/{@code dateFinish} pair across all of them without duplicating
- * validation logic per DTO.
+ * {@code dateStart}/{@code dateFinish} pair across all of them without
+ * duplicating validation logic per DTO.
  * </p>
  *
  * @see ValidDateRange
@@ -19,5 +19,6 @@ import java.time.ZonedDateTime;
  */
 public interface HasDateRange {
     ZonedDateTime dateStart();
+
     ZonedDateTime dateFinish();
 }

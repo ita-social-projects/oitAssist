@@ -40,5 +40,6 @@ public record CreateTourRequest(
 
     @Schema(
         description = "Physical or virtual location where the tour takes place",
-        example = "Actual online platform") @NotBlank String location) implements HasDateRange {
+        example = "Actual online platform") @NotBlank String location)
+    implements HasDateRange {
 }

@@ -25,6 +25,6 @@ public record UpdateTourRequest(
     @Schema(description = "Location for the tour", example = "Konotop city",
         requiredMode = Schema.RequiredMode.REQUIRED) @NotBlank String location,
 
-    @Schema(description = "Order of the tour in the hierarchy", example = "1")
-    @Min(1) Short sortPosition) implements HasDateRange {
+    @Schema(description = "Order of the tour in the hierarchy", example = "1") @Min(1) Short sortPosition)
+    implements HasDateRange {
 }

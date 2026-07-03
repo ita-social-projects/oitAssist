@@ -27,5 +27,6 @@ public record CreateCompetitionRequest(
     @Schema(
         description = "End date and time of the competition",
         example = "2026-09-02T09:00:00Z",
-        requiredMode = Schema.RequiredMode.REQUIRED) @NotNull ZonedDateTime dateFinish) implements HasDateRange {
+        requiredMode = Schema.RequiredMode.REQUIRED) @NotNull ZonedDateTime dateFinish)
+    implements HasDateRange {
 }
