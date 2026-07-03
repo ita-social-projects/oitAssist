@@ -13,7 +13,7 @@ public record CompetitionResponse(
     @Schema(description = "Description of the competition") String description,
     @Schema(description = "Start date", example = "2026-09-01T09:00:00Z") ZonedDateTime dateStart,
     @Schema(description = "End date", example = "2026-12-25T18:00:00Z") ZonedDateTime dateFinish,
-    @Schema(description = "Current lifecycle status", example = "PUBLISHED") CompetitionStatus status,
+    @Schema(description = "Current lifecycle status", example = "PUBLISHED") CompetitionStatus competitionStatus,
     @Schema(description = "ID of the user who created it", example = "5") Long createdBy,
     @Schema(description = "ID of the user who last updated it", example = "5") Long updatedBy) {
 }
