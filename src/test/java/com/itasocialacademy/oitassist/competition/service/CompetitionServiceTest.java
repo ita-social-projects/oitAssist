@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.competition.service;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -13,14 +12,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateCompetitionRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
 import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
-import com.itasocialacademy.oitassist.competition.dao.specification.CompetitionSpecification;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
@@ -180,10 +176,6 @@ class CompetitionServiceTest {
     void getVisibleById_whenValidatorDeniesAccess_shouldPropagateAccessDenied() {
         doThrow(new AccessDeniedException("You do not have permission to view this draft competition"))
             .when(validator).checkVisibilityAccess(1L);
-
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
-        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
-        when(securityFacade.hasRole("ORG")).thenReturn(false);
 
         // Act & Assert
         AccessDeniedException exception = assertThrows(AccessDeniedException.class,
