@@ -1,17 +1,16 @@
 package com.itasocialacademy.oitassist.competition.service;
 
-import com.itasocialacademy.oitassist.competition.dto.request.UpdateTourRequest;
-import com.itasocialacademy.oitassist.competition.dto.request.CreateTourRequest;
-import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
 import com.itasocialacademy.oitassist.competition.dao.model.Tour;
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
+import com.itasocialacademy.oitassist.competition.dto.request.CreateTourRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateTourRequest;
+import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.competition.mapper.TourMapper;
 import com.itasocialacademy.oitassist.competition.service.interfaces.TourService;
 import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,7 +59,7 @@ public class TourServiceImpl implements TourService {
         return tourRepository.findAllByStageIdOrderBySortPositionAsc(stageId)
             .stream()
             .map(mapper::toResponse)
-            .collect(Collectors.toList());
+            .toList();
     }
 
     @Override

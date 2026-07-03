@@ -1,17 +1,16 @@
 package com.itasocialacademy.oitassist.competition.service;
 
+import com.itasocialacademy.oitassist.competition.dao.model.Stage;
+import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateStageRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.UpdateStageRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.StageResponse;
-import com.itasocialacademy.oitassist.competition.dao.model.Stage;
-import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.competition.mapper.StageMapper;
 import com.itasocialacademy.oitassist.competition.service.interfaces.StageService;
 import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,7 +68,7 @@ public class StageServiceImpl implements StageService {
         return stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(competitionId)
             .stream()
             .map(mapper::toResponse)
-            .collect(Collectors.toList());
+            .toList();
     }
 
     @Override
