@@ -114,7 +114,7 @@ The server starts on `http://localhost:8080` by default.
    * Go to `File` ➡️ `Settings` (or `IntelliJ IDEA` ➡️ `Preferences` on macOS).
    * Navigate to `Build, Execution, Deployment` ➡️ `Compiler` ➡️ `Annotation Processors`.
    * Check the box for **Enable annotation processing** and click **Apply/OK**.
-4. Open the [OitAssistApplication.java](file:///D:/Intership/OIT/Services/oitAssist/src/main/java/com/itasocialacademy/oitassist/OitAssistApplication.java) file.
+4. Open the [OitAssistApplication.java](file: src/main/java/com/itasocialacademy/oitassist/OitAssistApplication.java) file.
 5. Click the green play icon next to the class definition or main method and select **Run 'OitAssistApplication'**.
 6. *To set environment variables:* Open the Run/Debug Configurations dropdown, edit the configuration for `OitAssistApplication`, and enter the required keys in the **Environment variables** field.
 
