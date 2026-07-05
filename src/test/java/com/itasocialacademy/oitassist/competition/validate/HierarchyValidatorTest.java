@@ -8,8 +8,10 @@ import static org.mockito.Mockito.when;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
+import com.itasocialacademy.oitassist.competition.dao.model.Tour;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
 import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
+import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
@@ -17,6 +19,7 @@ import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +38,8 @@ class HierarchyValidatorTest {
     private StageRepository stageRepository;
     @Mock
     private SecurityFacade securityFacade;
+    @Mock
+    private TourRepository tourRepository;
 
     @InjectMocks
     private HierarchyValidator validator;
@@ -274,5 +279,86 @@ class HierarchyValidatorTest {
 
         assertThrows(StageNotFoundException.class,
             () -> validator.validateTourDates(99L, ZonedDateTime.now(), ZonedDateTime.now().plusHours(1)));
+    }
+
+    @Test
+    void validateStageDatesAgainstExistingTours_allToursWithinNewRange_shouldPass() {
+        ZonedDateTime newStart = draftCompetition.getDateStart();
+        ZonedDateTime newFinish = draftCompetition.getDateFinish();
+
+        Tour tour = Tour.builder()
+            .title("Tour 1")
+            .dateStart(newStart.plusHours(1))
+            .dateFinish(newFinish.minusHours(1))
+            .build();
+
+        when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(tour));
+
+        assertDoesNotThrow(() -> validator.validateStageDatesAgainstExistingTours(10L, newStart, newFinish));
+    }
+
+    @Test
+    void validateStageDatesAgainstExistingTours_tourStartsBeforeNewStart_shouldThrow() {
+        ZonedDateTime newStart = draftCompetition.getDateStart().plusDays(2);
+        ZonedDateTime newFinish = draftCompetition.getDateFinish();
+
+        Tour orphanedTour = Tour.builder()
+            .title("Early Tour")
+            .dateStart(draftCompetition.getDateStart())
+            .dateFinish(newStart.plusHours(1))
+            .build();
+
+        when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(orphanedTour));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateStageDatesAgainstExistingTours(10L, newStart, newFinish));
+
+        assertTrue(exception.getMessage().contains("Early Tour"));
+    }
+
+    @Test
+    void validateStageDatesAgainstExistingTours_tourFinishesAfterNewFinish_shouldThrow() {
+        ZonedDateTime newStart = draftCompetition.getDateStart();
+        ZonedDateTime newFinish = draftCompetition.getDateFinish().minusDays(2);
+
+        Tour orphanedTour = Tour.builder()
+            .title("Late Tour")
+            .dateStart(newFinish.minusHours(1))
+            .dateFinish(draftCompetition.getDateFinish())
+            .build();
+
+        when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(orphanedTour));
+
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> validator.validateStageDatesAgainstExistingTours(10L, newStart, newFinish));
+    }
+
+    @Test
+    void validateStageDatesAgainstExistingTours_multipleViolations_listsAllTitles() {
+        ZonedDateTime newStart = draftCompetition.getDateStart().plusDays(3);
+        ZonedDateTime newFinish = draftCompetition.getDateFinish().minusDays(3);
+
+        Tour early = Tour.builder().title("Early Tour")
+            .dateStart(draftCompetition.getDateStart()).dateFinish(newStart.plusHours(1)).build();
+        Tour late = Tour.builder().title("Late Tour")
+            .dateStart(newFinish.minusHours(1)).dateFinish(draftCompetition.getDateFinish()).build();
+
+        when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(early, late));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateStageDatesAgainstExistingTours(10L, newStart, newFinish));
+
+        assertTrue(exception.getMessage().contains("Early Tour"));
+        assertTrue(exception.getMessage().contains("Late Tour"));
+    }
+
+    @Test
+    void validateStageDatesAgainstExistingTours_noTours_shouldPass() {
+        when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of());
+
+        assertDoesNotThrow(() -> validator.validateStageDatesAgainstExistingTours(10L, draftCompetition.getDateStart(),
+            draftCompetition.getDateFinish()));
     }
 }
