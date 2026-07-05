@@ -80,6 +80,7 @@ public class StageServiceImpl implements StageService {
         validator.validateStageEligibility(compId, stage.getCompetitionId());
         validator.validateImmutabilityByCompetitionId(stage.getCompetitionId());
         validator.validateStageDates(stage.getCompetitionId(), request.dateStart(), request.dateFinish());
+        validator.validateStageDatesAgainstExistingTours(stageId, request.dateStart(), request.dateFinish());
 
         stage.setTitle(request.title());
         stage.setDescription(request.description());
