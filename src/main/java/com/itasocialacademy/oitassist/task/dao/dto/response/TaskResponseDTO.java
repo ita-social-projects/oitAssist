@@ -8,20 +8,13 @@ import lombok.Builder;
 public record TaskResponseDTO(
     @Schema(
         description = "Unique identifier of the task",
-        example = "3"
-    )
-    Long id,
+        example = "3") Long id,
 
     @Schema(
         description = "Title of the task",
-        example = "PowerPoint Різдвяна зірка"
-    )
-    String title,
+        example = "PowerPoint Різдвяна зірка") String title,
 
     @Schema(
         description = "Description of the task",
-        example = "Cтворити у файлі-розв’язку на одному слайді ..."
-    )
-    String description
-) {
+        example = "Cтворити у файлі-розв’язку на одному слайді ...") String description) {
 }
