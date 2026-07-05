@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
 
-@Schema(description = "DTO for for creating a new task")
+@Schema(description = "DTO for creating a new task")
 public record CreateTaskRequestDTO(
     @Schema(
         description = "Title of the task",
