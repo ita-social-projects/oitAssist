@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.task.dao.dto.request;
+package com.itasocialacademy.oitassist.task.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

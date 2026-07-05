@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.task.dao.dto.response;
+package com.itasocialacademy.oitassist.task.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
