@@ -10,12 +10,14 @@ import com.itasocialacademy.oitassist.task.mapper.TaskBodyMapper;
 import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TaskServiceImpl implements TaskService {
     private final TaskBodyRepository taskBodyRepository;
     private final TaskBodyMapper taskBodyMapper;
@@ -25,6 +27,7 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     public TaskResponseDTO createTask(CreateTaskRequestDTO requestDTO) {
         TaskBody createdTask = taskBodyRepository.save(taskBodyMapper.toEntity(requestDTO));
+        log.debug("Created Task: Id {}; Title - {}", createdTask.getId(), createdTask.getTitle());
         publishAttachEvent(createdTask.getId(), requestDTO.fileIds(), createdTask.getCreatedBy());
 
         return taskBodyMapper.toResponse(createdTask);
