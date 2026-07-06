@@ -1,8 +1,6 @@
 @ApplicationModule(
     displayName = "Task",
-    allowedDependencies = {
-        "core"
-    })
+    allowedDependencies = {"core", "filemanager :: FilesAttachRequestedEvent", "filemanager :: RelatedEntityType"})
 package com.itasocialacademy.oitassist.task;
 
 import org.springframework.modulith.ApplicationModule;
