@@ -15,7 +15,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -130,20 +129,20 @@ public class UserController
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(example = """
-                    {
-                        "message": "Full authentication is required to access this resource"
-                    }
-                """))),
+                        {
+                            "message": "Full authentication is required to access this resource"
+                        }
+                    """))),
         @ApiResponse(
             responseCode = "403",
             description = "Forbidden - insufficient permissions",
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(example = """
-                    {
-                        "message": "Insufficient permissions to perform this action"
-                    }
-                """)))
+                        {
+                            "message": "Insufficient permissions to perform this action"
+                        }
+                    """)))
     })
     public ResponseEntity<PageResponse<ResponseUserDTO>> getUsers(
         @Parameter(description = "Pagination parameters")

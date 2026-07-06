@@ -95,6 +95,7 @@ public class UserServiceImpl
 
     @Override
     public @NonNull Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search) {
-        return repository.findAllBySearch(search, pageable).map(mapper::toResponseUserDTO);
+        String normalizedSearch = search == null ? "" : search.trim().replaceAll("\\s+", " ");
+        return repository.findAllBySearch(normalizedSearch, pageable).map(mapper::toResponseUserDTO);
     }
 }

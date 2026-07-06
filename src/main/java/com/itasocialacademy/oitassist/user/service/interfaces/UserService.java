@@ -70,10 +70,10 @@ public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUser
 
     /**
      * Returns a paginated list of users for the admin dashboard.
-     * Supports optional search by user name or email.
+     * Supports optional search by username or email.
      *
      * @param pageable pagination parameters
-     * @param search optional search query
+     * @param search   optional search query
      * @return paginated list of users
      */
     @NonNull
