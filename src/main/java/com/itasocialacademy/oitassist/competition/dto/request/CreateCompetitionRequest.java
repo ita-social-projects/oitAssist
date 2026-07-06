@@ -1,11 +1,14 @@
-package com.itasocialacademy.oitassist.competition.dao.dto.request;
+package com.itasocialacademy.oitassist.competition.dto.request;
 
+import com.itasocialacademy.oitassist.competition.dto.validation.HasDateRange;
+import com.itasocialacademy.oitassist.competition.dto.validation.ValidDateRange;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.ZonedDateTime;
 
 @Schema(description = "DTO for creating a new Competition. Newly created competitions always receive DRAFT status.")
+@ValidDateRange
 public record CreateCompetitionRequest(
     @Schema(
         description = "Title of the competition",
@@ -24,5 +27,6 @@ public record CreateCompetitionRequest(
     @Schema(
         description = "End date and time of the competition",
         example = "2026-09-02T09:00:00Z",
-        requiredMode = Schema.RequiredMode.REQUIRED) @NotNull ZonedDateTime dateFinish) {
+        requiredMode = Schema.RequiredMode.REQUIRED) @NotNull ZonedDateTime dateFinish)
+    implements HasDateRange {
 }

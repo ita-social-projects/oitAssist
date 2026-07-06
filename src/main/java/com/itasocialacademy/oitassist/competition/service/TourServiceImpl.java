@@ -1,15 +1,16 @@
 package com.itasocialacademy.oitassist.competition.service;
 
-import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateTourRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.StageResponse;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.TourResponse;
 import com.itasocialacademy.oitassist.competition.dao.model.Tour;
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
+import com.itasocialacademy.oitassist.competition.dto.request.CreateTourRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateTourRequest;
+import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
+import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.competition.mapper.TourMapper;
-import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
-import com.itasocialacademy.oitassist.competition.service.interfaces.StageService;
 import com.itasocialacademy.oitassist.competition.service.interfaces.TourService;
+import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,21 +19,17 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TourServiceImpl implements TourService {
     private final TourRepository tourRepository;
-    private final StageService stageService;
-    private final CompetitionService competitionService;
     private final TourMapper mapper;
+    private final HierarchyValidator validator;
 
     @Override
     @Transactional
     public TourResponse create(Long stageId, CreateTourRequest request) {
-        StageResponse stage = stageService.getById(stageId);
-
-        competitionService.validateHierarchyImmutability(stage.competitionId());
+        validator.validateImmutabilityByStageId(stageId);
+        validator.validateTourDates(stageId, request.dateStart(), request.dateFinish());
 
         Tour tour = mapper.toEntity(request);
         tour.setStageId(stageId);
-
-        validateDates(stage, tour);
 
         if (tourRepository.existsByStageIdAndTitle(stageId, tour.getTitle())) {
             throw new CompetitionHierarchyValidationException("Tour title already exists in this stage.");
@@ -46,12 +43,71 @@ public class TourServiceImpl implements TourService {
         return mapper.toResponse(tourRepository.save(tour));
     }
 
-    private void validateDates(StageResponse parent, Tour child) {
-        if (child.getDateStart().isBefore(parent.dateStart())
-            || child.getDateFinish().isAfter(parent.dateFinish())) {
-            throw new CompetitionHierarchyValidationException(
-                "Tour dates (%s - %s) must be within Stage dates (%s - %s)".formatted(
-                    child.getDateStart(), child.getDateFinish(), parent.dateStart(), parent.dateFinish()));
+    @Override
+    @Transactional(readOnly = true)
+    public TourResponse getById(Long tourId) {
+        Tour tour = tourRepository.findById(tourId)
+            .orElseThrow(() -> new TourNotFoundException(tourId));
+        validator.checkVisibilityAccessByStageId(tour.getStageId());
+        return mapper.toResponse(tour);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TourResponse> getAllByStageId(Long stageId) {
+        validator.checkVisibilityAccessByStageId(stageId);
+        return tourRepository.findAllByStageIdOrderBySortPositionAsc(stageId)
+            .stream()
+            .map(mapper::toResponse)
+            .toList();
+    }
+
+    @Override
+    @Transactional
+    public TourResponse update(Long pathStageId, Long tourId, UpdateTourRequest request) {
+        Tour tour = tourRepository.findById(tourId)
+            .orElseThrow(() -> new TourNotFoundException(tourId));
+
+        validator.validateTourEligibility(pathStageId, tour.getStageId());
+        validator.validateImmutabilityByStageId(tour.getStageId());
+        validator.validateTourDates(tour.getStageId(), request.dateStart(), request.dateFinish());
+
+        tour.setTitle(request.title());
+        tour.setDescription(request.description());
+        tour.setDateStart(request.dateStart());
+        tour.setDateFinish(request.dateFinish());
+        tour.setLocation(request.location());
+
+        if (request.sortPosition() != null) {
+            tour.setSortPosition(request.sortPosition());
         }
+
+        // Check for uniqueness excluding current tour
+        tourRepository.findAllByStageIdOrderBySortPositionAsc(tour.getStageId())
+            .stream()
+            .filter(existing -> !existing.getId().equals(tourId))
+            .forEach(existing -> {
+                if (existing.getTitle().equals(tour.getTitle())) {
+                    throw new CompetitionHierarchyValidationException("Tour title already exists in this stage.");
+                }
+                if (existing.getSortPosition().equals(tour.getSortPosition())) {
+                    throw new CompetitionHierarchyValidationException(
+                        "Sort position " + tour.getSortPosition() + " is already taken.");
+                }
+            });
+
+        return mapper.toResponse(tourRepository.save(tour));
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long pathStageId, Long tourId) {
+        Tour tour = tourRepository.findById(tourId)
+            .orElseThrow(() -> new TourNotFoundException(tourId));
+
+        validator.validateTourEligibility(pathStageId, tour.getStageId());
+        validator.validateImmutabilityByStageId(tour.getStageId());
+
+        tourRepository.delete(tour);
     }
 }
