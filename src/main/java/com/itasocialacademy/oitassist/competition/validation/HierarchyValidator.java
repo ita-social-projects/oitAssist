@@ -47,8 +47,7 @@ public class HierarchyValidator {
     }
 
     /**
-     * Checks whether it is allowed to change the hierarchy (add/remove stages and
-     * tours).
+     * Checks whether it is allowed to change the hierarchy (add/remove stages and tours).
      *
      * @param competitionId ID of a competition
      */
@@ -61,7 +60,8 @@ public class HierarchyValidator {
             throw new CompetitionHierarchyValidationException(
                 "Cannot modify hierarchy: Competition is ARCHIVED (read-only).");
         }
-        if (competition.getCompetitionStatus() == CompetitionStatus.PUBLISHED
+        if (competition.getCompetitionStatus() == CompetitionStatus.ENROLLMENT
+            || competition.getCompetitionStatus() == CompetitionStatus.PUBLISHED
             || competition.getCompetitionStatus() == CompetitionStatus.FINISHED) {
             // TODO: Epic Requirement - "restricted if active participations exist"
             // STUB for future integration w ParticipationRequest
@@ -82,13 +82,11 @@ public class HierarchyValidator {
     }
 
     /**
-     * Validates that the stage belongs to the competition specified in the request
-     * path. Prevents cross-competition manipulation (e.g., updating Stage 5 via
-     * /competitions/999/stages/5).
+     * Validates that the stage belongs to the competition specified in the request path. Prevents cross-competition
+     * manipulation (e.g., updating Stage 5 via /competitions/999/stages/5).
      *
      * @param pathCompetitionId   Competition ID taken from URI as a path variable
-     * @param entityCompetitionId Competition ID extracted from the fetched Stage
-     *                            entity
+     * @param entityCompetitionId Competition ID extracted from the fetched Stage entity
      */
     public void validateStageEligibility(Long pathCompetitionId, Long entityCompetitionId) {
         if (!pathCompetitionId.equals(entityCompetitionId)) {
@@ -127,9 +125,8 @@ public class HierarchyValidator {
     }
 
     /**
-     * Validates that narrowing a Stage's date range does not orphan any of its
-     * already-existing Tours — i.e. that every Tour currently under this Stage
-     * would still fall within the proposed new {@code newStart}/{@code newFinish}
+     * Validates that narrowing a Stage's date range does not orphan any of its already-existing Tours — i.e. that every
+     * Tour currently under this Stage would still fall within the proposed new {@code newStart}/{@code newFinish}
      * window.
      */
     @Transactional(readOnly = true)
