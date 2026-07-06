@@ -61,7 +61,8 @@ public class HierarchyValidator {
             throw new CompetitionHierarchyValidationException(
                 "Cannot modify hierarchy: Competition is ARCHIVED (read-only).");
         }
-        if (competition.getCompetitionStatus() == CompetitionStatus.PUBLISHED
+        if (competition.getCompetitionStatus() == CompetitionStatus.ENROLLMENT
+            || competition.getCompetitionStatus() == CompetitionStatus.PUBLISHED
             || competition.getCompetitionStatus() == CompetitionStatus.FINISHED) {
             // TODO: Epic Requirement - "restricted if active participations exist"
             // STUB for future integration w ParticipationRequest

@@ -150,7 +150,8 @@ public class CompetitionServiceImpl implements CompetitionService {
         }
 
         boolean isValid = switch (current) {
-            case DRAFT -> target == CompetitionStatus.PUBLISHED;
+            case DRAFT -> target == CompetitionStatus.ENROLLMENT;
+            case ENROLLMENT -> target == CompetitionStatus.PUBLISHED;
             case PUBLISHED -> target == CompetitionStatus.FINISHED;
             case FINISHED -> target == CompetitionStatus.ARCHIVED;
             case ARCHIVED -> false;

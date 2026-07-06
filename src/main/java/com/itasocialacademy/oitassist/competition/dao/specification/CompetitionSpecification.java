@@ -16,7 +16,7 @@ public final class CompetitionSpecification {
      */
     public static Specification<Competition> isVisibleToUser() {
         return (root, query, cb) -> root.get(COMPETITION_STATUS)
-            .in(CompetitionStatus.PUBLISHED, CompetitionStatus.FINISHED);
+            .in(CompetitionStatus.ENROLLMENT, CompetitionStatus.PUBLISHED, CompetitionStatus.FINISHED);
     }
 
     /**
@@ -25,7 +25,8 @@ public final class CompetitionSpecification {
      */
     public static Specification<Competition> isVisibleToAdmin() {
         return (root, query, cb) -> root.get(COMPETITION_STATUS)
-            .in(CompetitionStatus.DRAFT, CompetitionStatus.PUBLISHED, CompetitionStatus.FINISHED);
+            .in(CompetitionStatus.DRAFT, CompetitionStatus.ENROLLMENT, CompetitionStatus.PUBLISHED,
+                CompetitionStatus.FINISHED);
     }
 
     /**
@@ -34,7 +35,8 @@ public final class CompetitionSpecification {
      */
     public static Specification<Competition> isVisibleToOrg(Long currentUserId) {
         return (root, query, cb) -> cb.or(
-            root.get(COMPETITION_STATUS).in(CompetitionStatus.PUBLISHED, CompetitionStatus.FINISHED),
+            root.get(COMPETITION_STATUS).in(CompetitionStatus.ENROLLMENT, CompetitionStatus.PUBLISHED,
+                CompetitionStatus.FINISHED),
             cb.and(
                 cb.equal(root.get(COMPETITION_STATUS), CompetitionStatus.DRAFT),
                 cb.equal(root.get("createdBy"), currentUserId)));

@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.mapper;
 
+import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateStageRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.StageResponse;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
@@ -11,4 +12,6 @@ public interface StageMapper {
     Stage toEntity(CreateStageRequest request);
 
     StageResponse toResponse(Stage entity);
+
+    StageDetail toStageDetail(Stage entity);
 }

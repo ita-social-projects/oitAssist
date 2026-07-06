@@ -82,25 +82,47 @@ class CompetitionServiceTest {
     // ---- changeStatus ----
 
     @Test
-    void changeStatus_draftToPublished_withValidHierarchy_shouldSucceed() {
-        // Arrange
+    void changeStatus_draftToEnrollment_shouldSucceed() {
+        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(competitionRepository.save(any(Competition.class))).thenReturn(competition);
+        when(mapper.toResponse(any(Competition.class))).thenReturn(getCompetitionResponse());
+
+        competitionService.changeStatus(1L, CompetitionStatus.ENROLLMENT);
+
+        assertEquals(CompetitionStatus.ENROLLMENT, competition.getCompetitionStatus());
+        verify(competitionRepository).save(competition);
+    }
+
+    @Test
+    void changeStatus_draftToPublished_directly_shouldThrowInvalidTransition() {
+        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> competitionService.changeStatus(1L, CompetitionStatus.PUBLISHED));
+
+        assertTrue(exception.getMessage().contains("Invalid status transition"));
+        verify(competitionRepository, never()).save(any());
+    }
+
+    @Test
+    void changeStatus_enrollmentToPublished_withValidHierarchy_shouldSucceed() {
+        competition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
         when(stageRepository.existsByCompetitionId(1L)).thenReturn(true);
         when(stageRepository.countStagesWithoutTours(1L)).thenReturn(0L);
         when(competitionRepository.save(any(Competition.class))).thenReturn(competition);
         when(mapper.toResponse(any(Competition.class))).thenReturn(getCompetitionResponse());
 
-        // Act
         competitionService.changeStatus(1L, CompetitionStatus.PUBLISHED);
 
-        // Assert
         assertEquals(CompetitionStatus.PUBLISHED, competition.getCompetitionStatus());
         verify(competitionRepository).save(competition);
     }
 
     @Test
-    void changeStatus_draftToPublished_withNoStages_shouldThrowException() {
-        // Arrange
+    void changeStatus_enrollmentToPublished_withNoStages_shouldThrowException() {
+        competition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
         when(stageRepository.existsByCompetitionId(1L)).thenReturn(false);
 
@@ -113,8 +135,8 @@ class CompetitionServiceTest {
     }
 
     @Test
-    void changeStatus_draftToPublished_withEmptyStages_shouldThrowException() {
-        // Arrange
+    void changeStatus_enrollmentToPublished_withEmptyStages_shouldThrowException() {
+        competition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
         when(stageRepository.existsByCompetitionId(1L)).thenReturn(true);
         when(stageRepository.countStagesWithoutTours(1L)).thenReturn(2L);
@@ -124,6 +146,17 @@ class CompetitionServiceTest {
             () -> competitionService.changeStatus(1L, CompetitionStatus.PUBLISHED));
 
         assertTrue(exception.getMessage().contains("All stages must have at least one tour"));
+        verify(competitionRepository, never()).save(any());
+    }
+
+    @Test
+    void changeStatus_enrollmentToDraft_shouldThrowInvalidTransition() {
+        competition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
+        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> competitionService.changeStatus(1L, CompetitionStatus.DRAFT));
+
         verify(competitionRepository, never()).save(any());
     }
 
