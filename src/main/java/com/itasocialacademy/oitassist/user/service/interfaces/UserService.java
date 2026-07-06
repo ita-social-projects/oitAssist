@@ -14,6 +14,8 @@ import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import com.itasocialacademy.oitassist.user.exceptions.UserRoleSelfChangeException;
 import java.util.Optional;
 import org.jspecify.annotations.NonNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUserDTO, ResponseUserDTO> {
     /**
@@ -65,4 +67,15 @@ public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUser
      */
     @NonNull
     ResponseUserDTO changeUserRole(@NonNull Long userId, @NonNull Role newRole);
+
+    /**
+     * Returns a paginated list of users for the admin dashboard.
+     * Supports optional search by user name or email.
+     *
+     * @param pageable pagination parameters
+     * @param search optional search query
+     * @return paginated list of users
+     */
+    @NonNull
+    Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search);
 }

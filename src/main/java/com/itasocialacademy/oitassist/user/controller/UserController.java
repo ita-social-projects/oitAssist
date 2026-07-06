@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.user.controller;
 
+import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserRoleRequest;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
@@ -7,12 +8,15 @@ import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -109,5 +113,47 @@ public class UserController
         @PathVariable Long id,
         @RequestBody @Valid ChangeUserRoleRequest request) {
         return ResponseEntity.ok(service.changeUserRole(id, request.getRole()));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Get paginated list of users",
+        description = "Returns a paginated list of users for the admin dashboard with optional search by name or email")
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Users retrieved successfully"),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized - token is missing or invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(example = """
+                    {
+                        "message": "Full authentication is required to access this resource"
+                    }
+                """))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - insufficient permissions",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(example = """
+                    {
+                        "message": "Insufficient permissions to perform this action"
+                    }
+                """)))
+    })
+    public ResponseEntity<PageResponse<ResponseUserDTO>> getUsers(
+        @Parameter(description = "Pagination parameters")
+        Pageable pageable,
+
+        @Parameter(
+            description = "Optional search query for filtering users by name or email",
+            example = "ivan")
+        @RequestParam(required = false) String search
+    ) {
+        return ResponseEntity.ok(PageResponse.from(service.getUsers(pageable, search)));
     }
 }

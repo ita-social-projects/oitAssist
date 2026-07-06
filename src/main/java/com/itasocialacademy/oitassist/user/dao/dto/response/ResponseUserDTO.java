@@ -16,6 +16,7 @@ import lombok.*;
 @ToString
 @Schema(description = "User Response DTO")
 public class ResponseUserDTO implements EntityDTO<Long> {
+    @Schema(description = "User ID", example = "1")
     private Long id;
     @NotBlank
     @Schema(description = "User Email", example = "mail@gmail.com")
