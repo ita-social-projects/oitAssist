@@ -32,10 +32,6 @@ public class TaskServiceImpl implements TaskService {
 
     // helpers
     private void publishAttachEvent(Long taskBodyId, List<Long> fileIds, Long authorId) {
-        if (fileIds == null || fileIds.isEmpty()) {
-            return;
-        }
-
         applicationEventPublisher.publishEvent(
             new FilesAttachRequestedEvent(taskBodyId, RelatedEntityType.TASK, fileIds, authorId));
     }
