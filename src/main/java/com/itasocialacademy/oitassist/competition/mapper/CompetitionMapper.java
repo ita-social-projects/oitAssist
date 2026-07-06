@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.mapper;
 
+import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
@@ -11,4 +12,6 @@ public interface CompetitionMapper {
     Competition toEntity(CreateCompetitionRequest request);
 
     CompetitionResponse toResponse(Competition entity);
+
+    CompetitionDetail toCompetitionDetail(Competition entity);
 }
