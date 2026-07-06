@@ -5,7 +5,8 @@ import java.time.ZonedDateTime;
 import lombok.Builder;
 
 /**
- * Full detail view of a Stage, exposed to other modules via {@code CompetitionFacade}.
+ * Full detail view of a Stage, exposed to other modules via
+ * {@code CompetitionFacade}.
  */
 @Builder
 public record StageDetail(
