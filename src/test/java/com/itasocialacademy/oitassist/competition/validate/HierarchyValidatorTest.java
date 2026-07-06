@@ -157,6 +157,16 @@ class HierarchyValidatorTest {
     }
 
     @Test
+    void validateImmutabilityByCompetitionId_whenEnrollment_shouldPass() {
+        // hasActiveParticipations is currently hardcoded false (pending
+        // ParticipationRequest integration)
+        draftCompetition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
+        when(competitionRepository.findById(1L)).thenReturn(Optional.of(draftCompetition));
+
+        assertDoesNotThrow(() -> validator.validateImmutabilityByCompetitionId(1L));
+    }
+
+    @Test
     void validateImmutabilityByCompetitionId_whenPublished_shouldPass() {
         // hasActiveParticipations is currently hardcoded false (pending
         // ParticipationRequest integration)
