@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.task.controller;
 
+import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
@@ -12,6 +13,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -46,5 +49,12 @@ public class TaskController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TaskResponseDTO> getTask(@PathVariable Long taskId) {
         return ResponseEntity.ok().body(taskService.getTaskById(taskId));
+    }
+
+    @GetMapping()
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PageResponse<TaskResponseDTO>> getAllTasks(
+        @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
+        return ResponseEntity.ok(PageResponse.from(taskService.getAllTasks(pageable)));
     }
 }

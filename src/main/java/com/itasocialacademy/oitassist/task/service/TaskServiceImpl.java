@@ -13,6 +13,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +45,12 @@ public class TaskServiceImpl implements TaskService {
 
         log.debug("Get Task: Id {}", taskBody.getId());
         return taskBodyMapper.toResponse(taskBody);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TaskResponseDTO> getAllTasks(Pageable pageable) {
+        return taskBodyRepository.findAll(pageable).map(taskBodyMapper::toResponse);
     }
 
     // helpers
