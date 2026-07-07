@@ -95,6 +95,9 @@ public class UserServiceImpl
 
     @Override
     public @NonNull Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search) {
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
+        }
         String normalizedSearch = search == null ? "" : search.trim().replaceAll("\\s+", " ");
         return repository.findAllBySearch(normalizedSearch, pageable).map(mapper::toResponseUserDTO);
     }

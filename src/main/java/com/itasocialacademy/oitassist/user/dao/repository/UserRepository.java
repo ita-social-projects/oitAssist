@@ -22,8 +22,9 @@ public interface UserRepository extends EntityRepository<User, Long> {
                OR LOWER(u.surname) LIKE LOWER(CONCAT('%', :search, '%'))
                OR LOWER(u.middleName) LIKE LOWER(CONCAT('%', :search, '%'))
                OR LOWER(CONCAT(u.firstName, ' ', u.surname)) LIKE LOWER(CONCAT('%', :search, '%'))
-               OR LOWER(CONCAT(u.firstName, ' ', u.surname, ' ', u.middleName)) LIKE LOWER(CONCAT('%', :search, '%'))
                OR LOWER(CONCAT(u.surname, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(CONCAT(u.firstName, ' ', u.middleName)) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(CONCAT(u.firstName, ' ', u.surname, ' ', u.middleName)) LIKE LOWER(CONCAT('%', :search, '%'))
                OR LOWER(CONCAT(u.surname, ' ', u.firstName, ' ', u.middleName)) LIKE LOWER(CONCAT('%', :search, '%'))
         """)
     Page<User> findAllBySearch(String search, Pageable pageable);

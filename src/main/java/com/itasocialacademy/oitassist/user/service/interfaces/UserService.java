@@ -69,12 +69,13 @@ public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUser
     ResponseUserDTO changeUserRole(@NonNull Long userId, @NonNull Role newRole);
 
     /**
-     * Returns a paginated list of users for the admin dashboard.
-     * Supports optional search by username or email.
+     * Returns a paginated list of users for the admin dashboard. Supports optional
+     * search by name or email.
      *
      * @param pageable pagination parameters
      * @param search   optional search query
      * @return paginated list of users
+     * @throws InsufficientPermissionsException if user does not have admin role
      */
     @NonNull
     Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search);

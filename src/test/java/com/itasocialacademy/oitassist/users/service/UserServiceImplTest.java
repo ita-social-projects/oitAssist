@@ -13,6 +13,7 @@ import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import com.itasocialacademy.oitassist.user.exceptions.UserRoleSelfChangeException;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.service.UserServiceImpl;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +24,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -258,5 +263,105 @@ class UserServiceImplTest {
         verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
         verify(securityFacade).getCurrentUserId();
         verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("getUsers should return paged users when current user is admin")
+    void getUsers_ShouldReturnPagedUsers_WhenCurrentUserIsAdmin() {
+        Pageable pageable = PageRequest.of(0, 10);
+        String search = "ivan";
+
+        User user = User.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .surname("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.USER)
+            .userStatus(UserStatus.ACTIVE)
+            .build();
+
+        ResponseUserDTO responseUserDTO = ResponseUserDTO.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .lastName("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.USER)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        Page<User> userPage = new PageImpl<>(List.of(user), pageable, 1);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(repository.findAllBySearch("ivan", pageable)).thenReturn(userPage);
+        when(mapper.toResponseUserDTO(user)).thenReturn(responseUserDTO);
+
+        Page<ResponseUserDTO> result = userService.getUsers(pageable, search);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().getFirst().getId()).isEqualTo(1L);
+        assertThat(result.getContent().getFirst().getEmail()).isEqualTo("ivan@example.com");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(repository).findAllBySearch("ivan", pageable);
+        verify(mapper).toResponseUserDTO(user);
+    }
+
+    @Test
+    @DisplayName("getUsers should throw InsufficientPermissionsException when current user is not admin")
+    void getUsers_ShouldThrowInsufficientPermissionsException_WhenCurrentUserIsNotAdmin() {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(false);
+
+        assertThatThrownBy(() -> userService.getUsers(pageable, "ivan"))
+            .isInstanceOf(InsufficientPermissionsException.class)
+            .hasMessage("You do not have enough permissions to perform this action");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("getUsers should normalize search query before repository call when search contains extra spaces")
+    void getUsers_ShouldNormalizeSearchQuery_WhenSearchContainsExtraSpaces() {
+        Pageable pageable = PageRequest.of(0, 10);
+        String search = "  Ivan   Petrenko  ";
+        String normalizedSearch = "Ivan Petrenko";
+
+        Page<User> emptyPage = Page.empty(pageable);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(repository.findAllBySearch(normalizedSearch, pageable)).thenReturn(emptyPage);
+
+        Page<ResponseUserDTO> result = userService.getUsers(pageable, search);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEmpty();
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(repository).findAllBySearch(normalizedSearch, pageable);
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("getUsers should use empty search string when search is null")
+    void getUsers_ShouldUseEmptySearchString_WhenSearchIsNull() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<User> emptyPage = Page.empty(pageable);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(repository.findAllBySearch("", pageable)).thenReturn(emptyPage);
+
+        Page<ResponseUserDTO> result = userService.getUsers(pageable, null);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEmpty();
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(repository).findAllBySearch("", pageable);
+        verifyNoInteractions(mapper);
     }
 }
