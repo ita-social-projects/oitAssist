@@ -16,5 +16,9 @@ public record TaskResponseDTO(
 
     @Schema(
         description = "Description of the task",
-        example = "Cтворити у файлі-розв’язку на одному слайді ...") String description) {
+        example = "Cтворити у файлі-розв’язку на одному слайді ...") String description,
+
+    @Schema(
+        description = "Id of task creator",
+        example = "1") Long createdBy) {
 }
