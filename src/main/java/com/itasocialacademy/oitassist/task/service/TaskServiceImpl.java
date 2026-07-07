@@ -54,6 +54,9 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional(readOnly = true)
     public Page<TaskResponseDTO> getAllTasks(Pageable pageable) {
+        log.debug("getAllTasks: page={}, size={}, sort={}",
+            pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+
         return taskBodyRepository.findAll(pageable).map(taskBodyMapper::toResponse);
     }
 
@@ -63,6 +66,8 @@ public class TaskServiceImpl implements TaskService {
         Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be logged in to view created tasks",
                 ErrorCode.ACCESS_DENIED));
+        log.debug("getAllMyTasks: userId={}, page={}, size={}, sort={}",
+            currentUserId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
         return taskBodyRepository.findAllByCreatedBy(currentUserId, pageable);
     }
