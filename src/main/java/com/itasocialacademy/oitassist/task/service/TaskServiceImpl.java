@@ -1,7 +1,10 @@
 package com.itasocialacademy.oitassist.task.service;
 
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.dao.model.TaskBody;
 import com.itasocialacademy.oitassist.task.dao.repository.TaskBodyRepository;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
@@ -25,6 +28,7 @@ public class TaskServiceImpl implements TaskService {
     private final TaskBodyRepository taskBodyRepository;
     private final TaskBodyMapper taskBodyMapper;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final SecurityFacade securityFacade;
 
     @Override
     @Transactional
@@ -51,6 +55,16 @@ public class TaskServiceImpl implements TaskService {
     @Transactional(readOnly = true)
     public Page<TaskResponseDTO> getAllTasks(Pageable pageable) {
         return taskBodyRepository.findAll(pageable).map(taskBodyMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TaskResponseDTO> getAllMyTasks(Pageable pageable) {
+        Long currentUserId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException("User must be logged in to view created tasks",
+                ErrorCode.ACCESS_DENIED));
+
+        return taskBodyRepository.findAllByCreatedBy(currentUserId, pageable);
     }
 
     // helpers

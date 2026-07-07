@@ -57,4 +57,11 @@ public class TaskController {
         @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(PageResponse.from(taskService.getAllTasks(pageable)));
     }
+
+    @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<PageResponse<TaskResponseDTO>> getMyTasks(
+        @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
+        return ResponseEntity.ok(PageResponse.from(taskService.getAllMyTasks(pageable)));
+    }
 }
