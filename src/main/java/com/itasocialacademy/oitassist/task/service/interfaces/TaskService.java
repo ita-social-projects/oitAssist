@@ -35,10 +35,12 @@ public interface TaskService {
     Page<TaskResponseDTO> getAllTasks(Pageable pageable);
 
     /**
-     * Retrieves all tasks belonging to the currently authenticated user with pagination support.
+     * Retrieves all tasks belonging to the currently authenticated user with
+     * pagination support.
      *
      * @param pageable pagination and sorting criteria
-     * @return a page of tasks for the current user according to the specified pagination parameters
+     * @return a page of tasks for the current user according to the specified
+     *         pagination parameters
      * @throws AuthorizationException if the user is not authenticated or logged in
      */
     Page<TaskResponseDTO> getAllMyTasks(Pageable pageable);
