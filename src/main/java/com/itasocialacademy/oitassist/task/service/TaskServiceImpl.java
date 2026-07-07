@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.task.dao.model.TaskBody;
 import com.itasocialacademy.oitassist.task.dao.repository.TaskBodyRepository;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
+import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.task.mapper.TaskBodyMapper;
 import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
 import java.util.List;
@@ -31,6 +32,17 @@ public class TaskServiceImpl implements TaskService {
         publishAttachEvent(createdTask.getId(), requestDTO.fileIds(), createdTask.getCreatedBy());
 
         return taskBodyMapper.toResponse(createdTask);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TaskResponseDTO getTaskById(Long id) {
+        TaskBody taskBody = taskBodyRepository.findById(id)
+            .orElseThrow(
+                () -> new TaskNotFoundException(id));
+
+        log.debug("Get Task: Id {}", taskBody.getId());
+        return taskBodyMapper.toResponse(taskBody);
     }
 
     // helpers

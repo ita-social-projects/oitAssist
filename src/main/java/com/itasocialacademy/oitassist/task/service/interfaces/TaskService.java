@@ -5,4 +5,6 @@ import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 
 public interface TaskService {
     TaskResponseDTO createTask(CreateTaskRequestDTO requestDTO);
+
+    TaskResponseDTO getTaskById(Long id);
 }
