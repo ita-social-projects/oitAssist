@@ -1,8 +1,8 @@
 @ApplicationModule(
     allowedDependencies = {
+        "core",
         "core::GlobalExceptionHandler",
-        "core::AuthenticationException",
-        "user::UserFacade"
+        "core::AuthenticationException"
     })
 package com.itasocialacademy.oitassist.security;
 

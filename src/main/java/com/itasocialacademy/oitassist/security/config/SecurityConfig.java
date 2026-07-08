@@ -1,6 +1,9 @@
 package com.itasocialacademy.oitassist.security.config;
 
 import com.itasocialacademy.oitassist.security.jwt.JwtFilter;
+import com.itasocialacademy.oitassist.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
+import com.itasocialacademy.oitassist.security.oauth2.OAuth2FailureHandler;
+import com.itasocialacademy.oitassist.security.oauth2.OAuth2SuccessHandler;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,11 +28,21 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
     private final JwtFilter jwtFilter;
     private final AuthenticationEntryPoint entryPoint;
+    private final OAuth2SuccessHandler successHandler;
+    private final OAuth2FailureHandler failureHandler;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
 
-    public SecurityConfig(JwtFilter jwtFilter,
-        AuthenticationEntryPoint entryPoint) {
+    public SecurityConfig(
+        JwtFilter jwtFilter,
+        AuthenticationEntryPoint entryPoint,
+        OAuth2SuccessHandler successHandler,
+        OAuth2FailureHandler failureHandler,
+        HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository) {
         this.jwtFilter = jwtFilter;
         this.entryPoint = entryPoint;
+        this.successHandler = successHandler;
+        this.failureHandler = failureHandler;
+        this.cookieAuthorizationRequestRepository = cookieAuthorizationRequestRepository;
     }
 
     @Bean
@@ -73,6 +86,9 @@ public class SecurityConfig {
                     "/api/v1/user-activation/verify")
                 .permitAll()
                 .requestMatchers(
+                    "/oauth2/**",
+                    "/login/oauth2/**",
+                    "/oauth-test.html",
                     "/actuator/health/**",
                     "/actuator/info",
                     "/v3/api-docs/**",
@@ -85,6 +101,11 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(entryPoint))
+            .oauth2Login(oauth2 -> oauth2
+                .authorizationEndpoint(endpoint -> endpoint
+                    .authorizationRequestRepository(cookieAuthorizationRequestRepository))
+                .successHandler(successHandler)
+                .failureHandler(failureHandler))
             .addFilterBefore(jwtFilter,
                 UsernamePasswordAuthenticationFilter.class)
             .build();
