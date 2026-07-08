@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -71,7 +72,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
     public OAuth2AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request) {
         return findCookie(request)
             .map(Cookie::getValue)
-            .map(this::deserialize)
+            .flatMap(this::deserialize)
             .orElse(null);
     }
 
@@ -135,14 +136,14 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
             .encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 
-    private OAuth2AuthorizationRequest deserialize(String cookieValue) {
+    private Optional<OAuth2AuthorizationRequest> deserialize(String cookieValue) {
         try {
             byte[] decoded = Base64.getUrlDecoder().decode(cookieValue);
             String json = new String(decoded, StandardCharsets.UTF_8);
             AuthorizationRequestSnapshot snapshot =
                 objectMapper.readValue(json, AuthorizationRequestSnapshot.class);
 
-            return OAuth2AuthorizationRequest.authorizationCode()
+            return Optional.of(OAuth2AuthorizationRequest.authorizationCode()
                 .authorizationUri(snapshot.authorizationUri())
                 .clientId(snapshot.clientId())
                 .redirectUri(snapshot.redirectUri())
@@ -150,11 +151,11 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
                 .state(snapshot.state())
                 .additionalParameters(new HashMap<>(snapshot.additionalParameters()))
                 .attributes(new HashMap<>(snapshot.attributes()))
-                .build();
-        } catch (RuntimeException e) {
+                .build());
+        } catch (IllegalArgumentException | JacksonException e) {
             log.warn("Failed to deserialize OAuth2 authorization request cookie — "
-                + "user may need to restart the login flow");
-            return null;
+                + "user may need to restart the login flow", e);
+            return Optional.empty();
         }
     }
 
