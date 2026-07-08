@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.competition.mapper;
 
-import com.itasocialacademy.oitassist.competition.dao.dto.request.CreateTourRequest;
-import com.itasocialacademy.oitassist.competition.dao.dto.response.TourResponse;
+import com.itasocialacademy.oitassist.competition.dto.request.CreateTourRequest;
+import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
 import com.itasocialacademy.oitassist.competition.dao.model.Tour;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;

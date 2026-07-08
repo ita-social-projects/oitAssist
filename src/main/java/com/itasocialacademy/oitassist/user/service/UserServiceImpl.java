@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.user.service;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -9,11 +10,14 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
+import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.model.User;
+import com.itasocialacademy.oitassist.user.exceptions.AdminRoleModificationException;
+import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
+import com.itasocialacademy.oitassist.user.exceptions.UserRoleSelfChangeException;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
-import jakarta.persistence.EntityNotFoundException;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
@@ -55,7 +59,7 @@ public class UserServiceImpl
         Optional<User> user = repository.findUserByEmail(email);
 
         return user.map(mapper::toResponseUserDTO)
-            .orElseThrow(() -> new EntityNotFoundException("User not found: " + email));
+            .orElseThrow(UserNotFoundException::new);
     }
 
     @Override
@@ -65,5 +69,25 @@ public class UserServiceImpl
             .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
 
         return loadUserByEmail(email);
+    }
+
+    @Override
+    @NonNull
+    public ResponseUserDTO changeUserRole(@NonNull Long userId, @NonNull Role newRole) {
+        if (securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED))
+            .equals(userId)) {
+            throw new UserRoleSelfChangeException();
+        }
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
+        }
+        User user = repository.findById(userId)
+            .orElseThrow(UserNotFoundException::new);
+        if (user.getRole().equals(Role.ADMIN)) {
+            throw new AdminRoleModificationException();
+        }
+        user.setRole(newRole);
+        return mapper.toResponseUserDTO(repository.save(user));
     }
 }

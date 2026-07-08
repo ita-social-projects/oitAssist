@@ -1,12 +1,17 @@
 package com.itasocialacademy.oitassist.user.service.interfaces;
 
+import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.core.rest.service.interfaces.BaseService;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
-import jakarta.persistence.EntityNotFoundException;
+import com.itasocialacademy.oitassist.user.dao.enums.Role;
+import com.itasocialacademy.oitassist.user.exceptions.AdminRoleModificationException;
+import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
+import com.itasocialacademy.oitassist.user.exceptions.UserRoleSelfChangeException;
 import java.util.Optional;
 import org.jspecify.annotations.NonNull;
 
@@ -30,7 +35,7 @@ public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUser
      *
      * @param email the user's email address
      * @return the user's profile DTO
-     * @throws EntityNotFoundException if no user found with given email
+     * @throws UserNotFoundException if no user found with given email
      */
     @NonNull
     ResponseUserDTO loadUserByEmail(String email);
@@ -39,8 +44,25 @@ public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUser
      * Finds a current authenticated user and returns their profile.
      *
      * @return the user's profile DTO
-     * @throws EntityNotFoundException if no user found with given email
+     * @throws AuthorizationException if user is not authenticated
      */
     @NonNull
     ResponseUserDTO getCurrentUserProfile();
+
+    /**
+     * Changes the role of an existing user.
+     *
+     * @param userId  target user identifier
+     * @param newRole new role to assign
+     * @return updated user profile
+     * @throws AuthorizationException           if user is not authenticated
+     * @throws UserNotFoundException            if user with given id does not exist
+     * @throws UserRoleSelfChangeException      if user is trying to change his own
+     *                                          role
+     * @throws AdminRoleModificationException   if user is trying to change the role
+     *                                          of another Admin
+     * @throws InsufficientPermissionsException if user does not have admin role
+     */
+    @NonNull
+    ResponseUserDTO changeUserRole(@NonNull Long userId, @NonNull Role newRole);
 }

@@ -178,6 +178,10 @@
             <artifactId>poi-ooxml</artifactId>
             <version>${poi-version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-client</artifactId>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
@@ -236,6 +240,7 @@
                 </executions>
                 <configuration>
                     <configFile>${project.basedir}/formatter.xml</configFile>
+                    <lineEnding>LF</lineEnding>
                 </configuration>
             </plugin>
             <plugin>

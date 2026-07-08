@@ -18,4 +18,6 @@ public interface TourRepository extends JpaRepository<Tour, Long> {
     List<Tour> findAllByStageIdOrderBySortPositionAsc(Long stageId);
 
     Tour findTopByStageIdOrderBySortPositionDesc(Long stageId);
+
+    List<Tour> findAllByStageIdInOrderBySortPositionAsc(List<Long> stageIds);
 }

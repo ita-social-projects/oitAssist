@@ -1,6 +1,8 @@
 package com.itasocialacademy.oitassist.user.service.interfaces;
 
+import com.itasocialacademy.oitassist.user.api.dto.OAuthProvisionCommand;
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
+import com.itasocialacademy.oitassist.user.dao.model.User;
 
 /**
  * Internal {@code user}-module service responsible for registering new user
@@ -45,4 +47,35 @@ public interface RegistrationService {
      *                                                                                   email
      */
     void register(RegisterCommand command);
+
+    /**
+     * Provisions a user originating from a verified OAuth2 / OIDC identity.
+     *
+     * <p>
+     * If a user already exists with {@code command.email()}, the behavior depends
+     * on that user's status:
+     * </p>
+     * <ul>
+     * <li>{@code ACTIVE} — returned as-is; no fields are updated, no provider
+     * linkage is recorded. An email previously registered via password sign-in or
+     * via a different OAuth provider is accepted as the same identity, since the
+     * calling module has verified email ownership at the provider.</li>
+     * <li>{@code PENDING} — auto-activated: status is flipped to {@code ACTIVE} and
+     * the activation token is cleared, then the updated {@link User} is returned.
+     * This allows a user who registered but never clicked the activation link to
+     * complete sign-in via OAuth2 instead.</li>
+     * <li>Any other status — rejected by throwing
+     * {@link com.itasocialacademy.oitassist.user.exceptions.UserNotActivatedException}.</li>
+     * </ul>
+     *
+     * <p>
+     * If no user exists, creates one in {@code ACTIVE} status with
+     * {@code Role.USER}, an unguessable random password hash, and the name fields
+     * from the command. The new user is persisted and its {@link User} returned.
+     * </p>
+     *
+     * @param command the verified OAuth2 identity; must not be null
+     * @return the persisted or located {@link User} entity for the given identity
+     */
+    User provisionOAuthUser(OAuthProvisionCommand command);
 }
