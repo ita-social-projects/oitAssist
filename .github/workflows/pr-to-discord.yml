@@ -10,6 +10,10 @@ permissions:
   issues: write
   contents: read
 
+concurrency:
+  group: pr-discord-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   manage_discord:
     runs-on: ubuntu-latest
