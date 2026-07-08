@@ -106,6 +106,7 @@ public class RegistrationServiceImpl implements RegistrationService {
         } catch (DataIntegrityViolationException e) {
             log.warn("Concurrent OAuth2 provisioning detected; resolving by re-read", e);
             return userRepository.findUserByEmail(command.email())
+                .map(this::resolveExistingUser)
                 .orElseThrow(() -> new IllegalStateException(
                     "Unique constraint violated but no row found", e));
         }
