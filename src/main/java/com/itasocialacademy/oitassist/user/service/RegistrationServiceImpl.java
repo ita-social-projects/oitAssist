@@ -48,7 +48,7 @@ public class RegistrationServiceImpl implements RegistrationService {
     @Override
     @Transactional
     public void register(RegisterCommand command) {
-        log.info("Registration attempt for email={}", command.email());
+        log.info("Registration attempt initiated");
 
         try {
             userRepository.findUserByEmail(command.email())
@@ -56,14 +56,12 @@ public class RegistrationServiceImpl implements RegistrationService {
 
             User user = registerCommandMapper.toEntity(command);
             user.setPassword(passwordEncoder.encode(command.password()));
-
             userRepository.save(user);
 
             userActivationService.initializeActivation(command.email(), command.firstName());
-            log.info("User successfully created with email={}", command.email());
+            log.info("User successfully created id={}", user.getId());
         } catch (DataIntegrityViolationException e) {
-            log.warn("Registration failed due to data integrity violation for email={}",
-                command.email(), e);
+            log.warn("Registration failed due to data integrity violation", e);
             throw new UserAlreadyExistsException();
         }
     }
@@ -71,7 +69,7 @@ public class RegistrationServiceImpl implements RegistrationService {
     @Override
     @Transactional
     public User provisionOAuthUser(OAuthProvisionCommand command) {
-        log.info("OAuth2 provisioning attempt for email={}", command.email());
+        log.info("OAuth2 provisioning attempt initiated");
 
         return userRepository.findUserByEmail(command.email())
             .map(this::resolveExistingUser)
@@ -81,18 +79,18 @@ public class RegistrationServiceImpl implements RegistrationService {
     private User resolveExistingUser(User user) {
         return switch (user.getUserStatus()) {
             case ACTIVE -> {
-                log.debug("OAuth2 login matched existing active user email={}", user.getEmail());
+                log.debug("OAuth2 login matched existing active user id={}", user.getId());
                 yield user;
             }
             case PENDING -> {
-                log.info("Auto-activating pending user via OAuth2 email={}", user.getEmail());
+                log.info("Auto-activating pending user via OAuth2 id={}", user.getId());
                 user.setUserStatus(UserStatus.ACTIVE);
                 user.setUserActivationToken(null);
                 yield userRepository.save(user);
             }
             default -> {
-                log.warn("OAuth2 login rejected — user email={} status={}",
-                    user.getEmail(), user.getUserStatus());
+                log.warn("OAuth2 login rejected — user id={} status={}",
+                    user.getId(), user.getUserStatus());
                 throw new UserNotActivatedException();
             }
         };
@@ -103,14 +101,13 @@ public class RegistrationServiceImpl implements RegistrationService {
             User user = oauthProvisionCommandMapper.toEntity(command);
             user.setPassword(passwordEncoder.encode(randomPasswordGenerator.generate()));
             User saved = userRepository.save(user);
-            log.info("OAuth2 user provisioned email={} id={}", saved.getEmail(), saved.getId());
+            log.info("OAuth2 user provisioned id={}", saved.getId());
             return saved;
         } catch (DataIntegrityViolationException e) {
-            log.warn("Concurrent OAuth2 provisioning for email={}; resolving by re-read",
-                command.email(), e);
+            log.warn("Concurrent OAuth2 provisioning detected; resolving by re-read", e);
             return userRepository.findUserByEmail(command.email())
                 .orElseThrow(() -> new IllegalStateException(
-                    "Unique constraint violated but no row found for email " + command.email(), e));
+                    "Unique constraint violated but no row found", e));
         }
     }
 
@@ -125,11 +122,10 @@ public class RegistrationServiceImpl implements RegistrationService {
      */
     private void rejectIfUserExists(User user) {
         if (user.getUserStatus() == UserStatus.PENDING) {
-            log.warn("Registration rejected — account exists but not activated for email={}",
-                user.getEmail());
+            log.warn("Registration rejected — account not activated id={}", user.getId());
             throw new UserNotActivatedException();
         }
-        log.warn("Registration rejected — account already exists for email={}", user.getEmail());
+        log.warn("Registration rejected — account already exists id={}", user.getId());
         throw new UserAlreadyExistsException();
     }
 }
