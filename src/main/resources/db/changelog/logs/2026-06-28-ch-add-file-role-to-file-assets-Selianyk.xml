@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="add-file-role-to-file-assets-table" author="Ihor Selianyk">
+        <addColumn tableName="file_assets">
+            <column name="file_role" type="VARCHAR(50)" defaultValue="GENERIC">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <sql>
+            ALTER TABLE file_assets
+                ADD CONSTRAINT chk_file_assets_file_role
+                    CHECK (file_role IN ('GENERIC', 'PROBLEM', 'REFERENCE', 'SOLUTION'));
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

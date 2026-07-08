@@ -5,9 +5,10 @@ import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface CompetitionRepository extends JpaRepository<Competition, Long> {
+public interface CompetitionRepository extends JpaRepository<Competition, Long>, JpaSpecificationExecutor<Competition> {
     Page<Competition> findAllByCompetitionStatus(CompetitionStatus status, Pageable pageable);
 }

@@ -1,10 +1,17 @@
 package com.itasocialacademy.oitassist.filemanager.validation.strategies;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.validation.enums.AllowedExtension;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FilePolicy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,12 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AbstractFileValidationStrategyTest {
@@ -26,11 +27,10 @@ class AbstractFileValidationStrategyTest {
     @Mock
     private FilePolicy policy;
 
-    private AbstractFileValidationStrategy strategy;
+    private final AbstractFileValidationStrategy strategy = new TestFileValidationStrategy();
 
     @BeforeEach
     void setUp() {
-        strategy = new TestFileValidationStrategy(policy);
         lenient().when(policy.getMaxFileCount()).thenReturn(5);
         lenient().when(policy.getAllowedExtensions()).thenReturn(Set.of(AllowedExtension.JPG));
         lenient().when(policy.getMaxFileSize()).thenReturn(DataSize.ofMegabytes(10));
@@ -44,7 +44,7 @@ class AbstractFileValidationStrategyTest {
         FileUploadRequestDto request = request();
 
         // Act
-        ValidationResult result = strategy.validate(files, request);
+        ValidationResult result = strategy.validate(files, request, policy);
 
         // Assert
         assertAll(
@@ -60,7 +60,7 @@ class AbstractFileValidationStrategyTest {
         FileUploadRequestDto request = request();
 
         // Act
-        ValidationResult result = strategy.validate(files, request);
+        ValidationResult result = strategy.validate(files, request, policy);
 
         // Assert
         assertAll(
@@ -76,7 +76,7 @@ class AbstractFileValidationStrategyTest {
         FileUploadRequestDto request = request();
 
         // Act
-        ValidationResult result = strategy.validate(files, request);
+        ValidationResult result = strategy.validate(files, request, policy);
 
         // Assert
         assertAll(
@@ -94,7 +94,7 @@ class AbstractFileValidationStrategyTest {
         FileUploadRequestDto request = request();
 
         // Act
-        ValidationResult result = strategy.validate(files, request);
+        ValidationResult result = strategy.validate(files, request, policy);
 
         // Assert
         assertAll(
@@ -111,7 +111,7 @@ class AbstractFileValidationStrategyTest {
         FileUploadRequestDto request = request();
 
         // Act
-        ValidationResult result = strategy.validate(files, request);
+        ValidationResult result = strategy.validate(files, request, policy);
 
         // Assert
         assertAll(
@@ -129,7 +129,7 @@ class AbstractFileValidationStrategyTest {
         FileUploadRequestDto request = request();
 
         // Act
-        ValidationResult result = strategy.validate(files, request);
+        ValidationResult result = strategy.validate(files, request, policy);
 
         // Assert
         assertAll(
@@ -157,20 +157,9 @@ class AbstractFileValidationStrategyTest {
     // --- inner test implementation ---
 
     private static class TestFileValidationStrategy extends AbstractFileValidationStrategy {
-        private final FilePolicy policy;
-
-        TestFileValidationStrategy(FilePolicy policy) {
-            this.policy = policy;
-        }
-
         @Override
-        public RelatedEntityType supports() {
-            return RelatedEntityType.NEWS;
-        }
-
-        @Override
-        protected FilePolicy resolvePolicy(Long relatedEntityId) {
-            return policy;
+        public boolean supports(RelatedEntityType entityType, FileRole role) {
+            return true; // irrelevant to these tests — validate() is exercised directly
         }
     }
 }

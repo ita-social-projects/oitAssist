@@ -3,6 +3,8 @@ package com.itasocialacademy.oitassist.competition.dao.repository;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -12,6 +14,11 @@ public interface StageRepository extends JpaRepository<Stage, Long> {
      * Competition.
      */
     boolean existsByCompetitionIdAndTitle(Long competitionId, String title);
+
+    /**
+     * Checks whether a competition has at least one stage.
+     */
+    boolean existsByCompetitionId(Long competitionId);
 
     /**
      * Returns all stages of the Competition sorted by their position (from smallest
@@ -29,4 +36,11 @@ public interface StageRepository extends JpaRepository<Stage, Long> {
      * specific Competition.
      */
     boolean existsByCompetitionIdAndSortPosition(Long competitionId, Short sortPosition);
+
+    @Query("""
+            SELECT COUNT(s) FROM Stage s
+            WHERE s.competitionId = :competitionId
+              AND NOT EXISTS (SELECT t FROM Tour t WHERE t.stageId = s.id)
+        """)
+    long countStagesWithoutTours(@Param("competitionId") Long competitionId);
 }

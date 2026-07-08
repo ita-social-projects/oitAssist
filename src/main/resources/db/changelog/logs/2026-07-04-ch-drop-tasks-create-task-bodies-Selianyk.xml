@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+
+    <changeSet id="drop-fk-submission-task" author="Ihor Selianyk">
+        <preConditions onFail="MARK_RAN">
+            <foreignKeyConstraintExists foreignKeyTableName="submissions" foreignKeyName="fk_submission_task"/>
+        </preConditions>
+        <dropForeignKeyConstraint baseTableName="submissions" constraintName="fk_submission_task"/>
+    </changeSet>
+
+    <changeSet id="drop-tasks-table" author="Ihor Selianyk">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="tasks"/>
+        </preConditions>
+
+        <dropTable tableName="tasks"/>
+    </changeSet>
+
+    <changeSet id="create-task-bodies-table" author="Ihor Selianyk">
+        <createTable tableName="task_bodies">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="title" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="description" type="TEXT"/>
+
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_by" type="BIGINT"/>
+            <column name="updated_at" type="TIMESTAMPTZ"/>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

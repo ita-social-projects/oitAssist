@@ -16,6 +16,7 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -40,6 +41,8 @@ public class TokenServiceImpl implements TokenService {
                 .getPrincipal();
         } catch (BadCredentialsException e) {
             throw new AuthenticationException("Bad credentials", ErrorCode.BAD_CREDENTIAL);
+        } catch (DisabledException e) {
+            throw new AuthenticationException("Account is not activated", ErrorCode.USER_NOT_ACTIVATED);
         }
 
         return jwtTokenIssuer.issueFor(Objects.requireNonNull(userDetails));

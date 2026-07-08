@@ -1,9 +1,8 @@
 package com.itasocialacademy.oitassist.task.service.interfaces;
 
-import com.itasocialacademy.oitassist.core.rest.service.interfaces.BaseService;
-import com.itasocialacademy.oitassist.task.dao.dto.request.CreateTaskDTO;
-import com.itasocialacademy.oitassist.task.dao.dto.request.UpdateTaskDTO;
-import com.itasocialacademy.oitassist.task.dao.dto.response.ResponseTaskDTO;
+import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 
-public interface TaskService extends BaseService<Long, CreateTaskDTO, UpdateTaskDTO, ResponseTaskDTO> {
+public interface TaskService {
+    TaskResponseDTO createTask(CreateTaskRequestDTO requestDTO);
 }

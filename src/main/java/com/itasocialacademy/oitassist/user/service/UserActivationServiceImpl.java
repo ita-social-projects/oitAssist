@@ -110,14 +110,20 @@ public class UserActivationServiceImpl implements UserActivationService {
     }
 
     /**
-     * Returns the current token if still valid, or generates a fresh one. Enforces
-     * a 2-minute resend cooldown when an unexpired token exists.
+     * Returns the current token if still valid, or regenerates the existing one if
+     * it has expired. Enforces a 2-minute resend cooldown when an unexpired token
+     * exists.
      */
     private UserActivationToken prepareActivationToken(User user) {
         UserActivationToken token = user.getUserActivationToken();
-        if (token == null || token.isExpired()) {
+        if (token == null) {
             token = UserActivationToken.generateActivationToken();
             user.setUserActivationToken(token);
+            return token;
+        }
+
+        if (token.isExpired()) {
+            token.regenerate();
             return token;
         }
 
