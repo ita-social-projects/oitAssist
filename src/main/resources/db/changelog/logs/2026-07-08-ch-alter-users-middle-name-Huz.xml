@@ -10,9 +10,14 @@
                                columnDataType="VARCHAR(100)"/>
 
         <rollback>
+            <update tableName="users">
+                <column name="middle_name" value=""/>
+                <where>middle_name IS NULL</where>
+            </update>
             <addNotNullConstraint tableName="users"
                                   columnName="middle_name"
-                                  columnDataType="VARCHAR(100)"/>
+                                  columnDataType="VARCHAR(100)"
+                                  defaultNullValue=""/>
         </rollback>
     </changeSet>
 
