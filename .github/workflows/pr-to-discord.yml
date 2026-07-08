@@ -18,8 +18,6 @@ jobs:
   manage_discord:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
       # --- STEP 1: OPENED, REOPENED OR SYNCHRONIZE ---
       - name: Notify and Label
         if: github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'synchronize'
