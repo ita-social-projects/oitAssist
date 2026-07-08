@@ -45,6 +45,8 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createTask(request));
     }
 
+    // TODO: tighten access to owner, ADMIN, or a participant with a visible TaskAssignment for this task, when
+    //  TaskAssignment is implemented.
     @Operation(
         summary = "Get task by id",
         description = "Retrieves a specific task by its id. Requires authentication.")
