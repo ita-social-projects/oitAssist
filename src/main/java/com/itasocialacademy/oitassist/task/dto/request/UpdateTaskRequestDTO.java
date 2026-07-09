@@ -21,6 +21,5 @@ public record UpdateTaskRequestDTO(
     @Schema(
         description = "File ids to be detached from task",
         example = "[52]",
-        requiredMode = Schema.RequiredMode.NOT_REQUIRED) List<Long> removedFileIds
-) {
+        requiredMode = Schema.RequiredMode.NOT_REQUIRED) List<Long> removedFileIds) {
 }
