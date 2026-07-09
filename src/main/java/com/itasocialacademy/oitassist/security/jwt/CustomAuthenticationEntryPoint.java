@@ -39,7 +39,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
             .timestamp(Instant.now())
             .status(HttpServletResponse.SC_UNAUTHORIZED)
             .message("Full authentication is required to access this resource")
-            .code(ErrorCode.ACCESS_DENIED.name())
+            .code(ErrorCode.AUTHENTICATION_REQUIRED.name())
             .path(request.getRequestURI())
             .build();
 
