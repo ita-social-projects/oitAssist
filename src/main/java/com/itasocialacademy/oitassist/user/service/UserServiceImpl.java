@@ -19,6 +19,8 @@ import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import org.jspecify.annotations.NonNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
 
@@ -89,5 +91,22 @@ public class UserServiceImpl
         }
         user.setRole(newRole);
         return mapper.toResponseUserDTO(repository.save(user));
+    }
+
+    @Override
+    public @NonNull Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search) {
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
+        }
+        if (search != null && !search.isBlank()) {
+            String normalizedSearch = search.trim()
+                .replaceAll("\\s+", " ")
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+            return repository.findAllBySearch(normalizedSearch, pageable).map(mapper::toResponseUserDTO);
+        } else {
+            return repository.findAll(pageable).map(mapper::toResponseUserDTO);
+        }
     }
 }
