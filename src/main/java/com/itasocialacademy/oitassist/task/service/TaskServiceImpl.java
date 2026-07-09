@@ -3,12 +3,15 @@ package com.itasocialacademy.oitassist.task.service;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequestedEvent;
+import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.dao.model.TaskBody;
 import com.itasocialacademy.oitassist.task.dao.repository.TaskBodyRepository;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
+import com.itasocialacademy.oitassist.task.exceptions.TaskAccessRestrictedException;
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.task.mapper.TaskBodyMapper;
 import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
@@ -80,9 +83,51 @@ public class TaskServiceImpl implements TaskService {
         return taskBodyRepository.findAllByOwnerId(currentUserId, pageable);
     }
 
+    @Override
+    @Transactional
+    public TaskResponseDTO updateTask(Long taskId, UpdateTaskRequestDTO requestDTO) {
+        TaskBody existingTask = taskBodyRepository.findById(taskId)
+            .orElseThrow(() -> new TaskNotFoundException(taskId));
+
+        if (!isOwnerOrAdmin(existingTask.getOwnerId())) {
+            throw new TaskAccessRestrictedException(taskId);
+        }
+
+        existingTask.setTitle(requestDTO.title());
+        existingTask.setDescription(requestDTO.description());
+
+        TaskBody updatedTask = taskBodyRepository.save(existingTask);
+        log.debug("Updated Task: Id {}, Title - {}", updatedTask.getId(), updatedTask.getTitle());
+
+        publishAttachEvent(updatedTask.getId(), requestDTO.fileIds(), updatedTask.getCreatedBy());
+        publishDetachEvent(updatedTask.getId(), requestDTO.removedFileIds(), updatedTask.getCreatedBy());
+
+        return taskBodyMapper.toResponse(updatedTask);
+    }
+
     // helpers
     private void publishAttachEvent(Long taskBodyId, List<Long> fileIds, Long authorId) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return;
+        }
+
         applicationEventPublisher.publishEvent(
             new FilesAttachRequestedEvent(taskBodyId, RelatedEntityType.TASK, fileIds, authorId));
+    }
+
+    private void publishDetachEvent(Long taskBodyId, List<Long> removedFileIds, Long authorId) {
+        if (removedFileIds == null || removedFileIds.isEmpty()) {
+            return;
+        }
+
+        applicationEventPublisher.publishEvent(
+            new FilesDetachRequestedEvent(RelatedEntityType.TASK, taskBodyId, removedFileIds, authorId));
+    }
+
+    private boolean isOwnerOrAdmin(Long taskBodyOwnerId) {
+        if (securityFacade.hasRole("ADMIN")) {
+            return true;
+        }
+        return securityFacade.isOwner(taskBodyOwnerId);
     }
 }

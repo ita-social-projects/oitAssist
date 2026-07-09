@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.task.service.interfaces;
 
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import org.springframework.data.domain.Page;
@@ -44,4 +45,6 @@ public interface TaskService {
      * @throws AuthorizationException if the user is not authenticated or logged in
      */
     Page<TaskResponseDTO> getAllMyTasks(Pageable pageable);
+
+    TaskResponseDTO updateTask(Long taskId, UpdateTaskRequestDTO requestDTO);
 }
