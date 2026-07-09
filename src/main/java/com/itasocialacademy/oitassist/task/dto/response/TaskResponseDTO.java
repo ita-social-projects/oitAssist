@@ -20,5 +20,9 @@ public record TaskResponseDTO(
 
     @Schema(
         description = "Id of task creator",
-        example = "1") Long createdBy) {
+        example = "1") Long createdBy,
+
+    @Schema(
+        description = "Id of task's current owner",
+        example = "5") Long ownerId) {
 }
