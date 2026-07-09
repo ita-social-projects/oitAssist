@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.user.controller;
 import static org.springframework.data.domain.Sort.Direction.DESC;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
+import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserRoleRequest;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
@@ -48,11 +49,7 @@ public class UserController
             description = "Unauthorized - token is missing or invalid",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "Full authentication is required to access this resource"
-                        }
-                    """)))
+                schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<ResponseUserDTO> getProfile() {
         return ResponseEntity.ok(service.getCurrentUserProfile());
@@ -74,41 +71,25 @@ public class UserController
             description = "Invalid role or request payload",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "Invalid role provided"
-                        }
-                    """))),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "401",
             description = "Unauthorized - token is missing or invalid",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "Full authentication is required to access this resource"
-                        }
-                    """))),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "403",
             description = "Forbidden - insufficient permissions or attempt to modify restricted user",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "Access denied"
-                        }
-                    """))),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "404",
             description = "User not found",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "User not found"
-                        }
-                    """)))
+                schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ResponseUserDTO> changeUserRole(
@@ -129,21 +110,13 @@ public class UserController
             description = "Unauthorized - token is missing or invalid",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "Full authentication is required to access this resource"
-                        }
-                    """))),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "403",
             description = "Forbidden - insufficient permissions",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "You do not have enough permissions to perform this action"
-                        }
-                    """)))
+                schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
