@@ -14,4 +14,5 @@
     <include file="/db/changelog/logs/2026-06-28-ch-add-file-role-to-file-assets-Selianyk.xml"/>
     <include file="/db/changelog/logs/2026-07-04-ch-drop-tasks-create-task-bodies-Selianyk.xml"/>
     <include file="/db/changelog/logs/2026-07-06-ch-update-enums-for-competitions-and-stages-Pampukha.xml"/>
+    <include file="/db/changelog/logs/2026-07-09-ch-add-ownerId-to-task-bodies-Selianyk.xml"/>
 </databaseChangeLog>
