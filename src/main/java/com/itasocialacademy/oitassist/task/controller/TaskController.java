@@ -99,6 +99,24 @@ public class TaskController {
         return ResponseEntity.ok(PageResponse.from(taskService.getAllMyTasks(pageable)));
     }
 
+    @Operation(
+        summary = "Update a task body",
+        description = "Updates the title, description and attached files of an existing task. Only the task owner or "
+            + "admin can update it.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Task updated successfully",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = TaskResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Validation failed",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied - User does not own this task",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Task not found",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PutMapping("/{taskId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TaskResponseDTO> updateTask(@PathVariable Long taskId,
