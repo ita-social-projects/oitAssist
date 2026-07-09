@@ -83,7 +83,7 @@ public class TaskController {
 
     @Operation(
         summary = "Get current user's tasks",
-        description = "Retrieves all tasks created by the currently authenticated user with pagination support.")
+        description = "Retrieves all tasks owned by the currently authenticated user with pagination support.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "User's tasks retrieved successfully",
             content = @Content(mediaType = "application/json",

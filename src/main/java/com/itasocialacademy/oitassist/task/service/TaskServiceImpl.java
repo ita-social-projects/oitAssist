@@ -77,7 +77,7 @@ public class TaskServiceImpl implements TaskService {
         log.debug("getAllMyTasks: userId={}, page={}, size={}, sort={}",
             currentUserId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
-        return taskBodyRepository.findAllByCreatedBy(currentUserId, pageable);
+        return taskBodyRepository.findAllByOwnerId(currentUserId, pageable);
     }
 
     // helpers
