@@ -26,8 +26,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
     public void commence(
         @NotNull HttpServletRequest request,
         HttpServletResponse response,
-        @NotNull AuthenticationException authException
-    ) throws IOException {
+        @NotNull AuthenticationException authException) throws IOException {
         if (response.isCommitted()) {
             return;
         }
