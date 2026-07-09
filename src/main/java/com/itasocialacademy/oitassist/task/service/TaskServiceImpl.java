@@ -33,7 +33,15 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public TaskResponseDTO createTask(CreateTaskRequestDTO requestDTO) {
-        TaskBody createdTask = taskBodyRepository.save(taskBodyMapper.toEntity(requestDTO));
+        Long currentUserId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException("User must be logged in to create tasks",
+                ErrorCode.ACCESS_DENIED));
+
+        TaskBody task = taskBodyMapper.toEntity(requestDTO);
+        task.setOwnerId(currentUserId);
+
+        TaskBody createdTask = taskBodyRepository.save(task);
+
         log.debug("Created Task: Id {}; Title - {}", createdTask.getId(), createdTask.getTitle());
         publishAttachEvent(createdTask.getId(), requestDTO.fileIds(), createdTask.getCreatedBy());
 
