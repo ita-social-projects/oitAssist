@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.task.controller;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -96,5 +97,12 @@ public class TaskController {
     public ResponseEntity<PageResponse<TaskResponseDTO>> getMyTasks(
         @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(PageResponse.from(taskService.getAllMyTasks(pageable)));
+    }
+
+    @PutMapping("/{taskId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<TaskResponseDTO> updateTask(@PathVariable Long taskId,
+        @Valid @RequestBody UpdateTaskRequestDTO request) {
+        return ResponseEntity.ok().body(taskService.updateTask(taskId, request));
     }
 }
