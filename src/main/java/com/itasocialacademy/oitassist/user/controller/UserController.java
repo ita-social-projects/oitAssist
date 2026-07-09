@@ -141,7 +141,7 @@ public class UserController
                 mediaType = "application/json",
                 schema = @Schema(example = """
                         {
-                            "message": "Insufficient permissions to perform this action"
+                            "message": "You do not have enough permissions to perform this action"
                         }
                     """)))
     })

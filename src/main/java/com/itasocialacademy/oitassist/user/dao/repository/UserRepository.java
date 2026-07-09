@@ -17,15 +17,17 @@ public interface UserRepository extends EntityRepository<User, Long> {
     @Query("""
             SELECT u
             FROM User u
-            WHERE LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))
-               OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
-               OR LOWER(u.surname) LIKE LOWER(CONCAT('%', :search, '%'))
-               OR LOWER(u.middleName) LIKE LOWER(CONCAT('%', :search, '%'))
-               OR LOWER(CONCAT(u.firstName, ' ', u.surname)) LIKE LOWER(CONCAT('%', :search, '%'))
-               OR LOWER(CONCAT(u.surname, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :search, '%'))
-               OR LOWER(CONCAT(u.firstName, ' ', u.middleName)) LIKE LOWER(CONCAT('%', :search, '%'))
+            WHERE LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+               OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+               OR LOWER(u.surname) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+               OR LOWER(u.middleName) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+               OR LOWER(CONCAT(u.firstName, ' ', u.surname)) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+               OR LOWER(CONCAT(u.surname, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+               OR LOWER(CONCAT(u.firstName, ' ', u.middleName)) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
                OR LOWER(CONCAT(u.firstName, ' ', u.surname, ' ', u.middleName)) LIKE LOWER(CONCAT('%', :search, '%'))
+                       ESCAPE '\\'
                OR LOWER(CONCAT(u.surname, ' ', u.firstName, ' ', u.middleName)) LIKE LOWER(CONCAT('%', :search, '%'))
+                       ESCAPE '\\'
         """)
     Page<User> findAllBySearch(String search, Pageable pageable);
 }

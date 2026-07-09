@@ -98,7 +98,15 @@ public class UserServiceImpl
         if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
             throw new InsufficientPermissionsException();
         }
-        String normalizedSearch = search == null ? "" : search.trim().replaceAll("\\s+", " ");
-        return repository.findAllBySearch(normalizedSearch, pageable).map(mapper::toResponseUserDTO);
+        if (search != null && !search.isBlank()) {
+            String normalizedSearch = search.trim()
+                .replaceAll("\\s+", " ")
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+            return repository.findAllBySearch(normalizedSearch, pageable).map(mapper::toResponseUserDTO);
+        } else {
+            return repository.findAll(pageable).map(mapper::toResponseUserDTO);
+        }
     }
 }

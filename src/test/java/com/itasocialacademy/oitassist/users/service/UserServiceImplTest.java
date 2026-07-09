@@ -328,8 +328,8 @@ class UserServiceImplTest {
     @DisplayName("getUsers should normalize search query before repository call when search contains extra spaces")
     void getUsers_ShouldNormalizeSearchQuery_WhenSearchContainsExtraSpaces() {
         Pageable pageable = PageRequest.of(0, 10);
-        String search = "  Ivan   Petrenko  ";
-        String normalizedSearch = "Ivan Petrenko";
+        String search = "  Ivan   Petrenko%  ";
+        String normalizedSearch = "Ivan Petrenko\\%";
 
         Page<User> emptyPage = Page.empty(pageable);
 
@@ -347,13 +347,13 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("getUsers should use empty search string when search is null")
+    @DisplayName("getUsers should use findAll when search is null")
     void getUsers_ShouldUseEmptySearchString_WhenSearchIsNull() {
         Pageable pageable = PageRequest.of(0, 10);
         Page<User> emptyPage = Page.empty(pageable);
 
         when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
-        when(repository.findAllBySearch("", pageable)).thenReturn(emptyPage);
+        when(repository.findAll(pageable)).thenReturn(emptyPage);
 
         Page<ResponseUserDTO> result = userService.getUsers(pageable, null);
 
@@ -361,7 +361,7 @@ class UserServiceImplTest {
         assertThat(result.getContent()).isEmpty();
 
         verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
-        verify(repository).findAllBySearch("", pageable);
+        verify(repository).findAll(pageable);
         verifyNoInteractions(mapper);
     }
 }
