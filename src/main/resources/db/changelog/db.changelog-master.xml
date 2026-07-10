@@ -14,4 +14,7 @@
     <include file="/db/changelog/logs/2026-06-28-ch-add-file-role-to-file-assets-Selianyk.xml"/>
     <include file="/db/changelog/logs/2026-07-04-ch-drop-tasks-create-task-bodies-Selianyk.xml"/>
     <include file="/db/changelog/logs/2026-07-06-ch-update-enums-for-competitions-and-stages-Pampukha.xml"/>
+    <include file="/db/changelog/logs/2026-07-08-ch-create-applications-Haleliuk.xml"/>
+    <include file="/db/changelog/logs/2026-07-08-ch-create-participants-Haleliuk.xml"/>
+    <include file="/db/changelog/logs/2026-07-10-ch-update-applications-Haleliuk.xml"/>
 </databaseChangeLog>

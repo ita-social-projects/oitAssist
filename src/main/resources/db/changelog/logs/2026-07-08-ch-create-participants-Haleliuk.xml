@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-participants-table" author="Serhiy Haleliuk">
+        <createTable tableName="participants">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_participants_user"
+                             referencedTableName="users"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+            <column name="competition_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_participants_competition"
+                             referencedTableName="competitions"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+            <column name="stage_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_participants_stage"
+                             referencedTableName="stages"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="participants"
+                             columnNames="user_id, competition_id, stage_id"
+                             constraintName="uc_participants_competition_id_stage_id"/>
+
+    </changeSet>
+
+</databaseChangeLog>
