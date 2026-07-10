@@ -27,6 +27,7 @@ import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApp
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import jakarta.transaction.Transactional;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -44,9 +45,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Override
     @Transactional
     public CreateApplicationResponse userApply(CreateApplicationRequest createApplicationRequest) {
-        Long userId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User is not authenticated",
-                ErrorCode.ACCESS_DENIED));
+        Long userId = getCurrentUserIdOrThrow();
         validateUserCanApply(userId, createApplicationRequest);
         Application application = applicationMapper.toEntity(createApplicationRequest);
         application.setStatus(RequestStatus.PENDING);
@@ -57,8 +56,11 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Transactional
     public ProcessApplicationResponse acceptUserApplication(Long applicationId) {
         Application application = getPendingApplicationOrThrow(applicationId);
+        Long userId = getCurrentUserIdOrThrow();
         participationRepository.save(participationMapper.toParticipation(application));
         application.setStatus(RequestStatus.ACCEPTED);
+        application.setProcessedBy(userId);
+        application.setProcessedAt(Instant.now());
         return processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
     }
 
@@ -66,20 +68,23 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Transactional
     public ProcessApplicationResponse rejectUserApplication(Long applicationId, RejectApplicationRequest request) {
         Application application = getPendingApplicationOrThrow(applicationId);
+        Long userId = getCurrentUserIdOrThrow();
         application.setStatus(RequestStatus.REJECTED);
         application.setRejectionReason(request.rejectionReason());
+        application.setProcessedBy(userId);
+        application.setProcessedAt(Instant.now());
         return processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
     }
 
     @Override
     @Transactional
     public ProcessApplicationResponse cancelUserApplication(Long applicationId) {
-        Long userId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User is not authenticated",
-                ErrorCode.ACCESS_DENIED));
+        Long userId = getCurrentUserIdOrThrow();
         Application application = getPendingApplicationOrThrow(applicationId);
         validateUserCanCancelApplication(userId, application);
         application.setStatus(RequestStatus.CANCELLED);
+        application.setProcessedBy(userId);
+        application.setProcessedAt(Instant.now());
         return processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
     }
 
@@ -138,8 +143,14 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     private void validateUserCanCancelApplication(Long userId, Application application) {
-        if (!application.getIssuedBy().equals(userId)) {
+        if (!userId.equals(application.getIssuedBy())) {
             throw new UnableToProcessApplicationException("The application does not belong to the current user");
         }
+    }
+
+    private Long getCurrentUserIdOrThrow() {
+        return securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException("User is not authenticated",
+                ErrorCode.ACCESS_DENIED));
     }
 }

@@ -10,7 +10,6 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @MappedSuperclass
@@ -39,7 +38,6 @@ public abstract class ParticipationRequestEvent {
     @Column(name = "issued_at", nullable = false)
     private Instant issuedAt;
 
-    @LastModifiedDate
     @Column(name = "processed_at")
     private Instant processedAt;
 

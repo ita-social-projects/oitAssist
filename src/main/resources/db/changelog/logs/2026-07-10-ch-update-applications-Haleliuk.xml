@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="add-applications-status-check" author="Serhiy Haleliuk">
+        <sql dbms="postgresql">
+            ALTER TABLE applications
+                ADD CONSTRAINT chk_application_status
+                    CHECK (status IN ('PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED'));
+        </sql>
+    </changeSet>
+
+    <changeSet id="add-partial-unique-pending-index" author="Serhiy Haleliuk">
+        <createIndex tableName="applications"
+                     indexName="idx_unique_pending_application"
+                     unique="true">
+            <column name="issued_by"/>
+            <column name="competition_id"/>
+            <column name="stage_id"/>
+        </createIndex>
+
+        <modifySql dbms="postgresql">
+            <append value=" WHERE status = 'PENDING'"/>
+        </modifySql>
+    </changeSet>
+
+    <changeSet id="add-applications-read-index" author="Serhiy Haleliuk">
+        <createIndex tableName="applications" indexName="idx_applications_competition_stage">
+            <column name="competition_id"/>
+            <column name="stage_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

@@ -15,6 +15,7 @@ import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateAppli
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Application;
+import com.itasocialacademy.oitassist.participation.dao.model.Participation;
 import com.itasocialacademy.oitassist.participation.dao.repository.ApplicationRepository;
 import com.itasocialacademy.oitassist.participation.dao.repository.ParticipationRepository;
 import com.itasocialacademy.oitassist.participation.exceptions.ApplicationNotFoundException;
@@ -24,6 +25,7 @@ import com.itasocialacademy.oitassist.participation.mapper.interfaces.Applicatio
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -244,16 +246,31 @@ class ApplicationServiceTest {
 
     @Test
     void acceptUserApplication_pendingApplication_shouldSaveParticipationAndAccept() {
+        Participation participation = Participation.builder()
+            .userId(4L)
+            .competitionId(2L)
+            .stageId(3L)
+            .build();
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(10L));
         when(applicationRepository.findById(1L)).thenReturn(Optional.of(application));
+        when(participationMapper.toParticipation(application)).thenReturn(participation);
         when(applicationRepository.saveAndFlush(application)).thenReturn(application);
         when(processApplicationMapper.toResponse(application)).thenReturn(getProcessApplicationResponse(
             RequestStatus.ACCEPTED));
 
+        Instant beforeMethod = Instant.now().minusSeconds(1);
         ProcessApplicationResponse response = applicationService.acceptUserApplication(1L);
 
         assertNotNull(response);
         assertEquals(RequestStatus.ACCEPTED, application.getStatus());
-        verify(participationRepository).save(any());
+        assertEquals(10L, application.getProcessedBy());
+        assertNotNull(application.getProcessedAt(), "Processed date should not be null");
+        assertTrue(application.getProcessedAt()
+            .isAfter(beforeMethod), "Date should be after the start of the test");
+        assertTrue(application.getProcessedAt()
+            .isBefore(Instant.now().plusSeconds(1)), "Date should not be in the future");
+        verify(participationRepository).save(participation);
         verify(applicationRepository).saveAndFlush(application);
     }
 
@@ -284,16 +301,24 @@ class ApplicationServiceTest {
     void rejectUserApplication_pendingApplication_shouldSetRejectedAndReason() {
         RejectApplicationRequest request = new RejectApplicationRequest("Invalid profile information");
 
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(10L));
         when(applicationRepository.findById(1L)).thenReturn(Optional.of(application));
         when(applicationRepository.saveAndFlush(application)).thenReturn(application);
         when(processApplicationMapper.toResponse(application)).thenReturn(getProcessApplicationResponse(
             RequestStatus.REJECTED));
 
+        Instant beforeMethod = Instant.now().minusSeconds(1);
         ProcessApplicationResponse response = applicationService.rejectUserApplication(1L, request);
 
         assertNotNull(response);
         assertEquals(RequestStatus.REJECTED, application.getStatus());
+        assertEquals(10L, application.getProcessedBy());
         assertEquals("Invalid profile information", application.getRejectionReason());
+        assertNotNull(application.getProcessedAt(), "Processed date should not be null");
+        assertTrue(application.getProcessedAt()
+            .isAfter(beforeMethod), "Date should be after the start of the test");
+        assertTrue(application.getProcessedAt()
+            .isBefore(Instant.now().plusSeconds(1)), "Date should not be in the future");
         verify(applicationRepository).saveAndFlush(application);
     }
 
