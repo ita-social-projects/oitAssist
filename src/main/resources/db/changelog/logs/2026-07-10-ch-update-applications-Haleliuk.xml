@@ -10,6 +10,13 @@
                 ADD CONSTRAINT chk_application_status
                     CHECK (status IN ('PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED'));
         </sql>
+
+        <rollback>
+            <sql dbms="postgresql">
+                ALTER TABLE applications
+                DROP CONSTRAINT chk_application_status;
+            </sql>
+        </rollback>
     </changeSet>
 
     <changeSet id="add-partial-unique-pending-index" author="Serhiy Haleliuk">

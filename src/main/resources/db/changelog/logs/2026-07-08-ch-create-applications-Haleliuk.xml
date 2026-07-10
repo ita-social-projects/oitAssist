@@ -36,8 +36,7 @@
             <column name="processed_by" type="BIGINT">
                 <constraints foreignKeyName="fk_applications_processed_by_user"
                          referencedTableName="users"
-                         referencedColumnNames="id"
-                         deleteCascade="true"/>
+                         referencedColumnNames="id"/>
             </column>
             <column name="processed_at" type="TIMESTAMPTZ"/>
             <column name="status" type="VARCHAR(50)">
