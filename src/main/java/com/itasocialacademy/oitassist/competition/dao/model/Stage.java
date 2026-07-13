@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.competition.dao.model;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
+import com.itasocialacademy.oitassist.competition.dao.enums.StageStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -8,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -36,4 +38,9 @@ public class Stage extends CompetitionEvent {
     @Enumerated(EnumType.STRING)
     @Column(name = "scope", nullable = false)
     private StageScope scope;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stage_status", nullable = false)
+    private StageStatus stageStatus = StageStatus.SCHEDULED;
 }
