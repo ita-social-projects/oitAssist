@@ -67,8 +67,9 @@ public interface TaskService {
      * Changes the owner of a task to a new user. The new owner must have ADMIN or
      * ORG role. Only users with ADMIN role can perform this operation.
      *
-     * @param taskId        the ID of the task to reassign
-     * @param changeOwnerRequest the request containing the new owner's email address
+     * @param taskId             the ID of the task to reassign
+     * @param changeOwnerRequest the request containing the new owner's email
+     *                           address
      * @return the updated task with the new owner
      * @throws TaskNotFoundException if the task does not exist
      * @throws UserNotFoundException if the new owner user does not exist
