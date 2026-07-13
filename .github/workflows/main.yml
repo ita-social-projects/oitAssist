@@ -24,8 +24,8 @@ jobs:
           java-version: 25
           distribution: temurin
 
-      - name: Validate code style
-        run: mvn validate
+      - name: Verify project
+        run: mvn clean verify
 
           #- name: Run a multi-line script
           #  env:
