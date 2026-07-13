@@ -39,6 +39,7 @@ public class NewsServiceImpl implements NewsService {
     private final ApplicationEventPublisher eventPublisher;
 
     private static final int PREVIEWS_LENGTH = 300;
+    private static final String ENTITY_NAME = "Entity News";
 
     private void initializeNewNews(News news, CreateNewsDTO newsDTO) {
         log.info("Creating news with title='{}'", newsDTO.getTitle());
@@ -81,7 +82,7 @@ public class NewsServiceImpl implements NewsService {
     @Transactional
     public ResponseNewsDto update(UpdateNewsDto dto) {
         News entity = repository.findById(dto.getId())
-            .orElseThrow(() -> new NotFoundException("Entity News", ErrorCode.ENTITY_NOT_FOUND));
+            .orElseThrow(() -> new NotFoundException(ENTITY_NAME, ErrorCode.ENTITY_NOT_FOUND));
         log.info("Updating news id={}", entity.getId());
         applyPublishLogic(entity, dto.isPublishNow());
         mapper.merge(dto, entity);
@@ -94,14 +95,14 @@ public class NewsServiceImpl implements NewsService {
     @Override
     public ResponseNewsDto getById(Long id) {
         return repository.findById(id).map(mapper::toDto)
-            .orElseThrow(() -> new NotFoundException("Entity News", ErrorCode.ENTITY_NOT_FOUND));
+            .orElseThrow(() -> new NotFoundException(ENTITY_NAME, ErrorCode.ENTITY_NOT_FOUND));
     }
 
     @Override
     @Transactional
     public void delete(Long id) {
         News entity = repository.findById(id)
-            .orElseThrow(() -> new NotFoundException("Entity News", ErrorCode.ENTITY_NOT_FOUND));
+            .orElseThrow(() -> new NotFoundException(ENTITY_NAME, ErrorCode.ENTITY_NOT_FOUND));
         repository.delete(entity);
     }
 
