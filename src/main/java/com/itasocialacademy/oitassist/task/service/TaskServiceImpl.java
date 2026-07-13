@@ -114,11 +114,11 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
-    public TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO newOwnerEmail) {
+    public TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO changeOwnerRequest) {
         TaskBody task = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        UserAuthDetails userDetails = userFacade.findByEmail(newOwnerEmail.newOwnerEmail())
+        UserAuthDetails userDetails = userFacade.findByEmail(changeOwnerRequest.newOwnerEmail())
             .orElseThrow(UserNotFoundException::new);
 
         if (!isOrgOrAdmin(userDetails)) {

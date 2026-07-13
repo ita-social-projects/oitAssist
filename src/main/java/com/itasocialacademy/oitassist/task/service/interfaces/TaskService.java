@@ -68,12 +68,12 @@ public interface TaskService {
      * ORG role. Only users with ADMIN role can perform this operation.
      *
      * @param taskId        the ID of the task to reassign
-     * @param newOwnerEmail the request containing the new owner's email address
+     * @param changeOwnerRequest the request containing the new owner's email address
      * @return the updated task with the new owner
      * @throws TaskNotFoundException if the task does not exist
      * @throws UserNotFoundException if the new owner user does not exist
      * @throws ValidationException   if the new owner does not have ADMIN or ORG
      *                               role
      */
-    TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO newOwnerEmail);
+    TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO changeOwnerRequest);
 }

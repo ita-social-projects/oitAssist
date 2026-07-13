@@ -146,7 +146,7 @@ public class TaskController {
     @PatchMapping("/changeOwner/{taskId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TaskResponseDTO> changeOwner(@PathVariable Long taskId,
-        @Valid @RequestBody ChangeOwnerRequestDTO newOwnerEmail) {
-        return ResponseEntity.ok().body(taskService.changeTaskOwner(taskId, newOwnerEmail));
+        @Valid @RequestBody ChangeOwnerRequestDTO changeOwnerRequest) {
+        return ResponseEntity.ok().body(taskService.changeTaskOwner(taskId, changeOwnerRequest));
     }
 }
