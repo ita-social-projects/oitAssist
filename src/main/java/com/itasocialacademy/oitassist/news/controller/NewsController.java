@@ -1,7 +1,6 @@
 package com.itasocialacademy.oitassist.news.controller;
 
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
-import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ArchivedNewsByYearDto;
@@ -21,6 +20,7 @@ import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -29,12 +29,12 @@ import static org.springframework.data.domain.Sort.Direction.DESC;
 @Tag(name = "News v1", description = "Operations related to news")
 @RestController
 @RequestMapping("/api/v1/news")
-public class NewsController
-    extends AbstractRestControllerImpl<Long, CreateNewsDTO, UpdateNewsDto, ResponseNewsDto, NewsService> {
+public class NewsController {
     private final NewsArchivingService newsArchivingService;
+    private final NewsService service;
 
     protected NewsController(NewsService service, NewsArchivingService newsArchivingService) {
-        super(service);
+        this.service = service;
         this.newsArchivingService = newsArchivingService;
     }
 
@@ -46,11 +46,9 @@ public class NewsController
     })
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
-
-    @Override
     public ResponseEntity<ResponseNewsDto> save(
         @Valid @RequestBody CreateNewsDTO dto) {
-        return super.save(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.save(dto));
     }
 
     @Operation(summary = "Update news", description = "Updates existing news")
@@ -62,10 +60,9 @@ public class NewsController
     })
     @PutMapping
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
-    @Override
     public ResponseEntity<ResponseNewsDto> update(
         @Valid @RequestBody UpdateNewsDto dto) {
-        return super.update(dto);
+        return ResponseEntity.ok().body(service.update(dto));
     }
 
     @Operation(summary = "Get news by id", description = "Returns news by its identifier")
@@ -74,10 +71,9 @@ public class NewsController
         @ApiResponse(responseCode = "404", description = "News not found")
     })
     @GetMapping("/{id}")
-    @Override
     public ResponseEntity<ResponseNewsDto> getById(
         @PathVariable Long id) {
-        return super.getById(id);
+        return ResponseEntity.ok().body(service.getById(id));
     }
 
     @Operation(summary = "Delete news", description = "Deletes news by id")
@@ -88,10 +84,10 @@ public class NewsController
     })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
-    @Override
     public ResponseEntity<Void> delete(
         @PathVariable Long id) {
-        return super.delete(id);
+        service.delete(id);
+        return ResponseEntity.ok().build();
     }
 
     @Operation(

@@ -2,7 +2,7 @@ package com.itasocialacademy.oitassist.news.service;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
-import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
+import com.itasocialacademy.oitassist.core.exceptions.NotFoundException;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
@@ -30,23 +30,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
-public class NewsServiceImpl
-    extends AbstractServiceImpl<Long, News, CreateNewsDTO, UpdateNewsDto, ResponseNewsDto, NewsRepository, NewsMapper>
-    implements NewsService {
+public class NewsServiceImpl implements NewsService {
     private final SecurityFacade securityFacade;
     private final ApplicationEventPublisher eventPublisher;
+    private final NewsRepository repository;
+    private final NewsMapper mapper;
 
     protected NewsServiceImpl(NewsRepository repository, NewsMapper mapper, SecurityFacade securityFacade,
         ApplicationEventPublisher eventPublisher) {
-        super(repository, mapper);
+        this.repository = repository;
+        this.mapper = mapper;
         this.securityFacade = securityFacade;
         this.eventPublisher = eventPublisher;
     }
 
     private static final int PREVIEWS_LENGTH = 300;
 
-    @Override
-    protected void beforeSave(News news, CreateNewsDTO newsDTO) {
+    private void initializeNewNews(News news, CreateNewsDTO newsDTO) {
         log.info("Creating news with title='{}'", newsDTO.getTitle());
 
         Long authorId = securityFacade.getCurrentUserId()
@@ -55,12 +55,6 @@ public class NewsServiceImpl
 
         news.setAuthorId(authorId);
         applyPublishLogic(news, newsDTO.isPublishNow());
-    }
-
-    @Override
-    protected void beforeUpdate(News entity, UpdateNewsDto dto) {
-        log.info("Updating news id={}", entity.getId());
-        applyPublishLogic(entity, dto.isPublishNow());
     }
 
     private void applyPublishLogic(News news, boolean publishNow) {
@@ -82,7 +76,9 @@ public class NewsServiceImpl
     @Override
     @Transactional
     public ResponseNewsDto save(CreateNewsDTO dto) {
-        ResponseNewsDto saved = super.save(dto);
+        News entity = mapper.toEntity(dto);
+        initializeNewNews(entity, dto);
+        ResponseNewsDto saved = mapper.toDto(repository.save(entity));
         publishAttachEvent(saved.getId(), dto.getFileIds());
         return saved;
     }
@@ -90,10 +86,29 @@ public class NewsServiceImpl
     @Override
     @Transactional
     public ResponseNewsDto update(UpdateNewsDto dto) {
-        ResponseNewsDto updated = super.update(dto);
+        News entity = repository.findById(dto.getId())
+            .orElseThrow(() -> new NotFoundException("Entity News", ErrorCode.ENTITY_NOT_FOUND));
+        log.info("Updating news id={}", entity.getId());
+        applyPublishLogic(entity, dto.isPublishNow());
+        mapper.merge(dto, entity);
+        ResponseNewsDto updated = mapper.toDto(repository.save(entity));
         publishAttachEvent(updated.getId(), dto.getFileIds());
         publishDetachEvent(updated.getId(), dto.getRemovedFileIds());
         return updated;
+    }
+
+    @Override
+    public ResponseNewsDto getById(Long id) {
+        return repository.findById(id).map(mapper::toDto)
+            .orElseThrow(() -> new NotFoundException("Entity News", ErrorCode.ENTITY_NOT_FOUND));
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        repository.findById(id)
+            .orElseThrow(() -> new NotFoundException("Entity News", ErrorCode.ENTITY_NOT_FOUND));
+        repository.deleteById(id);
     }
 
     @Override
