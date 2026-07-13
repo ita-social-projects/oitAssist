@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -24,12 +25,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @Tag(name = "Users v1", description = "Operations related to users")
 @RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
 public class UserController {
     private final UserService service;
-
-    protected UserController(UserService service) {
-        this.service = service;
-    }
 
     @GetMapping("/profile")
     @Operation(

@@ -15,23 +15,19 @@ import com.itasocialacademy.oitassist.user.exceptions.UserRoleSelfChangeExceptio
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
 
+@RequiredArgsConstructor
 @Service
 public class UserServiceImpl implements UserService {
     private final SecurityFacade securityFacade;
     private final UserRepository repository;
     private final UserMapper mapper;
-
-    protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade) {
-        this.repository = repository;
-        this.mapper = mapper;
-        this.securityFacade = securityFacade;
-    }
 
     /**
      * {@inheritDoc}

@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -29,14 +30,10 @@ import static org.springframework.data.domain.Sort.Direction.DESC;
 @Tag(name = "News v1", description = "Operations related to news")
 @RestController
 @RequestMapping("/api/v1/news")
+@RequiredArgsConstructor
 public class NewsController {
     private final NewsArchivingService newsArchivingService;
     private final NewsService service;
-
-    protected NewsController(NewsService service, NewsArchivingService newsArchivingService) {
-        this.service = service;
-        this.newsArchivingService = newsArchivingService;
-    }
 
     @Operation(summary = "Create news", description = "Creates a new news item")
     @ApiResponses(value = {

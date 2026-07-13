@@ -20,6 +20,7 @@ import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -30,19 +31,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class NewsServiceImpl implements NewsService {
-    private final SecurityFacade securityFacade;
-    private final ApplicationEventPublisher eventPublisher;
     private final NewsRepository repository;
     private final NewsMapper mapper;
-
-    protected NewsServiceImpl(NewsRepository repository, NewsMapper mapper, SecurityFacade securityFacade,
-        ApplicationEventPublisher eventPublisher) {
-        this.repository = repository;
-        this.mapper = mapper;
-        this.securityFacade = securityFacade;
-        this.eventPublisher = eventPublisher;
-    }
+    private final SecurityFacade securityFacade;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final int PREVIEWS_LENGTH = 300;
 
@@ -106,9 +100,9 @@ public class NewsServiceImpl implements NewsService {
     @Override
     @Transactional
     public void delete(Long id) {
-        repository.findById(id)
+        News entity = repository.findById(id)
             .orElseThrow(() -> new NotFoundException("Entity News", ErrorCode.ENTITY_NOT_FOUND));
-        repository.deleteById(id);
+        repository.delete(entity);
     }
 
     @Override
