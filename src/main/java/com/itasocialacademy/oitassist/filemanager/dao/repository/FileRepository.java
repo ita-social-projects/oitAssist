@@ -1,18 +1,18 @@
 package com.itasocialacademy.oitassist.filemanager.dao.repository;
 
-import com.itasocialacademy.oitassist.core.rest.repository.EntityRepository;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface FileRepository extends EntityRepository<FileAsset, Long>, JpaSpecificationExecutor<FileAsset> {
+public interface FileRepository extends JpaRepository<FileAsset, Long>, JpaSpecificationExecutor<FileAsset> {
     /** Find all id's of files eligible for cleanup. */
     @Query(value = """
             SELECT f.id FROM FileAsset f
