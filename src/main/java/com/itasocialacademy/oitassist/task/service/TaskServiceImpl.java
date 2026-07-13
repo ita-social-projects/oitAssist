@@ -106,8 +106,12 @@ public class TaskServiceImpl implements TaskService {
         TaskBody updatedTask = taskBodyRepository.save(existingTask);
         log.debug("Updated Task: Id {}, Title - {}", updatedTask.getId(), updatedTask.getTitle());
 
-        publishAttachEvent(updatedTask.getId(), requestDTO.fileIds(), updatedTask.getCreatedBy());
-        publishDetachEvent(updatedTask.getId(), requestDTO.removedFileIds(), updatedTask.getCreatedBy());
+        Long currentUserId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException("User must be logged in to view created tasks",
+                ErrorCode.ACCESS_DENIED));
+
+        publishAttachEvent(updatedTask.getId(), requestDTO.fileIds(), currentUserId);
+        publishDetachEvent(updatedTask.getId(), requestDTO.removedFileIds(), currentUserId);
 
         return taskBodyMapper.toResponse(updatedTask);
     }
