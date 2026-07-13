@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.task.controller;
 
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
+import com.itasocialacademy.oitassist.task.dto.request.ChangeOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
@@ -122,5 +123,30 @@ public class TaskController {
     public ResponseEntity<TaskResponseDTO> updateTask(@PathVariable Long taskId,
         @Valid @RequestBody UpdateTaskRequestDTO request) {
         return ResponseEntity.ok().body(taskService.updateTask(taskId, request));
+    }
+
+    @Operation(
+        summary = "Change task owner",
+        description = "Assigns a task to a new owner. The new owner must have ADMIN or ORG role. "
+            + "Only users with ADMIN role can perform this action.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Task owner changed successfully",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = TaskResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Validation failed",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied - User does not have ADMIN role",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Task or user not found",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/changeOwner/{taskId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TaskResponseDTO> changeOwner(@PathVariable Long taskId,
+        @Valid @RequestBody ChangeOwnerRequestDTO newOwnerEmail) {
+        return ResponseEntity.ok().body(taskService.changeTaskOwner(taskId, newOwnerEmail));
     }
 }
