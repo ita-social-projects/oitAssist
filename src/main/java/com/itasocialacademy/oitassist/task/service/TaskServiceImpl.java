@@ -2,12 +2,14 @@ package com.itasocialacademy.oitassist.task.service;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.dao.model.TaskBody;
 import com.itasocialacademy.oitassist.task.dao.repository.TaskBodyRepository;
+import com.itasocialacademy.oitassist.task.dto.request.ChangeOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
@@ -15,6 +17,10 @@ import com.itasocialacademy.oitassist.task.exceptions.TaskAccessRestrictedExcept
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.task.mapper.TaskBodyMapper;
 import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
+import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
+import com.itasocialacademy.oitassist.user.dao.enums.Role;
+import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +38,7 @@ public class TaskServiceImpl implements TaskService {
     private final TaskBodyMapper taskBodyMapper;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SecurityFacade securityFacade;
+    private final UserFacade userFacade;
 
     @Override
     @Transactional
@@ -105,6 +112,29 @@ public class TaskServiceImpl implements TaskService {
         return taskBodyMapper.toResponse(updatedTask);
     }
 
+    @Override
+    @Transactional
+    public TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO newOwnerEmail) {
+        TaskBody task = taskBodyRepository.findById(taskId)
+            .orElseThrow(() -> new TaskNotFoundException(taskId));
+
+        UserAuthDetails userDetails = userFacade.findByEmail(newOwnerEmail.newOwnerEmail())
+            .orElseThrow(UserNotFoundException::new);
+
+        if (!isOrgOrAdmin(userDetails)) {
+            throw new ValidationException("Provided user is not ADMIN nor ORG", ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+
+        if (task.getOwnerId().equals(userDetails.id())) {
+            return taskBodyMapper.toResponse(task);
+        }
+
+        task.setOwnerId(userDetails.id());
+        log.debug("Task {} owner changed to user {}", task.getId(), userDetails.id());
+
+        return taskBodyMapper.toResponse(taskBodyRepository.save(task));
+    }
+
     // helpers
     private void publishAttachEvent(Long taskBodyId, List<Long> fileIds, Long authorId) {
         if (fileIds == null || fileIds.isEmpty()) {
@@ -129,5 +159,9 @@ public class TaskServiceImpl implements TaskService {
             return true;
         }
         return securityFacade.isOwner(taskBodyOwnerId);
+    }
+
+    private boolean isOrgOrAdmin(UserAuthDetails userDetails) {
+        return userDetails.role().equals(Role.ADMIN) || userDetails.role().equals(Role.ORG);
     }
 }
