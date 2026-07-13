@@ -17,6 +17,8 @@ public interface UserMapper extends GeneralMapper<User, CreateUserDTO, UpdateUse
     @Mapping(target = "authorities", expression = "java(mapAuthorities(entity))")
     UserDetailsImpl toUserDetails(User entity);
 
+    @Mapping(target = "status", source = "userStatus")
+    @Mapping(target = "lastName", source = "surname")
     ResponseUserDTO toResponseUserDTO(User entity);
 
     /**
