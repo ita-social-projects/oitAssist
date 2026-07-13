@@ -9,5 +9,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface TaskBodyRepository extends JpaRepository<TaskBody, Long> {
-    Page<TaskResponseDTO> findAllByCreatedBy(Long currentUserId, Pageable pageable);
+    Page<TaskResponseDTO> findAllByOwnerId(Long currentUserId, Pageable pageable);
 }

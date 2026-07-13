@@ -2,7 +2,9 @@ package com.itasocialacademy.oitassist.task.controller;
 
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
+import com.itasocialacademy.oitassist.task.dto.request.ChangeOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -83,7 +85,7 @@ public class TaskController {
 
     @Operation(
         summary = "Get current user's tasks",
-        description = "Retrieves all tasks created by the currently authenticated user with pagination support.")
+        description = "Retrieves all tasks owned by the currently authenticated user with pagination support.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "User's tasks retrieved successfully",
             content = @Content(mediaType = "application/json",
@@ -96,5 +98,55 @@ public class TaskController {
     public ResponseEntity<PageResponse<TaskResponseDTO>> getMyTasks(
         @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(PageResponse.from(taskService.getAllMyTasks(pageable)));
+    }
+
+    @Operation(
+        summary = "Update a task body",
+        description = "Updates the title, description and attached files of an existing task. Only the task owner or "
+            + "admin can update it.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Task updated successfully",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = TaskResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Validation failed",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied - User does not own this task",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Task not found",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PutMapping("/{taskId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<TaskResponseDTO> updateTask(@PathVariable Long taskId,
+        @Valid @RequestBody UpdateTaskRequestDTO request) {
+        return ResponseEntity.ok().body(taskService.updateTask(taskId, request));
+    }
+
+    @Operation(
+        summary = "Change task owner",
+        description = "Assigns a task to a new owner. The new owner must have ADMIN or ORG role. "
+            + "Only users with ADMIN role can perform this action.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Task owner changed successfully",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = TaskResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Validation failed",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied - User does not have ADMIN role",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Task or user not found",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/changeOwner/{taskId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TaskResponseDTO> changeOwner(@PathVariable Long taskId,
+        @Valid @RequestBody ChangeOwnerRequestDTO changeOwnerRequest) {
+        return ResponseEntity.ok().body(taskService.changeTaskOwner(taskId, changeOwnerRequest));
     }
 }
