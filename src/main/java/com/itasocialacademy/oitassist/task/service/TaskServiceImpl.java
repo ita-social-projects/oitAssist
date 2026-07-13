@@ -115,6 +115,10 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO changeOwnerRequest) {
+        if (!securityFacade.hasRole("ADMIN")) {
+            throw new TaskAccessRestrictedException(taskId);
+        }
+
         TaskBody task = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
