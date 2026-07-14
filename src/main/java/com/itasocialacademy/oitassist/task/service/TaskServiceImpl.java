@@ -175,9 +175,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private void checkOwnerOrAdmin(Long taskBodyOwnerId, Long taskId) {
-        boolean isAdmin = securityFacade.hasRole("ADMIN");
-        boolean isOwner = securityFacade.isOwner(taskBodyOwnerId);
-        if (!isAdmin && !isOwner) {
+        if (!securityFacade.hasRole("ADMIN") && !securityFacade.isOwner(taskBodyOwnerId)) {
             throw new TaskAccessRestrictedException(taskId);
         }
     }
