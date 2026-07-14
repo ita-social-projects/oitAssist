@@ -96,9 +96,7 @@ public class TaskServiceImpl implements TaskService {
         TaskBody existingTask = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        if (!isOwnerOrAdmin(existingTask.getOwnerId())) {
-            throw new TaskAccessRestrictedException(taskId);
-        }
+        checkOwnerOrAdmin(existingTask.getOwnerId(), existingTask.getId());
 
         existingTask.setTitle(requestDTO.title());
         existingTask.setDescription(requestDTO.description());
@@ -150,9 +148,7 @@ public class TaskServiceImpl implements TaskService {
         TaskBody taskToDelete = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        if (!isOwnerOrAdmin(taskToDelete.getOwnerId())) {
-            throw new TaskAccessRestrictedException(taskId);
-        }
+        checkOwnerOrAdmin(taskToDelete.getOwnerId(), taskToDelete.getId());
 
         taskBodyRepository.delete(taskToDelete);
         log.debug("Task {} with title {} deleted", taskId, taskToDelete.getTitle());
@@ -177,11 +173,12 @@ public class TaskServiceImpl implements TaskService {
             new FilesDetachRequestedEvent(RelatedEntityType.TASK, taskBodyId, removedFileIds, authorId));
     }
 
-    private boolean isOwnerOrAdmin(Long taskBodyOwnerId) {
-        if (securityFacade.hasRole("ADMIN")) {
-            return true;
+    private void checkOwnerOrAdmin(Long taskBodyOwnerId, Long taskId) {
+        boolean isAdmin = securityFacade.hasRole("ADMIN");
+        boolean isOwner = securityFacade.isOwner(taskBodyOwnerId);
+        if (!isAdmin && !isOwner) {
+            throw new TaskAccessRestrictedException(taskId);
         }
-        return securityFacade.isOwner(taskBodyOwnerId);
     }
 
     private boolean isOrgOrAdmin(UserAuthDetails userDetails) {
