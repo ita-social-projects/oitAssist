@@ -149,4 +149,11 @@ public class TaskController {
         @Valid @RequestBody ChangeOwnerRequestDTO changeOwnerRequest) {
         return ResponseEntity.ok().body(taskService.changeTaskOwner(taskId, changeOwnerRequest));
     }
+
+    @DeleteMapping("/{taskId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
+    public ResponseEntity<Void> deleteTask(@PathVariable Long taskId) {
+        taskService.deleteTask(taskId);
+        return ResponseEntity.noContent().build();
+    }
 }
