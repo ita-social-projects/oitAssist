@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.news.dao.dto.request;
 
-import com.itasocialacademy.oitassist.core.rest.dto.CreateEntityDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -15,7 +14,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Schema(description = "DTO for creating news")
-public class CreateNewsDTO implements CreateEntityDTO<Long> {
+public class CreateNewsDTO {
     @Schema(
         description = "Title of the news",
         example = "New competition announced",
