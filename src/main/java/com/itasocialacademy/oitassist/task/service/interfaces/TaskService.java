@@ -77,4 +77,6 @@ public interface TaskService {
      *                               role
      */
     TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO changeOwnerRequest);
+
+    void deleteTask(Long taskId);
 }

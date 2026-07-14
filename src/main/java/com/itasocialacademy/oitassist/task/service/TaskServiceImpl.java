@@ -143,6 +143,21 @@ public class TaskServiceImpl implements TaskService {
         return taskBodyMapper.toResponse(taskBodyRepository.save(task));
     }
 
+    // TODO: Implement TaskAssignment validation to check if this task is currently assigned to any tour.
+    @Override
+    @Transactional
+    public void deleteTask(Long taskId) {
+        TaskBody taskToDelete = taskBodyRepository.findById(taskId)
+            .orElseThrow(() -> new TaskNotFoundException(taskId));
+
+        if (!isOwnerOrAdmin(taskToDelete.getOwnerId())) {
+            throw new TaskAccessRestrictedException(taskId);
+        }
+
+        taskBodyRepository.delete(taskToDelete);
+        log.debug("Task {} with title {} deleted", taskId, taskToDelete.getTitle());
+    }
+
     // helpers
     private void publishAttachEvent(Long taskBodyId, List<Long> fileIds, Long authorId) {
         if (fileIds == null || fileIds.isEmpty()) {
