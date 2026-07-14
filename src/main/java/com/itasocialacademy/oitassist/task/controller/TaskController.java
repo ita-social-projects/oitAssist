@@ -150,6 +150,18 @@ public class TaskController {
         return ResponseEntity.ok().body(taskService.changeTaskOwner(taskId, changeOwnerRequest));
     }
 
+    @Operation(
+        summary = "Delete a task",
+        description = "Deletes a task by its id. Only the task owner or users with ADMIN role can delete a task.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Task deleted successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied - User does not own this task",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Task not found",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @DeleteMapping("/{taskId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<Void> deleteTask(@PathVariable Long taskId) {
