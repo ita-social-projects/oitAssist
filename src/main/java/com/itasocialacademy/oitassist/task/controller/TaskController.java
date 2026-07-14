@@ -143,7 +143,7 @@ public class TaskController {
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PatchMapping("/changeOwner/{taskId}")
+    @PatchMapping("/{taskId}/change-owner")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TaskResponseDTO> changeOwner(@PathVariable Long taskId,
         @Valid @RequestBody ChangeOwnerRequestDTO changeOwnerRequest) {
