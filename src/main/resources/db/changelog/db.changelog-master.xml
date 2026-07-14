@@ -17,4 +17,5 @@
     <include file="/db/changelog/logs/2026-07-08-ch-create-applications-Haleliuk.xml"/>
     <include file="/db/changelog/logs/2026-07-08-ch-create-participants-Haleliuk.xml"/>
     <include file="/db/changelog/logs/2026-07-10-ch-update-applications-Haleliuk.xml"/>
+    <include file="/db/changelog/logs/2026-07-14-ch-add-enum-status-to-stages-and-tours.xml"/>
 </databaseChangeLog>

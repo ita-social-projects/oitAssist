@@ -41,6 +41,6 @@ public class Stage extends CompetitionEvent {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(name = "stage_status", nullable = false)
-    private StageStatus stageStatus = StageStatus.SCHEDULED;
+    @Column(name = "status", nullable = false)
+    private StageStatus status = StageStatus.SCHEDULED;
 }
