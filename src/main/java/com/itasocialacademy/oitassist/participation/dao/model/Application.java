@@ -17,4 +17,9 @@ import lombok.experimental.SuperBuilder;
 public class Application extends ParticipationRequestEvent {
     @Column(name = "processed_by")
     private Long processedBy;
+
+    @Override
+    public Long getUserId() {
+        return getIssuedBy();
+    }
 }

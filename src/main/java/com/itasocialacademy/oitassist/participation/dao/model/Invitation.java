@@ -17,4 +17,9 @@ import lombok.experimental.SuperBuilder;
 public class Invitation extends ParticipationRequestEvent {
     @Column(name = "student_id")
     private Long studentId;
+
+    @Override
+    public Long getUserId() {
+        return getStudentId();
+    }
 }
