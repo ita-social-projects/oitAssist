@@ -96,9 +96,7 @@ public class TaskServiceImpl implements TaskService {
         TaskBody existingTask = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        if (!isOwnerOrAdmin(existingTask.getOwnerId())) {
-            throw new TaskAccessRestrictedException(taskId);
-        }
+        checkOwnerOrAdmin(existingTask.getOwnerId(), existingTask.getId());
 
         existingTask.setTitle(requestDTO.title());
         existingTask.setDescription(requestDTO.description());
@@ -143,6 +141,20 @@ public class TaskServiceImpl implements TaskService {
         return taskBodyMapper.toResponse(taskBodyRepository.save(task));
     }
 
+    // TODO: Implement TaskAssignment validation to check if this task is currently
+    // assigned to any tour.
+    @Override
+    @Transactional
+    public void deleteTask(Long taskId) {
+        TaskBody taskToDelete = taskBodyRepository.findById(taskId)
+            .orElseThrow(() -> new TaskNotFoundException(taskId));
+
+        checkOwnerOrAdmin(taskToDelete.getOwnerId(), taskToDelete.getId());
+
+        taskBodyRepository.delete(taskToDelete);
+        log.debug("Task {} with title {} deleted", taskId, taskToDelete.getTitle());
+    }
+
     // helpers
     private void publishAttachEvent(Long taskBodyId, List<Long> fileIds, Long authorId) {
         if (fileIds == null || fileIds.isEmpty()) {
@@ -162,11 +174,10 @@ public class TaskServiceImpl implements TaskService {
             new FilesDetachRequestedEvent(RelatedEntityType.TASK, taskBodyId, removedFileIds, authorId));
     }
 
-    private boolean isOwnerOrAdmin(Long taskBodyOwnerId) {
-        if (securityFacade.hasRole("ADMIN")) {
-            return true;
+    private void checkOwnerOrAdmin(Long taskBodyOwnerId, Long taskId) {
+        if (!securityFacade.hasRole("ADMIN") && !securityFacade.isOwner(taskBodyOwnerId)) {
+            throw new TaskAccessRestrictedException(taskId);
         }
-        return securityFacade.isOwner(taskBodyOwnerId);
     }
 
     private boolean isOrgOrAdmin(UserAuthDetails userDetails) {

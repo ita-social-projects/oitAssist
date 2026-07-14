@@ -77,4 +77,15 @@ public interface TaskService {
      *                               role
      */
     TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO changeOwnerRequest);
+
+    /**
+     * Deletes a task by its id. Only the task owner or users with ADMIN role can
+     * delete a task.
+     *
+     * @param taskId the ID of the task to delete
+     * @throws TaskNotFoundException         if the task does not exist
+     * @throws TaskAccessRestrictedException if the user is neither the task owner
+     *                                       nor an ADMIN
+     */
+    void deleteTask(Long taskId);
 }
