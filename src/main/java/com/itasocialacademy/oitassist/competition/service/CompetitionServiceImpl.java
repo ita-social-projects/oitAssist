@@ -96,19 +96,19 @@ public class CompetitionServiceImpl implements CompetitionService {
 
     @Override
     @Transactional
-    public CompetitionResponse changeStatus(Long id, CompetitionStatus newStatus) {
-        Competition competition = competitionRepository.findById(id)
-            .orElseThrow(() -> new CompetitionNotFoundException(id));
+    public CompetitionResponse changeStatus(Long competitionId, CompetitionStatus status) {
+        Competition competition = competitionRepository.findById(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
 
         CompetitionStatus currentStatus = competition.getCompetitionStatus();
 
-        validateStatusTransition(currentStatus, newStatus);
+        validator.validateCompetitionStatusTransition(currentStatus, status);
 
-        if (newStatus == CompetitionStatus.PUBLISHED) {
-            validatePublishingRequirements(id);
+        if (status == CompetitionStatus.PUBLISHED) {
+            validatePublishingRequirements(competitionId);
         }
 
-        competition.setCompetitionStatus(newStatus);
+        competition.setCompetitionStatus(status);
         return mapper.toResponse(competitionRepository.save(competition));
     }
 
@@ -142,25 +142,6 @@ public class CompetitionServiceImpl implements CompetitionService {
             .toList();
 
         return new CompetitionTreeResponse(competition, stageTrees);
-    }
-
-    private void validateStatusTransition(CompetitionStatus current, CompetitionStatus target) {
-        if (current == target) {
-            return;
-        }
-
-        boolean isValid = switch (current) {
-            case DRAFT -> target == CompetitionStatus.ENROLLMENT;
-            case ENROLLMENT -> target == CompetitionStatus.PUBLISHED;
-            case PUBLISHED -> target == CompetitionStatus.FINISHED;
-            case FINISHED -> target == CompetitionStatus.ARCHIVED;
-            case ARCHIVED -> false;
-        };
-
-        if (!isValid) {
-            throw new CompetitionHierarchyValidationException(
-                "Invalid status transition from " + current + " to " + target);
-        }
     }
 
     private void validatePublishingRequirements(Long competitionId) {

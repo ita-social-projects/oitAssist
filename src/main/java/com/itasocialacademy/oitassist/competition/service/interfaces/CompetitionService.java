@@ -18,27 +18,27 @@ public interface CompetitionService {
     /**
      * Retrieve a competition by ID w/o checking access role.
      *
-     * @param id Competition ID
+     * @param competitionId Competition ID
      */
-    CompetitionResponse getById(Long id);
+    CompetitionResponse getById(Long competitionId);
 
     /**
      * Retrieves details of a specific by ID. Visibility depends on user role.
      *
-     * @param id Competition ID
+     * @param competitionId Competition ID
      * @return {@link CompetitionResponse}
      */
-    CompetitionResponse getVisibleById(Long id);
+    CompetitionResponse getVisibleById(Long competitionId);
 
     /**
      * Transitions the competition to a new status. Publishing requires at least one
      * Stage and one Tour.
      *
-     * @param id        Competition ID
-     * @param newStatus a status of a Competition
+     * @param competitionId        Competition ID
+     * @param status a status of a Competition
      * @return {@link CompetitionResponse}
      */
-    CompetitionResponse changeStatus(Long id, CompetitionStatus newStatus);
+    CompetitionResponse changeStatus(Long competitionId, CompetitionStatus status);
 
     Page<CompetitionResponse> getAllVisible(Pageable pageable);
 
