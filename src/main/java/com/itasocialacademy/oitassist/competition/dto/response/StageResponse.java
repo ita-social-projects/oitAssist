@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.competition.dto.response;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
+import com.itasocialacademy.oitassist.competition.dao.enums.StageStatus;
 import java.time.ZonedDateTime;
 import lombok.Builder;
 
@@ -13,5 +14,6 @@ public record StageResponse(
     ZonedDateTime dateStart,
     ZonedDateTime dateFinish,
     Short sortPosition,
-    StageScope scope) {
+    StageScope scope,
+    StageStatus status) {
 }
