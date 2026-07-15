@@ -14,17 +14,21 @@ import lombok.experimental.SuperBuilder;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public abstract class EnrollmentResponse {
+public abstract class ProcessEnrollmentResponse {
     @Schema(description = "Unique identifier of the enrollment request", example = "1")
-    private Long id;
+    Long id;
     @Schema(description = "Unique identifier of the competition", example = "1")
-    private Long competitionId;
+    Long competitionId;
     @Schema(description = "Unique identifier of the stage", example = "1")
-    private Long stageId;
+    Long stageId;
     @Schema(description = "ID of the user who issued the request", example = "5")
-    private Long issuedBy;
+    Long issuedBy;
     @Schema(description = "Request creation date", example = "2026-06-07T09:50:30Z")
-    private Instant issuedAt;
-    @Schema(description = "Current request status", example = "ACCEPTED")
-    private RequestStatus status;
+    Instant issuedAt;
+    @Schema(description = "Request updating date", example = "2026-06-07T10:12:00Z")
+    Instant processedAt;
+    @Schema(description = "Updated request status", example = "ACCEPTED")
+    RequestStatus status;
+    @Schema(description = "Request rejection reason (optional)")
+    String rejectionReason;
 }

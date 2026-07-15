@@ -6,9 +6,11 @@ import lombok.experimental.SuperBuilder;
 
 @Getter
 @Setter
+@NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-@Schema(description = "DTO representing an Application creation response")
-public class CreateApplicationResponse extends EnrollmentResponse {
+@Schema(description = "DTO representing an Invitation processing response")
+public class ProcessInvitationResponse extends ProcessEnrollmentResponse {
+    private Long studentId;
 }
