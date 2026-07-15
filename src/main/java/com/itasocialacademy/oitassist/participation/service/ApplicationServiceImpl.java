@@ -97,8 +97,8 @@ public class ApplicationServiceImpl implements ApplicationService {
     private void validateNoPendingApplication(Long userId, CreateApplicationRequest createApplicationRequest) {
         boolean hasPendingApplication = applicationRepository.existsByIssuedByAndCompetitionIdAndStageIdAndStatus(
             userId,
-            createApplicationRequest.competitionId(),
-            createApplicationRequest.stageId(),
+            createApplicationRequest.getCompetitionId(),
+            createApplicationRequest.getStageId(),
             RequestStatus.PENDING);
         if (hasPendingApplication) {
             throw new UserApplicationRequestException("User already has a pending request");
@@ -108,16 +108,16 @@ public class ApplicationServiceImpl implements ApplicationService {
     private void validateUserDoesNotAlreadyParticipate(Long userId, CreateApplicationRequest createApplicationRequest) {
         boolean isParticipant = participationRepository.existsByUserIdAndCompetitionIdAndStageId(
             userId,
-            createApplicationRequest.competitionId(),
-            createApplicationRequest.stageId());
+            createApplicationRequest.getCompetitionId(),
+            createApplicationRequest.getStageId());
         if (isParticipant) {
             throw new UserApplicationRequestException("User is already a participant");
         }
     }
 
     private void validateCompetitionAndStageInfo(CreateApplicationRequest createApplicationRequest) {
-        Long competitionId = createApplicationRequest.competitionId();
-        Long stageId = createApplicationRequest.stageId();
+        Long competitionId = createApplicationRequest.getCompetitionId();
+        Long stageId = createApplicationRequest.getStageId();
         CompetitionDetail competitionDetail = competitionFacade.findCompetitionById(competitionId)
             .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
         StageDetail stageDetail = competitionFacade.findStageById(stageId)

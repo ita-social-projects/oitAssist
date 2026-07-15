@@ -1,17 +1,21 @@
 package com.itasocialacademy.oitassist.participation.dao.dto.response;
 
-import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
-import java.time.Instant;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
-import lombok.Builder;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
-@Builder
-public record CreateInvitationResponse(
-    Long id,
-    Long competitionId,
-    Long stageId,
-    List<Long> studentIds,
-    Long issuedBy,
-    Instant issuedAt,
-    RequestStatus status) {
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+@Schema(description = "DTO representing an Invitation creation response")
+public class CreateInvitationResponse extends EnrollmentResponse {
+    @Schema(
+        description = "List of students IDs",
+        type = "array", example = "[1, 3, 4]",
+        requiredMode = Schema.RequiredMode.REQUIRED)
+    private List<Long> studentIds;
 }

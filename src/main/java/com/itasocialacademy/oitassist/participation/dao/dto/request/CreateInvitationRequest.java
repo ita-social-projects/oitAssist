@@ -1,11 +1,24 @@
 package com.itasocialacademy.oitassist.participation.dao.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
-import lombok.Builder;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
-@Builder
-public record CreateInvitationRequest(
-    Long competitionId,
-    Long stageId,
-    List<Long> studentIds) {
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+@Schema(description = "DTO for creating a new Invitation. "
+    + "Newly created invitations will initially have the PENDING status.")
+public class CreateInvitationRequest extends EnrollmentRequest {
+    @Schema(
+        description = "List of students IDs",
+        type = "array", example = "[1, 3, 4]",
+        requiredMode = Schema.RequiredMode.REQUIRED)
+    @NotEmpty
+    private List<Long> studentIds;
 }
