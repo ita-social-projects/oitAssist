@@ -360,7 +360,7 @@ class TaskServiceTest {
     @Test
     void changeTaskOwner_asAdmin_toOrgUser_shouldSucceed() {
         ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("newowner@mail.com");
-        UserAuthDetails newOwner = new UserAuthDetails(200L, "newowner@mail.com","12345678", Role.ORG);
+        UserAuthDetails newOwner = new UserAuthDetails(200L, "newowner@mail.com", "12345678", Role.ORG);
 
         TaskResponseDTO changedResponse = TaskResponseDTO.builder()
             .id(1L).title("Test Task").description("Test Description")
@@ -420,7 +420,7 @@ class TaskServiceTest {
     @Test
     void changeTaskOwner_newOwnerNotOrgOrAdmin_shouldThrowValidationException() {
         ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("student@mail.com");
-        UserAuthDetails studentUser = new UserAuthDetails(300L, "student@mail.com","12345678", Role.USER);
+        UserAuthDetails studentUser = new UserAuthDetails(300L, "student@mail.com", "12345678", Role.USER);
 
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));

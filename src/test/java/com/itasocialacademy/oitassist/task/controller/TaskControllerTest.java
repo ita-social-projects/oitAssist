@@ -63,8 +63,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
         when(taskService.createTask(any(CreateTaskRequestDTO.class))).thenReturn(mockTaskResponse);
 
         mockMvc.perform(post("/api/v1/tasks")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(1L))
             .andExpect(jsonPath("$.title").value("PowerPoint Різдвяна зірка"))
@@ -82,8 +82,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .thenThrow(new TaskAccessRestrictedException(0L));
 
         mockMvc.perform(post("/api/v1/tasks")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isForbidden());
     }
 
@@ -95,8 +95,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             List.of(1L));
 
         mockMvc.perform(post("/api/v1/tasks")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
     }
 
@@ -108,8 +108,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             List.of());
 
         mockMvc.perform(post("/api/v1/tasks")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
     }
 
@@ -144,8 +144,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
         when(taskService.getAllTasks(any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/tasks")
-                .param("page", "0")
-                .param("size", "15"))
+            .param("page", "0")
+            .param("size", "15"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content[0].id").value(1L))
@@ -162,8 +162,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .thenThrow(new TaskAccessRestrictedException(0L));
 
         mockMvc.perform(get("/api/v1/tasks")
-                .param("page", "0")
-                .param("size", "15"))
+            .param("page", "0")
+            .param("size", "15"))
             .andExpect(status().isForbidden());
     }
 
@@ -175,8 +175,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
         when(taskService.getAllMyTasks(any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/tasks/my")
-                .param("page", "0")
-                .param("size", "15"))
+            .param("page", "0")
+            .param("size", "15"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content[0].id").value(1L))
@@ -208,8 +208,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
         when(taskService.updateTask(eq(1L), any(UpdateTaskRequestDTO.class))).thenReturn(updatedResponse);
 
         mockMvc.perform(put("/api/v1/tasks/{taskId}", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1L))
             .andExpect(jsonPath("$.title").value("Оновлена назва завдання"))
@@ -227,8 +227,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .thenThrow(new TaskAccessRestrictedException(1L));
 
         mockMvc.perform(put("/api/v1/tasks/{taskId}", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isForbidden());
     }
 
@@ -241,8 +241,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .thenThrow(new TaskNotFoundException(99L));
 
         mockMvc.perform(put("/api/v1/tasks/{taskId}", 99L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isNotFound());
     }
 
@@ -255,8 +255,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             null);
 
         mockMvc.perform(put("/api/v1/tasks/{taskId}", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
     }
 
@@ -278,8 +278,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .thenReturn(changedOwnerResponse);
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/change-owner", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1L))
             .andExpect(jsonPath("$.ownerId").value(200L));
@@ -295,8 +295,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .thenThrow(new TaskAccessRestrictedException(1L));
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/change-owner", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isForbidden());
     }
 
@@ -305,8 +305,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
         ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("not-an-email");
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/change-owner", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
     }
 
@@ -315,8 +315,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
         ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("");
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/change-owner", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
     }
 
@@ -348,4 +348,3 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .andExpect(status().isNotFound());
     }
 }
-
