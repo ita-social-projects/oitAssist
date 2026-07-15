@@ -44,7 +44,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
-    public CreateApplicationResponse userApply(CreateApplicationRequest createApplicationRequest) {
+    public CreateApplicationResponse sendEnrollmentRequest(CreateApplicationRequest createApplicationRequest) {
         Long userId = getCurrentUserIdOrThrow();
         validateUserCanApply(userId, createApplicationRequest);
         Application application = applicationMapper.toEntity(createApplicationRequest);
@@ -54,7 +54,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
-    public ProcessApplicationResponse acceptUserApplication(Long applicationId) {
+    public ProcessApplicationResponse acceptRequest(Long applicationId) {
         Application application = getPendingApplicationOrThrow(applicationId);
         Long userId = getCurrentUserIdOrThrow();
         participationRepository.save(participationMapper.toParticipation(application));
@@ -66,7 +66,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
-    public ProcessApplicationResponse rejectUserApplication(Long applicationId, RejectEnrollmentRequest request) {
+    public ProcessApplicationResponse rejectRequest(Long applicationId, RejectEnrollmentRequest request) {
         Application application = getPendingApplicationOrThrow(applicationId);
         Long userId = getCurrentUserIdOrThrow();
         application.setStatus(RequestStatus.REJECTED);
@@ -78,7 +78,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
-    public ProcessApplicationResponse cancelUserApplication(Long applicationId) {
+    public ProcessApplicationResponse cancelRequest(Long applicationId) {
         Long userId = getCurrentUserIdOrThrow();
         Application application = getPendingApplicationOrThrow(applicationId);
         validateUserCanCancelApplication(userId, application);
