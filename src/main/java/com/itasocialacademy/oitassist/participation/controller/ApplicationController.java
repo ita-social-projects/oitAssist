@@ -55,7 +55,7 @@ public class ApplicationController {
     public ResponseEntity<CreateApplicationResponse> apply(
         @Valid @RequestBody CreateApplicationRequest createApplicationRequest) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(applicationService.userApply(createApplicationRequest));
+            .body((CreateApplicationResponse) applicationService.sendEnrollmentRequest(createApplicationRequest));
     }
 
     @Operation(
@@ -77,7 +77,7 @@ public class ApplicationController {
     @PostMapping("/accept/{id}")
     public ResponseEntity<ProcessApplicationResponse> acceptRequest(@PathVariable Long id) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(applicationService.acceptUserApplication(id));
+            .body((ProcessApplicationResponse) applicationService.acceptRequest(id));
     }
 
     @Operation(
@@ -100,7 +100,7 @@ public class ApplicationController {
         @PathVariable Long id,
         @RequestBody RejectEnrollmentRequest rejectEnrollmentRequest) {
         return ResponseEntity.status(HttpStatus.OK)
-            .body(applicationService.rejectUserApplication(id, rejectEnrollmentRequest));
+            .body((ProcessApplicationResponse) applicationService.rejectRequest(id, rejectEnrollmentRequest));
     }
 
     @Operation(
@@ -124,6 +124,6 @@ public class ApplicationController {
     @PatchMapping("/cancel/{id}")
     public ResponseEntity<ProcessApplicationResponse> cancelRequest(@PathVariable Long id) {
         return ResponseEntity.status(HttpStatus.OK)
-            .body(applicationService.cancelUserApplication(id));
+            .body((ProcessApplicationResponse) applicationService.cancelRequest(id));
     }
 }
