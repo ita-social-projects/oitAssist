@@ -2,7 +2,7 @@ package com.itasocialacademy.oitassist.participation.controller;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
@@ -105,7 +105,7 @@ class ApplicationControllerTest extends ControllerUnitTest<ApplicationController
     @Test
     void rejectRequest_shouldReturnOk_whenApplicationIsPending() throws Exception {
         Long applicationId = 1L;
-        RejectApplicationRequest request = new RejectApplicationRequest("Does not meet requirements");
+        RejectEnrollmentRequest request = new RejectEnrollmentRequest("Does not meet requirements");
 
         ProcessApplicationResponse response = ProcessApplicationResponse.builder()
             .id(applicationId)
@@ -119,7 +119,7 @@ class ApplicationControllerTest extends ControllerUnitTest<ApplicationController
             .rejectionReason("Does not meet requirements")
             .build();
 
-        when(applicationService.rejectUserApplication(eq(applicationId), any(RejectApplicationRequest.class)))
+        when(applicationService.rejectUserApplication(eq(applicationId), any(RejectEnrollmentRequest.class)))
             .thenReturn(response);
 
         mockMvc.perform(patch("/api/v1/competitions/applications/reject/{id}", applicationId)
@@ -130,7 +130,7 @@ class ApplicationControllerTest extends ControllerUnitTest<ApplicationController
             .andExpect(jsonPath("$.status").value("REJECTED"))
             .andExpect(jsonPath("$.rejectionReason").value("Does not meet requirements"));
 
-        verify(applicationService).rejectUserApplication(eq(applicationId), any(RejectApplicationRequest.class));
+        verify(applicationService).rejectUserApplication(eq(applicationId), any(RejectEnrollmentRequest.class));
     }
 
     @Test

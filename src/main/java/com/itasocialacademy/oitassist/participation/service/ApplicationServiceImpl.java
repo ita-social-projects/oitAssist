@@ -11,7 +11,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundExcept
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
@@ -66,7 +66,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
-    public ProcessApplicationResponse rejectUserApplication(Long applicationId, RejectApplicationRequest request) {
+    public ProcessApplicationResponse rejectUserApplication(Long applicationId, RejectEnrollmentRequest request) {
         Application application = getPendingApplicationOrThrow(applicationId);
         Long userId = getCurrentUserIdOrThrow();
         application.setStatus(RequestStatus.REJECTED);

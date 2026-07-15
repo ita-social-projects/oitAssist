@@ -10,7 +10,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFound
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
@@ -299,7 +299,7 @@ class ApplicationServiceTest {
 
     @Test
     void rejectUserApplication_pendingApplication_shouldSetRejectedAndReason() {
-        RejectApplicationRequest request = new RejectApplicationRequest("Invalid profile information");
+        RejectEnrollmentRequest request = new RejectEnrollmentRequest("Invalid profile information");
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(10L));
         when(applicationRepository.findById(1L)).thenReturn(Optional.of(application));
@@ -324,7 +324,7 @@ class ApplicationServiceTest {
 
     @Test
     void rejectUserApplication_applicationNotFound_shouldThrowApplicationNotFoundException() {
-        RejectApplicationRequest request = new RejectApplicationRequest("Invalid profile information");
+        RejectEnrollmentRequest request = new RejectEnrollmentRequest("Invalid profile information");
         when(applicationRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(ApplicationNotFoundException.class,
@@ -335,7 +335,7 @@ class ApplicationServiceTest {
 
     @Test
     void rejectUserApplication_applicationNotPending_shouldThrowUnableToProcessApplicationException() {
-        RejectApplicationRequest request = new RejectApplicationRequest("Invalid profile information");
+        RejectEnrollmentRequest request = new RejectEnrollmentRequest("Invalid profile information");
         application.setStatus(RequestStatus.CANCELLED);
         when(applicationRepository.findById(1L)).thenReturn(Optional.of(application));
 

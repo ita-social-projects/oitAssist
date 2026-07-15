@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.participation.controller;
 
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
@@ -98,9 +98,9 @@ public class ApplicationController {
     @PatchMapping("/reject/{id}")
     public ResponseEntity<ProcessApplicationResponse> rejectRequest(
         @PathVariable Long id,
-        @RequestBody RejectApplicationRequest rejectApplicationRequest) {
+        @RequestBody RejectEnrollmentRequest rejectEnrollmentRequest) {
         return ResponseEntity.status(HttpStatus.OK)
-            .body(applicationService.rejectUserApplication(id, rejectApplicationRequest));
+            .body(applicationService.rejectUserApplication(id, rejectEnrollmentRequest));
     }
 
     @Operation(
