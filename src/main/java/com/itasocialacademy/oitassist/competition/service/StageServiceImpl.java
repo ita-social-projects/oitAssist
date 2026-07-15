@@ -1,7 +1,9 @@
 package com.itasocialacademy.oitassist.competition.service;
 
+import com.itasocialacademy.oitassist.competition.dao.enums.StageStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeStageStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateStageRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.UpdateStageRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.StageResponse;
@@ -45,7 +47,8 @@ public class StageServiceImpl implements StageService {
                     "Sort position " + stage.getSortPosition() + " is already taken in this competition.");
             }
         } else {
-            Stage lastStage = stageRepository.findTopByCompetitionIdOrderBySortPositionDesc(competitionId);
+            Stage lastStage = stageRepository.findTopByCompetitionIdOrderBySortPositionDesc(competitionId)
+                .orElse(null);
             stage.setSortPosition(lastStage != null ? (short) (lastStage.getSortPosition() + 1) : 1);
         }
         return mapper.toResponse(stageRepository.save(stage));
@@ -105,6 +108,24 @@ public class StageServiceImpl implements StageService {
                         "Sort position " + stage.getSortPosition() + " is already taken.");
                 }
             });
+
+        return mapper.toResponse(stageRepository.save(stage));
+    }
+
+    @Override
+    @Transactional
+    public StageResponse changeStatus(Long compId, Long stageId, ChangeStageStatusRequest request) {
+        Stage stage = stageRepository.findById(stageId)
+            .orElseThrow(() -> new StageNotFoundException(stageId));
+
+        validator.validateStageEligibility(compId, stage.getCompetitionId());
+        validator.validateStageStatusTransition(stage.getStatus(), request.status());
+
+        if (request.status() == StageStatus.IN_PROGRESS) {
+            validator.validateStageEligibilityToStart(stage);
+        }
+
+        stage.setStatus(request.status());
 
         return mapper.toResponse(stageRepository.save(stage));
     }

@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.competition.dao.repository;
 
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,7 +30,7 @@ public interface StageRepository extends JpaRepository<Stage, Long> {
     /**
      * Find the stage with the maximum sort_position within the Competition.
      */
-    Stage findTopByCompetitionIdOrderBySortPositionDesc(Long competitionId);
+    Optional<Stage> findTopByCompetitionIdOrderBySortPositionDesc(Long competitionId);
 
     /**
      * Checks whether a stage with that sort position already exists within a
@@ -43,4 +44,6 @@ public interface StageRepository extends JpaRepository<Stage, Long> {
               AND NOT EXISTS (SELECT t FROM Tour t WHERE t.stageId = s.id)
         """)
     long countStagesWithoutTours(@Param("competitionId") Long competitionId);
+
+    Optional<Stage> findByCompetitionIdAndSortPosition(Long competitionId, Short sortPosition);
 }

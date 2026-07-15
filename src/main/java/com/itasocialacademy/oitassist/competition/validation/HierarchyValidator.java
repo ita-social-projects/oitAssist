@@ -1,6 +1,8 @@
 package com.itasocialacademy.oitassist.competition.validation;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
+import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
+import com.itasocialacademy.oitassist.competition.dao.enums.StageStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import com.itasocialacademy.oitassist.competition.dao.model.Tour;
@@ -47,8 +49,7 @@ public class HierarchyValidator {
     }
 
     /**
-     * Checks whether it is allowed to change the hierarchy (add/remove stages and
-     * tours).
+     * Checks whether it is allowed to change the hierarchy (add/remove stages and tours).
      *
      * @param competitionId ID of a competition
      */
@@ -83,13 +84,11 @@ public class HierarchyValidator {
     }
 
     /**
-     * Validates that the stage belongs to the competition specified in the request
-     * path. Prevents cross-competition manipulation (e.g., updating Stage 5 via
-     * /competitions/999/stages/5).
+     * Validates that the stage belongs to the competition specified in the request path. Prevents cross-competition
+     * manipulation (e.g., updating Stage 5 via /competitions/999/stages/5).
      *
      * @param pathCompetitionId   Competition ID taken from URI as a path variable
-     * @param entityCompetitionId Competition ID extracted from the fetched Stage
-     *                            entity
+     * @param entityCompetitionId Competition ID extracted from the fetched Stage entity
      */
     public void validateStageEligibility(Long pathCompetitionId, Long entityCompetitionId) {
         if (!pathCompetitionId.equals(entityCompetitionId)) {
@@ -128,9 +127,8 @@ public class HierarchyValidator {
     }
 
     /**
-     * Validates that narrowing a Stage's date range does not orphan any of its
-     * already-existing Tours — i.e. that every Tour currently under this Stage
-     * would still fall within the proposed new {@code newStart}/{@code newFinish}
+     * Validates that narrowing a Stage's date range does not orphan any of its already-existing Tours — i.e. that every
+     * Tour currently under this Stage would still fall within the proposed new {@code newStart}/{@code newFinish}
      * window.
      */
     @Transactional(readOnly = true)
@@ -146,6 +144,116 @@ public class HierarchyValidator {
             throw new CompetitionHierarchyValidationException(
                 "Cannot update stage dates to (%s - %s): %d existing tour(s) would fall outside the new range: %s"
                     .formatted(newStart, newFinish, violatingTitles.size(), String.join(", ", violatingTitles)));
+        }
+    }
+
+    public void validateTourStatusTransition(ExecutionStatus current, ExecutionStatus target) {
+        if (current == target) {
+            return;
+        }
+
+        boolean isValid = switch (current) {
+            case SCHEDULED -> target == ExecutionStatus.IN_PROGRESS || target == ExecutionStatus.CANCELLED;
+            case IN_PROGRESS -> target == ExecutionStatus.CLOSED || target == ExecutionStatus.FINISHED
+                || target == ExecutionStatus.CANCELLED;
+            case CLOSED -> target == ExecutionStatus.IN_PROGRESS || target == ExecutionStatus.FINISHED
+                || target == ExecutionStatus.CANCELLED;
+            case FINISHED, CANCELLED -> false;
+        };
+
+        if (!isValid) {
+            throw new CompetitionHierarchyValidationException(
+                "Invalid tour execution status transition from " + current + " to " + target);
+        }
+    }
+
+    public void validateStageStatusTransition(StageStatus current, StageStatus target) {
+        if (current == target) {
+            return;
+        }
+
+        boolean isValid = switch (current) {
+            case SCHEDULED -> target == StageStatus.IN_PROGRESS || target == StageStatus.CANCELLED;
+            case IN_PROGRESS -> target == StageStatus.FINISHED || target == StageStatus.CANCELLED;
+            case FINISHED, CANCELLED -> false;
+        };
+
+        if (!isValid) {
+            throw new CompetitionHierarchyValidationException(
+                "Invalid stage status transition from " + current + " to " + target);
+        }
+    }
+
+    public void validateCompetitionStatusTransition(CompetitionStatus current, CompetitionStatus target) {
+        if (current == target) {
+            return;
+        }
+
+        boolean isValid = switch (current) {
+            case DRAFT -> target == CompetitionStatus.ENROLLMENT;
+            case ENROLLMENT -> target == CompetitionStatus.PUBLISHED;
+            case PUBLISHED -> target == CompetitionStatus.FINISHED;
+            case FINISHED -> target == CompetitionStatus.ARCHIVED;
+            case ARCHIVED -> false;
+        };
+
+        if (!isValid) {
+            throw new CompetitionHierarchyValidationException(
+                "Invalid status transition from " + current + " to " + target);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void validateTourEligibilityToStart(Tour currentTour) {
+        if (currentTour.getSortPosition() == 1) {
+            return;
+        }
+
+        short previousSortPosition = (short) (currentTour.getSortPosition() - 1);
+
+        Tour previousTour = tourRepository
+            .findByStageIdAndSortPosition(currentTour.getStageId(), previousSortPosition)
+            .orElseThrow(() -> new CompetitionHierarchyValidationException(
+                "Previous tour with sort position " + previousSortPosition + " not found"
+            ));
+
+        if (previousTour.getExecutionStatus() != ExecutionStatus.FINISHED) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot start tour '%s'. The previous tour '%s' is not yet FINISHED (Current status: %s)."
+                    .formatted(currentTour.getTitle(), previousTour.getTitle(), previousTour.getExecutionStatus())
+            );
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void validateStageEligibilityToStart(Stage currentStage) {
+        if (currentStage.getSortPosition() == 1) {
+            return;
+        }
+
+        short previousSortPosition = (short) (currentStage.getSortPosition() - 1);
+
+        Stage previousStage = stageRepository
+            .findByCompetitionIdAndSortPosition(currentStage.getCompetitionId(), previousSortPosition)
+            .orElseThrow(() -> new CompetitionHierarchyValidationException(
+                "Previous stage with sort position " + previousSortPosition + " not found"
+            ));
+
+        if (previousStage.getStatus() != StageStatus.FINISHED) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot start stage '%s'. The previous stage '%s' is not yet FINISHED (Current status: %s)."
+                    .formatted(currentStage.getTitle(), previousStage.getTitle(), previousStage.getStatus())
+            );
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void validateTourEligibilityToResume(Tour tour) {
+        if (tour.getDateFinish().isBefore(ZonedDateTime.now())) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot resume tour '%s'. The finish date (%s) is in the past. Please update the tour dates first to provide extra time."
+                    .formatted(tour.getTitle(), tour.getDateFinish())
+            );
         }
     }
 }
