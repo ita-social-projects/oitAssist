@@ -1,7 +1,9 @@
 package com.itasocialacademy.oitassist.competition.service;
 
+import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Tour;
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeTourStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateTourRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.UpdateTourRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
@@ -36,7 +38,7 @@ public class TourServiceImpl implements TourService {
         }
 
         if (tour.getSortPosition() == null) {
-            Tour lastTour = tourRepository.findTopByStageIdOrderBySortPositionDesc(stageId);
+            Tour lastTour = tourRepository.findTopByStageIdOrderBySortPositionDesc(stageId).orElse(null);
             tour.setSortPosition(lastTour != null ? (short) (lastTour.getSortPosition() + 1) : 1);
         }
 
@@ -97,6 +99,35 @@ public class TourServiceImpl implements TourService {
             });
 
         return mapper.toResponse(tourRepository.save(tour));
+    }
+
+    @Override
+    @Transactional
+    public TourResponse changeStatus(Long stageId, Long tourId, ChangeTourStatusRequest request) {
+        Tour tour = tourRepository.findById(tourId)
+            .orElseThrow(() -> new TourNotFoundException(tourId));
+
+        validator.validateTourEligibility(stageId, tour.getStageId());
+        validator.validateTourStatusTransition(tour.getExecutionStatus(), request.status());
+
+        if (request.status() == ExecutionStatus.IN_PROGRESS) {
+            if (tour.getExecutionStatus() == ExecutionStatus.SCHEDULED) {
+                // Simple start
+                validator.validateTourEligibilityToStart(tour);
+            } else if (tour.getExecutionStatus() == ExecutionStatus.CLOSED) {
+                // Resume after closure
+                validator.validateTourEligibilityToResume(tour);
+            }
+        }
+        tour.setExecutionStatus(request.status());
+
+        // place for publishing events (TBD)
+        // if (request.status() == ExecutionStatus.FINISHED) {
+        //     eventPublisher.publishEvent(new TourFinishedEvent(tour.getId()));
+        // }
+
+        Tour updatedTour = tourRepository.save(tour);
+        return mapper.toResponse(updatedTour);
     }
 
     @Override

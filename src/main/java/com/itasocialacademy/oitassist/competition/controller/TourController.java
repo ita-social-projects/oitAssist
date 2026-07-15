@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.controller;
 
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeTourStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.UpdateTourRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateTourRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -71,6 +73,21 @@ public class TourController {
         @PathVariable Long tourId,
         @Valid @RequestBody UpdateTourRequest request) {
         return ResponseEntity.ok(tourService.update(stageId, tourId, request));
+    }
+
+    @Operation(summary = "Change tour execution status manually")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Tour updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Validation failed",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/stages/{stageId}/tours/{tourId}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
+    public ResponseEntity<TourResponse> changeStatus(
+        @PathVariable Long stageId,
+        @PathVariable Long tourId,
+        @Valid @RequestBody ChangeTourStatusRequest request) {
+        return ResponseEntity.ok(tourService.changeStatus(stageId, tourId, request));
     }
 
     @Operation(summary = "Delete a tour")

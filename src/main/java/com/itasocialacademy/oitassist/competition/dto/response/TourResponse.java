@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.dto.response;
 
+import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import java.time.ZonedDateTime;
 import lombok.Builder;
 
@@ -12,5 +13,6 @@ public record TourResponse(
     ZonedDateTime dateStart,
     ZonedDateTime dateFinish,
     Short sortPosition,
-    String location) {
+    String location,
+    ExecutionStatus executionStatus) {
 }
