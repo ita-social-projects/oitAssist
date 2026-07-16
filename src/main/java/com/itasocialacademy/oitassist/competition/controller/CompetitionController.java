@@ -59,7 +59,9 @@ public class CompetitionController {
         description = "Retrieves a paginated list of competitions. "
             + "Visibility depends on user role (e.g., USER sees only PUBLISHED/ARCHIVED, ORG sees their DRAFTs).")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Competitions retrieved successfully")
+        @ApiResponse(responseCode = "200", description = "Competitions retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping
     @PreAuthorize("isAuthenticated()")

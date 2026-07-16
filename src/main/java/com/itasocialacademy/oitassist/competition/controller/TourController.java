@@ -39,6 +39,10 @@ public class TourController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Tour created successfully"),
         @ApiResponse(responseCode = "400", description = "Validation failed (e.g., date overlap)",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Tour not found",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/stages/{stageId}/tours")
@@ -51,7 +55,15 @@ public class TourController {
     }
 
     @Operation(summary = "Get all tours for a stage")
-    @ApiResponse(responseCode = "200", description = "List of tours retrieved successfully")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "List of tours retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Validation failed",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Tour not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @GetMapping("/stages/{stageId}/tours")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<TourResponse>> getAllTours(@PathVariable Long stageId) {
@@ -63,8 +75,10 @@ public class TourController {
         @ApiResponse(responseCode = "200", description = "Tour updated successfully"),
         @ApiResponse(responseCode = "400", description = "Validation failed",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "403", description = "Access denied"),
-        @ApiResponse(responseCode = "404", description = "Tour not found")
+        @ApiResponse(responseCode = "403", description = "Access denied",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Tour not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PutMapping("/stages/{stageId}/tours/{tourId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
@@ -79,7 +93,9 @@ public class TourController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Tour updated successfully"),
         @ApiResponse(responseCode = "400", description = "Validation failed",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
     })
     @PatchMapping("/stages/{stageId}/tours/{tourId}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
