@@ -23,4 +23,6 @@ public interface UserCompetitionService extends BaseService<UserCompetitionId, C
     boolean hasActiveCompetitions(Long userId, List<CompetitionStatus> statuses);
 
     Page<ResponseUserCompetitionDTO> getAllCompetitionsByStatus(UserCompetitionStatus status, Pageable pageable);
+
+    void markAsRead(Long competitionId);
 }

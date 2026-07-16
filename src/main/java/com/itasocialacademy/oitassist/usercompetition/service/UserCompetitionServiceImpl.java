@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.usercompetition.service;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.exceptions.NotFoundException;
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.CurrentUserDTO;
@@ -23,6 +24,7 @@ import com.itasocialacademy.oitassist.usercompetition.dao.model.UserCompetitionI
 import com.itasocialacademy.oitassist.usercompetition.dao.repository.UserCompetitionRepository;
 import com.itasocialacademy.oitassist.usercompetition.mapper.UserCompetitionMapper;
 import com.itasocialacademy.oitassist.usercompetition.service.interfaces.UserCompetitionService;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -55,5 +57,19 @@ public class UserCompetitionServiceImpl extends AbstractServiceImpl<UserCompetit
         Page<UserCompetition> userCompetitions = repository.findAllByAuthorIdAndStatus(authorId, status, pageable);
 
         return userCompetitions.map(mapper::toDto);
+    }
+
+    @Override
+    public void markAsRead(Long competitionId){
+        Long authorId = securityFacade.getCurrentUserId()
+                .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
+
+        UserCompetitionId userCompetitionId = new UserCompetitionId(authorId, competitionId);
+
+        UserCompetition userCompetition = repository.findById(userCompetitionId)
+                .orElseThrow(() -> new NotFoundException("Invitation not found", ErrorCode.ENTITY_NOT_FOUND));
+
+        userCompetition.setRead(true);
+        repository.save(userCompetition);
     }
 }

@@ -31,4 +31,11 @@ public class UserCompetitionController extends AbstractRestControllerImpl<UserCo
     ) {
         return ResponseEntity.ok(service.getAllCompetitionsByStatus(status, pageable));
     }
+
+    @PatchMapping("/{competitionId}/read")
+    public ResponseEntity<Void> markAsRead(@PathVariable Long competitionId) {
+        service.markAsRead(competitionId);
+
+        return ResponseEntity.noContent().build();
+    }
 }
