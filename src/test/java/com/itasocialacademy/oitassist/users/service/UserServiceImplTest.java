@@ -483,7 +483,7 @@ class UserServiceImplTest {
         when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(false);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
 
-        assertThatThrownBy(() -> userService.changeUserRole(targetUserId, Role.ORG))
+        assertThatThrownBy(() -> userService.changeUserStatus(targetUserId, UserStatus.ACTIVE))
             .isInstanceOf(InsufficientPermissionsException.class)
             .hasMessage("You do not have enough permissions to perform this action");
 
