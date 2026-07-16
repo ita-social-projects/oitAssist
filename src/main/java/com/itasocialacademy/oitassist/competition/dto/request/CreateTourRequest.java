@@ -31,12 +31,12 @@ public record CreateTourRequest(
         example = "2026-09-01T13:00:00Z",
         requiredMode = Schema.RequiredMode.REQUIRED) @NotNull ZonedDateTime dateFinish,
 
-    @Schema(
-        description = "Explicit sort position of the tour within the stage. "
-            + "If omitted, the tour is appended after the last existing tour.",
-        example = "1",
-        minimum = "1",
-        requiredMode = Schema.RequiredMode.NOT_REQUIRED) @Min(1) Short sortPosition,
+    //@Schema(
+    //    description = "Explicit sort position of the tour within the stage. "
+    //        + "If omitted, the tour is appended after the last existing tour.",
+    //    example = "1",
+    //    minimum = "1",
+    //    requiredMode = Schema.RequiredMode.NOT_REQUIRED) @Min(1) Short sortPosition,
 
     @Schema(
         description = "Physical or virtual location where the tour takes place",
