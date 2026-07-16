@@ -119,10 +119,13 @@ public class StageServiceImpl implements StageService {
             .orElseThrow(() -> new StageNotFoundException(stageId));
 
         validator.validateStageEligibility(compId, stage.getCompetitionId());
+        validator.checkIfCompetitionPublishedByCompetitionId(compId);
         validator.validateStageStatusTransition(stage.getStatus(), request.status());
 
         if (request.status() == StageStatus.IN_PROGRESS) {
             validator.validateStageEligibilityToStart(stage);
+        } else if (request.status() == StageStatus.FINISHED) {
+            validator.validateAllToursCompletedForStage(stageId);
         }
 
         stage.setStatus(request.status());

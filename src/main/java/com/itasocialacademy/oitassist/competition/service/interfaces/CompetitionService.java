@@ -34,8 +34,8 @@ public interface CompetitionService {
      * Transitions the competition to a new status. Publishing requires at least one
      * Stage and one Tour.
      *
-     * @param competitionId        Competition ID
-     * @param status a status of a Competition
+     * @param competitionId Competition ID
+     * @param status        a status of a Competition
      * @return {@link CompetitionResponse}
      */
     CompetitionResponse changeStatus(Long competitionId, CompetitionStatus status);

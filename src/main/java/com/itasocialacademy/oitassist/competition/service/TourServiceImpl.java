@@ -108,6 +108,8 @@ public class TourServiceImpl implements TourService {
             .orElseThrow(() -> new TourNotFoundException(tourId));
 
         validator.validateTourEligibility(stageId, tour.getStageId());
+        validator.checkIfCompetitionPublishedByStageId(stageId);
+        validator.checkIfStageInProgress(stageId, request.status());
         validator.validateTourStatusTransition(tour.getExecutionStatus(), request.status());
 
         if (request.status() == ExecutionStatus.IN_PROGRESS) {
@@ -123,7 +125,7 @@ public class TourServiceImpl implements TourService {
 
         // place for publishing events (TBD)
         // if (request.status() == ExecutionStatus.FINISHED) {
-        //     eventPublisher.publishEvent(new TourFinishedEvent(tour.getId()));
+        // eventPublisher.publishEvent(new TourFinishedEvent(tour.getId()));
         // }
 
         Tour updatedTour = tourRepository.save(tour);

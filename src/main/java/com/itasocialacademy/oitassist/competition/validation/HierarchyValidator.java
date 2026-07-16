@@ -15,6 +15,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundExcept
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
@@ -48,8 +49,43 @@ public class HierarchyValidator {
         checkVisibilityAccess(stage.getCompetitionId());
     }
 
+    @Transactional(readOnly = true)
+    public void checkIfCompetitionPublishedByStageId(Long stageId) {
+        Stage stage = stageRepository.findById(stageId)
+            .orElseThrow(() -> new StageNotFoundException(stageId));
+        checkIfCompetitionPublishedByCompetitionId(stage.getCompetitionId());
+    }
+
+    @Transactional(readOnly = true)
+    public void checkIfCompetitionPublishedByCompetitionId(Long competitionId) {
+        Competition competition = competitionRepository.findById(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+        if (competition.getCompetitionStatus() != CompetitionStatus.PUBLISHED) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot modify execution status: Competition must be PUBLISHED. Current status: %s"
+                    .formatted(competition.getCompetitionStatus()));
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void checkIfStageInProgress(Long stageId, ExecutionStatus targetTourStatus) {
+        Stage stage = stageRepository.findById(stageId)
+            .orElseThrow(() -> new StageNotFoundException(stageId));
+
+        if (targetTourStatus == ExecutionStatus.CANCELLED) {
+            return;
+        }
+
+        if (stage.getStatus() != StageStatus.IN_PROGRESS) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot modify tour status to %s: Stage must be IN_PROGRESS. Current stage status: %s"
+                    .formatted(targetTourStatus, stage.getStatus()));
+        }
+    }
+
     /**
-     * Checks whether it is allowed to change the hierarchy (add/remove stages and tours).
+     * Checks whether it is allowed to change the hierarchy (add/remove stages and
+     * tours).
      *
      * @param competitionId ID of a competition
      */
@@ -84,11 +120,13 @@ public class HierarchyValidator {
     }
 
     /**
-     * Validates that the stage belongs to the competition specified in the request path. Prevents cross-competition
-     * manipulation (e.g., updating Stage 5 via /competitions/999/stages/5).
+     * Validates that the stage belongs to the competition specified in the request
+     * path. Prevents cross-competition manipulation (e.g., updating Stage 5 via
+     * /competitions/999/stages/5).
      *
      * @param pathCompetitionId   Competition ID taken from URI as a path variable
-     * @param entityCompetitionId Competition ID extracted from the fetched Stage entity
+     * @param entityCompetitionId Competition ID extracted from the fetched Stage
+     *                            entity
      */
     public void validateStageEligibility(Long pathCompetitionId, Long entityCompetitionId) {
         if (!pathCompetitionId.equals(entityCompetitionId)) {
@@ -127,8 +165,9 @@ public class HierarchyValidator {
     }
 
     /**
-     * Validates that narrowing a Stage's date range does not orphan any of its already-existing Tours — i.e. that every
-     * Tour currently under this Stage would still fall within the proposed new {@code newStart}/{@code newFinish}
+     * Validates that narrowing a Stage's date range does not orphan any of its
+     * already-existing Tours — i.e. that every Tour currently under this Stage
+     * would still fall within the proposed new {@code newStart}/{@code newFinish}
      * window.
      */
     @Transactional(readOnly = true)
@@ -189,6 +228,8 @@ public class HierarchyValidator {
             return;
         }
 
+        // todo: add ability to rollback status (e.g. from PUBLISHED to ENROLLMENT)
+        // & rollback, including all dependent objects
         boolean isValid = switch (current) {
             case DRAFT -> target == CompetitionStatus.ENROLLMENT;
             case ENROLLMENT -> target == CompetitionStatus.PUBLISHED;
@@ -205,55 +246,69 @@ public class HierarchyValidator {
 
     @Transactional(readOnly = true)
     public void validateTourEligibilityToStart(Tour currentTour) {
-        if (currentTour.getSortPosition() == 1) {
+        Optional<Tour> previousTourOpt = tourRepository
+            .findFirstByStageIdAndSortPositionLessThanOrderBySortPositionDesc(
+                currentTour.getStageId(), currentTour.getSortPosition());
+
+        if (previousTourOpt.isEmpty()) {
             return;
         }
 
-        short previousSortPosition = (short) (currentTour.getSortPosition() - 1);
-
-        Tour previousTour = tourRepository
-            .findByStageIdAndSortPosition(currentTour.getStageId(), previousSortPosition)
-            .orElseThrow(() -> new CompetitionHierarchyValidationException(
-                "Previous tour with sort position " + previousSortPosition + " not found"
-            ));
+        Tour previousTour = previousTourOpt.get();
 
         if (previousTour.getExecutionStatus() != ExecutionStatus.FINISHED) {
             throw new CompetitionHierarchyValidationException(
                 "Cannot start tour '%s'. The previous tour '%s' is not yet FINISHED (Current status: %s)."
-                    .formatted(currentTour.getTitle(), previousTour.getTitle(), previousTour.getExecutionStatus())
-            );
+                    .formatted(currentTour.getTitle(), previousTour.getTitle(), previousTour.getExecutionStatus()));
         }
     }
 
     @Transactional(readOnly = true)
     public void validateStageEligibilityToStart(Stage currentStage) {
-        if (currentStage.getSortPosition() == 1) {
+        Optional<Stage> previousStageOpt = stageRepository
+            .findFirstByCompetitionIdAndSortPositionLessThanOrderBySortPositionDesc(
+                currentStage.getCompetitionId(), currentStage.getSortPosition());
+
+        if (previousStageOpt.isEmpty()) {
             return;
         }
 
-        short previousSortPosition = (short) (currentStage.getSortPosition() - 1);
-
-        Stage previousStage = stageRepository
-            .findByCompetitionIdAndSortPosition(currentStage.getCompetitionId(), previousSortPosition)
-            .orElseThrow(() -> new CompetitionHierarchyValidationException(
-                "Previous stage with sort position " + previousSortPosition + " not found"
-            ));
+        Stage previousStage = previousStageOpt.get();
 
         if (previousStage.getStatus() != StageStatus.FINISHED) {
             throw new CompetitionHierarchyValidationException(
                 "Cannot start stage '%s'. The previous stage '%s' is not yet FINISHED (Current status: %s)."
-                    .formatted(currentStage.getTitle(), previousStage.getTitle(), previousStage.getStatus())
-            );
+                    .formatted(currentStage.getTitle(), previousStage.getTitle(), previousStage.getStatus()));
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void validateAllToursCompletedForStage(Long stageId) {
+        List<Tour> tours = tourRepository.findAllByStageIdOrderBySortPositionAsc(stageId);
+
+        List<String> incompleteTours = tours.stream()
+            .filter(tour -> tour.getExecutionStatus() != ExecutionStatus.FINISHED
+                && tour.getExecutionStatus() != ExecutionStatus.CANCELLED)
+            .map(tour -> "'%s' (Status: %s)".formatted(tour.getTitle(), tour.getExecutionStatus()))
+            .toList();
+
+        if (!incompleteTours.isEmpty()) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot finish stage: Not all tours are completed. Incomplete tours: "
+                    + String.join(", ", incompleteTours));
         }
     }
 
     @Transactional(readOnly = true)
     public void validateTourEligibilityToResume(Tour tour) {
+        String errorMessage =
+            "Cannot resume tour '%s'. The finish date (%s) is in the past. "
+                + "Please update the tour dates first to provide extra time.";
+
         if (tour.getDateFinish().isBefore(ZonedDateTime.now())) {
             throw new CompetitionHierarchyValidationException(
-                "Cannot resume tour '%s'. The finish date (%s) is in the past. Please update the tour dates first to provide extra time."
-                    .formatted(tour.getTitle(), tour.getDateFinish())
-            );
+                errorMessage
+                    .formatted(tour.getTitle(), tour.getDateFinish()));
         }
     }
 }
