@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.filemanager.dao.model;
 
-import com.itasocialacademy.oitassist.core.rest.entity.LongEntity;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
@@ -18,7 +17,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 @NoArgsConstructor
 @Getter
 @Setter
-public class FileAsset implements LongEntity {
+public class FileAsset {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

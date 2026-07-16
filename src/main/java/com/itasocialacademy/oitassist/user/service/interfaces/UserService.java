@@ -2,11 +2,8 @@ package com.itasocialacademy.oitassist.user.service.interfaces;
 
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
-import com.itasocialacademy.oitassist.core.rest.service.interfaces.BaseService;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
-import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
-import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.exceptions.AdminRoleModificationException;
@@ -17,7 +14,7 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-public interface UserService extends BaseService<Long, CreateUserDTO, UpdateUserDTO, ResponseUserDTO> {
+public interface UserService {
     /**
      * Looks up a user by email and returns the auth-side projection required by
      * {@code UserFacade.findByEmail}. Returns empty if no user exists.

@@ -2,11 +2,8 @@ package com.itasocialacademy.oitassist.user.controller;
 
 import static org.springframework.data.domain.Sort.Direction.DESC;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
-import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserRoleRequest;
-import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
-import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -27,11 +25,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @Tag(name = "Users v1", description = "Operations related to users")
 @RequestMapping("/api/v1/users")
-public class UserController
-    extends AbstractRestControllerImpl<Long, CreateUserDTO, UpdateUserDTO, ResponseUserDTO, UserService> {
-    protected UserController(UserService service) {
-        super(service);
-    }
+@RequiredArgsConstructor
+public class UserController {
+    private final UserService service;
 
     @GetMapping("/profile")
     @Operation(
