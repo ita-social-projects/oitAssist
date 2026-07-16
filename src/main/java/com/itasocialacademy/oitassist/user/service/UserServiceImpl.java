@@ -1,7 +1,5 @@
 package com.itasocialacademy.oitassist.user.service;
 
-import com.itasocialacademy.oitassist.core.enums.ErrorCode;
-import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -61,7 +59,7 @@ public class UserServiceImpl implements UserService {
     @NonNull
     public ResponseUserDTO getCurrentUserProfile() {
         String email = securityFacade.getCurrentUserEmail()
-            .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
+            .orElseThrow(UserAuthorizationException::new);
 
         return loadUserByEmail(email);
     }
@@ -70,7 +68,7 @@ public class UserServiceImpl implements UserService {
     @NonNull
     public ResponseUserDTO changeUserRole(@NonNull Long userId, @NonNull Role newRole) {
         if (securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED))
+            .orElseThrow(UserAuthorizationException::new)
             .equals(userId)) {
             throw new UserRoleSelfChangeException();
         }
@@ -106,7 +104,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public @NonNull ResponseUserDTO changeUserStatus(@NonNull Long userId, @NonNull UserStatus newStatus) {
         if (securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED))
+            .orElseThrow(UserAuthorizationException::new)
             .equals(userId)) {
             throw new UserStatusSelfChangeException();
         }

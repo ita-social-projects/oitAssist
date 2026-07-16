@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.user.service.interfaces;
 
-import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
@@ -12,6 +11,7 @@ import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import com.itasocialacademy.oitassist.user.exceptions.UserRoleSelfChangeException;
 import com.itasocialacademy.oitassist.user.exceptions.UserStatusSelfChangeException;
 import com.itasocialacademy.oitassist.user.exceptions.AdminStatusModificationException;
+import com.itasocialacademy.oitassist.user.exceptions.UserAuthorizationException;
 import java.util.Optional;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
@@ -46,7 +46,7 @@ public interface UserService {
      * Finds a current authenticated user and returns their profile.
      *
      * @return the user's profile DTO
-     * @throws AuthorizationException if user is not authenticated
+     * @throws UserAuthorizationException if user is not authenticated
      */
     @NonNull
     ResponseUserDTO getCurrentUserProfile();
@@ -57,7 +57,7 @@ public interface UserService {
      * @param userId  target user identifier
      * @param newRole new role to assign
      * @return updated user profile
-     * @throws AuthorizationException           if user is not authenticated
+     * @throws UserAuthorizationException       if user is not authenticated
      * @throws UserNotFoundException            if user with given id does not exist
      * @throws UserRoleSelfChangeException      if user is trying to change his own
      *                                          role
@@ -86,7 +86,7 @@ public interface UserService {
      * @param userId    target user identifier
      * @param newStatus new status to assign
      * @return updated user profile
-     * @throws AuthorizationException           if user is not authenticated
+     * @throws UserAuthorizationException       if user is not authenticated
      * @throws UserNotFoundException            if user with given id does not exist
      * @throws UserStatusSelfChangeException    if user is trying to change his own
      *                                          status

@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.users.service;
 
-import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
@@ -123,12 +122,12 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("getCurrentUserProfile should throw AuthorizationException when user is not authenticated")
-    void getCurrentUserProfile_ShouldThrowAuthorizationException_WhenUserIsNotAuthenticated() {
+    @DisplayName("getCurrentUserProfile should throw UserAuthorizationException when user is not authenticated")
+    void getCurrentUserProfile_ShouldThrowUserAuthorizationException_WhenUserIsNotAuthenticated() {
         when(securityFacade.getCurrentUserEmail()).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.getCurrentUserProfile())
-            .isInstanceOf(AuthorizationException.class)
+            .isInstanceOf(UserAuthorizationException.class)
             .hasMessage("User is not authenticated");
 
         verify(securityFacade, times(1)).getCurrentUserEmail();
@@ -233,12 +232,12 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("changeUserRole should throw AuthorizationException when user is not authenticated")
-    void changeUserRole_ShouldThrowAuthorizationException_WhenUserIsNotAuthenticated() {
+    @DisplayName("changeUserRole should throw UserAuthorizationException when user is not authenticated")
+    void changeUserRole_ShouldThrowUserAuthorizationException_WhenUserIsNotAuthenticated() {
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.changeUserRole(1L, Role.USER))
-            .isInstanceOf(AuthorizationException.class)
+            .isInstanceOf(UserAuthorizationException.class)
             .hasMessage("User is not authenticated");
 
         verify(securityFacade).getCurrentUserId();
@@ -462,12 +461,12 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("changeUserStatus should throw AuthorizationException when user is not authenticated")
-    void changeUserStatus_ShouldThrowAuthorizationException_WhenUserIsNotAuthenticated() {
+    @DisplayName("changeUserStatus should throw UserAuthorizationException when user is not authenticated")
+    void changeUserStatus_ShouldThrowUserAuthorizationException_WhenUserIsNotAuthenticated() {
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.changeUserStatus(1L, UserStatus.ACTIVE))
-            .isInstanceOf(AuthorizationException.class)
+            .isInstanceOf(UserAuthorizationException.class)
             .hasMessage("User is not authenticated");
 
         verify(securityFacade).getCurrentUserId();
