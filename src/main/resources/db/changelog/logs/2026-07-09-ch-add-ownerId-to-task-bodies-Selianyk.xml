@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="add-ownerId-to-task-bodies-table" author="Ihor Selianyk">
+        <addColumn tableName="task_bodies">
+            <column name="owner_id" type="BIGINT">
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="populate-ownerId-from-createdBy" author="Ihor Selianyk">
+        <update tableName="task_bodies">
+            <column name="owner_id" valueComputed="created_by"/>
+        </update>
+    </changeSet>
+
+    <changeSet id="add-not-null-constraint-ownerId" author="Ihor Selianyk">
+        <addNotNullConstraint tableName="task_bodies" columnName="owner_id"/>
+    </changeSet>
+</databaseChangeLog>

@@ -4,9 +4,9 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.BusinessException;
 
 public class TaskAccessRestrictedException extends BusinessException {
-    public TaskAccessRestrictedException(Long taskId, Long userId) {
+    public TaskAccessRestrictedException(Long taskId) {
         super(
-            "User %s cannot access task %s".formatted(userId, taskId),
+            "Cannot access task with id: %s".formatted(taskId),
             ErrorCode.TASK_ACCESS_RESTRICTED);
     }
 }

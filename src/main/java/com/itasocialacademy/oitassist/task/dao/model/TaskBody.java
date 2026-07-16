@@ -43,4 +43,7 @@ public class TaskBody {
     @LastModifiedDate
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @Column(name = "owner_id", nullable = false)
+    private Long ownerId;
 }
