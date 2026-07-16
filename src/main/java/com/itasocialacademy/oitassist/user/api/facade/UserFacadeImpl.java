@@ -1,13 +1,18 @@
 package com.itasocialacademy.oitassist.user.api.facade;
 
+import com.itasocialacademy.oitassist.user.api.dto.CurrentUserDTO;
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
+import com.itasocialacademy.oitassist.user.api.mapper.ApiUserMapper;
+import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
+import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.service.interfaces.RegistrationService;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserActivationService;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 
 /**
@@ -25,6 +30,8 @@ public class UserFacadeImpl implements UserFacade {
     private final UserService userService;
     private final RegistrationService registrationService;
     private final UserActivationService userActivationService;
+    private final UserMapper userMapper;
+    private final ApiUserMapper apiUserMapper;
 
     /**
      * {@inheritDoc}
@@ -72,5 +79,10 @@ public class UserFacadeImpl implements UserFacade {
     @Override
     public Optional<UserAuthDetails> findByEmail(String email) {
         return userService.findAuthDetailsByEmail(email);
+    }
+
+    @Override
+    public CurrentUserDTO getCurrentUserProfile() {
+        return apiUserMapper.toCurrentUserDTO(userService.getCurrentUserProfile());
     }
 }

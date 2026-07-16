@@ -1,7 +1,10 @@
 package com.itasocialacademy.oitassist.user.api.interfaces;
 
+import com.itasocialacademy.oitassist.user.api.dto.CurrentUserDTO;
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
+import org.jspecify.annotations.NonNull;
 import org.springframework.modulith.NamedInterface;
 import java.util.Optional;
 
@@ -105,4 +108,6 @@ public interface UserFacade {
      *         email
      */
     Optional<UserAuthDetails> findByEmail(String email);
+
+    CurrentUserDTO getCurrentUserProfile();
 }

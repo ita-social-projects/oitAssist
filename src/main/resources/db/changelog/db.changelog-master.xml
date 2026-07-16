@@ -9,4 +9,5 @@
     <include file="/db/changelog/logs/2026-01-23-ch-insert-sample-data-Shumeyko.xml"/>
     <include file="/db/changelog/logs/2026-03-27-ch-create-file-assets-table-Huz.xml"/>
     <include file="/db/changelog/logs/2026-04-30-ch-create-profile-update-requests-table-Ogorodnik.xml"/>
+    <include file="/db/changelog/logs/2026-05-02-ch-updated-user-competition-Ogorodnik.xml"/>
 </databaseChangeLog>
