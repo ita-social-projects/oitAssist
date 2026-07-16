@@ -46,4 +46,14 @@ public interface StageRepository extends JpaRepository<Stage, Long> {
     long countStagesWithoutTours(@Param("competitionId") Long competitionId);
 
     Optional<Stage> findByCompetitionIdAndSortPosition(Long competitionId, Short sortPosition);
+
+    @Query("""
+            SELECT s FROM Stage s
+            WHERE s.competitionId = :competitionId
+              AND s.sortPosition < :sortPosition
+            ORDER BY s.sortPosition DESC
+        """)
+    Optional<Stage> findFirstPreviousStage(
+        @Param("competitionId") Long competitionId,
+        @Param("sortPosition") Short sortPosition);
 }
