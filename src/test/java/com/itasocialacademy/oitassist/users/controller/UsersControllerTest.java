@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.users.controller;
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.user.controller.UserController;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserRoleRequest;
+import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserStatusRequest;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
@@ -172,5 +173,44 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
             .andExpect(jsonPath("$.last").value(true));
 
         verify(userService).getUsers(any(Pageable.class), isNull());
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should return updated user when request is valid")
+    void changeUserStatus_ShouldReturnUpdatedUser_WhenRequestIsValid() throws Exception {
+        Long userId = 1L;
+
+        ChangeUserStatusRequest request = ChangeUserStatusRequest.builder()
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        ResponseUserDTO response = ResponseUserDTO.builder()
+            .id(userId)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        when(userService.changeUserStatus(userId, UserStatus.ACTIVE))
+            .thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/users/{id}/status", userId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(userId))
+            .andExpect(jsonPath("$.status").value("ACTIVE"));
+
+        verify(userService).changeUserStatus(userId, UserStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should return bad request when request body is invalid")
+    void changeUserStatus_ShouldReturnBadRequest_WhenRequestIsInvalid() throws Exception {
+
+        mockMvc.perform(patch("/api/v1/users/{id}/status", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userService);
     }
 }

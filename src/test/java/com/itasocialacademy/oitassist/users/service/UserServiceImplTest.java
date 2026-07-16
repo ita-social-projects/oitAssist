@@ -8,9 +8,7 @@ import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import com.itasocialacademy.oitassist.user.dao.model.User;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
-import com.itasocialacademy.oitassist.user.exceptions.AdminRoleModificationException;
-import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
-import com.itasocialacademy.oitassist.user.exceptions.UserRoleSelfChangeException;
+import com.itasocialacademy.oitassist.user.exceptions.*;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.service.UserServiceImpl;
 import java.util.List;
@@ -363,5 +361,134 @@ class UserServiceImplTest {
         verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
         verify(repository).findAll(pageable);
         verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should update user status when user is admin and request is valid")
+    void changeUserStatus_ShouldUpdatedUserStatus_WhenUserIsAdminAndRequestIsValid() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        User user = User.builder()
+            .id(targetUserId)
+            .userStatus(UserStatus.INACTIVE)
+            .role(Role.USER)
+            .build();
+
+        ResponseUserDTO expected = ResponseUserDTO.builder()
+            .id(targetUserId)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+        when(repository.findById(targetUserId)).thenReturn(Optional.of(user));
+        when(repository.save(user)).thenReturn(user);
+        when(mapper.toResponseUserDTO(user)).thenReturn(expected);
+
+        ResponseUserDTO result = userService.changeUserStatus(targetUserId, UserStatus.ACTIVE);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(user.getUserStatus()).isEqualTo(UserStatus.ACTIVE);
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verify(repository).findById(targetUserId);
+        verify(repository).save(user);
+        verify(mapper).toResponseUserDTO(user);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should throw UserStatusSelfChangeException when user tries to change own status")
+    void changeUserStatus_ShouldThrowUserStatusSelfChangeException_WhenChangingOwnStatus() {
+        Long currentUserId = 1L;
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+
+        assertThatThrownBy(() -> userService.changeUserStatus(currentUserId, UserStatus.ACTIVE))
+            .isInstanceOf(UserStatusSelfChangeException.class)
+            .hasMessage("User cannot change their own status");
+
+        verify(securityFacade).getCurrentUserId();
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should throw UserNotFoundException when target user does not exist")
+    void changeUserStatus_ShouldThrowUserNotFoundException_WhenUserNotFound() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+        when(repository.findById(targetUserId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.changeUserStatus(targetUserId, UserStatus.ACTIVE))
+            .isInstanceOf(UserNotFoundException.class)
+            .hasMessage("User not found");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verify(repository).findById(targetUserId);
+        verifyNoMoreInteractions(repository);
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should throw AdminStatusModificationException when target user is admin")
+    void changeUserStatus_ShouldThrowAdminStatusModificationException_WhenTargetUserIsAdmin() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        User admin = User.builder()
+            .id(targetUserId)
+            .role(Role.ADMIN)
+            .build();
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+        when(repository.findById(targetUserId)).thenReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> userService.changeUserStatus(targetUserId, UserStatus.BLOCKED))
+            .isInstanceOf(AdminStatusModificationException.class)
+            .hasMessage("Cannot modify status of another administrator");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verify(repository).findById(targetUserId);
+        verify(repository, never()).save(any());
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should throw AuthorizationException when user is not authenticated")
+    void changeUserStatus_ShouldThrowAuthorizationException_WhenUserIsNotAuthenticated() {
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.changeUserStatus(1L, UserStatus.ACTIVE))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessage("User is not authenticated");
+
+        verify(securityFacade).getCurrentUserId();
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should throw InsufficientPermissionsException when user is not admin")
+    void changeUserStatus_ShouldThrowInsufficientPermissionsException_WhenUserIsNotAdmin() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+
+        assertThatThrownBy(() -> userService.changeUserRole(targetUserId, Role.ORG))
+            .isInstanceOf(InsufficientPermissionsException.class)
+            .hasMessage("You do not have enough permissions to perform this action");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verifyNoInteractions(repository, mapper);
     }
 }
