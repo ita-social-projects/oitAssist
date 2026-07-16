@@ -5,7 +5,6 @@ import com.itasocialacademy.oitassist.competition.dto.validation.HasDateRange;
 import com.itasocialacademy.oitassist.competition.dto.validation.ValidDateRange;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.ZonedDateTime;
@@ -33,12 +32,12 @@ public record CreateStageRequest(
         example = "2026-09-01T18:00:00Z",
         requiredMode = Schema.RequiredMode.REQUIRED) @NotNull ZonedDateTime dateFinish,
 
-    //@Schema(
-    //    description = "Explicit sort position of the stage within the competition. "
-    //        + "If omitted, the stage is appended after the last existing stage.",
-    //    example = "1",
-    //    minimum = "1",
-    //    requiredMode = Schema.RequiredMode.NOT_REQUIRED) @Min(1) Short sortPosition,
+    // @Schema(
+    // description = "Explicit sort position of the stage within the competition. "
+    // + "If omitted, the stage is appended after the last existing stage.",
+    // example = "1",
+    // minimum = "1",
+    // requiredMode = Schema.RequiredMode.NOT_REQUIRED) @Min(1) Short sortPosition,
 
     @Schema(
         description = "Scope of the stage.",
