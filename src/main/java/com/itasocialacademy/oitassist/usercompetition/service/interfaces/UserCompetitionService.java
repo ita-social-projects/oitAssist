@@ -25,4 +25,6 @@ public interface UserCompetitionService extends BaseService<UserCompetitionId, C
     Page<ResponseUserCompetitionDTO> getAllCompetitionsByStatus(UserCompetitionStatus status, Pageable pageable);
 
     void markAsRead(Long competitionId);
+
+    Long countOfUnreadInvites();
 }

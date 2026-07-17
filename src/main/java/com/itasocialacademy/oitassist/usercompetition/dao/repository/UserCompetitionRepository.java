@@ -26,4 +26,6 @@ public interface UserCompetitionRepository extends JpaRepository<UserCompetition
 
 
     Page<UserCompetition> findAllByAuthorIdAndStatus(Long authorId, UserCompetitionStatus status, Pageable pageable);
+
+    Long countByAuthorIdAndStatusAndIsReadFalse(Long authorId, UserCompetitionStatus status);
 }

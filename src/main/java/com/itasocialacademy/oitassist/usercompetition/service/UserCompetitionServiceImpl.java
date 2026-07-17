@@ -72,4 +72,12 @@ public class UserCompetitionServiceImpl extends AbstractServiceImpl<UserCompetit
         userCompetition.setRead(true);
         repository.save(userCompetition);
     }
+
+    @Override
+    public Long countOfUnreadInvites() {
+        Long authorId = securityFacade.getCurrentUserId()
+                .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
+
+        return repository.countByAuthorIdAndStatusAndIsReadFalse(authorId, UserCompetitionStatus.INVITED);
+    }
 }

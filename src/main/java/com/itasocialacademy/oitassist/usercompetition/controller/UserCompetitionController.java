@@ -38,4 +38,12 @@ public class UserCompetitionController extends AbstractRestControllerImpl<UserCo
 
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/unreadCount")
+    public ResponseEntity<Long> countOfUnreadInvites() {
+
+        return ResponseEntity.ok(service.countOfUnreadInvites());
+    }
+
+
 }
