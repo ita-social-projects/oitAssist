@@ -576,9 +576,8 @@ class HierarchyValidatorTest {
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
-            () -> validator.validateAllToursCompletedForStage(10L)
-        );
+            () -> validator.validateAllToursCompletedForStage(10L));
 
-        assertTrue(exception.getMessage().contains("must have at least one tour"));
+        assertTrue(exception.getMessage().contains("must contain at least one tour"));
     }
 }
