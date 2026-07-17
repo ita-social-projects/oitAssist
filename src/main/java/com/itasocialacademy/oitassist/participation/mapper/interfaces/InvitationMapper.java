@@ -7,8 +7,6 @@ import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.WARN)
-public interface InvitationMapper {
-    Invitation toEntity(CreateInvitationRequest createInvitationRequest);
-
-    CreateInvitationResponse toResponse(Invitation invitation);
+public interface InvitationMapper
+    extends EnrollmentMapper<Invitation, CreateInvitationRequest, CreateInvitationResponse> {
 }
