@@ -100,6 +100,8 @@ public class StageController {
         description = "Transitions the stage to a new status. Cannot start if the previous stage is not FINISHED.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Stage status updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Validation failed",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "403", description = "Access denied",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Stage not found",
