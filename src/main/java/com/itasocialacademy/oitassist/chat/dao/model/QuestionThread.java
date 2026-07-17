@@ -64,6 +64,7 @@ public class QuestionThread {
     @Column(name = "status", nullable = false, length = 32)
     private QuestionStatus status = QuestionStatus.NEW;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "state", nullable = false, length = 16)
     private QuestionState state = QuestionState.OPEN;

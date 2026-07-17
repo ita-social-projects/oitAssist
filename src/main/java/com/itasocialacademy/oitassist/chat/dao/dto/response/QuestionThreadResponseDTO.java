@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.chat.dao.dto.response;
 
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -17,7 +18,7 @@ public record QuestionThreadResponseDTO(
     String content,
     QuestionStatus status,
     QuestionVisibility visibility,
-    QuestionStatus statusBeforeClose,
+    QuestionState state,
     Long version,
     Instant createdAt,
     Instant updatedAt) {

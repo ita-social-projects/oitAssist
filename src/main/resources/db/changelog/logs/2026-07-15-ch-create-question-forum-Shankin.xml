@@ -43,8 +43,6 @@
                 <constraints nullable="false"/>
             </column>
 
-            <column name="status_before_close" type="VARCHAR(32)"/>
-
             <column name="version" type="BIGINT" defaultValueNumeric="0">
                 <constraints nullable="false"/>
             </column>
@@ -143,13 +141,6 @@
             ALTER TABLE question_threads
                 ADD CONSTRAINT chk_question_threads_visibility
                     CHECK (visibility IN ('PRIVATE', 'PUBLIC'));
-
-            ALTER TABLE question_threads
-                ADD CONSTRAINT chk_question_threads_previous_status
-                    CHECK (
-                        status_before_close IS NULL
-                            OR status_before_close IN ('NEW', 'IN_REVIEW', 'ANSWERED')
-                        );
 
             ALTER TABLE question_threads
                 ADD CONSTRAINT chk_question_threads_version
