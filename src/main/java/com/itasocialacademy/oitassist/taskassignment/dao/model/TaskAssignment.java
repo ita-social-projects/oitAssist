@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.taskassignment.dao.model;
 
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Positive;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -41,6 +42,7 @@ public class TaskAssignment {
     private AssignmentVisibility visibility = AssignmentVisibility.HIDDEN;
 
     @Column(name = "max_points", nullable = false)
+    @Positive
     private Integer maxPoints;
 
     @JdbcTypeCode(SqlTypes.JSON)
