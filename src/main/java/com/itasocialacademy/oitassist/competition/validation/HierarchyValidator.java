@@ -247,7 +247,8 @@ public class HierarchyValidator {
     @Transactional(readOnly = true)
     public void validateTourEligibilityToStart(Tour currentTour) {
         Optional<Tour> previousTourOpt = tourRepository
-            .findFirstPreviousTour(currentTour.getStageId(), currentTour.getSortPosition());
+            .findFirstByStageIdAndSortPositionLessThanOrderBySortPositionDesc(currentTour.getStageId(),
+                currentTour.getSortPosition());
 
         if (previousTourOpt.isEmpty()) {
             return;
@@ -265,7 +266,8 @@ public class HierarchyValidator {
     @Transactional(readOnly = true)
     public void validateStageEligibilityToStart(Stage currentStage) {
         Optional<Stage> previousStageOpt = stageRepository
-            .findFirstPreviousStage(currentStage.getCompetitionId(), currentStage.getSortPosition());
+            .findFirstByCompetitionIdAndSortPositionLessThanOrderBySortPositionDesc(currentStage.getCompetitionId(),
+                currentStage.getSortPosition());
 
         if (previousStageOpt.isEmpty()) {
             return;

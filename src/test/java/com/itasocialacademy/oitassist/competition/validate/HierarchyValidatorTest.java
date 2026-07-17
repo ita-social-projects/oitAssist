@@ -475,7 +475,8 @@ class HierarchyValidatorTest {
     void validateTourEligibilityToStart_firstTour_shouldPass() {
         Tour tour = Tour.builder().stageId(10L).sortPosition((short) 1).build();
 
-        when(tourRepository.findFirstPreviousTour(10L, (short) 1)).thenReturn(Optional.empty());
+        when(tourRepository.findFirstByStageIdAndSortPositionLessThanOrderBySortPositionDesc(10L, (short) 1))
+            .thenReturn(Optional.empty());
 
         assertDoesNotThrow(() -> validator.validateTourEligibilityToStart(tour));
     }
@@ -485,7 +486,8 @@ class HierarchyValidatorTest {
         Tour currentTour = Tour.builder().stageId(10L).sortPosition((short) 2).build();
         Tour prevTour = Tour.builder().executionStatus(ExecutionStatus.FINISHED).build();
 
-        when(tourRepository.findFirstPreviousTour(10L, (short) 2)).thenReturn(Optional.of(prevTour));
+        when(tourRepository.findFirstByStageIdAndSortPositionLessThanOrderBySortPositionDesc(10L, (short) 2))
+            .thenReturn(Optional.of(prevTour));
 
         assertDoesNotThrow(() -> validator.validateTourEligibilityToStart(currentTour));
     }
@@ -495,7 +497,8 @@ class HierarchyValidatorTest {
         Tour currentTour = Tour.builder().stageId(10L).sortPosition((short) 2).title("Tour 2").build();
         Tour prevTour = Tour.builder().executionStatus(ExecutionStatus.CLOSED).title("Tour 1").build();
 
-        when(tourRepository.findFirstPreviousTour(10L, (short) 2)).thenReturn(Optional.of(prevTour));
+        when(tourRepository.findFirstByStageIdAndSortPositionLessThanOrderBySortPositionDesc(10L, (short) 2))
+            .thenReturn(Optional.of(prevTour));
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
@@ -507,7 +510,8 @@ class HierarchyValidatorTest {
     void validateStageEligibilityToStart_firstStage_shouldPass() {
         Stage stage = Stage.builder().competitionId(5L).sortPosition((short) 1).build();
 
-        when(stageRepository.findFirstPreviousStage(5L, (short) 1)).thenReturn(Optional.empty());
+        when(stageRepository.findFirstByCompetitionIdAndSortPositionLessThanOrderBySortPositionDesc(5L, (short) 1))
+            .thenReturn(Optional.empty());
 
         assertDoesNotThrow(() -> validator.validateStageEligibilityToStart(stage));
     }
@@ -517,7 +521,8 @@ class HierarchyValidatorTest {
         Stage currentStage = Stage.builder().competitionId(5L).sortPosition((short) 2).title("Stage 2").build();
         Stage prevStage = Stage.builder().status(StageStatus.IN_PROGRESS).title("Stage 1").build();
 
-        when(stageRepository.findFirstPreviousStage(5L, (short) 2)).thenReturn(Optional.of(prevStage));
+        when(stageRepository.findFirstByCompetitionIdAndSortPositionLessThanOrderBySortPositionDesc(5L, (short) 2))
+            .thenReturn(Optional.of(prevStage));
 
         assertThrows(CompetitionHierarchyValidationException.class,
             () -> validator.validateStageEligibilityToStart(currentStage));
