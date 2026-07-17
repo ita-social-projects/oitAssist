@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.competition.controller;
 
-import com.itasocialacademy.oitassist.competition.dto.request.ChangeStatusRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
@@ -59,7 +59,9 @@ public class CompetitionController {
         description = "Retrieves a paginated list of competitions. "
             + "Visibility depends on user role (e.g., USER sees only PUBLISHED/ARCHIVED, ORG sees their DRAFTs).")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Competitions retrieved successfully")
+        @ApiResponse(responseCode = "200", description = "Competitions retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping
     @PreAuthorize("isAuthenticated()")
@@ -142,7 +144,7 @@ public class CompetitionController {
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<CompetitionResponse> changeStatus(
         @PathVariable Long competitionId,
-        @Valid @RequestBody ChangeStatusRequest request) {
-        return ResponseEntity.ok(competitionService.changeStatus(competitionId, request.newStatus()));
+        @Valid @RequestBody ChangeCompetitionStatusRequest request) {
+        return ResponseEntity.ok(competitionService.changeStatus(competitionId, request.status()));
     }
 }

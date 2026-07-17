@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
-import com.itasocialacademy.oitassist.competition.dto.request.ChangeStatusRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
@@ -101,7 +101,7 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
 
     @Test
     void changeStatus_validRequest_shouldReturn200() throws Exception {
-        ChangeStatusRequest request = new ChangeStatusRequest(CompetitionStatus.PUBLISHED);
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.PUBLISHED);
 
         CompetitionResponse publishedResponse = new CompetitionResponse(
             mockCompetitionResponse.id(),
@@ -127,7 +127,7 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
 
     @Test
     void changeStatus_invalidRequest_nullStatus_shouldReturn400() throws Exception {
-        ChangeStatusRequest request = new ChangeStatusRequest(null);
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(null);
 
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
             .contentType(MediaType.APPLICATION_JSON)
