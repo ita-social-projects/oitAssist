@@ -569,4 +569,16 @@ class HierarchyValidatorTest {
         assertTrue(exception.getMessage().contains("Not all tours are completed"));
         assertTrue(exception.getMessage().contains("Tour 2"));
     }
+
+    @Test
+    void validateAllToursCompletedForStage_noTours_shouldThrow() {
+        when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of());
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateAllToursCompletedForStage(10L)
+        );
+
+        assertTrue(exception.getMessage().contains("must have at least one tour"));
+    }
 }

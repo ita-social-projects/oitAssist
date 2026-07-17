@@ -286,6 +286,11 @@ public class HierarchyValidator {
     public void validateAllToursCompletedForStage(Long stageId) {
         List<Tour> tours = tourRepository.findAllByStageIdOrderBySortPositionAsc(stageId);
 
+        if (tours.isEmpty()) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot finish stage: Stage must contain at least one tour.");
+        }
+
         List<String> incompleteTours = tours.stream()
             .filter(tour -> tour.getExecutionStatus() != ExecutionStatus.FINISHED
                 && tour.getExecutionStatus() != ExecutionStatus.CANCELLED)
