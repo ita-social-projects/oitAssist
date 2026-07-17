@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.competition.dao.repository;
 
 import com.itasocialacademy.oitassist.competition.dao.model.Tour;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,7 +18,11 @@ public interface TourRepository extends JpaRepository<Tour, Long> {
      */
     List<Tour> findAllByStageIdOrderBySortPositionAsc(Long stageId);
 
-    Tour findTopByStageIdOrderBySortPositionDesc(Long stageId);
+    Optional<Tour> findTopByStageIdOrderBySortPositionDesc(Long stageId);
 
     List<Tour> findAllByStageIdInOrderBySortPositionAsc(List<Long> stageIds);
+
+    Optional<Tour> findByStageIdAndSortPosition(Long stageId, Short sortPosition);
+
+    Optional<Tour> findFirstByStageIdAndSortPositionLessThanOrderBySortPositionDesc(Long stageId, Short sortPosition);
 }
