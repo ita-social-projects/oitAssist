@@ -84,6 +84,10 @@ class CompetitionServiceTest {
     @Test
     void changeStatus_draftToEnrollment_shouldSucceed() {
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+
+        when(stageRepository.existsByCompetitionId(1L)).thenReturn(true);
+        when(stageRepository.countStagesWithoutTours(1L)).thenReturn(0L);
+
         when(competitionRepository.save(any(Competition.class))).thenReturn(competition);
         when(mapper.toResponse(any(Competition.class))).thenReturn(getCompetitionResponse());
 
@@ -96,6 +100,9 @@ class CompetitionServiceTest {
     @Test
     void changeStatus_draftToPublished_directly_shouldThrowInvalidTransition() {
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+
+        doThrow(new CompetitionHierarchyValidationException("Invalid status transition from DRAFT to PUBLISHED"))
+            .when(validator).validateCompetitionStatusTransition(CompetitionStatus.DRAFT, CompetitionStatus.PUBLISHED);
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
@@ -154,6 +161,9 @@ class CompetitionServiceTest {
         competition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
 
+        doThrow(new CompetitionHierarchyValidationException("Invalid status transition from ENROLLMENT to DRAFT"))
+            .when(validator).validateCompetitionStatusTransition(CompetitionStatus.ENROLLMENT, CompetitionStatus.DRAFT);
+
         assertThrows(CompetitionHierarchyValidationException.class,
             () -> competitionService.changeStatus(1L, CompetitionStatus.DRAFT));
 
@@ -165,6 +175,9 @@ class CompetitionServiceTest {
         // Arrange
         competition.setCompetitionStatus(CompetitionStatus.PUBLISHED);
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+
+        doThrow(new CompetitionHierarchyValidationException("Invalid status transition from PUBLISHED to DRAFT"))
+            .when(validator).validateCompetitionStatusTransition(CompetitionStatus.PUBLISHED, CompetitionStatus.DRAFT);
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
