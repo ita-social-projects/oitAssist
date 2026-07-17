@@ -1,7 +1,6 @@
 @ApplicationModule(
     displayName = "Task Assignment",
-    allowedDependencies = {"core"}
-)
+    allowedDependencies = {"core"})
 package com.itasocialacademy.oitassist.taskassignment;
 
 import org.springframework.modulith.ApplicationModule;
