@@ -40,6 +40,9 @@ public class TaskAssignment {
     @Builder.Default
     private AssignmentVisibility visibility = AssignmentVisibility.HIDDEN;
 
+    @Column(name = "max_points", nullable = false)
+    private Integer maxPoints;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "requirements", nullable = false, columnDefinition = "jsonb")
     private TaskRequirements requirements;

@@ -22,6 +22,10 @@
                 <constraints nullable="false"/>
             </column>
 
+            <column name="max_points" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+
             <column name="requirements" type="JSONB">
                 <constraints nullable="false"/>
             </column>
@@ -46,6 +50,10 @@
             ALTER TABLE task_assignments
                 ADD CONSTRAINT chk_task_assignments_visibility
                     CHECK (visibility IN ('VISIBLE', 'HIDDEN'));
+
+            ALTER TABLE task_assignments
+                ADD CONSTRAINT chk_task_assignments_max_points
+                    CHECK (max_points > 0);
         </sql>
     </changeSet>
 </databaseChangeLog>
