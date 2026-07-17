@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.chat.dto.response;
+package com.itasocialacademy.oitassist.chat.dao.dto.response;
 
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionMessageType;
 import io.swagger.v3.oas.annotations.media.Schema;

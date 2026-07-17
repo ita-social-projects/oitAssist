@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.chat.mapper;
 
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
-import com.itasocialacademy.oitassist.chat.dto.response.QuestionThreadResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
