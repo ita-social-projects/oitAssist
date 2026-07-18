@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-task-assignments-table" author="Ihor Selianyk">
+        <createTable tableName="task_assignments">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="task_body_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="tour_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="visibility" type="VARCHAR(50)" defaultValue="HIDDEN">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="max_points" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="requirements" type="JSONB">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_by" type="BIGINT"/>
+            <column name="updated_at" type="TIMESTAMPTZ"/>
+        </createTable>
+
+        <addUniqueConstraint tableName="task_assignments"
+                             columnNames="task_body_id, tour_id"
+                             constraintName="uk_task_assignments_task_tour"/>
+
+        <sql>
+            ALTER TABLE task_assignments
+                ADD CONSTRAINT chk_task_assignments_visibility
+                    CHECK (visibility IN ('VISIBLE', 'HIDDEN'));
+
+            ALTER TABLE task_assignments
+                ADD CONSTRAINT chk_task_assignments_max_points
+                    CHECK (max_points > 0);
+        </sql>
+    </changeSet>
+</databaseChangeLog>
