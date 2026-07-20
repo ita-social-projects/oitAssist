@@ -31,20 +31,16 @@ public class AssignmentServiceImpl implements AssignmentService {
             throw new TaskAlreadyAssignedException(request.taskBodyId(), tourId);
         }
 
-        log.debug(request.requirements().toString());
-
         TaskAssignment taskAssignment = taskAssignmentMapper.toEntity(request);
-
-        log.debug(taskAssignment.toString());
 
         taskAssignment.setTourId(tourId);
         taskAssignment.setRequirements(taskAssignmentMapper.toRequirements(request.requirements()));
 
-        log.debug(taskAssignmentMapper.toRequirements(request.requirements()).toString());
-
         if (request.assignmentVisibility() == null) {
             taskAssignment.setVisibility(AssignmentVisibility.HIDDEN);
         }
+
+        log.debug("Assigned task {} to tour {}", request.taskBodyId(), tourId);
 
         // TODO: use real task title, when the task facade will be introduced
         return taskAssignmentMapper.toResponse(taskAssignmentRepository.save(taskAssignment), "mock title");
