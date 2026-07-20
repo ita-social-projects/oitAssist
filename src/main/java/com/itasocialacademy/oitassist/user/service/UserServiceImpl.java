@@ -41,6 +41,9 @@ public class UserServiceImpl implements UserService {
             .map(mapper::toUserAuthDetails);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Optional<UserAuthDetails> findAuthDetailsById(Long userId) {
         return repository.findById(userId)

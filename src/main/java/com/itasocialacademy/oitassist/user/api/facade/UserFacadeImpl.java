@@ -74,6 +74,9 @@ public class UserFacadeImpl implements UserFacade {
         return userService.findAuthDetailsByEmail(email);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Optional<UserAuthDetails> findById(Long userId) {
         return userService.findAuthDetailsById(userId);
