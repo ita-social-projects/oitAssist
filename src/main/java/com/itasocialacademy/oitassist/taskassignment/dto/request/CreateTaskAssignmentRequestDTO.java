@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record CreateTaskAssignmentRequestDTO(
     @NotNull Long taskBodyId,
-    AssignmentVisibility assignmentVisibility,
+    AssignmentVisibility visibility,
     @NotNull @Min(1) Integer maxPoints,
     @NotNull @Valid TaskRequirementsRequestDTO requirements) {
 }
