@@ -105,4 +105,13 @@ public interface UserFacade {
      *         email
      */
     Optional<UserAuthDetails> findByEmail(String email);
+
+    /**
+     * Similar to {@code UserFacade.findByEmail}, this one
+     * looks up a user by their ID and returns the authentication-side projection
+     * needed by {@code security}.
+     * @param userId the user's ID
+     * @return the user's auth details DTO
+     */
+    Optional<UserAuthDetails> findById(Long userId);
 }
