@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 public record TaskRequirementsRequestDTO(
-    @NotEmpty @Valid List<RequiredFileRequest> requiredFileList) {
+    @NotEmpty @Valid List<RequiredFileRequest> requiredFiles) {
     public record RequiredFileRequest(
         @NotBlank String prompt,
 
