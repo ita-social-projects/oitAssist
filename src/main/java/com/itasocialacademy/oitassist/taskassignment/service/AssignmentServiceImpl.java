@@ -38,7 +38,6 @@ public class AssignmentServiceImpl implements AssignmentService {
         TaskAssignment taskAssignment = taskAssignmentMapper.toEntity(request);
 
         taskAssignment.setTourId(tourId);
-        taskAssignment.setRequirements(taskAssignmentMapper.toRequirements(request.requirements()));
 
         if (request.visibility() == null) {
             taskAssignment.setVisibility(AssignmentVisibility.HIDDEN);
