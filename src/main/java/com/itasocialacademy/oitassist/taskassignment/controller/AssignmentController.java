@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.taskassignment.controller;
 
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.service.interfaces.AssignmentService;
 import jakarta.validation.Valid;
@@ -37,5 +38,12 @@ public class AssignmentController {
     public ResponseEntity<PageResponse<TaskAssignmentResponseDTO>> getByTour(@PathVariable Long tourId,
         @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(PageResponse.from(assignmentService.getAssignmentsByTourId(pageable, tourId)));
+    }
+
+    @PutMapping("/task-assignments/{assignmentId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
+    public ResponseEntity<TaskAssignmentResponseDTO> update(@PathVariable Long assignmentId,
+        @Valid @RequestBody UpdateTaskAssignmentRequestDTO request) {
+        return ResponseEntity.ok().body(assignmentService.updateTaskAssignment(assignmentId, request));
     }
 }
