@@ -8,22 +8,14 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 public record TaskRequirementsRequestDTO(
-    @NotEmpty
-    @Valid
-    List<RequiredFileRequest> requiredFiles
-) {
+    @NotEmpty @Valid List<RequiredFileRequest> requiredFileList) {
     public record RequiredFileRequest(
-        @NotBlank
-        String prompt,
+        @NotBlank String prompt,
 
-        @NotBlank
-        String namingRule,
+        @NotBlank String namingRule,
 
-        @NotEmpty
-        List<String> allowedExtensions,
+        @NotEmpty List<String> allowedExtensions,
 
-        @NotNull @Min(1)
-        Integer maxFileSizeMb
-    ) {
+        @NotNull @Min(1) Integer maxFileSizeMb) {
     }
 }
