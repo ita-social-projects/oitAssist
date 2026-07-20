@@ -30,6 +30,16 @@ public interface UserService {
      */
     Optional<UserAuthDetails> findAuthDetailsByEmail(String email);
 
+    /**
+     * Similar to {@code UserService.findAuthDetailsByEmail}, this one looks up a
+     * user by their ID and returns the auth-side projection required by
+     * {@code UserFacade.findById}. Returns empty if no user exists.
+     *
+     * @param userId the user's ID
+     * @return the user's auth details DTO
+     */
+    Optional<UserAuthDetails> findAuthDetailsById(Long userId);
+
     UserDetailsImpl loadUserByUsername(String username);
 
     /**
