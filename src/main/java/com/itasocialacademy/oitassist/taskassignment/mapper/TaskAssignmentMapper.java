@@ -6,7 +6,6 @@ import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssig
 import com.itasocialacademy.oitassist.taskassignment.dto.request.TaskRequirementsRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
@@ -15,6 +14,5 @@ public interface TaskAssignmentMapper {
 
     TaskRequirements toRequirements(TaskRequirementsRequestDTO request);
 
-    @Mapping(target = "taskTitle", ignore = true)  // set manually in service
-    TaskAssignmentResponseDTO toResponse(TaskAssignment entity);
+    TaskAssignmentResponseDTO toResponse(TaskAssignment entity, String taskTitle);
 }
