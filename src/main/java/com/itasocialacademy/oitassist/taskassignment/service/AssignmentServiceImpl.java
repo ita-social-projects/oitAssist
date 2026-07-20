@@ -43,10 +43,12 @@ public class AssignmentServiceImpl implements AssignmentService {
             taskAssignment.setVisibility(AssignmentVisibility.HIDDEN);
         }
 
+        TaskAssignment savedTaskAssignment = taskAssignmentRepository.save(taskAssignment);
+
         log.debug("Assigned task {} to tour {}", request.taskBodyId(), tourId);
 
         // TODO: use real task title, when the task facade will be introduced
-        return taskAssignmentMapper.toResponse(taskAssignmentRepository.save(taskAssignment), "mock title");
+        return taskAssignmentMapper.toResponse(savedTaskAssignment, "mock title");
     }
 
     @Override
