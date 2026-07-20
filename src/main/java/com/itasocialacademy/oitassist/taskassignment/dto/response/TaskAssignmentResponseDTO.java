@@ -13,6 +13,5 @@ public record TaskAssignmentResponseDTO(
     AssignmentVisibility visibility,
     Integer maxPoints,
     TaskRequirements requirements,
-    Long createdBy
-) {
+    Long createdBy) {
 }

@@ -9,6 +9,5 @@ public record CreateTaskAssignmentRequestDTO(
     @NotNull Long taskBodyId,
     AssignmentVisibility assignmentVisibility,
     @NotNull @Min(1) Integer maxPoints,
-    @NotNull @Valid TaskRequirementsRequestDTO requirements
-) {
+    @NotNull @Valid TaskRequirementsRequestDTO requirements) {
 }
