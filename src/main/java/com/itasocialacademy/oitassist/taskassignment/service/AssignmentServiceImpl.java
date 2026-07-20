@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibil
 import com.itasocialacademy.oitassist.taskassignment.dao.model.TaskAssignment;
 import com.itasocialacademy.oitassist.taskassignment.dao.repository.TaskAssignmentRepository;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
@@ -70,5 +71,27 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         log.debug("Get Task Assignment: Id {}", assignment.getId());
         return taskAssignmentMapper.toResponse(assignment, "mock title");
+    }
+
+    @Override
+    @Transactional
+    public TaskAssignmentResponseDTO updateTaskAssignment(Long taskAssignmentId,
+        UpdateTaskAssignmentRequestDTO request) {
+        TaskAssignment assignment = taskAssignmentRepository.findById(taskAssignmentId).orElseThrow(
+            () -> new TaskAssignmentNotFoundException(taskAssignmentId));
+
+        if (request.visibility() != null) {
+            assignment.setVisibility(request.visibility());
+        }
+        if (request.maxPoints() != null) {
+            assignment.setMaxPoints(request.maxPoints());
+        }
+        if (request.requirements() != null) {
+            assignment.setRequirements(taskAssignmentMapper.toRequirements(request.requirements()));
+        }
+
+        log.debug("Updated Task Assignment: Id {}", assignment.getId());
+
+        return taskAssignmentMapper.toResponse(taskAssignmentRepository.save(assignment), "mock title");
     }
 }
