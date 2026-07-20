@@ -41,6 +41,12 @@ public class UserServiceImpl implements UserService {
             .map(mapper::toUserAuthDetails);
     }
 
+    @Override
+    public Optional<UserAuthDetails> findAuthDetailsById(Long userId) {
+        return repository.findById(userId)
+            .map(mapper::toUserAuthDetails);
+    }
+
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {
         Optional<User> user = repository.findUserByEmail(username);
         return user.map(mapper::toUserDetails).orElse(null);
