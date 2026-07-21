@@ -33,10 +33,13 @@ public class StageServiceImpl implements StageService {
         Stage stage = mapper.toEntity(request);
         stage.setCompetitionId(competitionId);
 
-        // TODO: validation by title must be more flexible (e.g. if exists "Lviv 1" ->
-        // can't create "Lviv 2")
         if (stageRepository.existsByCompetitionIdAndTitle(competitionId, stage.getTitle())) {
             throw new CompetitionHierarchyValidationException("Stage title already exists in this competition.");
+        }
+
+        if (stageRepository.existsByCompetitionIdAndScope(competitionId, stage.getScope())) {
+            throw new CompetitionHierarchyValidationException(
+                "A stage with scope %s already exists in this competition.".formatted(stage.getScope()));
         }
 
         if (stage.getSortPosition() != null) {
@@ -103,9 +106,13 @@ public class StageServiceImpl implements StageService {
                     throw new CompetitionHierarchyValidationException(
                         "Stage title already exists in this competition.");
                 }
+                if (existing.getScope() == request.scope()) {
+                    throw new CompetitionHierarchyValidationException(
+                        "A stage with scope %s already exists in this competition.".formatted(request.scope()));
+                }
                 if (existing.getSortPosition().equals(stage.getSortPosition())) {
                     throw new CompetitionHierarchyValidationException(
-                        "Sort position " + stage.getSortPosition() + " is already taken.");
+                        "Sort position %s is already taken.".formatted(stage.getSortPosition()));
                 }
             });
 
