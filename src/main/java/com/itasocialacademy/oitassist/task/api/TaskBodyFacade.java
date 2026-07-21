@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.task.api.interfaces;
+package com.itasocialacademy.oitassist.task.api;
 
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
 import org.springframework.modulith.NamedInterface;
