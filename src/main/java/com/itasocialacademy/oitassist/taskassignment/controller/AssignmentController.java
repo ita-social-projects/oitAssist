@@ -99,7 +99,7 @@ public class AssignmentController {
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PutMapping("/task-assignments/{assignmentId}")
+    @PatchMapping("/task-assignments/{assignmentId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<TaskAssignmentResponseDTO> update(@PathVariable Long assignmentId,
         @Valid @RequestBody UpdateTaskAssignmentRequestDTO request) {
