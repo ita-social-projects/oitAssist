@@ -12,12 +12,8 @@ import org.springframework.data.domain.Pageable;
 
 public interface AssignmentService {
     /**
-     * Assigns a task to a specific tour.
-     *
-     * <p>
-     * Creates a new task assignment linking a task body to a tour. If no visibility
-     * level is provided in the request, it defaults to
-     * {@link AssignmentVisibility#HIDDEN}.
+     * Assigns a task to a specific tour. If no visibility level is provided in the
+     * request, it defaults to {@link AssignmentVisibility#HIDDEN}.
      *
      * @param tourId  the id of the tour to assign the task to
      * @param request the task assignment creation request containing task body id,
@@ -52,11 +48,9 @@ public interface AssignmentService {
     TaskAssignmentResponseDTO getTaskAssignmentById(Long taskAssignmentId);
 
     /**
-     * Updates an existing task assignment with new values.
-     *
-     * <p>
-     * Allows partial updates of task assignment properties. Only non-null fields in
-     * the request DTO are applied to the assignment.
+     * Updates an existing task assignment with new values. Allows partial updates
+     * of task assignment properties. Only non-null fields in the request DTO are
+     * applied to the assignment.
      *
      * @param taskAssignmentId the id of the task assignment to update
      * @param request          the update request containing the new values for the
