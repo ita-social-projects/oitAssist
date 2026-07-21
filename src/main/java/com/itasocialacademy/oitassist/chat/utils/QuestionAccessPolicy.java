@@ -2,7 +2,7 @@ package com.itasocialacademy.oitassist.chat.utils;
 
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
-import com.itasocialacademy.oitassist.task.api.interfaces.TaskBodyFacade;
+import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
