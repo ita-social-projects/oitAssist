@@ -95,4 +95,15 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         return taskAssignmentMapper.toResponse(taskAssignmentRepository.save(assignment), "mock title");
     }
+
+    @Override
+    @Transactional
+    public void deleteTaskAssignment(Long taskAssignmentId) {
+        TaskAssignment assignment = taskAssignmentRepository.findById(taskAssignmentId).orElseThrow(
+            () -> new TaskAssignmentNotFoundException(taskAssignmentId));
+
+        taskAssignmentRepository.delete(assignment);
+
+        log.debug("Deleted Task Assignment: Id {}", assignment.getId());
+    }
 }
