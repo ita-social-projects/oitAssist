@@ -7,7 +7,9 @@ import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequeste
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
 import com.itasocialacademy.oitassist.task.dao.model.TaskBody;
+import com.itasocialacademy.oitassist.task.dao.model.TaskTitleView;
 import com.itasocialacademy.oitassist.task.dao.repository.TaskBodyRepository;
 import com.itasocialacademy.oitassist.task.dto.request.ChangeOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
@@ -21,7 +23,11 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -153,6 +159,26 @@ public class TaskServiceImpl implements TaskService {
 
         taskBodyRepository.delete(taskToDelete);
         log.debug("Task {} with title {} deleted", taskId, taskToDelete.getTitle());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<TaskBodyDetail> getTaskBodyDetailById(Long taskId) {
+        return taskBodyRepository.findById(taskId)
+            .map(taskBodyMapper::toTaskBodyDetail);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, String> getTaskTitlesByIds(List<Long> taskIds) {
+        if (taskIds == null || taskIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return taskBodyRepository.findTitlesByIds(taskIds).stream()
+            .collect(Collectors.toMap(
+                TaskTitleView::getId,
+                TaskTitleView::getTitle));
     }
 
     // helpers
