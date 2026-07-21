@@ -1,10 +1,7 @@
 package com.itasocialacademy.oitassist.taskassignment.dto.request;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import java.util.List;
 
 public record TaskRequirementsRequestDTO(
@@ -16,6 +13,6 @@ public record TaskRequirementsRequestDTO(
 
         @NotEmpty List<String> allowedExtensions,
 
-        @NotNull @Min(1) Integer maxFileSizeMb) {
+        @NotNull @Min(1) @Max(200) Integer maxFileSizeMb) {
     }
 }
