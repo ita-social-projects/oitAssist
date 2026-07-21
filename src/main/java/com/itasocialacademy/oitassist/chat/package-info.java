@@ -1,7 +1,7 @@
 @ApplicationModule(
     displayName = "Chat",
     allowedDependencies = {"core", "security :: SecurityFacade",
-        "task :: TaskBodyFacade"})
+        "task :: api"})
 package com.itasocialacademy.oitassist.chat;
 
 import org.springframework.modulith.ApplicationModule;
