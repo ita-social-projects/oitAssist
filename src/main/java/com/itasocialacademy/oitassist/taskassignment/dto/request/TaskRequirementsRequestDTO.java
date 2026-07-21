@@ -1,18 +1,34 @@
 package com.itasocialacademy.oitassist.taskassignment.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.List;
 
+@Schema(description = "DTO specifying file requirements for task submissions")
 public record TaskRequirementsRequestDTO(
-    @NotEmpty @Valid List<RequiredFileRequest> requiredFiles) {
+    @Schema(
+        description = "List of required file specifications for task submission",
+        requiredMode = Schema.RequiredMode.REQUIRED) @NotEmpty @Valid List<RequiredFileRequest> requiredFiles) {
     public record RequiredFileRequest(
-        @NotBlank String prompt,
+        @Schema(
+            description = "Instructions or prompt describing the file requirements",
+            example = "Файл розв'язку до задачі про графи",
+            requiredMode = Schema.RequiredMode.REQUIRED) @NotBlank String prompt,
 
-        @NotBlank String namingRule,
+        @Schema(
+            description = "Naming convention or pattern for the file",
+            example = "PowerPoint_РіздвянаЗірка",
+            requiredMode = Schema.RequiredMode.REQUIRED) @NotBlank String namingRule,
 
-        @NotEmpty List<@NotBlank String> allowedExtensions,
+        @Schema(
+            description = "List of allowed file extensions for this requirement",
+            example = "[\".pptx\", \".docx\", \".xlsx\"]",
+            requiredMode = Schema.RequiredMode.REQUIRED) @NotEmpty List<@NotBlank String> allowedExtensions,
 
-        @NotNull @Min(1) @Max(200) Integer maxFileSizeMb) {
+        @Schema(
+            description = "Maximum file size in megabytes",
+            example = "50",
+            requiredMode = Schema.RequiredMode.REQUIRED) @NotNull @Min(1) @Max(200) Integer maxFileSizeMb) {
     }
 }
