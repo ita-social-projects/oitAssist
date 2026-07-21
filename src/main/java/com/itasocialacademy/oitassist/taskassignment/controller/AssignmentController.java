@@ -46,4 +46,11 @@ public class AssignmentController {
         @Valid @RequestBody UpdateTaskAssignmentRequestDTO request) {
         return ResponseEntity.ok().body(assignmentService.updateTaskAssignment(assignmentId, request));
     }
+
+    @DeleteMapping("/task-assignments/{assignmentId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
+    public ResponseEntity<Void> delete(@PathVariable Long assignmentId) {
+        assignmentService.deleteTaskAssignment(assignmentId);
+        return ResponseEntity.noContent().build();
+    }
 }
