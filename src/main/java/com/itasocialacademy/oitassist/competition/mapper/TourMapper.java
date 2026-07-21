@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.mapper;
 
+import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateTourRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
 import com.itasocialacademy.oitassist.competition.dao.model.Tour;
@@ -11,4 +12,6 @@ public interface TourMapper {
     Tour toEntity(CreateTourRequest request);
 
     TourResponse toResponse(Tour entity);
+
+    TourDetail toTourDetail(Tour entity);
 }
