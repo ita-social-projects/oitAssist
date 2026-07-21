@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.competition.api;
 
 import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import java.util.Optional;
 
 /**
@@ -15,4 +16,6 @@ public interface CompetitionFacade {
     Optional<CompetitionDetail> findCompetitionById(Long competitionId);
 
     Optional<StageDetail> findStageById(Long stageId);
+
+    Optional<TourDetail> findTourById(Long tourId);
 }
