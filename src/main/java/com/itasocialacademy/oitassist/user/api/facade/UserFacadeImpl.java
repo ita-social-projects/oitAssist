@@ -73,4 +73,12 @@ public class UserFacadeImpl implements UserFacade {
     public Optional<UserAuthDetails> findByEmail(String email) {
         return userService.findAuthDetailsByEmail(email);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<UserAuthDetails> findById(Long userId) {
+        return userService.findAuthDetailsById(userId);
+    }
 }
