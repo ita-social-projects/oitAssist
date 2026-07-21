@@ -11,7 +11,7 @@ public record TaskRequirementsRequestDTO(
 
         @NotBlank String namingRule,
 
-        @NotEmpty List<String> allowedExtensions,
+        @NotEmpty List<@NotBlank String> allowedExtensions,
 
         @NotNull @Min(1) @Max(200) Integer maxFileSizeMb) {
     }
