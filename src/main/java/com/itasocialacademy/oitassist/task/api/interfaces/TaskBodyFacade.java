@@ -16,5 +16,5 @@ public interface TaskBodyFacade {
 
     Map<Long, String> getTaskTitlesByIds(List<Long> taskBodyIds);
 
-    Optional<TaskBodyDetail> createTask(String title, String description, List<Long> fileIds);
+    TaskBodyDetail createTask(String title, String description, List<Long> fileIds);
 }
