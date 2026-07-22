@@ -20,26 +20,13 @@ public final class CompetitionSpecification {
     }
 
     /**
-     * For administrators (Role ADMIN). All Competitions are visible except
+     * For administrators (Role ADMIN or ORG). All Competitions are visible except
      * archived.
      */
-    public static Specification<Competition> isVisibleToAdmin() {
+    public static Specification<Competition> isVisibleToAdminOrOrg() {
         return (root, query, cb) -> root.get(COMPETITION_STATUS)
             .in(CompetitionStatus.DRAFT, CompetitionStatus.ENROLLMENT, CompetitionStatus.PUBLISHED,
                 CompetitionStatus.FINISHED);
-    }
-
-    /**
-     * For organizers (Role ORG). Published or finished Competitions are visible.
-     * Also, self-created (DRAFT) competitions are visible.
-     */
-    public static Specification<Competition> isVisibleToOrg(Long currentUserId) {
-        return (root, query, cb) -> cb.or(
-            root.get(COMPETITION_STATUS).in(CompetitionStatus.ENROLLMENT, CompetitionStatus.PUBLISHED,
-                CompetitionStatus.FINISHED),
-            cb.and(
-                cb.equal(root.get(COMPETITION_STATUS), CompetitionStatus.DRAFT),
-                cb.equal(root.get("createdBy"), currentUserId)));
     }
 
     /**
