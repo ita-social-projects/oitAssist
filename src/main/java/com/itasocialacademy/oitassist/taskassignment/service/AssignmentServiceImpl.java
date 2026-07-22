@@ -9,6 +9,7 @@ import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.dao.model.TaskAssignment;
 import com.itasocialacademy.oitassist.taskassignment.dao.repository.TaskAssignmentRepository;
+import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
@@ -139,5 +140,29 @@ public class AssignmentServiceImpl implements AssignmentService {
         taskAssignmentRepository.delete(assignment);
 
         log.debug("Deleted Task Assignment: Id {}", assignment.getId());
+    }
+
+    @Override
+    @Transactional
+    public TaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request) {
+        TourDetail tour = competitionFacade.findTourById(tourId)
+            .orElseThrow(() -> new TourNotFoundException(tourId));
+
+        TaskBodyDetail createdTask = taskBodyFacade.createTask(
+            request.title(), request.description(), request.fileIds());
+
+        TaskAssignment taskAssignment = TaskAssignment.builder()
+            .taskBodyId(createdTask.id())
+            .tourId(tour.id())
+            .visibility(request.visibility() != null ? request.visibility() : AssignmentVisibility.HIDDEN)
+            .maxPoints(request.maxPoints())
+            .requirements(taskAssignmentMapper.toRequirements(request.requirements()))
+            .build();
+
+        TaskAssignment saved = taskAssignmentRepository.save(taskAssignment);
+
+        log.debug("Created task {} and assigned to tour {}", createdTask.id(), tour.id());
+
+        return taskAssignmentMapper.toResponse(saved, createdTask.title());
     }
 }

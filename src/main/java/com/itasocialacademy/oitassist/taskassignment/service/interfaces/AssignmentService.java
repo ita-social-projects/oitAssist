@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.taskassignment.service.interfaces;
 
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
+import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
@@ -70,4 +71,6 @@ public interface AssignmentService {
      *                                         given id
      */
     void deleteTaskAssignment(Long taskAssignmentId);
+
+    TaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request);
 }
