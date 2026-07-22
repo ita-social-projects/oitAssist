@@ -17,6 +17,7 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
@@ -45,9 +46,9 @@ public class UserServiceImpl implements UserService {
      * {@inheritDoc}
      */
     @Override
-    public Optional<UserAuthDetails> findAuthDetailsById(Long userId) {
-        return repository.findById(userId)
-            .map(mapper::toUserAuthDetails);
+    public List<UserAuthDetails> findAuthDetailsByIds(List<Long> userIds) {
+        return repository.findAllById(userIds)
+            .stream().map(mapper::toUserAuthDetails).toList();
     }
 
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {

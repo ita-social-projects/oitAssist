@@ -12,6 +12,7 @@ import com.itasocialacademy.oitassist.user.exceptions.UserRoleSelfChangeExceptio
 import com.itasocialacademy.oitassist.user.exceptions.UserStatusSelfChangeException;
 import com.itasocialacademy.oitassist.user.exceptions.AdminStatusModificationException;
 import com.itasocialacademy.oitassist.user.exceptions.UserAuthorizationException;
+import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
@@ -31,14 +32,14 @@ public interface UserService {
     Optional<UserAuthDetails> findAuthDetailsByEmail(String email);
 
     /**
-     * Similar to {@code UserService.findAuthDetailsByEmail}, this one looks up a
-     * user by their ID and returns the auth-side projection required by
-     * {@code UserFacade.findById}. Returns empty if no user exists.
+     * Searches for the list of users by their IDs and
+     * returns the list of auth-side projections required by
+     * {@code UserFacade.findByIds}. Returns empty if no users were found.
      *
-     * @param userId the user's ID
-     * @return the user's auth details DTO
+     * @param userIds the users' IDs
+     * @return the users' auth details DTOs
      */
-    Optional<UserAuthDetails> findAuthDetailsById(Long userId);
+    List<UserAuthDetails> findAuthDetailsByIds(List<Long> userIds);
 
     UserDetailsImpl loadUserByUsername(String username);
 
