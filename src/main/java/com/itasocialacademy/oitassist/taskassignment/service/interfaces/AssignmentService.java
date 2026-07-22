@@ -1,0 +1,73 @@
+package com.itasocialacademy.oitassist.taskassignment.service.interfaces;
+
+import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
+import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
+import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
+import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+public interface AssignmentService {
+    /**
+     * Assigns a task to a specific tour. If no visibility level is provided in the
+     * request, it defaults to {@link AssignmentVisibility#HIDDEN}.
+     *
+     * @param tourId  the id of the tour to assign the task to
+     * @param request the task assignment creation request containing task body id,
+     *                visibility level, and other assignment details
+     * @return the created {@link TaskAssignmentResponseDTO} with the assigned task
+     *         details
+     * @throws TaskAlreadyAssignedException if the task is already assigned to the
+     *                                      specified tour
+     * @throws TourNotFoundException        if the tour or task does not exist
+     */
+    TaskAssignmentResponseDTO assignTask(Long tourId, CreateTaskAssignmentRequestDTO request);
+
+    /**
+     * Retrieves all task assignments for a specific tour with pagination support.
+     *
+     * @param pageable the pagination and sorting parameters
+     * @param tourId   the id of the tour to retrieve assignments for
+     * @return a {@link Page} containing {@link TaskAssignmentResponseDTO} objects
+     *         for the specified tour
+     * @throws TourNotFoundException if the tour does not exist
+     */
+    Page<TaskAssignmentResponseDTO> getAssignmentsByTourId(Pageable pageable, Long tourId);
+
+    /**
+     * Retrieves a task assignment by its id.
+     *
+     * @param taskAssignmentId the id of the task assignment to retrieve
+     * @return the {@link TaskAssignmentResponseDTO} with the assignment details
+     * @throws TaskAssignmentNotFoundException if no task assignment exists with the
+     *                                         given id
+     */
+    TaskAssignmentResponseDTO getTaskAssignmentById(Long taskAssignmentId);
+
+    /**
+     * Updates an existing task assignment with new values. Allows partial updates
+     * of task assignment properties. Only non-null fields in the request DTO are
+     * applied to the assignment.
+     *
+     * @param taskAssignmentId the id of the task assignment to update
+     * @param request          the update request containing the new values for the
+     *                         assignment;
+     * @return the updated {@link TaskAssignmentResponseDTO} with the new assignment
+     *         details
+     * @throws TaskAssignmentNotFoundException if no task assignment exists with the
+     *                                         given id
+     */
+    TaskAssignmentResponseDTO updateTaskAssignment(Long taskAssignmentId, UpdateTaskAssignmentRequestDTO request);
+
+    /**
+     * Deletes a task assignment by its id.
+     *
+     * @param taskAssignmentId the id of the task assignment to delete
+     * @throws TaskAssignmentNotFoundException if no task assignment exists with the
+     *                                         given id
+     */
+    void deleteTaskAssignment(Long taskAssignmentId);
+}

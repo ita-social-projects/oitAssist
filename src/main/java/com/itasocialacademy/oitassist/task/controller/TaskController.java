@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -79,7 +80,7 @@ public class TaskController {
     @GetMapping()
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PageResponse<TaskResponseDTO>> getAllTasks(
-        @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
+        @ParameterObject @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(PageResponse.from(taskService.getAllTasks(pageable)));
     }
 
@@ -96,7 +97,7 @@ public class TaskController {
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<TaskResponseDTO>> getMyTasks(
-        @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
+        @ParameterObject @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(PageResponse.from(taskService.getAllMyTasks(pageable)));
     }
 

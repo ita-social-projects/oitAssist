@@ -3,7 +3,7 @@ package com.itasocialacademy.oitassist.taskassignment.dao.model;
 import java.util.List;
 
 public record TaskRequirements(
-    List<RequiredFile> requiredFileList) {
+    List<RequiredFile> requiredFiles) {
     public record RequiredFile(
         String prompt,
         String namingRule,
