@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -66,7 +67,7 @@ public class CompetitionController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<CompetitionResponse>> getAllVisible(
-        @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        @ParameterObject @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(PageResponse.from(competitionService.getAllVisible(pageable)));
     }
 
@@ -80,7 +81,7 @@ public class CompetitionController {
     @GetMapping("/archived")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<CompetitionResponse>> getArchived(
-        @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        @ParameterObject @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(PageResponse.from(competitionService.getArchived(pageable)));
     }
 
