@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.service.interfaces.RegistrationService;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserActivationService;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -78,7 +79,7 @@ public class UserFacadeImpl implements UserFacade {
      * {@inheritDoc}
      */
     @Override
-    public Optional<UserAuthDetails> findById(Long userId) {
-        return userService.findAuthDetailsById(userId);
+    public List<UserAuthDetails> findByIds(List<Long> userIds) {
+        return userService.findAuthDetailsByIds(userIds);
     }
 }
