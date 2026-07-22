@@ -20,7 +20,7 @@ public final class CompetitionSpecification {
     }
 
     /**
-     * For administrators (Role ADMIN). All Competitions are visible except
+     * For administrators (Role ADMIN or ORG). All Competitions are visible except
      * archived.
      */
     public static Specification<Competition> isVisibleToAdminOrOrg() {
