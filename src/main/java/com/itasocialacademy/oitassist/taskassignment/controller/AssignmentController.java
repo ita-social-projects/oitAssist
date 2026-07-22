@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -78,7 +79,7 @@ public class AssignmentController {
     @GetMapping("/tours/{tourId}/task-assignments")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<TaskAssignmentResponseDTO>> getByTour(@PathVariable Long tourId,
-        @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
+        @ParameterObject @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(PageResponse.from(assignmentService.getAssignmentsByTourId(pageable, tourId)));
     }
 
