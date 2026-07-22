@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.dao.repository;
 
+import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +16,12 @@ public interface StageRepository extends JpaRepository<Stage, Long> {
      * Competition.
      */
     boolean existsByCompetitionIdAndTitle(Long competitionId, String title);
+
+    /**
+     * Checks whether a stage with that scope already exists within a specific
+     * Competition.
+     */
+    boolean existsByCompetitionIdAndScope(Long competitionId, StageScope scope);
 
     /**
      * Checks whether a competition has at least one stage.
