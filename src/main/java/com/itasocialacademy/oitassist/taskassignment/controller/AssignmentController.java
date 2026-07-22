@@ -51,6 +51,24 @@ public class AssignmentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(assignmentService.assignTask(tourId, request));
     }
 
+    @Operation(
+        summary = "Create a new task and assign it to a tour",
+        description = "Creates a new task body and immediately assigns it to the specified tour. "
+            + "Requires ADMIN or ORG role.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Task created and assigned successfully",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = TaskAssignmentResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid input data",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Tour not found",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/tours/{tourId}/task-assignments/new")
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
     public ResponseEntity<TaskAssignmentResponseDTO> createAndAssignTask(@PathVariable Long tourId,
