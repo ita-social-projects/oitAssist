@@ -16,6 +16,6 @@ import java.util.List;
 public interface TaskBodyRepository extends JpaRepository<TaskBody, Long> {
     Page<TaskResponseDTO> findAllByOwnerId(Long currentUserId, Pageable pageable);
 
-    @Query(value = "SELECT t.id, t.title FROM TaskBody t WHERE t.id IN :ids")
+    @Query(value = "SELECT t.id AS id, t.title AS title FROM TaskBody t WHERE t.id IN :ids")
     List<TaskTitleView> findTitlesByIds(@Param("ids") Collection<Long> taskIds);
 }
