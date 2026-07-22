@@ -1,5 +1,11 @@
 package com.itasocialacademy.oitassist.taskassignment.service;
 
+import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
+import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
+import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
+import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
+import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.dao.model.TaskAssignment;
 import com.itasocialacademy.oitassist.taskassignment.dao.repository.TaskAssignmentRepository;
@@ -16,6 +22,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -23,21 +31,25 @@ import org.springframework.transaction.annotation.Transactional;
 public class AssignmentServiceImpl implements AssignmentService {
     private final TaskAssignmentRepository taskAssignmentRepository;
     private final TaskAssignmentMapper taskAssignmentMapper;
+    private final CompetitionFacade competitionFacade;
+    private final TaskBodyFacade taskBodyFacade;
 
     @Override
     @Transactional
     public TaskAssignmentResponseDTO assignTask(Long tourId, CreateTaskAssignmentRequestDTO request) {
-        // TODO: add a check for tour existence by its id
+        TourDetail tour = competitionFacade.findTourById(tourId).orElseThrow(
+            () -> new TourNotFoundException(tourId));
 
-        // TODO: add a check for task existence by its id
+        TaskBodyDetail taskBody = taskBodyFacade.findTaskBodyById(request.taskBodyId()).orElseThrow(
+            () -> new TaskNotFoundException(request.taskBodyId()));
 
-        if (taskAssignmentRepository.existsByTaskBodyIdAndTourId(request.taskBodyId(), tourId)) {
-            throw new TaskAlreadyAssignedException(request.taskBodyId(), tourId);
+        if (taskAssignmentRepository.existsByTaskBodyIdAndTourId(taskBody.id(), tour.id())) {
+            throw new TaskAlreadyAssignedException(taskBody.id(), tour.id());
         }
 
         TaskAssignment taskAssignment = taskAssignmentMapper.toEntity(request);
 
-        taskAssignment.setTourId(tourId);
+        taskAssignment.setTourId(tour.id());
 
         if (request.visibility() == null) {
             taskAssignment.setVisibility(AssignmentVisibility.HIDDEN);
@@ -45,23 +57,39 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         TaskAssignment savedTaskAssignment = taskAssignmentRepository.save(taskAssignment);
 
-        log.debug("Assigned task {} to tour {}", request.taskBodyId(), tourId);
+        log.debug("Assigned task {} to tour {}", taskBody.id(), tour.id());
 
-        // TODO: use real task title, when the task facade will be introduced
-        return taskAssignmentMapper.toResponse(savedTaskAssignment, "mock title");
+        return taskAssignmentMapper.toResponse(savedTaskAssignment, taskBody.title());
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<TaskAssignmentResponseDTO> getAssignmentsByTourId(Pageable pageable, Long tourId) {
-        // TODO: add a check for tour existence by its id
+        TourDetail tour = competitionFacade.findTourById(tourId).orElseThrow(
+            () -> new TourNotFoundException(tourId));
 
-        log.debug("Getting all task assignments for tour {}, page={}, size={}, sort={}", tourId,
+        log.debug("Getting all task assignments for tour {}, page={}, size={}, sort={}", tour.id(),
             pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
-        // TODO: add a real task title to response via task facade
-        return taskAssignmentRepository.findAllByTourId(tourId, pageable)
-            .map(entity -> taskAssignmentMapper.toResponse(entity, "mock title"));
+        Page<TaskAssignment> assignmentsPage = taskAssignmentRepository.findAllByTourId(tourId, pageable);
+
+        if (assignmentsPage.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<Long> taskIds = assignmentsPage.getContent().stream()
+            .map(TaskAssignment::getTaskBodyId)
+            .distinct()
+            .toList();
+
+        Map<Long, String> taskTitles = taskBodyFacade.getTaskTitlesByIds(taskIds);
+
+        log.debug("Retrived titles: {}", taskTitles.keySet());
+
+        return assignmentsPage.map(entity -> {
+            String title = taskTitles.getOrDefault(entity.getTaskBodyId(), "Unknown Title");
+            return taskAssignmentMapper.toResponse(entity, title);
+        });
     }
 
     @Override
@@ -70,8 +98,11 @@ public class AssignmentServiceImpl implements AssignmentService {
         TaskAssignment assignment = taskAssignmentRepository.findById(taskAssignmentId).orElseThrow(
             () -> new TaskAssignmentNotFoundException(taskAssignmentId));
 
+        TaskBodyDetail taskBody = taskBodyFacade.findTaskBodyById(assignment.getTaskBodyId()).orElseThrow(
+            () -> new TaskNotFoundException(assignment.getTaskBodyId()));
+
         log.debug("Get Task Assignment: Id {}", assignment.getId());
-        return taskAssignmentMapper.toResponse(assignment, "mock title");
+        return taskAssignmentMapper.toResponse(assignment, taskBody.title());
     }
 
     @Override
@@ -91,9 +122,12 @@ public class AssignmentServiceImpl implements AssignmentService {
             assignment.setRequirements(taskAssignmentMapper.toRequirements(request.requirements()));
         }
 
-        log.debug("Updated Task Assignment: Id {}", assignment.getId());
+        TaskBodyDetail taskBody = taskBodyFacade.findTaskBodyById(assignment.getTaskBodyId()).orElseThrow(
+            () -> new TaskNotFoundException(assignment.getTaskBodyId()));
 
-        return taskAssignmentMapper.toResponse(taskAssignmentRepository.save(assignment), "mock title");
+        log.debug("Update Task Assignment: Id {}", taskAssignmentId);
+
+        return taskAssignmentMapper.toResponse(taskAssignmentRepository.save(assignment), taskBody.title());
     }
 
     @Override
