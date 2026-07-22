@@ -32,9 +32,9 @@ public interface UserService {
     Optional<UserAuthDetails> findAuthDetailsByEmail(String email);
 
     /**
-     * Searches for the list of users by their IDs and
-     * returns the list of auth-side projections required by
-     * {@code UserFacade.findByIds}. Returns empty if no users were found.
+     * Searches for the list of users by their IDs and returns the list of auth-side
+     * projections required by {@code UserFacade.findByIds}. Returns empty if no
+     * users were found.
      *
      * @param userIds the users' IDs
      * @return the users' auth details DTOs
