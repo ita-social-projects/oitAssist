@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.taskassignment.controller;
 
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
+import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
@@ -48,6 +49,13 @@ public class AssignmentController {
     public ResponseEntity<TaskAssignmentResponseDTO> assignTask(@PathVariable Long tourId,
         @Valid @RequestBody CreateTaskAssignmentRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(assignmentService.assignTask(tourId, request));
+    }
+
+    @PostMapping("/tours/{tourId}/task-assignments/new")
+    @PreAuthorize("hasAnyRole('ADMIN','ORG')")
+    public ResponseEntity<TaskAssignmentResponseDTO> createAndAssignTask(@PathVariable Long tourId,
+        @Valid @RequestBody CreateAndAssignTaskRequestDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(assignmentService.createAndAssignTask(tourId, request));
     }
 
     @Operation(
