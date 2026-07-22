@@ -20,7 +20,6 @@ import com.itasocialacademy.oitassist.competition.mapper.StageMapper;
 import com.itasocialacademy.oitassist.competition.mapper.TourMapper;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
-import com.itasocialacademy.oitassist.core.exceptions.UserContextNotFoundException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.util.List;
 import java.util.Map;
@@ -73,12 +72,8 @@ public class CompetitionServiceImpl implements CompetitionService {
     public Page<CompetitionResponse> getAllVisible(Pageable pageable) {
         Specification<Competition> spec;
 
-        if (securityFacade.hasRole("ADMIN")) {
-            spec = CompetitionSpecification.isVisibleToAdmin();
-        } else if (securityFacade.hasRole("ORG")) {
-            Long currentUserId = securityFacade.getCurrentUserId()
-                .orElseThrow(() -> new UserContextNotFoundException("User ID not found in security context"));
-            spec = CompetitionSpecification.isVisibleToOrg(currentUserId);
+        if (securityFacade.hasRole("ADMIN") || securityFacade.hasRole("ORG")) {
+            spec = CompetitionSpecification.isVisibleToAdminOrOrg();
         } else {
             spec = CompetitionSpecification.isVisibleToUser();
         }
