@@ -12,6 +12,5 @@ public record TaskAssignmentDetailDTO(
     Long tourId,
     AssignmentVisibility visibility,
     Integer maxPoints,
-    TaskRequirements requirements
-) {
+    TaskRequirements requirements) {
 }
