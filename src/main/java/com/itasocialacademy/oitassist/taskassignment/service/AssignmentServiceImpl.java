@@ -85,8 +85,6 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         Map<Long, String> taskTitles = taskBodyFacade.getTaskTitlesByIds(taskIds);
 
-        log.debug("Retrived titles: {}", taskTitles.keySet());
-
         return assignmentsPage.map(entity -> {
             String title = taskTitles.getOrDefault(entity.getTaskBodyId(), "Unknown Title");
             return taskAssignmentMapper.toResponse(entity, title);
