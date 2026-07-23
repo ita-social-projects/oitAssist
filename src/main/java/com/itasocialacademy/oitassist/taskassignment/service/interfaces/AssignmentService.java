@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.taskassignment.service.interfaces;
 
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
+import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
@@ -70,4 +71,19 @@ public interface AssignmentService {
      *                                         given id
      */
     void deleteTaskAssignment(Long taskAssignmentId);
+
+    /**
+     * Creates a new task body and assigns it to the specified tour in a single
+     * transactional operation. If no visibility level is provided, it defaults to
+     * {@link AssignmentVisibility#HIDDEN}.
+     *
+     * @param tourId  the id of the tour to assign the newly created task to
+     * @param request the request containing task body fields (title, description,
+     *                file ids) and assignment fields (visibility, max points,
+     *                requirements)
+     * @return the created {@link TaskAssignmentResponseDTO} with the assignment
+     *         details
+     * @throws TourNotFoundException if the tour does not exist
+     */
+    TaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request);
 }

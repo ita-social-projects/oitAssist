@@ -18,7 +18,7 @@ public record TaskRequirementsRequestDTO(
 
         @Schema(
             description = "Naming convention or pattern for the file",
-            example = "PowerPoint_РіздвянаЗірка",
+            example = "Excel_ПланарнийГраф",
             requiredMode = Schema.RequiredMode.REQUIRED) @NotBlank String namingRule,
 
         @Schema(
