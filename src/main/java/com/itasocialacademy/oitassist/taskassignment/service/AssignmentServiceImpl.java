@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundExcepti
 import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
+import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.dao.model.TaskAssignment;
 import com.itasocialacademy.oitassist.taskassignment.dao.repository.TaskAssignmentRepository;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -162,5 +164,17 @@ public class AssignmentServiceImpl implements AssignmentService {
         log.debug("Created task {} and assigned to tour {}", createdTask.id(), tour.id());
 
         return taskAssignmentMapper.toResponse(saved, createdTask.title());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<TaskAssignmentDetailDTO> getTaskAssignmentDetailById(Long taskAssignmentId) {
+        return taskAssignmentRepository.findById(taskAssignmentId).map(taskAssignmentMapper::toDetails);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByTaskBodyId(Long taskBodyId) {
+        return taskAssignmentRepository.existsByTaskBodyId(taskBodyId);
     }
 }
