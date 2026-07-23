@@ -16,7 +16,7 @@ public record CreateAndAssignTaskRequestDTO(
     @Schema(
         description = "Detailed description of the task",
         example = "Створити у файлі-розв'язку планарний граф ...",
-        requiredMode = Schema.RequiredMode.REQUIRED) String description,
+        requiredMode = Schema.RequiredMode.NOT_REQUIRED) String description,
 
     @Schema(
         description = "List of file ids to attach to the task",
