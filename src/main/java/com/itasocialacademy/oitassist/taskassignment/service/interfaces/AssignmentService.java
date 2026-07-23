@@ -89,7 +89,22 @@ public interface AssignmentService {
      */
     TaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request);
 
+    /**
+     * Retrieves detailed information about a task assignment by its id, intended
+     * for cross-module communication via the facade layer.
+     *
+     * @param taskAssignmentId the id of the task assignment to retrieve
+     * @return an {@link Optional} containing the {@link TaskAssignmentDetailDTO} if
+     *         found, or empty if no assignment exists with the given id
+     */
     Optional<TaskAssignmentDetailDTO> getTaskAssignmentDetailById(Long taskAssignmentId);
 
+    /**
+     * Checks whether a task assignment exists for the given task body id.
+     *
+     * @param taskBodyId the id of the task body to check
+     * @return {@code true} if at least one assignment references the given task
+     *         body id, {@code false} otherwise
+     */
     boolean existsByTaskBodyId(Long taskBodyId);
 }
