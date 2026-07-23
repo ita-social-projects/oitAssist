@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.taskassignment.service.interfaces;
 
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
@@ -10,6 +11,7 @@ import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssig
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.Optional;
 
 public interface AssignmentService {
     /**
@@ -86,4 +88,8 @@ public interface AssignmentService {
      * @throws TourNotFoundException if the tour does not exist
      */
     TaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request);
+
+    Optional<TaskAssignmentDetailDTO> getTaskAssignmentDetailById(Long taskAssignmentId);
+
+    boolean existsByTaskBodyId(Long taskBodyId);
 }
