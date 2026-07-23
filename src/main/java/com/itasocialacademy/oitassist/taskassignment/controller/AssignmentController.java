@@ -42,6 +42,8 @@ public class AssignmentController {
         @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Tour or task not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409", description = "Link between task and tour already exists",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/tours/{tourId}/task-assignments")
