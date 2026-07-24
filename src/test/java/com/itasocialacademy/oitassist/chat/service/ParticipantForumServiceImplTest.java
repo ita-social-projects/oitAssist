@@ -38,6 +38,16 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateQuestionRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
+import org.mockito.InOrder;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class ParticipantForumServiceImplTest {
@@ -48,6 +58,16 @@ class ParticipantForumServiceImplTest {
 
     private static final int PAGE = 0;
     private static final int SIZE = 20;
+
+    private static final Long CREATED_QUESTION_ID = 11L;
+
+    private static final String QUESTION_TITLE = "Clarification about input format";
+
+    private static final String QUESTION_CONTENT = "May the input contain duplicate values?";
+
+    private static final Instant CREATED_AT = Instant.parse("2026-07-24T10:00:00Z");
+
+    private static final Instant UPDATED_AT = Instant.parse("2026-07-24T10:00:00Z");
 
     @Mock
     private QuestionThreadRepository questionThreadRepository;
@@ -323,6 +343,358 @@ class ParticipantForumServiceImplTest {
             questionAccessPolicy,
             questionThreadRepository,
             questionThreadMapper);
+    }
+
+    @Test
+    void createQuestion_accessibleTask_shouldSaveAndReturnMappedResponse() {
+        CreateQuestionRequestDTO request = createQuestionRequest();
+        QuestionThread mappedQuestion = createMappedQuestion();
+        QuestionThread savedQuestion = createSavedQuestion();
+        QuestionThreadResponseDTO expectedResponse =
+                createQuestionResponse();
+
+        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+                .thenReturn(USER_ID);
+        when(questionThreadMapper.toEntity(request))
+                .thenReturn(mappedQuestion);
+        when(questionThreadRepository.save(mappedQuestion))
+                .thenReturn(savedQuestion);
+        when(questionThreadMapper.toResponse(savedQuestion))
+                .thenReturn(expectedResponse);
+
+        QuestionThreadResponseDTO result =
+                participantForumService.createQuestion(
+                        TASK_ID,
+                        request
+                );
+
+        assertSame(expectedResponse, result);
+
+        InOrder inOrder = inOrder(
+                questionAccessPolicy,
+                questionThreadMapper,
+                questionThreadRepository
+        );
+
+        inOrder.verify(questionAccessPolicy)
+                .requireTaskForumAccess(TASK_ID);
+        inOrder.verify(questionThreadMapper)
+                .toEntity(request);
+        inOrder.verify(questionThreadRepository)
+                .save(mappedQuestion);
+        inOrder.verify(questionThreadMapper)
+                .toResponse(savedQuestion);
+    }
+
+    @Test
+    void createQuestion_shouldUseTaskIdFromPath() {
+        CreateQuestionRequestDTO request = createQuestionRequest();
+        QuestionThread mappedQuestion = createMappedQuestion();
+
+        stubSuccessfulCreation(
+                request,
+                mappedQuestion,
+                createSavedQuestion(),
+                createQuestionResponse()
+        );
+
+        participantForumService.createQuestion(TASK_ID, request);
+
+        ArgumentCaptor<QuestionThread> captor =
+                ArgumentCaptor.forClass(QuestionThread.class);
+
+        verify(questionThreadRepository).save(captor.capture());
+
+        assertEquals(TASK_ID, captor.getValue().getTaskId());
+    }
+
+    @Test
+    void createQuestion_shouldUseCurrentUserAsAuthor() {
+        CreateQuestionRequestDTO request = createQuestionRequest();
+        QuestionThread mappedQuestion = createMappedQuestion();
+
+        stubSuccessfulCreation(
+                request,
+                mappedQuestion,
+                createSavedQuestion(),
+                createQuestionResponse()
+        );
+
+        participantForumService.createQuestion(TASK_ID, request);
+
+        ArgumentCaptor<QuestionThread> captor =
+                ArgumentCaptor.forClass(QuestionThread.class);
+
+        verify(questionThreadRepository).save(captor.capture());
+
+        assertEquals(USER_ID, captor.getValue().getAuthorId());
+    }
+
+    @Test
+    void createQuestion_shouldApplyServerControlledDefaults() {
+        CreateQuestionRequestDTO request = createQuestionRequest();
+        QuestionThread mappedQuestion = createMappedQuestion();
+
+        stubSuccessfulCreation(
+                request,
+                mappedQuestion,
+                createSavedQuestion(),
+                createQuestionResponse()
+        );
+
+        participantForumService.createQuestion(TASK_ID, request);
+
+        ArgumentCaptor<QuestionThread> captor =
+                ArgumentCaptor.forClass(QuestionThread.class);
+
+        verify(questionThreadRepository).save(captor.capture());
+
+        QuestionThread persistedQuestion = captor.getValue();
+
+        assertEquals(
+                QuestionStatus.NEW,
+                persistedQuestion.getStatus()
+        );
+        assertEquals(
+                QuestionState.OPEN,
+                persistedQuestion.getState()
+        );
+        assertEquals(
+                QuestionVisibility.PRIVATE,
+                persistedQuestion.getVisibility()
+        );
+        assertEquals(0L, persistedQuestion.getVersion());
+    }
+
+    @Test
+    void createQuestion_shouldLeaveReviewerUnassigned() {
+        CreateQuestionRequestDTO request = createQuestionRequest();
+        QuestionThread mappedQuestion = createMappedQuestion();
+
+        mappedQuestion.setAssignedReviewerId(999L);
+
+        stubSuccessfulCreation(
+                request,
+                mappedQuestion,
+                createSavedQuestion(),
+                createQuestionResponse()
+        );
+
+        participantForumService.createQuestion(TASK_ID, request);
+
+        ArgumentCaptor<QuestionThread> captor =
+                ArgumentCaptor.forClass(QuestionThread.class);
+
+        verify(questionThreadRepository).save(captor.capture());
+
+        assertNull(
+                captor.getValue().getAssignedReviewerId()
+        );
+    }
+
+    @Test
+    void createQuestion_shouldMapSavedEntityToResponse() {
+        CreateQuestionRequestDTO request = createQuestionRequest();
+        QuestionThread mappedQuestion = createMappedQuestion();
+        QuestionThread savedQuestion = createSavedQuestion();
+        QuestionThreadResponseDTO expectedResponse =
+                createQuestionResponse();
+
+        stubSuccessfulCreation(
+                request,
+                mappedQuestion,
+                savedQuestion,
+                expectedResponse
+        );
+
+        QuestionThreadResponseDTO result =
+                participantForumService.createQuestion(
+                        TASK_ID,
+                        request
+                );
+
+        verify(questionThreadMapper).toResponse(savedQuestion);
+        assertSame(expectedResponse, result);
+    }
+
+    @Test
+    void createQuestion_unauthenticated_shouldNotPersist() {
+        CreateQuestionRequestDTO request = createQuestionRequest();
+
+        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+                .thenThrow(new AuthenticationException(
+                        "Authentication is required to access the question forum",
+                        ErrorCode.AUTHENTICATION_REQUIRED
+                ));
+
+        assertThrows(
+                AuthenticationException.class,
+                () -> participantForumService.createQuestion(
+                        TASK_ID,
+                        request
+                )
+        );
+
+        verify(questionAccessPolicy)
+                .requireTaskForumAccess(TASK_ID);
+
+        verifyNoInteractions(
+                questionThreadRepository,
+                questionThreadMapper
+        );
+    }
+
+    @Test
+    void createQuestion_missingTask_shouldNotPersist() {
+        CreateQuestionRequestDTO request = createQuestionRequest();
+
+        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+                .thenThrow(new TaskNotFoundException(TASK_ID));
+
+        assertThrows(
+                TaskNotFoundException.class,
+                () -> participantForumService.createQuestion(
+                        TASK_ID,
+                        request
+                )
+        );
+
+        verify(questionAccessPolicy)
+                .requireTaskForumAccess(TASK_ID);
+
+        verifyNoInteractions(
+                questionThreadRepository,
+                questionThreadMapper
+        );
+    }
+
+    @Test
+    void createQuestion_invalidTaskId_shouldRejectBeforeAccessCheck() {
+        CreateQuestionRequestDTO request = createQuestionRequest();
+
+        assertThrows(
+                ValidationException.class,
+                () -> participantForumService.createQuestion(
+                        null,
+                        request
+                )
+        );
+
+        assertThrows(
+                ValidationException.class,
+                () -> participantForumService.createQuestion(
+                        0L,
+                        request
+                )
+        );
+
+        assertThrows(
+                ValidationException.class,
+                () -> participantForumService.createQuestion(
+                        -1L,
+                        request
+                )
+        );
+
+        verifyNoInteractions(
+                questionAccessPolicy,
+                questionThreadRepository,
+                questionThreadMapper
+        );
+    }
+
+    @Test
+    void createQuestion_repositoryFailure_shouldPropagateException() {
+        CreateQuestionRequestDTO request = createQuestionRequest();
+        QuestionThread mappedQuestion = createMappedQuestion();
+
+        RuntimeException repositoryFailure =
+                new RuntimeException("Database failure");
+
+        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+                .thenReturn(USER_ID);
+        when(questionThreadMapper.toEntity(request))
+                .thenReturn(mappedQuestion);
+        when(questionThreadRepository.save(mappedQuestion))
+                .thenThrow(repositoryFailure);
+
+        RuntimeException result = assertThrows(
+                RuntimeException.class,
+                () -> participantForumService.createQuestion(
+                        TASK_ID,
+                        request
+                )
+        );
+
+        assertSame(repositoryFailure, result);
+
+        verify(questionThreadRepository).save(mappedQuestion);
+        verify(questionThreadMapper, never())
+                .toResponse(any(QuestionThread.class));
+    }
+
+    private CreateQuestionRequestDTO createQuestionRequest() {
+        return new CreateQuestionRequestDTO(
+                QUESTION_TITLE,
+                QUESTION_CONTENT
+        );
+    }
+
+    private QuestionThread createMappedQuestion() {
+        return QuestionThread.builder()
+                .title(QUESTION_TITLE)
+                .content(QUESTION_CONTENT)
+                .build();
+    }
+
+    private QuestionThread createSavedQuestion() {
+        return QuestionThread.builder()
+                .id(CREATED_QUESTION_ID)
+                .taskId(TASK_ID)
+                .authorId(USER_ID)
+                .assignedReviewerId(null)
+                .title(QUESTION_TITLE)
+                .content(QUESTION_CONTENT)
+                .status(QuestionStatus.NEW)
+                .state(QuestionState.OPEN)
+                .visibility(QuestionVisibility.PRIVATE)
+                .version(0L)
+                .createdAt(CREATED_AT)
+                .updatedAt(UPDATED_AT)
+                .build();
+    }
+
+    private QuestionThreadResponseDTO createQuestionResponse() {
+        return new QuestionThreadResponseDTO(
+                CREATED_QUESTION_ID,
+                TASK_ID,
+                USER_ID,
+                null,
+                QUESTION_TITLE,
+                QUESTION_CONTENT,
+                QuestionStatus.NEW,
+                QuestionVisibility.PRIVATE,
+                QuestionState.OPEN,
+                0L,
+                CREATED_AT,
+                UPDATED_AT
+        );
+    }
+
+    private void stubSuccessfulCreation(
+            CreateQuestionRequestDTO request,
+            QuestionThread mappedQuestion,
+            QuestionThread savedQuestion,
+            QuestionThreadResponseDTO response
+    ) {
+        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+                .thenReturn(USER_ID);
+        when(questionThreadMapper.toEntity(request))
+                .thenReturn(mappedQuestion);
+        when(questionThreadRepository.save(mappedQuestion))
+                .thenReturn(savedQuestion);
+        when(questionThreadMapper.toResponse(savedQuestion))
+                .thenReturn(response);
     }
 
     private void stubAccessibleEmptyForum() {
