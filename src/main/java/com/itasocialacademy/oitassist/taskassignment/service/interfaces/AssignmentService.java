@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.taskassignment.service.interfaces;
 
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
@@ -10,6 +11,7 @@ import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssig
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.Optional;
 
 public interface AssignmentService {
     /**
@@ -86,4 +88,23 @@ public interface AssignmentService {
      * @throws TourNotFoundException if the tour does not exist
      */
     TaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request);
+
+    /**
+     * Retrieves detailed information about a task assignment by its id, intended
+     * for cross-module communication via the facade layer.
+     *
+     * @param taskAssignmentId the id of the task assignment to retrieve
+     * @return an {@link Optional} containing the {@link TaskAssignmentDetailDTO} if
+     *         found, or empty if no assignment exists with the given id
+     */
+    Optional<TaskAssignmentDetailDTO> getTaskAssignmentDetailById(Long taskAssignmentId);
+
+    /**
+     * Checks whether a task assignment exists for the given task body id.
+     *
+     * @param taskBodyId the id of the task body to check
+     * @return {@code true} if at least one assignment references the given task
+     *         body id, {@code false} otherwise
+     */
+    boolean existsByTaskBodyId(Long taskBodyId);
 }
