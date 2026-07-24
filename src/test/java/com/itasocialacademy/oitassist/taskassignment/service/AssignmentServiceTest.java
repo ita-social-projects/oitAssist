@@ -34,6 +34,7 @@ import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssig
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.TaskRequirementsRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
+import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
@@ -377,5 +378,49 @@ class AssignmentServiceTest {
         ArgumentCaptor<TaskAssignment> captor = ArgumentCaptor.forClass(TaskAssignment.class);
         verify(taskAssignmentRepository).save(captor.capture());
         assertEquals(AssignmentVisibility.HIDDEN, captor.getValue().getVisibility());
+    }
+
+    // ---- getTaskAssignmentDetailById ----
+
+    @Test
+    void getTaskAssignmentDetailById_existingId_shouldReturnDetail() {
+        TaskAssignmentDetailDTO detailDTO = new TaskAssignmentDetailDTO(
+            1L, 3L, 10L, AssignmentVisibility.VISIBLE, 25, requirements);
+
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(taskAssignmentMapper.toDetails(taskAssignment)).thenReturn(detailDTO);
+
+        Optional<TaskAssignmentDetailDTO> result = assignmentService.getTaskAssignmentDetailById(1L);
+
+        assertTrue(result.isPresent());
+        assertEquals(1L, result.get().id());
+        assertEquals(3L, result.get().taskBodyId());
+        assertEquals(10L, result.get().tourId());
+    }
+
+    @Test
+    void getTaskAssignmentDetailById_nonExistingId_shouldReturnEmpty() {
+        when(taskAssignmentRepository.findById(99L)).thenReturn(Optional.empty());
+
+        Optional<TaskAssignmentDetailDTO> result = assignmentService.getTaskAssignmentDetailById(99L);
+
+        assertTrue(result.isEmpty());
+        verify(taskAssignmentMapper, never()).toDetails(any());
+    }
+
+    // ---- existsByTaskBodyId ----
+
+    @Test
+    void existsByTaskBodyId_whenExists_shouldReturnTrue() {
+        when(taskAssignmentRepository.existsByTaskBodyId(3L)).thenReturn(true);
+
+        assertTrue(assignmentService.existsByTaskBodyId(3L));
+    }
+
+    @Test
+    void existsByTaskBodyId_whenNotExists_shouldReturnFalse() {
+        when(taskAssignmentRepository.existsByTaskBodyId(99L)).thenReturn(false);
+
+        assertFalse(assignmentService.existsByTaskBodyId(99L));
     }
 }
