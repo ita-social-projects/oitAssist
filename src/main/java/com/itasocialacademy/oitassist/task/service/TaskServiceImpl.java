@@ -8,6 +8,7 @@ import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequeste
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
+import com.itasocialacademy.oitassist.task.api.events.TaskDeletionRequestEvent;
 import com.itasocialacademy.oitassist.task.dao.model.TaskBody;
 import com.itasocialacademy.oitassist.task.dao.model.TaskTitleView;
 import com.itasocialacademy.oitassist.task.dao.repository.TaskBodyRepository;
@@ -147,11 +148,11 @@ public class TaskServiceImpl implements TaskService {
         return taskBodyMapper.toResponse(taskBodyRepository.save(task));
     }
 
-    // TODO: Implement TaskAssignment validation to check if this task is currently
-    // assigned to any tour.
     @Override
     @Transactional
     public void deleteTask(Long taskId) {
+        checkForAssignments(taskId);
+
         TaskBody taskToDelete = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
@@ -208,5 +209,9 @@ public class TaskServiceImpl implements TaskService {
 
     private boolean isOrgOrAdmin(UserAuthDetails userDetails) {
         return userDetails.role().equals(Role.ADMIN) || userDetails.role().equals(Role.ORG);
+    }
+
+    private void checkForAssignments(Long taskBodyId) {
+        applicationEventPublisher.publishEvent(new TaskDeletionRequestEvent(taskBodyId));
     }
 }
