@@ -10,7 +10,7 @@ public record LogFileResponse(
         example = "application.log") String fileName,
 
     @Schema(
-        description = "File size in bites",
+        description = "File size in bytes",
         example = "153920") long size,
 
     @Schema(
