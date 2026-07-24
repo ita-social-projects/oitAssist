@@ -161,6 +161,10 @@ public class TaskController {
                 schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Task not found",
             content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Task deletion is restricted. Task is linked to one or more tours",
+            content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
     @DeleteMapping("/{taskId}")
