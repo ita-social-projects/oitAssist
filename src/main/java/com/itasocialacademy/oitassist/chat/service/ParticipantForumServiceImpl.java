@@ -1,6 +1,12 @@
 package com.itasocialacademy.oitassist.chat.service;
 
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateQuestionRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadSummaryResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
+import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
 import com.itasocialacademy.oitassist.chat.service.interfaces.ParticipantForumService;
@@ -51,15 +57,38 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
             pageable).map(questionThreadMapper::toSummaryResponse);
     }
 
+    @Override
+    @Transactional
+    public QuestionThreadResponseDTO createQuestion(
+            Long taskId,
+            CreateQuestionRequestDTO request
+    ) {
+        validateTaskId(taskId);
+
+        Long authorId =
+                questionAccessPolicy.requireTaskForumAccess(taskId);
+
+        QuestionThread question =
+                questionThreadMapper.toEntity(request);
+
+        question.setTaskId(taskId);
+        question.setAuthorId(authorId);
+        question.setStatus(QuestionStatus.NEW);
+        question.setState(QuestionState.OPEN);
+        question.setVisibility(QuestionVisibility.PRIVATE);
+        question.setAssignedReviewerId(null);
+
+        QuestionThread savedQuestion =
+                questionThreadRepository.save(question);
+
+        return questionThreadMapper.toResponse(savedQuestion);
+    }
+
     private void validateRequest(
         Long taskId,
         int page,
         int size) {
-        if (taskId == null || taskId <= 0) {
-            throw new ValidationException(
-                "Task id must be a positive number",
-                ErrorCode.COMMON_VALIDATION_FAILED);
-        }
+        validateTaskId(taskId);
 
         if (page < 0) {
             throw new ValidationException(
@@ -72,6 +101,15 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
                 "Page size must be between 1 and %d"
                     .formatted(MAX_PAGE_SIZE),
                 ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+    }
+
+    private void validateTaskId(Long taskId) {
+        if (taskId == null || taskId <= 0) {
+            throw new ValidationException(
+                    "Task id must be a positive number",
+                    ErrorCode.COMMON_VALIDATION_FAILED
+            );
         }
     }
 }
