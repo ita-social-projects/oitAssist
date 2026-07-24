@@ -19,4 +19,18 @@ public class ParticipationFacadeImpl implements ParticipationFacade {
     public boolean stageHasParticipants(Long stageId) {
         return participationRepository.existsByStageId(stageId);
     }
+
+    @Override
+    public boolean isUserParticipant(
+            Long userId,
+            Long competitionId,
+            Long stageId
+    ) {
+        return participationRepository
+                .existsByUserIdAndCompetitionIdAndStageId(
+                        userId,
+                        competitionId,
+                        stageId
+                );
+    }
 }
