@@ -60,16 +60,15 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
     @Override
     @Transactional
     public QuestionThreadResponseDTO createQuestion(
-            Long taskId,
-            CreateQuestionRequestDTO request
-    ) {
+        Long taskId,
+        CreateQuestionRequestDTO request) {
         validateTaskId(taskId);
 
         Long authorId =
-                questionAccessPolicy.requireTaskForumAccess(taskId);
+            questionAccessPolicy.requireTaskForumAccess(taskId);
 
         QuestionThread question =
-                questionThreadMapper.toEntity(request);
+            questionThreadMapper.toEntity(request);
 
         question.setTaskId(taskId);
         question.setAuthorId(authorId);
@@ -79,7 +78,7 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
         question.setAssignedReviewerId(null);
 
         QuestionThread savedQuestion =
-                questionThreadRepository.save(question);
+            questionThreadRepository.save(question);
 
         return questionThreadMapper.toResponse(savedQuestion);
     }
@@ -107,9 +106,8 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
     private void validateTaskId(Long taskId) {
         if (taskId == null || taskId <= 0) {
             throw new ValidationException(
-                    "Task id must be a positive number",
-                    ErrorCode.COMMON_VALIDATION_FAILED
-            );
+                "Task id must be a positive number",
+                ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }
 }

@@ -402,537 +402,469 @@ class ParticipantForumControllerTest
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-                eq(TASK_ID),
-                any(CreateQuestionRequestDTO.class)
-        )).thenReturn(createQuestionResponse());
+            eq(TASK_ID),
+            any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated());
 
         verify(participantForumService).createQuestion(
-                eq(TASK_ID),
-                any(CreateQuestionRequestDTO.class)
-        );
+            eq(TASK_ID),
+            any(CreateQuestionRequestDTO.class));
     }
 
     @Test
     void createQuestion_validRequest_shouldReturnCreatedQuestion()
-            throws Exception {
+        throws Exception {
 
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-                eq(TASK_ID),
-                any(CreateQuestionRequestDTO.class)
-        )).thenReturn(createQuestionResponse());
+            eq(TASK_ID),
+            any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(QUESTION_ID))
-                .andExpect(jsonPath("$.taskId").value(TASK_ID))
-                .andExpect(jsonPath("$.authorId").value(USER_ID))
-                .andExpect(jsonPath("$.assignedReviewerId").value(nullValue()))
-                .andExpect(jsonPath("$.title").value(QUESTION_TITLE))
-                .andExpect(jsonPath("$.content").value(QUESTION_CONTENT))
-                .andExpect(jsonPath("$.status").value("NEW"))
-                .andExpect(jsonPath("$.state").value("OPEN"))
-                .andExpect(jsonPath("$.visibility").value("PRIVATE"))
-                .andExpect(jsonPath("$.version").value(0))
-                .andExpect(
-                        jsonPath("$.createdAt")
-                                .value(CREATED_AT.toString())
-                )
-                .andExpect(
-                        jsonPath("$.updatedAt")
-                                .value(UPDATED_AT.toString())
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(QUESTION_ID))
+            .andExpect(jsonPath("$.taskId").value(TASK_ID))
+            .andExpect(jsonPath("$.authorId").value(USER_ID))
+            .andExpect(jsonPath("$.assignedReviewerId").value(nullValue()))
+            .andExpect(jsonPath("$.title").value(QUESTION_TITLE))
+            .andExpect(jsonPath("$.content").value(QUESTION_CONTENT))
+            .andExpect(jsonPath("$.status").value("NEW"))
+            .andExpect(jsonPath("$.state").value("OPEN"))
+            .andExpect(jsonPath("$.visibility").value("PRIVATE"))
+            .andExpect(jsonPath("$.version").value(0))
+            .andExpect(
+                jsonPath("$.createdAt")
+                    .value(CREATED_AT.toString()))
+            .andExpect(
+                jsonPath("$.updatedAt")
+                    .value(UPDATED_AT.toString()));
     }
 
     @Test
     void createQuestion_validRequest_shouldDelegateTaskIdAndRequest()
-            throws Exception {
+        throws Exception {
 
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-                eq(TASK_ID),
-                any(CreateQuestionRequestDTO.class)
-        )).thenReturn(createQuestionResponse());
+            eq(TASK_ID),
+            any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated());
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated());
 
         ArgumentCaptor<CreateQuestionRequestDTO> requestCaptor =
-                ArgumentCaptor.forClass(CreateQuestionRequestDTO.class);
+            ArgumentCaptor.forClass(CreateQuestionRequestDTO.class);
 
         verify(participantForumService).createQuestion(
-                eq(TASK_ID),
-                requestCaptor.capture()
-        );
+            eq(TASK_ID),
+            requestCaptor.capture());
 
         CreateQuestionRequestDTO capturedRequest =
-                requestCaptor.getValue();
+            requestCaptor.getValue();
 
         assertEquals(
-                QUESTION_TITLE,
-                capturedRequest.title()
-        );
+            QUESTION_TITLE,
+            capturedRequest.title());
         assertEquals(
-                QUESTION_CONTENT,
-                capturedRequest.content()
-        );
+            QUESTION_CONTENT,
+            capturedRequest.content());
     }
 
     @Test
     void createQuestion_blankTitle_shouldReturn400()
-            throws Exception {
+        throws Exception {
 
         CreateQuestionRequestDTO request =
-                new CreateQuestionRequestDTO(
-                        "   ",
-                        QUESTION_CONTENT
-                );
+            new CreateQuestionRequestDTO(
+                "   ",
+                QUESTION_CONTENT);
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("COMMON_VALIDATION_FAILED")
-                )
-                .andExpect(
-                        jsonPath("$.details.errors.title").exists()
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("COMMON_VALIDATION_FAILED"))
+            .andExpect(
+                jsonPath("$.details.errors.title").exists());
 
         verifyNoInteractions(participantForumService);
     }
 
     @Test
     void createQuestion_missingTitle_shouldReturn400()
-            throws Exception {
+        throws Exception {
 
         String request = """
-        {
-          "content": "%s"
-        }
-        """.formatted(QUESTION_CONTENT);
+            {
+              "content": "%s"
+            }
+            """.formatted(QUESTION_CONTENT);
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(request))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("COMMON_VALIDATION_FAILED")
-                )
-                .andExpect(
-                        jsonPath("$.details.errors.title").exists()
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(request))
+            .andExpect(status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("COMMON_VALIDATION_FAILED"))
+            .andExpect(
+                jsonPath("$.details.errors.title").exists());
 
         verifyNoInteractions(participantForumService);
     }
 
     @Test
     void createQuestion_overlongTitle_shouldReturn400()
-            throws Exception {
+        throws Exception {
 
         CreateQuestionRequestDTO request =
-                new CreateQuestionRequestDTO(
-                        "a".repeat(201),
-                        QUESTION_CONTENT
-                );
+            new CreateQuestionRequestDTO(
+                "a".repeat(201),
+                QUESTION_CONTENT);
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("COMMON_VALIDATION_FAILED")
-                )
-                .andExpect(
-                        jsonPath("$.details.errors.title").exists()
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("COMMON_VALIDATION_FAILED"))
+            .andExpect(
+                jsonPath("$.details.errors.title").exists());
 
         verifyNoInteractions(participantForumService);
     }
 
     @Test
     void createQuestion_blankContent_shouldReturn400()
-            throws Exception {
+        throws Exception {
 
         CreateQuestionRequestDTO request =
-                new CreateQuestionRequestDTO(
-                        QUESTION_TITLE,
-                        "   "
-                );
+            new CreateQuestionRequestDTO(
+                QUESTION_TITLE,
+                "   ");
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("COMMON_VALIDATION_FAILED")
-                )
-                .andExpect(
-                        jsonPath("$.details.errors.content").exists()
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("COMMON_VALIDATION_FAILED"))
+            .andExpect(
+                jsonPath("$.details.errors.content").exists());
 
         verifyNoInteractions(participantForumService);
     }
 
     @Test
     void createQuestion_missingContent_shouldReturn400()
-            throws Exception {
+        throws Exception {
 
         String request = """
-        {
-          "title": "%s"
-        }
-        """.formatted(QUESTION_TITLE);
+            {
+              "title": "%s"
+            }
+            """.formatted(QUESTION_TITLE);
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(request))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("COMMON_VALIDATION_FAILED")
-                )
-                .andExpect(
-                        jsonPath("$.details.errors.content").exists()
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(request))
+            .andExpect(status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("COMMON_VALIDATION_FAILED"))
+            .andExpect(
+                jsonPath("$.details.errors.content").exists());
 
         verifyNoInteractions(participantForumService);
     }
 
     @Test
     void createQuestion_overlongContent_shouldReturn400()
-            throws Exception {
+        throws Exception {
 
         CreateQuestionRequestDTO request =
-                new CreateQuestionRequestDTO(
-                        QUESTION_TITLE,
-                        "a".repeat(10_001)
-                );
+            new CreateQuestionRequestDTO(
+                QUESTION_TITLE,
+                "a".repeat(10_001));
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("COMMON_VALIDATION_FAILED")
-                )
-                .andExpect(
-                        jsonPath("$.details.errors.content").exists()
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("COMMON_VALIDATION_FAILED"))
+            .andExpect(
+                jsonPath("$.details.errors.content").exists());
 
         verifyNoInteractions(participantForumService);
     }
 
     @Test
     void createQuestion_missingBody_shouldReturn400()
-            throws Exception {
+        throws Exception {
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("COMMON_VALIDATION_FAILED")
-                )
-                .andExpect(
-                        jsonPath("$.message")
-                                .value("Request body is missing or malformed")
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("COMMON_VALIDATION_FAILED"))
+            .andExpect(
+                jsonPath("$.message")
+                    .value("Request body is missing or malformed"));
 
         verifyNoInteractions(participantForumService);
     }
 
     @Test
     void createQuestion_malformedBody_shouldReturn400()
-            throws Exception {
+        throws Exception {
 
         String malformedJson = """
-        {
-          "title": "Question",
-          "content":
-        }
-        """;
+            {
+              "title": "Question",
+              "content":
+            }
+            """;
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(malformedJson))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("COMMON_VALIDATION_FAILED")
-                )
-                .andExpect(
-                        jsonPath("$.message")
-                                .value("Request body is missing or malformed")
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(malformedJson))
+            .andExpect(status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("COMMON_VALIDATION_FAILED"))
+            .andExpect(
+                jsonPath("$.message")
+                    .value("Request body is missing or malformed"));
 
         verifyNoInteractions(participantForumService);
     }
 
     @Test
     void createQuestion_invalidTaskId_shouldReturn400()
-            throws Exception {
+        throws Exception {
 
         Long invalidTaskId = 0L;
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-                invalidTaskId,
-                request
-        )).thenThrow(new ValidationException(
+            invalidTaskId,
+            request)).thenThrow(new ValidationException(
                 "Task id must be a positive number",
-                ErrorCode.COMMON_VALIDATION_FAILED
-        ));
+                ErrorCode.COMMON_VALIDATION_FAILED));
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        invalidTaskId
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("COMMON_VALIDATION_FAILED")
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            invalidTaskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("COMMON_VALIDATION_FAILED"));
 
         verify(participantForumService).createQuestion(
-                invalidTaskId,
-                request
-        );
+            invalidTaskId,
+            request);
     }
 
     @Test
     void createQuestion_nonNumericTaskId_shouldReturn400()
-            throws Exception {
+        throws Exception {
 
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        "not-a-number"
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("COMMON_VALIDATION_FAILED")
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            "not-a-number")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("COMMON_VALIDATION_FAILED"));
 
         verifyNoInteractions(participantForumService);
     }
 
     @Test
     void createQuestion_unauthenticated_shouldReturn401()
-            throws Exception {
+        throws Exception {
 
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-                TASK_ID,
-                request
-        )).thenThrow(new AuthenticationException(
+            TASK_ID,
+            request)).thenThrow(new AuthenticationException(
                 "Authentication is required to access the question forum",
-                ErrorCode.AUTHENTICATION_REQUIRED
-        ));
+                ErrorCode.AUTHENTICATION_REQUIRED));
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("AUTHENTICATION_REQUIRED")
-                )
-                .andExpect(
-                        jsonPath("$.message")
-                                .value(
-                                        "Authentication is required to access "
-                                                + "the question forum"
-                                )
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isUnauthorized())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("AUTHENTICATION_REQUIRED"))
+            .andExpect(
+                jsonPath("$.message")
+                    .value(
+                        "Authentication is required to access "
+                            + "the question forum"));
 
         verify(participantForumService).createQuestion(
-                TASK_ID,
-                request
-        );
+            TASK_ID,
+            request);
     }
 
     @Test
     void createQuestion_missingTask_shouldReturn404()
-            throws Exception {
+        throws Exception {
 
         Long missingTaskId = 999L;
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-                missingTaskId,
-                request
-        )).thenThrow(new TaskNotFoundException(missingTaskId));
+            missingTaskId,
+            request)).thenThrow(new TaskNotFoundException(missingTaskId));
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        missingTaskId
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound())
-                .andExpect(
-                        jsonPath("$.code").value("TASK_NOT_FOUND")
-                )
-                .andExpect(
-                        jsonPath("$.message")
-                                .value(
-                                        "Task with id %s was not found"
-                                                .formatted(missingTaskId)
-                                )
-                );
+            "/api/v1/tasks/{taskId}/questions",
+            missingTaskId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isNotFound())
+            .andExpect(
+                jsonPath("$.code").value("TASK_NOT_FOUND"))
+            .andExpect(
+                jsonPath("$.message")
+                    .value(
+                        "Task with id %s was not found"
+                            .formatted(missingTaskId)));
 
         verify(participantForumService).createQuestion(
-                missingTaskId,
-                request
-        );
+            missingTaskId,
+            request);
     }
 
     @Test
     void createQuestion_protectedFields_shouldNotOverrideServerValues()
-            throws Exception {
+        throws Exception {
 
         String requestBody = """
-        {
-          "title": "%s",
-          "content": "%s",
-          "taskId": 999,
-          "authorId": 999,
-          "assignedReviewerId": 777,
-          "status": "ANSWERED",
-          "state": "CLOSED",
-          "visibility": "PUBLIC",
-          "version": 50,
-          "createdAt": "2020-01-01T00:00:00Z",
-          "updatedAt": "2020-01-01T00:00:00Z"
-        }
-        """.formatted(
-                QUESTION_TITLE,
-                QUESTION_CONTENT
-        );
+            {
+              "title": "%s",
+              "content": "%s",
+              "taskId": 999,
+              "authorId": 999,
+              "assignedReviewerId": 777,
+              "status": "ANSWERED",
+              "state": "CLOSED",
+              "visibility": "PUBLIC",
+              "version": 50,
+              "createdAt": "2020-01-01T00:00:00Z",
+              "updatedAt": "2020-01-01T00:00:00Z"
+            }
+            """.formatted(
+            QUESTION_TITLE,
+            QUESTION_CONTENT);
 
         when(participantForumService.createQuestion(
-                eq(TASK_ID),
-                any(CreateQuestionRequestDTO.class)
-        )).thenReturn(createQuestionResponse());
+            eq(TASK_ID),
+            any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
 
         mockMvc.perform(post(
-                        "/api/v1/tasks/{taskId}/questions",
-                        TASK_ID
-                )
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.taskId").value(TASK_ID))
-                .andExpect(jsonPath("$.authorId").value(USER_ID))
-                .andExpect(jsonPath("$.assignedReviewerId").value(nullValue()))
-                .andExpect(jsonPath("$.status").value("NEW"))
-                .andExpect(jsonPath("$.state").value("OPEN"))
-                .andExpect(jsonPath("$.visibility").value("PRIVATE"))
-                .andExpect(jsonPath("$.version").value(0));
+            "/api/v1/tasks/{taskId}/questions",
+            TASK_ID)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.taskId").value(TASK_ID))
+            .andExpect(jsonPath("$.authorId").value(USER_ID))
+            .andExpect(jsonPath("$.assignedReviewerId").value(nullValue()))
+            .andExpect(jsonPath("$.status").value("NEW"))
+            .andExpect(jsonPath("$.state").value("OPEN"))
+            .andExpect(jsonPath("$.visibility").value("PRIVATE"))
+            .andExpect(jsonPath("$.version").value(0));
 
         ArgumentCaptor<CreateQuestionRequestDTO> requestCaptor =
-                ArgumentCaptor.forClass(CreateQuestionRequestDTO.class);
+            ArgumentCaptor.forClass(CreateQuestionRequestDTO.class);
 
         verify(participantForumService).createQuestion(
-                eq(TASK_ID),
-                requestCaptor.capture()
-        );
+            eq(TASK_ID),
+            requestCaptor.capture());
 
         CreateQuestionRequestDTO capturedRequest =
-                requestCaptor.getValue();
+            requestCaptor.getValue();
 
         assertEquals(
-                QUESTION_TITLE,
-                capturedRequest.title()
-        );
+            QUESTION_TITLE,
+            capturedRequest.title());
         assertEquals(
-                QUESTION_CONTENT,
-                capturedRequest.content()
-        );
+            QUESTION_CONTENT,
+            capturedRequest.content());
     }
 
     private CreateQuestionRequestDTO createQuestionRequest() {
         return new CreateQuestionRequestDTO(
-                QUESTION_TITLE,
-                QUESTION_CONTENT
-        );
+            QUESTION_TITLE,
+            QUESTION_CONTENT);
     }
 
     private QuestionThreadResponseDTO createQuestionResponse() {
         return new QuestionThreadResponseDTO(
-                QUESTION_ID,
-                TASK_ID,
-                USER_ID,
-                null,
-                QUESTION_TITLE,
-                QUESTION_CONTENT,
-                NEW,
-                PRIVATE,
-                OPEN,
-                0L,
-                CREATED_AT,
-                UPDATED_AT
-        );
+            QUESTION_ID,
+            TASK_ID,
+            USER_ID,
+            null,
+            QUESTION_TITLE,
+            QUESTION_CONTENT,
+            NEW,
+            PRIVATE,
+            OPEN,
+            0L,
+            CREATED_AT,
+            UPDATED_AT);
     }
 
     private QuestionThreadSummaryResponseDTO createQuestionSummaryResponse() {

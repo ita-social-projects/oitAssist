@@ -351,39 +351,37 @@ class ParticipantForumServiceImplTest {
         QuestionThread mappedQuestion = createMappedQuestion();
         QuestionThread savedQuestion = createSavedQuestion();
         QuestionThreadResponseDTO expectedResponse =
-                createQuestionResponse();
+            createQuestionResponse();
 
         when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
-                .thenReturn(USER_ID);
+            .thenReturn(USER_ID);
         when(questionThreadMapper.toEntity(request))
-                .thenReturn(mappedQuestion);
+            .thenReturn(mappedQuestion);
         when(questionThreadRepository.save(mappedQuestion))
-                .thenReturn(savedQuestion);
+            .thenReturn(savedQuestion);
         when(questionThreadMapper.toResponse(savedQuestion))
-                .thenReturn(expectedResponse);
+            .thenReturn(expectedResponse);
 
         QuestionThreadResponseDTO result =
-                participantForumService.createQuestion(
-                        TASK_ID,
-                        request
-                );
+            participantForumService.createQuestion(
+                TASK_ID,
+                request);
 
         assertSame(expectedResponse, result);
 
         InOrder inOrder = inOrder(
-                questionAccessPolicy,
-                questionThreadMapper,
-                questionThreadRepository
-        );
+            questionAccessPolicy,
+            questionThreadMapper,
+            questionThreadRepository);
 
         inOrder.verify(questionAccessPolicy)
-                .requireTaskForumAccess(TASK_ID);
+            .requireTaskForumAccess(TASK_ID);
         inOrder.verify(questionThreadMapper)
-                .toEntity(request);
+            .toEntity(request);
         inOrder.verify(questionThreadRepository)
-                .save(mappedQuestion);
+            .save(mappedQuestion);
         inOrder.verify(questionThreadMapper)
-                .toResponse(savedQuestion);
+            .toResponse(savedQuestion);
     }
 
     @Test
@@ -392,16 +390,15 @@ class ParticipantForumServiceImplTest {
         QuestionThread mappedQuestion = createMappedQuestion();
 
         stubSuccessfulCreation(
-                request,
-                mappedQuestion,
-                createSavedQuestion(),
-                createQuestionResponse()
-        );
+            request,
+            mappedQuestion,
+            createSavedQuestion(),
+            createQuestionResponse());
 
         participantForumService.createQuestion(TASK_ID, request);
 
         ArgumentCaptor<QuestionThread> captor =
-                ArgumentCaptor.forClass(QuestionThread.class);
+            ArgumentCaptor.forClass(QuestionThread.class);
 
         verify(questionThreadRepository).save(captor.capture());
 
@@ -414,16 +411,15 @@ class ParticipantForumServiceImplTest {
         QuestionThread mappedQuestion = createMappedQuestion();
 
         stubSuccessfulCreation(
-                request,
-                mappedQuestion,
-                createSavedQuestion(),
-                createQuestionResponse()
-        );
+            request,
+            mappedQuestion,
+            createSavedQuestion(),
+            createQuestionResponse());
 
         participantForumService.createQuestion(TASK_ID, request);
 
         ArgumentCaptor<QuestionThread> captor =
-                ArgumentCaptor.forClass(QuestionThread.class);
+            ArgumentCaptor.forClass(QuestionThread.class);
 
         verify(questionThreadRepository).save(captor.capture());
 
@@ -436,33 +432,29 @@ class ParticipantForumServiceImplTest {
         QuestionThread mappedQuestion = createMappedQuestion();
 
         stubSuccessfulCreation(
-                request,
-                mappedQuestion,
-                createSavedQuestion(),
-                createQuestionResponse()
-        );
+            request,
+            mappedQuestion,
+            createSavedQuestion(),
+            createQuestionResponse());
 
         participantForumService.createQuestion(TASK_ID, request);
 
         ArgumentCaptor<QuestionThread> captor =
-                ArgumentCaptor.forClass(QuestionThread.class);
+            ArgumentCaptor.forClass(QuestionThread.class);
 
         verify(questionThreadRepository).save(captor.capture());
 
         QuestionThread persistedQuestion = captor.getValue();
 
         assertEquals(
-                QuestionStatus.NEW,
-                persistedQuestion.getStatus()
-        );
+            QuestionStatus.NEW,
+            persistedQuestion.getStatus());
         assertEquals(
-                QuestionState.OPEN,
-                persistedQuestion.getState()
-        );
+            QuestionState.OPEN,
+            persistedQuestion.getState());
         assertEquals(
-                QuestionVisibility.PRIVATE,
-                persistedQuestion.getVisibility()
-        );
+            QuestionVisibility.PRIVATE,
+            persistedQuestion.getVisibility());
         assertEquals(0L, persistedQuestion.getVersion());
     }
 
@@ -474,22 +466,20 @@ class ParticipantForumServiceImplTest {
         mappedQuestion.setAssignedReviewerId(999L);
 
         stubSuccessfulCreation(
-                request,
-                mappedQuestion,
-                createSavedQuestion(),
-                createQuestionResponse()
-        );
+            request,
+            mappedQuestion,
+            createSavedQuestion(),
+            createQuestionResponse());
 
         participantForumService.createQuestion(TASK_ID, request);
 
         ArgumentCaptor<QuestionThread> captor =
-                ArgumentCaptor.forClass(QuestionThread.class);
+            ArgumentCaptor.forClass(QuestionThread.class);
 
         verify(questionThreadRepository).save(captor.capture());
 
         assertNull(
-                captor.getValue().getAssignedReviewerId()
-        );
+            captor.getValue().getAssignedReviewerId());
     }
 
     @Test
@@ -498,20 +488,18 @@ class ParticipantForumServiceImplTest {
         QuestionThread mappedQuestion = createMappedQuestion();
         QuestionThread savedQuestion = createSavedQuestion();
         QuestionThreadResponseDTO expectedResponse =
-                createQuestionResponse();
+            createQuestionResponse();
 
         stubSuccessfulCreation(
-                request,
-                mappedQuestion,
-                savedQuestion,
-                expectedResponse
-        );
+            request,
+            mappedQuestion,
+            savedQuestion,
+            expectedResponse);
 
         QuestionThreadResponseDTO result =
-                participantForumService.createQuestion(
-                        TASK_ID,
-                        request
-                );
+            participantForumService.createQuestion(
+                TASK_ID,
+                request);
 
         verify(questionThreadMapper).toResponse(savedQuestion);
         assertSame(expectedResponse, result);
@@ -522,26 +510,22 @@ class ParticipantForumServiceImplTest {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
-                .thenThrow(new AuthenticationException(
-                        "Authentication is required to access the question forum",
-                        ErrorCode.AUTHENTICATION_REQUIRED
-                ));
+            .thenThrow(new AuthenticationException(
+                "Authentication is required to access the question forum",
+                ErrorCode.AUTHENTICATION_REQUIRED));
 
         assertThrows(
-                AuthenticationException.class,
-                () -> participantForumService.createQuestion(
-                        TASK_ID,
-                        request
-                )
-        );
+            AuthenticationException.class,
+            () -> participantForumService.createQuestion(
+                TASK_ID,
+                request));
 
         verify(questionAccessPolicy)
-                .requireTaskForumAccess(TASK_ID);
+            .requireTaskForumAccess(TASK_ID);
 
         verifyNoInteractions(
-                questionThreadRepository,
-                questionThreadMapper
-        );
+            questionThreadRepository,
+            questionThreadMapper);
     }
 
     @Test
@@ -549,23 +533,20 @@ class ParticipantForumServiceImplTest {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
-                .thenThrow(new TaskNotFoundException(TASK_ID));
+            .thenThrow(new TaskNotFoundException(TASK_ID));
 
         assertThrows(
-                TaskNotFoundException.class,
-                () -> participantForumService.createQuestion(
-                        TASK_ID,
-                        request
-                )
-        );
+            TaskNotFoundException.class,
+            () -> participantForumService.createQuestion(
+                TASK_ID,
+                request));
 
         verify(questionAccessPolicy)
-                .requireTaskForumAccess(TASK_ID);
+            .requireTaskForumAccess(TASK_ID);
 
         verifyNoInteractions(
-                questionThreadRepository,
-                questionThreadMapper
-        );
+            questionThreadRepository,
+            questionThreadMapper);
     }
 
     @Test
@@ -573,34 +554,27 @@ class ParticipantForumServiceImplTest {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         assertThrows(
-                ValidationException.class,
-                () -> participantForumService.createQuestion(
-                        null,
-                        request
-                )
-        );
+            ValidationException.class,
+            () -> participantForumService.createQuestion(
+                null,
+                request));
 
         assertThrows(
-                ValidationException.class,
-                () -> participantForumService.createQuestion(
-                        0L,
-                        request
-                )
-        );
+            ValidationException.class,
+            () -> participantForumService.createQuestion(
+                0L,
+                request));
 
         assertThrows(
-                ValidationException.class,
-                () -> participantForumService.createQuestion(
-                        -1L,
-                        request
-                )
-        );
+            ValidationException.class,
+            () -> participantForumService.createQuestion(
+                -1L,
+                request));
 
         verifyNoInteractions(
-                questionAccessPolicy,
-                questionThreadRepository,
-                questionThreadMapper
-        );
+            questionAccessPolicy,
+            questionThreadRepository,
+            questionThreadMapper);
     }
 
     @Test
@@ -609,92 +583,87 @@ class ParticipantForumServiceImplTest {
         QuestionThread mappedQuestion = createMappedQuestion();
 
         RuntimeException repositoryFailure =
-                new RuntimeException("Database failure");
+            new RuntimeException("Database failure");
 
         when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
-                .thenReturn(USER_ID);
+            .thenReturn(USER_ID);
         when(questionThreadMapper.toEntity(request))
-                .thenReturn(mappedQuestion);
+            .thenReturn(mappedQuestion);
         when(questionThreadRepository.save(mappedQuestion))
-                .thenThrow(repositoryFailure);
+            .thenThrow(repositoryFailure);
 
         RuntimeException result = assertThrows(
-                RuntimeException.class,
-                () -> participantForumService.createQuestion(
-                        TASK_ID,
-                        request
-                )
-        );
+            RuntimeException.class,
+            () -> participantForumService.createQuestion(
+                TASK_ID,
+                request));
 
         assertSame(repositoryFailure, result);
 
         verify(questionThreadRepository).save(mappedQuestion);
         verify(questionThreadMapper, never())
-                .toResponse(any(QuestionThread.class));
+            .toResponse(any(QuestionThread.class));
     }
 
     private CreateQuestionRequestDTO createQuestionRequest() {
         return new CreateQuestionRequestDTO(
-                QUESTION_TITLE,
-                QUESTION_CONTENT
-        );
+            QUESTION_TITLE,
+            QUESTION_CONTENT);
     }
 
     private QuestionThread createMappedQuestion() {
         return QuestionThread.builder()
-                .title(QUESTION_TITLE)
-                .content(QUESTION_CONTENT)
-                .build();
+            .title(QUESTION_TITLE)
+            .content(QUESTION_CONTENT)
+            .build();
     }
 
     private QuestionThread createSavedQuestion() {
         return QuestionThread.builder()
-                .id(CREATED_QUESTION_ID)
-                .taskId(TASK_ID)
-                .authorId(USER_ID)
-                .assignedReviewerId(null)
-                .title(QUESTION_TITLE)
-                .content(QUESTION_CONTENT)
-                .status(QuestionStatus.NEW)
-                .state(QuestionState.OPEN)
-                .visibility(QuestionVisibility.PRIVATE)
-                .version(0L)
-                .createdAt(CREATED_AT)
-                .updatedAt(UPDATED_AT)
-                .build();
+            .id(CREATED_QUESTION_ID)
+            .taskId(TASK_ID)
+            .authorId(USER_ID)
+            .assignedReviewerId(null)
+            .title(QUESTION_TITLE)
+            .content(QUESTION_CONTENT)
+            .status(QuestionStatus.NEW)
+            .state(QuestionState.OPEN)
+            .visibility(QuestionVisibility.PRIVATE)
+            .version(0L)
+            .createdAt(CREATED_AT)
+            .updatedAt(UPDATED_AT)
+            .build();
     }
 
     private QuestionThreadResponseDTO createQuestionResponse() {
         return new QuestionThreadResponseDTO(
-                CREATED_QUESTION_ID,
-                TASK_ID,
-                USER_ID,
-                null,
-                QUESTION_TITLE,
-                QUESTION_CONTENT,
-                QuestionStatus.NEW,
-                QuestionVisibility.PRIVATE,
-                QuestionState.OPEN,
-                0L,
-                CREATED_AT,
-                UPDATED_AT
-        );
+            CREATED_QUESTION_ID,
+            TASK_ID,
+            USER_ID,
+            null,
+            QUESTION_TITLE,
+            QUESTION_CONTENT,
+            QuestionStatus.NEW,
+            QuestionVisibility.PRIVATE,
+            QuestionState.OPEN,
+            0L,
+            CREATED_AT,
+            UPDATED_AT);
     }
 
     private void stubSuccessfulCreation(
-            CreateQuestionRequestDTO request,
-            QuestionThread mappedQuestion,
-            QuestionThread savedQuestion,
-            QuestionThreadResponseDTO response
-    ) {
+        CreateQuestionRequestDTO request,
+        QuestionThread mappedQuestion,
+        QuestionThread savedQuestion,
+        QuestionThreadResponseDTO response) {
         when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
-                .thenReturn(USER_ID);
+            .thenReturn(USER_ID);
         when(questionThreadMapper.toEntity(request))
-                .thenReturn(mappedQuestion);
+            .thenReturn(mappedQuestion);
         when(questionThreadRepository.save(mappedQuestion))
-                .thenReturn(savedQuestion);
+            .thenReturn(savedQuestion);
         when(questionThreadMapper.toResponse(savedQuestion))
-                .thenReturn(response);
+            .thenReturn(response);
     }
 
     private void stubAccessibleEmptyForum() {
