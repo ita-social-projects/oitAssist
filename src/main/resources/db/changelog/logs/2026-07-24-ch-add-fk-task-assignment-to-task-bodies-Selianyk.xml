@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="add-fk-task-assignments-to-task-bodies" author="Ihor Selianyk">
+        <addForeignKeyConstraint baseTableName="task_assignments"
+                                 baseColumnNames="task_body_id"
+                                 constraintName="fk_task_assignments_task_body"
+                                 referencedTableName="task_bodies"
+                                 referencedColumnNames="id"
+                                 onDelete="RESTRICT"/>
+    </changeSet>
+</databaseChangeLog>
