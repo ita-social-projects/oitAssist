@@ -151,12 +151,12 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public void deleteTask(Long taskId) {
-        checkForAssignments(taskId);
-
         TaskBody taskToDelete = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
         checkOwnerOrAdmin(taskToDelete.getOwnerId(), taskToDelete.getId());
+
+        checkForAssignments(taskId);
 
         taskBodyRepository.delete(taskToDelete);
         log.debug("Task {} with title {} deleted", taskId, taskToDelete.getTitle());
