@@ -1,0 +1,77 @@
+package com.itasocialacademy.oitassist.chat.service;
+
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadSummaryResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
+import com.itasocialacademy.oitassist.chat.service.interfaces.ParticipantForumService;
+import com.itasocialacademy.oitassist.chat.utils.QuestionAccessPolicy;
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class ParticipantForumServiceImpl implements ParticipantForumService {
+    private static final int MAX_PAGE_SIZE = 100;
+
+    private static final Sort FORUM_SORT = Sort.by(
+        Sort.Order.desc("createdAt"),
+        Sort.Order.desc("id"));
+
+    private final QuestionThreadRepository questionThreadRepository;
+    private final QuestionThreadMapper questionThreadMapper;
+    private final QuestionAccessPolicy questionAccessPolicy;
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<QuestionThreadSummaryResponseDTO> getForumQuestions(
+        Long taskId,
+        int page,
+        int size) {
+        validateRequest(taskId, page, size);
+
+        Long participantId = questionAccessPolicy.requireTaskForumAccess(taskId);
+
+        Pageable pageable = PageRequest.of(
+            page,
+            size,
+            FORUM_SORT);
+
+        return questionThreadRepository.findParticipantVisibleQuestions(
+            taskId,
+            participantId,
+            pageable).map(questionThreadMapper::toSummaryResponse);
+    }
+
+    private void validateRequest(
+        Long taskId,
+        int page,
+        int size) {
+        if (taskId == null || taskId <= 0) {
+            throw new ValidationException(
+                "Task id must be a positive number",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+
+        if (page < 0) {
+            throw new ValidationException(
+                "Page number must not be negative",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new ValidationException(
+                "Page size must be between 1 and %d"
+                    .formatted(MAX_PAGE_SIZE),
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+    }
+}
