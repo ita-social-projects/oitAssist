@@ -1,6 +1,11 @@
 package com.itasocialacademy.oitassist.logfile.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.logfile.api.LogFileResponse;
@@ -18,14 +23,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 class LogFileServiceImplTest {
+
+    private static final int DEFAULT_PAGE_SIZE = 10;
 
     @Mock
     private LogFileDao logFileDao;
@@ -61,8 +65,10 @@ class LogFileServiceImplTest {
 
         stubMapper();
 
+        Pageable pageable = PageRequest.of(0, 2);
+
         PageResponse<LogFileResponse> result =
-            logFileService.getAll(0, 2);
+            logFileService.getAll(pageable);
 
         assertThat(result.content())
             .extracting(LogFileResponse::fileName)
@@ -98,8 +104,10 @@ class LogFileServiceImplTest {
 
         stubMapper();
 
+        Pageable pageable = PageRequest.of(1, 2);
+
         PageResponse<LogFileResponse> result =
-            logFileService.getAll(1, 2);
+            logFileService.getAll(pageable);
 
         assertThat(result.content())
             .extracting(LogFileResponse::fileName)
@@ -133,8 +141,11 @@ class LogFileServiceImplTest {
 
         stubMapper();
 
+        Pageable pageable =
+            PageRequest.of(0, DEFAULT_PAGE_SIZE);
+
         PageResponse<LogFileResponse> result =
-            logFileService.getAll(0, 20);
+            logFileService.getAll(pageable);
 
         assertThat(result.content())
             .extracting(LogFileResponse::fileName)
@@ -142,6 +153,12 @@ class LogFileServiceImplTest {
                 "Alpha.log",
                 "bravo.log",
                 "charlie.log");
+
+        assertThat(result.page()).isZero();
+        assertThat(result.size())
+            .isEqualTo(DEFAULT_PAGE_SIZE);
+        assertThat(result.totalElements()).isEqualTo(3);
+        assertThat(result.totalPages()).isEqualTo(1);
     }
 
     @Test
@@ -149,12 +166,16 @@ class LogFileServiceImplTest {
         when(logFileDao.findAll())
             .thenReturn(List.of());
 
+        Pageable pageable =
+            PageRequest.of(0, DEFAULT_PAGE_SIZE);
+
         PageResponse<LogFileResponse> result =
-            logFileService.getAll(0, 20);
+            logFileService.getAll(pageable);
 
         assertThat(result.content()).isEmpty();
         assertThat(result.page()).isZero();
-        assertThat(result.size()).isEqualTo(20);
+        assertThat(result.size())
+            .isEqualTo(DEFAULT_PAGE_SIZE);
         assertThat(result.totalElements()).isZero();
         assertThat(result.totalPages()).isZero();
 
@@ -171,12 +192,16 @@ class LogFileServiceImplTest {
                     Instant.parse(
                         "2026-07-22T12:00:00Z"))));
 
+        Pageable pageable =
+            PageRequest.of(10, DEFAULT_PAGE_SIZE);
+
         PageResponse<LogFileResponse> result =
-            logFileService.getAll(10, 20);
+            logFileService.getAll(pageable);
 
         assertThat(result.content()).isEmpty();
         assertThat(result.page()).isEqualTo(10);
-        assertThat(result.size()).isEqualTo(20);
+        assertThat(result.size())
+            .isEqualTo(DEFAULT_PAGE_SIZE);
         assertThat(result.totalElements()).isEqualTo(1);
         assertThat(result.totalPages()).isEqualTo(1);
 
@@ -185,7 +210,7 @@ class LogFileServiceImplTest {
 
     @ParameterizedTest
     @CsvSource({
-        "-1, 20",
+        "-1, 10",
         "0, 0",
         "0, -1",
         "0, 101"
@@ -193,9 +218,16 @@ class LogFileServiceImplTest {
     void shouldThrowValidationExceptionForInvalidPagination(
         int page,
         int size) {
+        Pageable pageable = mock(Pageable.class);
+
+        when(pageable.getPageNumber())
+            .thenReturn(page);
+
+        when(pageable.getPageSize())
+            .thenReturn(size);
+
         assertThatThrownBy(
-            () -> logFileService.getAll(page, size))
-            .isInstanceOf(ValidationException.class);
+            () -> logFileService.getAll(pageable)).isInstanceOf(ValidationException.class);
 
         verifyNoInteractions(
             logFileDao,
@@ -210,9 +242,11 @@ class LogFileServiceImplTest {
         when(logFileDao.findAll())
             .thenThrow(exception);
 
+        Pageable pageable =
+            PageRequest.of(0, DEFAULT_PAGE_SIZE);
+
         assertThatThrownBy(
-            () -> logFileService.getAll(0, 20))
-            .isSameAs(exception);
+            () -> logFileService.getAll(pageable)).isSameAs(exception);
 
         verifyNoInteractions(logFileMapper);
     }

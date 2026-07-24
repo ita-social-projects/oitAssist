@@ -12,7 +12,6 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -36,10 +35,10 @@ public class LogFileServiceImpl implements LogFileService {
     }
 
     @Override
-    public PageResponse<LogFileResponse> getAll(int page, int size) {
+    public PageResponse<LogFileResponse> getAll(Pageable pageable) {
+        int size = pageable.getPageSize();
+        int page = pageable.getPageNumber();
         validatePagination(page, size);
-
-        Pageable pageable = PageRequest.of(page, size);
 
         log.debug("Fetching log files with pagination: page={}, size={}", page, size);
 
