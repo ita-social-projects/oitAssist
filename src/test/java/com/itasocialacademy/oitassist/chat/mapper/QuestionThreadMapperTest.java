@@ -1,9 +1,14 @@
 package com.itasocialacademy.oitassist.chat.mapper;
 
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateQuestionRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadSummaryResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
@@ -108,5 +113,50 @@ class QuestionThreadMapperTest {
             .createdAt(CREATED_AT)
             .updatedAt(UPDATED_AT)
             .build();
+    }
+
+    @Test
+    void toEntity_validRequest_shouldMapTitleAndContent() {
+        CreateQuestionRequestDTO request =
+                new CreateQuestionRequestDTO(TITLE, CONTENT);
+
+        QuestionThread result =
+                questionThreadMapper.toEntity(request);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getTitle()).isEqualTo(TITLE);
+        assertThat(result.getContent()).isEqualTo(CONTENT);
+    }
+
+    @Test
+    void toEntity_validRequest_shouldNotMapProtectedFields() {
+        CreateQuestionRequestDTO request =
+                new CreateQuestionRequestDTO(TITLE, CONTENT);
+
+        QuestionThread result =
+                questionThreadMapper.toEntity(request);
+
+        assertThat(result).isNotNull();
+
+        assertThat(result.getId()).isNull();
+        assertThat(result.getTaskId()).isNull();
+        assertThat(result.getAuthorId()).isNull();
+        assertThat(result.getAssignedReviewerId()).isNull();
+
+        assertThat(result.getStatus()).isEqualTo(NEW);
+        assertThat(result.getState()).isEqualTo(OPEN);
+        assertThat(result.getVisibility()).isEqualTo(PRIVATE);
+        assertThat(result.getVersion()).isZero();
+
+        assertThat(result.getCreatedAt()).isNull();
+        assertThat(result.getUpdatedAt()).isNull();
+    }
+
+    @Test
+    void toEntity_nullRequest_shouldReturnNull() {
+        QuestionThread result =
+                questionThreadMapper.toEntity(null);
+
+        assertThat(result).isNull();
     }
 }
