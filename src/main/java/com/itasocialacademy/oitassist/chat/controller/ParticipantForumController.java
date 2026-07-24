@@ -39,14 +39,13 @@ public class ParticipantForumController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<QuestionThreadResponseDTO> createQuestion(
-            @PathVariable Long taskId,
-            @Valid @RequestBody CreateQuestionRequestDTO request
-    ) {
+        @PathVariable Long taskId,
+        @Valid @RequestBody CreateQuestionRequestDTO request) {
         QuestionThreadResponseDTO response =
-                participantForumService.createQuestion(taskId, request);
+            participantForumService.createQuestion(taskId, request);
 
         return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
+            .status(HttpStatus.CREATED)
+            .body(response);
     }
 }

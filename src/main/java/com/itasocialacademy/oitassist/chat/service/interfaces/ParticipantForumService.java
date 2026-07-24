@@ -12,7 +12,6 @@ public interface ParticipantForumService {
         int size);
 
     QuestionThreadResponseDTO createQuestion(
-            Long taskId,
-            CreateQuestionRequestDTO request
-    );
+        Long taskId,
+        CreateQuestionRequestDTO request);
 }

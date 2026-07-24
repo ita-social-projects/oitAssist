@@ -118,10 +118,10 @@ class QuestionThreadMapperTest {
     @Test
     void toEntity_validRequest_shouldMapTitleAndContent() {
         CreateQuestionRequestDTO request =
-                new CreateQuestionRequestDTO(TITLE, CONTENT);
+            new CreateQuestionRequestDTO(TITLE, CONTENT);
 
         QuestionThread result =
-                questionThreadMapper.toEntity(request);
+            questionThreadMapper.toEntity(request);
 
         assertThat(result).isNotNull();
         assertThat(result.getTitle()).isEqualTo(TITLE);
@@ -131,10 +131,10 @@ class QuestionThreadMapperTest {
     @Test
     void toEntity_validRequest_shouldNotMapProtectedFields() {
         CreateQuestionRequestDTO request =
-                new CreateQuestionRequestDTO(TITLE, CONTENT);
+            new CreateQuestionRequestDTO(TITLE, CONTENT);
 
         QuestionThread result =
-                questionThreadMapper.toEntity(request);
+            questionThreadMapper.toEntity(request);
 
         assertThat(result).isNotNull();
 
@@ -155,7 +155,7 @@ class QuestionThreadMapperTest {
     @Test
     void toEntity_nullRequest_shouldReturnNull() {
         QuestionThread result =
-                questionThreadMapper.toEntity(null);
+            questionThreadMapper.toEntity(null);
 
         assertThat(result).isNull();
     }
