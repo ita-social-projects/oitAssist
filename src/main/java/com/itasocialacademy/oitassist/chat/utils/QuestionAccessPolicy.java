@@ -4,9 +4,7 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
-import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
 import java.util.Objects;
-import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionCreationNotAllowedException;
@@ -29,7 +27,6 @@ public class QuestionAccessPolicy {
     private static final String ADMIN_ROLE = "ADMIN";
 
     private final SecurityFacade securityFacade;
-    private final TaskBodyFacade taskBodyFacade;
     private final TaskAssignmentFacade taskAssignmentFacade;
     private final CompetitionFacade competitionFacade;
     private final ParticipationFacade participationFacade;
@@ -53,41 +50,6 @@ public class QuestionAccessPolicy {
      */
     public boolean isAdministrator() {
         return securityFacade.hasRole(ADMIN_ROLE);
-    }
-
-    /**
-     * Determines whether the current user may access the temporary TaskBody-based
-     * forum context.
-     */
-    public boolean hasTaskAccess(QuestionThread questionThread) {
-        return hasTaskAccess(questionThread.getTaskAssignmentId());
-    }
-
-    /**
-     * Determines whether the current user may access the temporary TaskBody-based
-     * forum context.
-     */
-    public boolean hasTaskAccess(Long taskId) {
-        // TODO: use the TaskAssignmentFacade to check for the access
-        if (taskId == null || taskId <= 0) {
-            return false;
-        }
-
-        return securityFacade.getCurrentUserId().isPresent()
-                && taskBodyFacade.findTaskBodyById(taskId).isPresent();
-    }
-
-    public Long requireTaskForumAccess(Long taskId) {
-        // TODO: use the TaskAssignmentFacade to check for the access
-        Long currentUserId = securityFacade.getCurrentUserId()
-                .orElseThrow(() -> new AuthenticationException(
-                        "Authentication is required to access the question forum",
-                        ErrorCode.AUTHENTICATION_REQUIRED));
-
-        taskBodyFacade.findTaskBodyById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException(taskId));
-
-        return currentUserId;
     }
 
     /**
