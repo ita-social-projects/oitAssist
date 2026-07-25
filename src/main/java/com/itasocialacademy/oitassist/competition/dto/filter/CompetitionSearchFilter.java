@@ -13,12 +13,9 @@ import org.springframework.format.annotation.DateTimeFormat;
 public record CompetitionSearchFilter(
     String title,
 
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-    ZonedDateTime dateStart,
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime dateStart,
 
-    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-    ZonedDateTime dateFinish,
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) ZonedDateTime dateFinish,
 
-    List<CompetitionStatus> statuses
-) implements HasDateRange {
+    List<CompetitionStatus> statuses) implements HasDateRange {
 }

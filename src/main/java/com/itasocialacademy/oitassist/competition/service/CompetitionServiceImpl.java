@@ -157,8 +157,8 @@ public class CompetitionServiceImpl implements CompetitionService {
 
     private Specification<Competition> buildSearchSpecification(CompetitionSearchFilter filter) {
         return Specification.where(CompetitionSpecification.hasTitle(filter.title()))
-            .and(CompetitionSpecification.startsAfterOrEqual(filter.dateStart()))
-            .and(CompetitionSpecification.finishesBeforeOrEqual(filter.dateFinish()))
+            .and(CompetitionSpecification.finishesAfterOrEqual(filter.dateStart()))
+            .and(CompetitionSpecification.startsBeforeOrEqual(filter.dateFinish()))
             .and(CompetitionSpecification.hasAnyStatus(filter.statuses()));
     }
 }

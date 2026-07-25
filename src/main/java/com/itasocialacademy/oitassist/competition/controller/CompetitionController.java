@@ -59,7 +59,8 @@ public class CompetitionController {
     @Operation(
         summary = "Get all visible competitions",
         description = "Retrieves a paginated list of competitions. "
-            + "Visibility depends on user role (e.g., USER sees only PUBLISHED/ARCHIVED, ORG sees their DRAFTs).")
+            + "Visibility depends on user role (e.g., USER sees only ENROLLMENT, PUBLISHED, FINISHED;"
+            + " ORG sees their DRAFTs).")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Competitions retrieved successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid input data",
