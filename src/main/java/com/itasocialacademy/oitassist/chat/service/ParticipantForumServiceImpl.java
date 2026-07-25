@@ -38,35 +38,43 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<QuestionThreadSummaryResponseDTO> getForumQuestions(Long taskId, int page, int size) {
-        log.debug("Retrieving participant forum questions: taskId={}, page={}, size={}",
-            taskId,
+    public Page<QuestionThreadSummaryResponseDTO> getForumQuestions(
+        Long taskAssignmentId,
+        int page,
+        int size) {
+        log.debug("Retrieving participant forum questions: taskAssignmentId={}, page={}, size={}",
+                taskAssignmentId,
+                page,
+                size);
+        validateRequest(taskAssignmentId, page, size);
+
+        Long participantId = questionAccessPolicy.requireTaskAssignmentForumAccess(taskAssignmentId);
+
+        Pageable pageable = PageRequest.of(
             page,
-            size);
+            size,
+            FORUM_SORT);
 
-        validateTaskId(taskId);
-        validatePageAndSize(page, size);
-
-        Long participantId = questionAccessPolicy.requireTaskForumAccess(taskId);
-
-        Pageable pageable = PageRequest.of(page, size, FORUM_SORT);
-
-        return questionThreadRepository.findParticipantVisibleQuestions(taskId, participantId, pageable)
-            .map(questionThreadMapper::toSummaryResponse);
+        return questionThreadRepository.findParticipantVisibleQuestions(
+            taskAssignmentId,
+            participantId,
+            pageable)
+                .map(questionThreadMapper::toSummaryResponse);
     }
 
     @Override
     @Transactional
-    public QuestionThreadResponseDTO createQuestion(Long taskId, CreateQuestionRequestDTO request) {
-        log.debug("Creating participant question: taskId={}", taskId);
+    public QuestionThreadResponseDTO createQuestion(
+        Long taskAssignmentId,
+        CreateQuestionRequestDTO request) {
+        validateTaskAssignmentId(taskAssignmentId);
+        log.debug("Creating participant question: taskAssignmentId={}", taskAssignmentId);
 
-        validateTaskId(taskId);
-
-        Long authorId = questionAccessPolicy.requireTaskForumAccess(taskId);
+        Long authorId = questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(taskAssignmentId);
 
         QuestionThread question = questionThreadMapper.toEntity(request);
 
-        question.setTaskId(taskId);
+        question.setTaskAssignmentId(taskAssignmentId);
         question.setAuthorId(authorId);
         question.setStatus(QuestionStatus.NEW);
         question.setState(QuestionState.OPEN);
@@ -75,15 +83,20 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
 
         QuestionThread savedQuestion = questionThreadRepository.save(question);
 
-        log.info("New participant question created: questionId={}, taskId={}, authorId={}",
+        log.info("New participant question created: questionId={}, taskAssignmentId={}, authorId={}",
             savedQuestion.getId(),
-            taskId,
+            taskAssignmentId,
             authorId);
 
         return questionThreadMapper.toResponse(savedQuestion);
     }
 
-    private void validatePageAndSize(int page, int size) {
+    private void validateRequest(
+        Long taskAssignmentId,
+        int page,
+        int size) {
+        validateTaskAssignmentId(taskAssignmentId);
+
         if (page < 0) {
             throw new ValidationException(
                 "Page number must not be negative",
@@ -97,10 +110,10 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
         }
     }
 
-    private void validateTaskId(Long taskId) {
-        if (taskId == null || taskId <= 0) {
+    private void validateTaskAssignmentId(Long taskAssignmentId) {
+        if (taskAssignmentId == null || taskAssignmentId <= 0) {
             throw new ValidationException(
-                "Task id must be a positive number",
+                "Task assignment id must be a positive number",
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }

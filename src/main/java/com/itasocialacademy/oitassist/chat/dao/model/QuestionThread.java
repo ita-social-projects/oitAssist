@@ -43,8 +43,8 @@ public class QuestionThread {
      * reference. This field should be replaced with taskAssignmentId after
      * TaskAssignment is implemented.
      */
-    @Column(name = "task_id", nullable = false)
-    private Long taskId;
+    @Column(name = "task_assignment_id", nullable = false)
+    private Long taskAssignmentId;
 
     @CreatedBy
     @Column(name = "author_id", nullable = false, updatable = false)

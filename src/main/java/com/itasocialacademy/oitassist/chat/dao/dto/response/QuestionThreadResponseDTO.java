@@ -11,7 +11,7 @@ import lombok.Builder;
 @Schema(description = "Foundational question thread response")
 public record QuestionThreadResponseDTO(
     Long id,
-    Long taskId,
+    Long taskAssignmentId,
     Long authorId,
     Long assignedReviewerId,
     String title,

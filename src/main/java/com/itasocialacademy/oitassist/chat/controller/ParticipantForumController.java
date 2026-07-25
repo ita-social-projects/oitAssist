@@ -21,7 +21,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/tasks/{taskId}/questions")
+@RequestMapping("/api/v1/task-assignments/{taskAssignmentId}/questions")
 @RequiredArgsConstructor
 @PreAuthorize("isAuthenticated()")
 @Tag(
@@ -74,7 +74,7 @@ public class ParticipantForumController {
         @Parameter(
             description = "Positive identifier of the task whose forum is requested",
             example = "42",
-            required = true) @PathVariable Long taskId,
+            required = true) @PathVariable Long taskAssignmentId,
 
         @Parameter(
             description = "Zero-based page number",
@@ -86,7 +86,7 @@ public class ParticipantForumController {
         return ResponseEntity.ok(
             PageResponse.from(
                 participantForumService.getForumQuestions(
-                    taskId,
+                    taskAssignmentId,
                     page,
                     size)));
     }
@@ -135,10 +135,10 @@ public class ParticipantForumController {
         @Parameter(
             description = "Positive identifier of the task in which the question is created",
             example = "42",
-            required = true) @PathVariable Long taskId,
+            required = true) @PathVariable Long taskAssignmentId,
         @Valid @RequestBody CreateQuestionRequestDTO request) {
         QuestionThreadResponseDTO response =
-            participantForumService.createQuestion(taskId, request);
+            participantForumService.createQuestion(taskAssignmentId, request);
 
         return ResponseEntity
             .status(HttpStatus.CREATED)

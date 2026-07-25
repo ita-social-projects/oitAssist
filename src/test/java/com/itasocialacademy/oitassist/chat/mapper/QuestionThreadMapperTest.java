@@ -1,13 +1,5 @@
 package com.itasocialacademy.oitassist.chat.mapper;
 
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateQuestionRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadSummaryResponseDTO;
@@ -16,11 +8,18 @@ import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class QuestionThreadMapperTest {
 
     private static final Long QUESTION_ID = 11L;
-    private static final Long TASK_ID = 1L;
+    private static final Long TASK_ASSIGNMENT_ID = 1L;
     private static final Long AUTHOR_ID = 100L;
     private static final Long REVIEWER_ID = 200L;
     private static final Long VERSION = 3L;
@@ -49,10 +48,9 @@ class QuestionThreadMapperTest {
 
         assertThat(result).isNotNull();
         assertThat(result.id()).isEqualTo(QUESTION_ID);
-        assertThat(result.taskId()).isEqualTo(TASK_ID);
+        assertThat(result.taskAssignmentId()).isEqualTo(TASK_ASSIGNMENT_ID);
         assertThat(result.authorId()).isEqualTo(AUTHOR_ID);
-        assertThat(result.assignedReviewerId())
-            .isEqualTo(REVIEWER_ID);
+        assertThat(result.assignedReviewerId()).isEqualTo(REVIEWER_ID);
         assertThat(result.title()).isEqualTo(TITLE);
         assertThat(result.content()).isEqualTo(CONTENT);
         assertThat(result.status()).isEqualTo(ANSWERED);
@@ -72,7 +70,7 @@ class QuestionThreadMapperTest {
 
         assertThat(result).isNotNull();
         assertThat(result.id()).isEqualTo(QUESTION_ID);
-        assertThat(result.taskId()).isEqualTo(TASK_ID);
+        assertThat(result.taskAssignmentId()).isEqualTo(TASK_ASSIGNMENT_ID);
         assertThat(result.authorId()).isEqualTo(AUTHOR_ID);
         assertThat(result.title()).isEqualTo(TITLE);
         assertThat(result.status()).isEqualTo(ANSWERED);
@@ -96,23 +94,6 @@ class QuestionThreadMapperTest {
             questionThreadMapper.toSummaryResponse(null);
 
         assertThat(result).isNull();
-    }
-
-    private QuestionThread createQuestionThread() {
-        return QuestionThread.builder()
-            .id(QUESTION_ID)
-            .taskId(TASK_ID)
-            .authorId(AUTHOR_ID)
-            .assignedReviewerId(REVIEWER_ID)
-            .title(TITLE)
-            .content(CONTENT)
-            .status(ANSWERED)
-            .state(CLOSED)
-            .visibility(PUBLIC)
-            .version(VERSION)
-            .createdAt(CREATED_AT)
-            .updatedAt(UPDATED_AT)
-            .build();
     }
 
     @Test
@@ -139,7 +120,7 @@ class QuestionThreadMapperTest {
         assertThat(result).isNotNull();
 
         assertThat(result.getId()).isNull();
-        assertThat(result.getTaskId()).isNull();
+        assertThat(result.getTaskAssignmentId()).isNull();
         assertThat(result.getAuthorId()).isNull();
         assertThat(result.getAssignedReviewerId()).isNull();
 
@@ -158,5 +139,22 @@ class QuestionThreadMapperTest {
             questionThreadMapper.toEntity(null);
 
         assertThat(result).isNull();
+    }
+
+    private QuestionThread createQuestionThread() {
+        return QuestionThread.builder()
+                .id(QUESTION_ID)
+                .taskAssignmentId(TASK_ASSIGNMENT_ID)
+                .authorId(AUTHOR_ID)
+                .assignedReviewerId(REVIEWER_ID)
+                .title(TITLE)
+                .content(CONTENT)
+                .status(ANSWERED)
+                .state(CLOSED)
+                .visibility(PUBLIC)
+                .version(VERSION)
+                .createdAt(CREATED_AT)
+                .updatedAt(UPDATED_AT)
+                .build();
     }
 }

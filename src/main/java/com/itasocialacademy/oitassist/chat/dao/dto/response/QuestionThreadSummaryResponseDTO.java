@@ -11,7 +11,7 @@ import lombok.Builder;
 @Schema(description = "Question thread summary displayed in the participant forum")
 public record QuestionThreadSummaryResponseDTO(
     Long id,
-    Long taskId,
+    Long taskAssignmentId,
     Long authorId,
     String title,
     QuestionStatus status,
