@@ -22,6 +22,7 @@
 
     <include file="/db/changelog/logs/2026-07-14-ch-add-enum-status-to-stages-and-tours-Pampukha.xml"/>
     <include file="/db/changelog/logs/2026-07-17-ch-create-task-assignments-Selianyk.xml"/>
+    <include file="/db/changelog/logs/2026-07-24-ch-add-fk-task-assignment-to-task-bodies-Selianyk.xml"/>
 
     <include file="/db/changelog/logs/2026-07-15-ch-create-question-threads-Shankin.xml"/>
     <include file="/db/changelog/logs/2026-07-15-ch-create-question-messages-Shankin.xml"/>
