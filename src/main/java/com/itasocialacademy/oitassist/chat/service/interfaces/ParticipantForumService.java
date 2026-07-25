@@ -39,10 +39,9 @@ public interface ParticipantForumService {
      *                                                                                authenticated
      */
     Page<QuestionThreadSummaryResponseDTO> getForumQuestions(
-            Long taskAssignmentId,
-            int page,
-            int size
-    );
+        Long taskAssignmentId,
+        int page,
+        int size);
 
     /**
      * Creates a private question in the temporary TaskBody-based forum.
@@ -71,7 +70,6 @@ public interface ParticipantForumService {
      *                                                                                authenticated
      */
     QuestionThreadResponseDTO createQuestion(
-            Long taskAssignmentId,
-            CreateQuestionRequestDTO request
-    );
+        Long taskAssignmentId,
+        CreateQuestionRequestDTO request);
 }

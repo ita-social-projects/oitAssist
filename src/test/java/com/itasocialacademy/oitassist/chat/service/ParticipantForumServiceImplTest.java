@@ -591,43 +591,36 @@ class ParticipantForumServiceImplTest {
     @Test
     void getForumQuestions_questionsFromAnotherAssignment_shouldNotBeRequested() {
         Pageable expectedPageable = PageRequest.of(
-                PAGE,
-                SIZE,
-                Sort.by(
-                        Sort.Order.desc("createdAt"),
-                        Sort.Order.desc("id")
-                )
-        );
+            PAGE,
+            SIZE,
+            Sort.by(
+                Sort.Order.desc("createdAt"),
+                Sort.Order.desc("id")));
 
         when(questionAccessPolicy.requireTaskAssignmentForumAccess(
-                TASK_ASSIGNMENT_ID
-        )).thenReturn(USER_ID);
+            TASK_ASSIGNMENT_ID)).thenReturn(USER_ID);
 
         when(questionThreadRepository.findParticipantVisibleQuestions(
-                TASK_ASSIGNMENT_ID,
-                USER_ID,
-                expectedPageable
-        )).thenReturn(Page.empty(expectedPageable));
+            TASK_ASSIGNMENT_ID,
+            USER_ID,
+            expectedPageable)).thenReturn(Page.empty(expectedPageable));
 
         participantForumService.getForumQuestions(
-                TASK_ASSIGNMENT_ID,
-                PAGE,
-                SIZE
-        );
+            TASK_ASSIGNMENT_ID,
+            PAGE,
+            SIZE);
 
         verify(questionThreadRepository)
-                .findParticipantVisibleQuestions(
-                        TASK_ASSIGNMENT_ID,
-                        USER_ID,
-                        expectedPageable
-                );
+            .findParticipantVisibleQuestions(
+                TASK_ASSIGNMENT_ID,
+                USER_ID,
+                expectedPageable);
 
         verify(questionThreadRepository, never())
-                .findParticipantVisibleQuestions(
-                        eq(OTHER_TASK_ASSIGNMENT_ID),
-                        anyLong(),
-                        any(Pageable.class)
-                );
+            .findParticipantVisibleQuestions(
+                eq(OTHER_TASK_ASSIGNMENT_ID),
+                anyLong(),
+                any(Pageable.class));
     }
 
     private CreateQuestionRequestDTO createQuestionRequest() {
