@@ -55,7 +55,7 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
             taskAssignmentId,
             participantId,
             pageable)
-                .map(questionThreadMapper::toSummaryResponse);
+            .map(questionThreadMapper::toSummaryResponse);
     }
 
     @Override

@@ -22,15 +22,13 @@ public class ParticipationFacadeImpl implements ParticipationFacade {
 
     @Override
     public boolean isUserParticipant(
-            Long userId,
-            Long competitionId,
-            Long stageId
-    ) {
+        Long userId,
+        Long competitionId,
+        Long stageId) {
         return participationRepository
-                .existsByUserIdAndCompetitionIdAndStageId(
-                        userId,
-                        competitionId,
-                        stageId
-                );
+            .existsByUserIdAndCompetitionIdAndStageId(
+                userId,
+                competitionId,
+                stageId);
     }
 }

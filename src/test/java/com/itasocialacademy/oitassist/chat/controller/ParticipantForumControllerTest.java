@@ -46,7 +46,7 @@ class ParticipantForumControllerTest
     private static final Long QUESTION_ID = 11L;
 
     private static final String FORUM_URL = "/api/v1/task-assignments/{taskAssignmentId}/questions";
-    
+
     private static final String QUESTION_TITLE = "Clarification about input format";
 
     private static final String QUESTION_CONTENT = "May the input contain duplicate values?";

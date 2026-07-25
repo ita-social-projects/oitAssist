@@ -28,18 +28,16 @@ class ParticipationFacadeImplTest {
     @Test
     void isUserParticipant_existingParticipation_shouldReturnTrue() {
         when(participationRepository
-                .existsByUserIdAndCompetitionIdAndStageId(
-                        USER_ID,
-                        COMPETITION_ID,
-                        STAGE_ID
-                ))
-                .thenReturn(true);
-
-        boolean result = participationFacade.isUserParticipant(
+            .existsByUserIdAndCompetitionIdAndStageId(
                 USER_ID,
                 COMPETITION_ID,
-                STAGE_ID
-        );
+                STAGE_ID))
+            .thenReturn(true);
+
+        boolean result = participationFacade.isUserParticipant(
+            USER_ID,
+            COMPETITION_ID,
+            STAGE_ID);
 
         assertTrue(result);
     }
@@ -47,18 +45,16 @@ class ParticipationFacadeImplTest {
     @Test
     void isUserParticipant_missingParticipation_shouldReturnFalse() {
         when(participationRepository
-                .existsByUserIdAndCompetitionIdAndStageId(
-                        USER_ID,
-                        COMPETITION_ID,
-                        STAGE_ID
-                ))
-                .thenReturn(false);
-
-        boolean result = participationFacade.isUserParticipant(
+            .existsByUserIdAndCompetitionIdAndStageId(
                 USER_ID,
                 COMPETITION_ID,
-                STAGE_ID
-        );
+                STAGE_ID))
+            .thenReturn(false);
+
+        boolean result = participationFacade.isUserParticipant(
+            USER_ID,
+            COMPETITION_ID,
+            STAGE_ID);
 
         assertFalse(result);
     }
@@ -66,16 +62,14 @@ class ParticipationFacadeImplTest {
     @Test
     void isUserParticipant_shouldDelegateAllIdentifiersToRepository() {
         participationFacade.isUserParticipant(
-                USER_ID,
-                COMPETITION_ID,
-                STAGE_ID
-        );
+            USER_ID,
+            COMPETITION_ID,
+            STAGE_ID);
 
         verify(participationRepository)
-                .existsByUserIdAndCompetitionIdAndStageId(
-                        USER_ID,
-                        COMPETITION_ID,
-                        STAGE_ID
-                );
+            .existsByUserIdAndCompetitionIdAndStageId(
+                USER_ID,
+                COMPETITION_ID,
+                STAGE_ID);
     }
 }

@@ -63,22 +63,23 @@ public class QuestionAccessPolicy {
     }
 
     /**
-     * Validates that the authenticated user may create a question for the
-     * specified task assignment.
+     * Validates that the authenticated user may create a question for the specified
+     * task assignment.
      *
-     * <p>Question creation is allowed only while the related tour is in progress.
+     * <p>
+     * Question creation is allowed only while the related tour is in progress.
+     * </p>
      *
      * @return current authenticated user's identifier
      */
     public Long requireTaskAssignmentQuestionCreationAccess(Long taskAssignmentId) {
         TaskAssignmentAccessContext context =
-                resolveTaskAssignmentAccess(taskAssignmentId);
+            resolveTaskAssignmentAccess(taskAssignmentId);
 
         if (context.tour().executionStatus() != IN_PROGRESS) {
             throw new QuestionCreationNotAllowedException(
-                    taskAssignmentId,
-                    context.tour().executionStatus()
-            );
+                taskAssignmentId,
+                context.tour().executionStatus());
         }
 
         return context.userId();
@@ -86,71 +87,58 @@ public class QuestionAccessPolicy {
 
     private TaskAssignmentAccessContext resolveTaskAssignmentAccess(Long taskAssignmentId) {
         Long currentUserId = securityFacade.getCurrentUserId()
-                .orElseThrow(() -> new AuthenticationException(
-                        "Authentication is required to access the question forum",
-                        ErrorCode.AUTHENTICATION_REQUIRED
-                ));
+            .orElseThrow(() -> new AuthenticationException(
+                "Authentication is required to access the question forum",
+                ErrorCode.AUTHENTICATION_REQUIRED));
 
         TaskAssignmentDetailDTO assignment = taskAssignmentFacade.findAssignmentById(taskAssignmentId)
-                .orElseThrow(() ->
-                        new TaskAssignmentNotFoundException(taskAssignmentId)
-                );
+            .orElseThrow(() -> new TaskAssignmentNotFoundException(taskAssignmentId));
 
         TourDetail tour = competitionFacade.findTourById(assignment.tourId())
-                .orElseThrow(() ->
-                        new TourNotFoundException(assignment.tourId())
-                );
+            .orElseThrow(() -> new TourNotFoundException(assignment.tourId()));
 
         StageDetail stage = competitionFacade.findStageById(tour.stageId())
-                .orElseThrow(() ->
-                        new StageNotFoundException(tour.stageId())
-                );
+            .orElseThrow(() -> new StageNotFoundException(tour.stageId()));
 
         /*
-         * Administrators bypass assignment visibility and participation checks,
-         * but only after the complete assignment hierarchy has been validated.
+         * Administrators bypass assignment visibility and participation checks, but
+         * only after the complete assignment hierarchy has been validated.
          */
         if (isAdministrator()) {
             return new TaskAssignmentAccessContext(
-                    currentUserId,
-                    assignment,
-                    tour,
-                    stage
-            );
+                currentUserId,
+                assignment,
+                tour,
+                stage);
         }
 
         if (assignment.visibility() != VISIBLE) {
             throw new QuestionForumAccessRestrictedException(
-                    taskAssignmentId
-            );
+                taskAssignmentId);
         }
 
         boolean isParticipant = participationFacade.isUserParticipant(
-                currentUserId,
-                stage.competitionId(),
-                stage.id()
-        );
+            currentUserId,
+            stage.competitionId(),
+            stage.id());
 
         if (!isParticipant) {
             throw new QuestionForumAccessRestrictedException(
-                    taskAssignmentId
-            );
+                taskAssignmentId);
         }
 
         return new TaskAssignmentAccessContext(
-                currentUserId,
-                assignment,
-                tour,
-                stage
-        );
+            currentUserId,
+            assignment,
+            tour,
+            stage);
     }
 
     private record TaskAssignmentAccessContext(
-            Long userId,
-            TaskAssignmentDetailDTO assignment,
-            TourDetail tour,
-            StageDetail stage
-    ) {
+        Long userId,
+        TaskAssignmentDetailDTO assignment,
+        TourDetail tour,
+        StageDetail stage) {
     }
 
     private boolean currentUserMatches(Long expectedUserId) {
@@ -159,7 +147,7 @@ public class QuestionAccessPolicy {
         }
 
         return securityFacade.getCurrentUserId()
-                .map(currentUserId -> Objects.equals(currentUserId, expectedUserId))
-                .orElse(false);
+            .map(currentUserId -> Objects.equals(currentUserId, expectedUserId))
+            .orElse(false);
     }
 }

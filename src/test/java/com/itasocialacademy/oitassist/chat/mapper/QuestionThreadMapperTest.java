@@ -143,18 +143,18 @@ class QuestionThreadMapperTest {
 
     private QuestionThread createQuestionThread() {
         return QuestionThread.builder()
-                .id(QUESTION_ID)
-                .taskAssignmentId(TASK_ASSIGNMENT_ID)
-                .authorId(AUTHOR_ID)
-                .assignedReviewerId(REVIEWER_ID)
-                .title(TITLE)
-                .content(CONTENT)
-                .status(ANSWERED)
-                .state(CLOSED)
-                .visibility(PUBLIC)
-                .version(VERSION)
-                .createdAt(CREATED_AT)
-                .updatedAt(UPDATED_AT)
-                .build();
+            .id(QUESTION_ID)
+            .taskAssignmentId(TASK_ASSIGNMENT_ID)
+            .authorId(AUTHOR_ID)
+            .assignedReviewerId(REVIEWER_ID)
+            .title(TITLE)
+            .content(CONTENT)
+            .status(ANSWERED)
+            .state(CLOSED)
+            .visibility(PUBLIC)
+            .version(VERSION)
+            .createdAt(CREATED_AT)
+            .updatedAt(UPDATED_AT)
+            .build();
     }
 }
