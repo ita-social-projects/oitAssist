@@ -1,21 +1,5 @@
 package com.itasocialacademy.oitassist.chat.service;
 
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadSummaryResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
@@ -24,9 +8,9 @@ import com.itasocialacademy.oitassist.chat.utils.QuestionAccessPolicy;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
-import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import java.time.Instant;
 import java.util.List;
+import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -44,6 +28,20 @@ import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import org.mockito.InOrder;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.inOrder;
@@ -52,7 +50,8 @@ import static org.mockito.Mockito.never;
 @ExtendWith(MockitoExtension.class)
 class ParticipantForumServiceImplTest {
 
-    private static final Long TASK_ID = 1L;
+    private static final Long TASK_ASSIGNMENT_ID = 1L;
+    private static final Long OTHER_TASK_ASSIGNMENT_ID = 2L;
     private static final Long USER_ID = 100L;
     private static final Long OTHER_USER_ID = 200L;
 
@@ -82,7 +81,7 @@ class ParticipantForumServiceImplTest {
     private ParticipantForumServiceImpl participantForumService;
 
     @Test
-    void getForumQuestions_accessibleTask_shouldReturnMappedPage() {
+    void getForumQuestions_accessibleTaskAssignment_shouldReturnMappedPage() {
         QuestionThread publicQuestion = createPublicQuestion();
         QuestionThread privateQuestion = createPrivateQuestion();
 
@@ -96,11 +95,11 @@ class ParticipantForumServiceImplTest {
             PageRequest.of(PAGE, SIZE),
             2);
 
-        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+        when(questionAccessPolicy.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
 
         when(questionThreadRepository.findParticipantVisibleQuestions(
-            eq(TASK_ID),
+            eq(TASK_ASSIGNMENT_ID),
             eq(USER_ID),
             any(Pageable.class))).thenReturn(repositoryPage);
 
@@ -111,7 +110,7 @@ class ParticipantForumServiceImplTest {
 
         Page<QuestionThreadSummaryResponseDTO> result =
             participantForumService.getForumQuestions(
-                TASK_ID,
+                TASK_ASSIGNMENT_ID,
                 PAGE,
                 SIZE);
 
@@ -127,7 +126,7 @@ class ParticipantForumServiceImplTest {
             () -> assertTrue(result.isLast()));
 
         verify(questionAccessPolicy)
-            .requireTaskForumAccess(TASK_ID);
+            .requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID);
         verify(questionThreadMapper)
             .toSummaryResponse(publicQuestion);
         verify(questionThreadMapper)
@@ -139,29 +138,13 @@ class ParticipantForumServiceImplTest {
         stubAccessibleEmptyForum();
 
         participantForumService.getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             PAGE,
             SIZE);
 
         verify(questionThreadRepository)
             .findParticipantVisibleQuestions(
-                eq(TASK_ID),
-                eq(USER_ID),
-                any(Pageable.class));
-    }
-
-    @Test
-    void getForumQuestions_shouldRequestPublicAndPrivateQuestions() {
-        stubAccessibleEmptyForum();
-
-        participantForumService.getForumQuestions(
-            TASK_ID,
-            PAGE,
-            SIZE);
-
-        verify(questionThreadRepository)
-            .findParticipantVisibleQuestions(
-                eq(TASK_ID),
+                eq(TASK_ASSIGNMENT_ID),
                 eq(USER_ID),
                 any(Pageable.class));
     }
@@ -171,7 +154,7 @@ class ParticipantForumServiceImplTest {
         stubAccessibleEmptyForum();
 
         participantForumService.getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             PAGE,
             SIZE);
 
@@ -180,7 +163,7 @@ class ParticipantForumServiceImplTest {
 
         verify(questionThreadRepository)
             .findParticipantVisibleQuestions(
-                eq(TASK_ID),
+                eq(TASK_ASSIGNMENT_ID),
                 eq(USER_ID),
                 pageableCaptor.capture());
 
@@ -213,17 +196,17 @@ class ParticipantForumServiceImplTest {
             PageRequest.of(PAGE, SIZE),
             0);
 
-        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+        when(questionAccessPolicy.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
 
         when(questionThreadRepository.findParticipantVisibleQuestions(
-            eq(TASK_ID),
+            eq(TASK_ASSIGNMENT_ID),
             eq(USER_ID),
             any(Pageable.class))).thenReturn(emptyPage);
 
         Page<QuestionThreadSummaryResponseDTO> result =
             participantForumService.getForumQuestions(
-                TASK_ID,
+                TASK_ASSIGNMENT_ID,
                 PAGE,
                 SIZE);
 
@@ -244,44 +227,44 @@ class ParticipantForumServiceImplTest {
                 "Authentication is required to access the question forum",
                 ErrorCode.AUTHENTICATION_REQUIRED);
 
-        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+        when(questionAccessPolicy.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
             .thenThrow(exception);
 
         assertThrows(
             AuthenticationException.class,
             () -> participantForumService.getForumQuestions(
-                TASK_ID,
+                TASK_ASSIGNMENT_ID,
                 PAGE,
                 SIZE));
 
         verify(questionAccessPolicy)
-            .requireTaskForumAccess(TASK_ID);
+            .requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID);
         verifyNoInteractions(
             questionThreadRepository,
             questionThreadMapper);
     }
 
     @Test
-    void getForumQuestions_missingTask_shouldNotQueryRepository() {
-        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
-            .thenThrow(new TaskNotFoundException(TASK_ID));
+    void getForumQuestions_missingTaskAssignment_shouldNotQueryRepository() {
+        when(questionAccessPolicy.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
+            .thenThrow(new TaskAssignmentNotFoundException(TASK_ASSIGNMENT_ID));
 
         assertThrows(
-            TaskNotFoundException.class,
+            TaskAssignmentNotFoundException.class,
             () -> participantForumService.getForumQuestions(
-                TASK_ID,
+                TASK_ASSIGNMENT_ID,
                 PAGE,
                 SIZE));
 
         verify(questionAccessPolicy)
-            .requireTaskForumAccess(TASK_ID);
+            .requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID);
         verifyNoInteractions(
             questionThreadRepository,
             questionThreadMapper);
     }
 
     @Test
-    void getForumQuestions_invalidTaskId_shouldRejectBeforeAccessCheck() {
+    void getForumQuestions_invalidTaskAssignmentId_shouldRejectBeforeAccessCheck() {
         assertAll(
             () -> assertThrows(
                 ValidationException.class,
@@ -313,7 +296,7 @@ class ParticipantForumServiceImplTest {
         assertThrows(
             ValidationException.class,
             () -> participantForumService.getForumQuestions(
-                TASK_ID,
+                TASK_ASSIGNMENT_ID,
                 -1,
                 SIZE));
 
@@ -329,13 +312,13 @@ class ParticipantForumServiceImplTest {
             () -> assertThrows(
                 ValidationException.class,
                 () -> participantForumService.getForumQuestions(
-                    TASK_ID,
+                    TASK_ASSIGNMENT_ID,
                     PAGE,
                     0)),
             () -> assertThrows(
                 ValidationException.class,
                 () -> participantForumService.getForumQuestions(
-                    TASK_ID,
+                    TASK_ASSIGNMENT_ID,
                     PAGE,
                     101)));
 
@@ -346,14 +329,14 @@ class ParticipantForumServiceImplTest {
     }
 
     @Test
-    void createQuestion_accessibleTask_shouldSaveAndReturnMappedResponse() {
+    void createQuestion_accessibleTaskAssignment_shouldSaveAndReturnMappedResponse() {
         CreateQuestionRequestDTO request = createQuestionRequest();
         QuestionThread mappedQuestion = createMappedQuestion();
         QuestionThread savedQuestion = createSavedQuestion();
         QuestionThreadResponseDTO expectedResponse =
             createQuestionResponse();
 
-        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+        when(questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
         when(questionThreadMapper.toEntity(request))
             .thenReturn(mappedQuestion);
@@ -364,7 +347,7 @@ class ParticipantForumServiceImplTest {
 
         QuestionThreadResponseDTO result =
             participantForumService.createQuestion(
-                TASK_ID,
+                TASK_ASSIGNMENT_ID,
                 request);
 
         assertSame(expectedResponse, result);
@@ -375,7 +358,7 @@ class ParticipantForumServiceImplTest {
             questionThreadRepository);
 
         inOrder.verify(questionAccessPolicy)
-            .requireTaskForumAccess(TASK_ID);
+            .requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID);
         inOrder.verify(questionThreadMapper)
             .toEntity(request);
         inOrder.verify(questionThreadRepository)
@@ -385,7 +368,7 @@ class ParticipantForumServiceImplTest {
     }
 
     @Test
-    void createQuestion_shouldUseTaskIdFromPath() {
+    void createQuestion_shouldUseTaskAssignmentIdFromPath() {
         CreateQuestionRequestDTO request = createQuestionRequest();
         QuestionThread mappedQuestion = createMappedQuestion();
 
@@ -395,14 +378,14 @@ class ParticipantForumServiceImplTest {
             createSavedQuestion(),
             createQuestionResponse());
 
-        participantForumService.createQuestion(TASK_ID, request);
+        participantForumService.createQuestion(TASK_ASSIGNMENT_ID, request);
 
         ArgumentCaptor<QuestionThread> captor =
             ArgumentCaptor.forClass(QuestionThread.class);
 
         verify(questionThreadRepository).save(captor.capture());
 
-        assertEquals(TASK_ID, captor.getValue().getTaskId());
+        assertEquals(TASK_ASSIGNMENT_ID, captor.getValue().getTaskAssignmentId());
     }
 
     @Test
@@ -416,7 +399,7 @@ class ParticipantForumServiceImplTest {
             createSavedQuestion(),
             createQuestionResponse());
 
-        participantForumService.createQuestion(TASK_ID, request);
+        participantForumService.createQuestion(TASK_ASSIGNMENT_ID, request);
 
         ArgumentCaptor<QuestionThread> captor =
             ArgumentCaptor.forClass(QuestionThread.class);
@@ -437,7 +420,7 @@ class ParticipantForumServiceImplTest {
             createSavedQuestion(),
             createQuestionResponse());
 
-        participantForumService.createQuestion(TASK_ID, request);
+        participantForumService.createQuestion(TASK_ASSIGNMENT_ID, request);
 
         ArgumentCaptor<QuestionThread> captor =
             ArgumentCaptor.forClass(QuestionThread.class);
@@ -471,7 +454,7 @@ class ParticipantForumServiceImplTest {
             createSavedQuestion(),
             createQuestionResponse());
 
-        participantForumService.createQuestion(TASK_ID, request);
+        participantForumService.createQuestion(TASK_ASSIGNMENT_ID, request);
 
         ArgumentCaptor<QuestionThread> captor =
             ArgumentCaptor.forClass(QuestionThread.class);
@@ -498,7 +481,7 @@ class ParticipantForumServiceImplTest {
 
         QuestionThreadResponseDTO result =
             participantForumService.createQuestion(
-                TASK_ID,
+                TASK_ASSIGNMENT_ID,
                 request);
 
         verify(questionThreadMapper).toResponse(savedQuestion);
@@ -509,7 +492,7 @@ class ParticipantForumServiceImplTest {
     void createQuestion_unauthenticated_shouldNotPersist() {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
-        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+        when(questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
             .thenThrow(new AuthenticationException(
                 "Authentication is required to access the question forum",
                 ErrorCode.AUTHENTICATION_REQUIRED));
@@ -517,11 +500,11 @@ class ParticipantForumServiceImplTest {
         assertThrows(
             AuthenticationException.class,
             () -> participantForumService.createQuestion(
-                TASK_ID,
+                TASK_ASSIGNMENT_ID,
                 request));
 
         verify(questionAccessPolicy)
-            .requireTaskForumAccess(TASK_ID);
+            .requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID);
 
         verifyNoInteractions(
             questionThreadRepository,
@@ -529,20 +512,20 @@ class ParticipantForumServiceImplTest {
     }
 
     @Test
-    void createQuestion_missingTask_shouldNotPersist() {
+    void createQuestion_missingTaskAssignment_shouldNotPersist() {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
-        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
-            .thenThrow(new TaskNotFoundException(TASK_ID));
+        when(questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
+            .thenThrow(new TaskAssignmentNotFoundException(TASK_ASSIGNMENT_ID));
 
         assertThrows(
-            TaskNotFoundException.class,
+            TaskAssignmentNotFoundException.class,
             () -> participantForumService.createQuestion(
-                TASK_ID,
+                TASK_ASSIGNMENT_ID,
                 request));
 
         verify(questionAccessPolicy)
-            .requireTaskForumAccess(TASK_ID);
+            .requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID);
 
         verifyNoInteractions(
             questionThreadRepository,
@@ -550,7 +533,7 @@ class ParticipantForumServiceImplTest {
     }
 
     @Test
-    void createQuestion_invalidTaskId_shouldRejectBeforeAccessCheck() {
+    void createQuestion_invalidTaskAssignmentId_shouldRejectBeforeAccessCheck() {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         assertThrows(
@@ -585,7 +568,7 @@ class ParticipantForumServiceImplTest {
         RuntimeException repositoryFailure =
             new RuntimeException("Database failure");
 
-        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+        when(questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
         when(questionThreadMapper.toEntity(request))
             .thenReturn(mappedQuestion);
@@ -595,7 +578,7 @@ class ParticipantForumServiceImplTest {
         RuntimeException result = assertThrows(
             RuntimeException.class,
             () -> participantForumService.createQuestion(
-                TASK_ID,
+                TASK_ASSIGNMENT_ID,
                 request));
 
         assertSame(repositoryFailure, result);
@@ -603,6 +586,48 @@ class ParticipantForumServiceImplTest {
         verify(questionThreadRepository).save(mappedQuestion);
         verify(questionThreadMapper, never())
             .toResponse(any(QuestionThread.class));
+    }
+
+    @Test
+    void getForumQuestions_questionsFromAnotherAssignment_shouldNotBeRequested() {
+        Pageable expectedPageable = PageRequest.of(
+                PAGE,
+                SIZE,
+                Sort.by(
+                        Sort.Order.desc("createdAt"),
+                        Sort.Order.desc("id")
+                )
+        );
+
+        when(questionAccessPolicy.requireTaskAssignmentForumAccess(
+                TASK_ASSIGNMENT_ID
+        )).thenReturn(USER_ID);
+
+        when(questionThreadRepository.findParticipantVisibleQuestions(
+                TASK_ASSIGNMENT_ID,
+                USER_ID,
+                expectedPageable
+        )).thenReturn(Page.empty(expectedPageable));
+
+        participantForumService.getForumQuestions(
+                TASK_ASSIGNMENT_ID,
+                PAGE,
+                SIZE
+        );
+
+        verify(questionThreadRepository)
+                .findParticipantVisibleQuestions(
+                        TASK_ASSIGNMENT_ID,
+                        USER_ID,
+                        expectedPageable
+                );
+
+        verify(questionThreadRepository, never())
+                .findParticipantVisibleQuestions(
+                        eq(OTHER_TASK_ASSIGNMENT_ID),
+                        anyLong(),
+                        any(Pageable.class)
+                );
     }
 
     private CreateQuestionRequestDTO createQuestionRequest() {
@@ -621,7 +646,7 @@ class ParticipantForumServiceImplTest {
     private QuestionThread createSavedQuestion() {
         return QuestionThread.builder()
             .id(CREATED_QUESTION_ID)
-            .taskId(TASK_ID)
+            .taskAssignmentId(TASK_ASSIGNMENT_ID)
             .authorId(USER_ID)
             .assignedReviewerId(null)
             .title(QUESTION_TITLE)
@@ -638,7 +663,7 @@ class ParticipantForumServiceImplTest {
     private QuestionThreadResponseDTO createQuestionResponse() {
         return new QuestionThreadResponseDTO(
             CREATED_QUESTION_ID,
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             USER_ID,
             null,
             QUESTION_TITLE,
@@ -656,7 +681,7 @@ class ParticipantForumServiceImplTest {
         QuestionThread mappedQuestion,
         QuestionThread savedQuestion,
         QuestionThreadResponseDTO response) {
-        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+        when(questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
         when(questionThreadMapper.toEntity(request))
             .thenReturn(mappedQuestion);
@@ -667,11 +692,11 @@ class ParticipantForumServiceImplTest {
     }
 
     private void stubAccessibleEmptyForum() {
-        when(questionAccessPolicy.requireTaskForumAccess(TASK_ID))
+        when(questionAccessPolicy.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
 
         when(questionThreadRepository.findParticipantVisibleQuestions(
-            eq(TASK_ID),
+            eq(TASK_ASSIGNMENT_ID),
             eq(USER_ID),
             any(Pageable.class))).thenReturn(Page.empty());
     }
@@ -684,7 +709,7 @@ class ParticipantForumServiceImplTest {
 
         return QuestionThread.builder()
             .id(11L)
-            .taskId(TASK_ID)
+            .taskAssignmentId(TASK_ASSIGNMENT_ID)
             .authorId(OTHER_USER_ID)
             .title("Public question")
             .content("Public question content")
@@ -704,7 +729,7 @@ class ParticipantForumServiceImplTest {
 
         return QuestionThread.builder()
             .id(12L)
-            .taskId(TASK_ID)
+            .taskAssignmentId(TASK_ASSIGNMENT_ID)
             .authorId(USER_ID)
             .title("Private question")
             .content("Private question content")
@@ -720,7 +745,7 @@ class ParticipantForumServiceImplTest {
 
         return new QuestionThreadSummaryResponseDTO(
             11L,
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             OTHER_USER_ID,
             "Public question",
             NEW,
@@ -734,7 +759,7 @@ class ParticipantForumServiceImplTest {
 
         return new QuestionThreadSummaryResponseDTO(
             12L,
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             USER_ID,
             "Private question",
             ANSWERED,

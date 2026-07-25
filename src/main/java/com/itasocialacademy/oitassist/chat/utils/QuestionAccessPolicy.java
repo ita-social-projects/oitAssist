@@ -60,7 +60,7 @@ public class QuestionAccessPolicy {
      * forum context.
      */
     public boolean hasTaskAccess(QuestionThread questionThread) {
-        return hasTaskAccess(questionThread.getTaskId());
+        return hasTaskAccess(questionThread.getTaskAssignmentId());
     }
 
     /**

@@ -7,11 +7,13 @@ import org.springframework.data.domain.Page;
 
 public interface ParticipantForumService {
     Page<QuestionThreadSummaryResponseDTO> getForumQuestions(
-        Long taskId,
-        int page,
-        int size);
+            Long taskAssignmentId,
+            int page,
+            int size
+    );
 
     QuestionThreadResponseDTO createQuestion(
-        Long taskId,
-        CreateQuestionRequestDTO request);
+            Long taskAssignmentId,
+            CreateQuestionRequestDTO request
+    );
 }

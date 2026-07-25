@@ -1,16 +1,5 @@
 package com.itasocialacademy.oitassist.chat.controller;
 
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadSummaryResponseDTO;
 import com.itasocialacademy.oitassist.chat.service.interfaces.ParticipantForumService;
@@ -35,17 +24,29 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class ParticipantForumControllerTest
     extends ControllerUnitTest<ParticipantForumController> {
 
-    private static final Long TASK_ID = 1L;
+    private static final Long TASK_ASSIGNMENT_ID = 1L;
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
 
     private static final Long USER_ID = 100L;
     private static final Long QUESTION_ID = 11L;
 
+    private static final String FORUM_URL = "/api/v1/task-assignments/{taskAssignmentId}/questions";
+    
     private static final String QUESTION_TITLE = "Clarification about input format";
 
     private static final String QUESTION_CONTENT = "May the input contain duplicate values?";
@@ -79,19 +80,19 @@ class ParticipantForumControllerTest
                 1);
 
         when(participantForumService.getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             DEFAULT_SIZE)).thenReturn(page);
 
         mockMvc.perform(
-            get("/api/v1/tasks/{taskId}/questions", TASK_ID)
+            get(FORUM_URL, TASK_ASSIGNMENT_ID)
                 .param("page", String.valueOf(DEFAULT_PAGE))
                 .param("size", String.valueOf(DEFAULT_SIZE)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content.length()").value(1))
             .andExpect(jsonPath("$.content[0].id").value(11L))
-            .andExpect(jsonPath("$.content[0].taskId").value(TASK_ID))
+            .andExpect(jsonPath("$.content[0].taskAssignmentId").value(TASK_ASSIGNMENT_ID))
             .andExpect(jsonPath("$.content[0].authorId").value(100L))
             .andExpect(
                 jsonPath("$.content[0].title")
@@ -102,7 +103,7 @@ class ParticipantForumControllerTest
                 jsonPath("$.content[0].visibility").value("PUBLIC"));
 
         verify(participantForumService).getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             DEFAULT_SIZE);
     }
@@ -122,12 +123,12 @@ class ParticipantForumControllerTest
                 totalElements);
 
         when(participantForumService.getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             pageNumber,
             pageSize)).thenReturn(page);
 
         mockMvc.perform(
-            get("/api/v1/tasks/{taskId}/questions", TASK_ID)
+            get(FORUM_URL, TASK_ASSIGNMENT_ID)
                 .param("page", String.valueOf(pageNumber))
                 .param("size", String.valueOf(pageSize)))
             .andExpect(status().isOk())
@@ -139,7 +140,7 @@ class ParticipantForumControllerTest
             .andExpect(jsonPath("$.last").value(true));
 
         verify(participantForumService).getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             pageNumber,
             pageSize);
     }
@@ -149,20 +150,20 @@ class ParticipantForumControllerTest
         throws Exception {
 
         when(participantForumService.getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             DEFAULT_SIZE)).thenReturn(
                 Page.empty(
                     PageRequest.of(DEFAULT_PAGE, DEFAULT_SIZE)));
 
         mockMvc.perform(
-            get("/api/v1/tasks/{taskId}/questions", TASK_ID))
+            get(FORUM_URL, TASK_ASSIGNMENT_ID))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.pageNumber").value(DEFAULT_PAGE))
             .andExpect(jsonPath("$.pageSize").value(DEFAULT_SIZE));
 
         verify(participantForumService).getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             DEFAULT_SIZE);
     }
@@ -176,12 +177,12 @@ class ParticipantForumControllerTest
                 PageRequest.of(DEFAULT_PAGE, DEFAULT_SIZE));
 
         when(participantForumService.getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             DEFAULT_SIZE)).thenReturn(emptyPage);
 
         mockMvc.perform(
-            get("/api/v1/tasks/{taskId}/questions", TASK_ID)
+            get(FORUM_URL, TASK_ASSIGNMENT_ID)
                 .param("page", String.valueOf(DEFAULT_PAGE))
                 .param("size", String.valueOf(DEFAULT_SIZE)))
             .andExpect(status().isOk())
@@ -194,27 +195,27 @@ class ParticipantForumControllerTest
             .andExpect(jsonPath("$.last").value(true));
 
         verify(participantForumService).getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             DEFAULT_SIZE);
     }
 
     @Test
-    void getParticipantForum_invalidTaskId_shouldReturn400()
+    void getParticipantForum_invalidtaskAssignmentId_shouldReturn400()
         throws Exception {
 
-        Long invalidTaskId = 0L;
+        Long invalidtaskAssignmentId = 0L;
 
         when(participantForumService.getForumQuestions(
-            invalidTaskId,
+            invalidtaskAssignmentId,
             DEFAULT_PAGE,
             DEFAULT_SIZE)).thenThrow(validationException(
                 "Task id must be a positive number"));
 
         mockMvc.perform(
             get(
-                "/api/v1/tasks/{taskId}/questions",
-                invalidTaskId)
+                FORUM_URL,
+                invalidtaskAssignmentId)
                 .param("page", String.valueOf(DEFAULT_PAGE))
                 .param("size", String.valueOf(DEFAULT_SIZE)))
             .andExpect(status().isBadRequest())
@@ -223,7 +224,7 @@ class ParticipantForumControllerTest
                     .value("COMMON_VALIDATION_FAILED"));
 
         verify(participantForumService).getForumQuestions(
-            invalidTaskId,
+            invalidtaskAssignmentId,
             DEFAULT_PAGE,
             DEFAULT_SIZE);
     }
@@ -235,13 +236,13 @@ class ParticipantForumControllerTest
         int invalidPage = -1;
 
         when(participantForumService.getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             invalidPage,
             DEFAULT_SIZE)).thenThrow(validationException(
                 "Page number must not be negative"));
 
         mockMvc.perform(
-            get("/api/v1/tasks/{taskId}/questions", TASK_ID)
+            get(FORUM_URL, TASK_ASSIGNMENT_ID)
                 .param("page", String.valueOf(invalidPage))
                 .param("size", String.valueOf(DEFAULT_SIZE)))
             .andExpect(status().isBadRequest())
@@ -250,7 +251,7 @@ class ParticipantForumControllerTest
                     .value("COMMON_VALIDATION_FAILED"));
 
         verify(participantForumService).getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             invalidPage,
             DEFAULT_SIZE);
     }
@@ -263,19 +264,19 @@ class ParticipantForumControllerTest
         int excessiveSize = 101;
 
         when(participantForumService.getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             zeroSize)).thenThrow(validationException(
                 "Page size must be between 1 and 100"));
 
         when(participantForumService.getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             excessiveSize)).thenThrow(validationException(
                 "Page size must be between 1 and 100"));
 
         mockMvc.perform(
-            get("/api/v1/tasks/{taskId}/questions", TASK_ID)
+            get(FORUM_URL, TASK_ASSIGNMENT_ID)
                 .param("page", String.valueOf(DEFAULT_PAGE))
                 .param("size", String.valueOf(zeroSize)))
             .andExpect(status().isBadRequest())
@@ -284,7 +285,7 @@ class ParticipantForumControllerTest
                     .value("COMMON_VALIDATION_FAILED"));
 
         mockMvc.perform(
-            get("/api/v1/tasks/{taskId}/questions", TASK_ID)
+            get(FORUM_URL, TASK_ASSIGNMENT_ID)
                 .param("page", String.valueOf(DEFAULT_PAGE))
                 .param("size", String.valueOf(excessiveSize)))
             .andExpect(status().isBadRequest())
@@ -293,23 +294,23 @@ class ParticipantForumControllerTest
                     .value("COMMON_VALIDATION_FAILED"));
 
         verify(participantForumService).getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             zeroSize);
 
         verify(participantForumService).getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             excessiveSize);
     }
 
     @Test
-    void getParticipantForum_nonNumericTaskId_shouldReturn400()
+    void getParticipantForum_nonNumericTaskAssignmentId_shouldReturn400()
         throws Exception {
 
         mockMvc.perform(
             get(
-                "/api/v1/tasks/{taskId}/questions",
+                FORUM_URL,
                 "not-a-number"))
             .andExpect(status().isBadRequest())
             .andExpect(
@@ -324,7 +325,7 @@ class ParticipantForumControllerTest
         throws Exception {
 
         mockMvc.perform(
-            get("/api/v1/tasks/{taskId}/questions", TASK_ID)
+            get(FORUM_URL, TASK_ASSIGNMENT_ID)
                 .param("page", "not-a-number")
                 .param("size", String.valueOf(DEFAULT_SIZE)))
             .andExpect(status().isBadRequest())
@@ -340,14 +341,14 @@ class ParticipantForumControllerTest
         throws Exception {
 
         when(participantForumService.getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             DEFAULT_SIZE)).thenThrow(new AuthenticationException(
                 "Authentication is required to access the question forum",
                 ErrorCode.AUTHENTICATION_REQUIRED));
 
         mockMvc.perform(
-            get("/api/v1/tasks/{taskId}/questions", TASK_ID)
+            get(FORUM_URL, TASK_ASSIGNMENT_ID)
                 .param("page", String.valueOf(DEFAULT_PAGE))
                 .param("size", String.valueOf(DEFAULT_SIZE)))
             .andExpect(status().isUnauthorized())
@@ -361,7 +362,7 @@ class ParticipantForumControllerTest
                             + "the question forum"));
 
         verify(participantForumService).getForumQuestions(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             DEFAULT_PAGE,
             DEFAULT_SIZE);
     }
@@ -370,17 +371,17 @@ class ParticipantForumControllerTest
     void getParticipantForum_missingTask_shouldReturn404()
         throws Exception {
 
-        Long missingTaskId = 999L;
+        Long missingTaskAssignmentId = 999L;
 
         when(participantForumService.getForumQuestions(
-            missingTaskId,
+            missingTaskAssignmentId,
             DEFAULT_PAGE,
-            DEFAULT_SIZE)).thenThrow(new TaskNotFoundException(missingTaskId));
+            DEFAULT_SIZE)).thenThrow(new TaskNotFoundException(missingTaskAssignmentId));
 
         mockMvc.perform(
             get(
-                "/api/v1/tasks/{taskId}/questions",
-                missingTaskId)
+                FORUM_URL,
+                missingTaskAssignmentId)
                 .param("page", String.valueOf(DEFAULT_PAGE))
                 .param("size", String.valueOf(DEFAULT_SIZE)))
             .andExpect(status().isNotFound())
@@ -389,10 +390,10 @@ class ParticipantForumControllerTest
                 jsonPath("$.message")
                     .value(
                         "Task with id %s was not found"
-                            .formatted(missingTaskId)));
+                            .formatted(missingTaskAssignmentId)));
 
         verify(participantForumService).getForumQuestions(
-            missingTaskId,
+            missingTaskAssignmentId,
             DEFAULT_PAGE,
             DEFAULT_SIZE);
     }
@@ -402,18 +403,18 @@ class ParticipantForumControllerTest
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-            eq(TASK_ID),
+            eq(TASK_ASSIGNMENT_ID),
             any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated());
 
         verify(participantForumService).createQuestion(
-            eq(TASK_ID),
+            eq(TASK_ASSIGNMENT_ID),
             any(CreateQuestionRequestDTO.class));
     }
 
@@ -424,17 +425,17 @@ class ParticipantForumControllerTest
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-            eq(TASK_ID),
+            eq(TASK_ASSIGNMENT_ID),
             any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(QUESTION_ID))
-            .andExpect(jsonPath("$.taskId").value(TASK_ID))
+            .andExpect(jsonPath("$.taskAssignmentId").value(TASK_ASSIGNMENT_ID))
             .andExpect(jsonPath("$.authorId").value(USER_ID))
             .andExpect(jsonPath("$.assignedReviewerId").value(nullValue()))
             .andExpect(jsonPath("$.title").value(QUESTION_TITLE))
@@ -452,18 +453,18 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_validRequest_shouldDelegateTaskIdAndRequest()
+    void createQuestion_validRequest_shouldDelegatetaskAssignmentIdAndRequest()
         throws Exception {
 
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-            eq(TASK_ID),
+            eq(TASK_ASSIGNMENT_ID),
             any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated());
@@ -472,7 +473,7 @@ class ParticipantForumControllerTest
             ArgumentCaptor.forClass(CreateQuestionRequestDTO.class);
 
         verify(participantForumService).createQuestion(
-            eq(TASK_ID),
+            eq(TASK_ASSIGNMENT_ID),
             requestCaptor.capture());
 
         CreateQuestionRequestDTO capturedRequest =
@@ -496,8 +497,8 @@ class ParticipantForumControllerTest
                 QUESTION_CONTENT);
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest())
@@ -521,8 +522,8 @@ class ParticipantForumControllerTest
             """.formatted(QUESTION_CONTENT);
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(request))
             .andExpect(status().isBadRequest())
@@ -545,8 +546,8 @@ class ParticipantForumControllerTest
                 QUESTION_CONTENT);
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest())
@@ -569,8 +570,8 @@ class ParticipantForumControllerTest
                 "   ");
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest())
@@ -594,8 +595,8 @@ class ParticipantForumControllerTest
             """.formatted(QUESTION_TITLE);
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(request))
             .andExpect(status().isBadRequest())
@@ -618,8 +619,8 @@ class ParticipantForumControllerTest
                 "a".repeat(10_001));
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest())
@@ -637,8 +638,8 @@ class ParticipantForumControllerTest
         throws Exception {
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isBadRequest())
             .andExpect(
@@ -663,8 +664,8 @@ class ParticipantForumControllerTest
             """;
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(malformedJson))
             .andExpect(status().isBadRequest())
@@ -679,21 +680,21 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_invalidTaskId_shouldReturn400()
+    void createQuestion_invalidtaskAssignmentId_shouldReturn400()
         throws Exception {
 
-        Long invalidTaskId = 0L;
+        Long invalidtaskAssignmentId = 0L;
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-            invalidTaskId,
+            invalidtaskAssignmentId,
             request)).thenThrow(new ValidationException(
                 "Task id must be a positive number",
                 ErrorCode.COMMON_VALIDATION_FAILED));
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            invalidTaskId)
+            FORUM_URL,
+            invalidtaskAssignmentId)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest())
@@ -702,18 +703,18 @@ class ParticipantForumControllerTest
                     .value("COMMON_VALIDATION_FAILED"));
 
         verify(participantForumService).createQuestion(
-            invalidTaskId,
+            invalidtaskAssignmentId,
             request);
     }
 
     @Test
-    void createQuestion_nonNumericTaskId_shouldReturn400()
+    void createQuestion_nonNumerictaskAssignmentId_shouldReturn400()
         throws Exception {
 
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
+            FORUM_URL,
             "not-a-number")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
@@ -732,14 +733,14 @@ class ParticipantForumControllerTest
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             request)).thenThrow(new AuthenticationException(
                 "Authentication is required to access the question forum",
                 ErrorCode.AUTHENTICATION_REQUIRED));
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isUnauthorized())
@@ -753,7 +754,7 @@ class ParticipantForumControllerTest
                             + "the question forum"));
 
         verify(participantForumService).createQuestion(
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             request);
     }
 
@@ -761,16 +762,16 @@ class ParticipantForumControllerTest
     void createQuestion_missingTask_shouldReturn404()
         throws Exception {
 
-        Long missingTaskId = 999L;
+        Long missingtaskAssignmentId = 999L;
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-            missingTaskId,
-            request)).thenThrow(new TaskNotFoundException(missingTaskId));
+            missingtaskAssignmentId,
+            request)).thenThrow(new TaskNotFoundException(missingtaskAssignmentId));
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            missingTaskId)
+            FORUM_URL,
+            missingtaskAssignmentId)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isNotFound())
@@ -780,10 +781,10 @@ class ParticipantForumControllerTest
                 jsonPath("$.message")
                     .value(
                         "Task with id %s was not found"
-                            .formatted(missingTaskId)));
+                            .formatted(missingtaskAssignmentId)));
 
         verify(participantForumService).createQuestion(
-            missingTaskId,
+            missingtaskAssignmentId,
             request);
     }
 
@@ -795,7 +796,7 @@ class ParticipantForumControllerTest
             {
               "title": "%s",
               "content": "%s",
-              "taskId": 999,
+              "taskAssignmentId": 999,
               "authorId": 999,
               "assignedReviewerId": 777,
               "status": "ANSWERED",
@@ -810,16 +811,16 @@ class ParticipantForumControllerTest
             QUESTION_CONTENT);
 
         when(participantForumService.createQuestion(
-            eq(TASK_ID),
+            eq(TASK_ASSIGNMENT_ID),
             any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
 
         mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
+            FORUM_URL,
+            TASK_ASSIGNMENT_ID)
             .contentType(MediaType.APPLICATION_JSON)
             .content(requestBody))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.taskId").value(TASK_ID))
+            .andExpect(jsonPath("$.taskAssignmentId").value(TASK_ASSIGNMENT_ID))
             .andExpect(jsonPath("$.authorId").value(USER_ID))
             .andExpect(jsonPath("$.assignedReviewerId").value(nullValue()))
             .andExpect(jsonPath("$.status").value("NEW"))
@@ -831,7 +832,7 @@ class ParticipantForumControllerTest
             ArgumentCaptor.forClass(CreateQuestionRequestDTO.class);
 
         verify(participantForumService).createQuestion(
-            eq(TASK_ID),
+            eq(TASK_ASSIGNMENT_ID),
             requestCaptor.capture());
 
         CreateQuestionRequestDTO capturedRequest =
@@ -854,7 +855,7 @@ class ParticipantForumControllerTest
     private QuestionThreadResponseDTO createQuestionResponse() {
         return new QuestionThreadResponseDTO(
             QUESTION_ID,
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             USER_ID,
             null,
             QUESTION_TITLE,
@@ -871,7 +872,7 @@ class ParticipantForumControllerTest
 
         return new QuestionThreadSummaryResponseDTO(
             11L,
-            TASK_ID,
+            TASK_ASSIGNMENT_ID,
             100L,
             "How should I submit the solution?",
             NEW,

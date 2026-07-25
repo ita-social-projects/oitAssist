@@ -39,12 +39,12 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
     @Override
     @Transactional(readOnly = true)
     public Page<QuestionThreadSummaryResponseDTO> getForumQuestions(
-        Long taskId,
+        Long taskAssignmentId,
         int page,
         int size) {
-        validateRequest(taskId, page, size);
+        validateRequest(taskAssignmentId, page, size);
 
-        Long participantId = questionAccessPolicy.requireTaskForumAccess(taskId);
+        Long participantId = questionAccessPolicy.requireTaskAssignmentForumAccess(taskAssignmentId);
 
         Pageable pageable = PageRequest.of(
             page,
@@ -52,42 +52,40 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
             FORUM_SORT);
 
         return questionThreadRepository.findParticipantVisibleQuestions(
-            taskId,
+            taskAssignmentId,
             participantId,
-            pageable).map(questionThreadMapper::toSummaryResponse);
+            pageable)
+                .map(questionThreadMapper::toSummaryResponse);
     }
 
     @Override
     @Transactional
     public QuestionThreadResponseDTO createQuestion(
-        Long taskId,
+        Long taskAssignmentId,
         CreateQuestionRequestDTO request) {
-        validateTaskId(taskId);
+        validateTaskAssignmentId(taskAssignmentId);
 
-        Long authorId =
-            questionAccessPolicy.requireTaskForumAccess(taskId);
+        Long authorId = questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(taskAssignmentId);
 
-        QuestionThread question =
-            questionThreadMapper.toEntity(request);
+        QuestionThread question = questionThreadMapper.toEntity(request);
 
-        question.setTaskId(taskId);
+        question.setTaskAssignmentId(taskAssignmentId);
         question.setAuthorId(authorId);
         question.setStatus(QuestionStatus.NEW);
         question.setState(QuestionState.OPEN);
         question.setVisibility(QuestionVisibility.PRIVATE);
         question.setAssignedReviewerId(null);
 
-        QuestionThread savedQuestion =
-            questionThreadRepository.save(question);
+        QuestionThread savedQuestion = questionThreadRepository.save(question);
 
         return questionThreadMapper.toResponse(savedQuestion);
     }
 
     private void validateRequest(
-        Long taskId,
+        Long taskAssignmentId,
         int page,
         int size) {
-        validateTaskId(taskId);
+        validateTaskAssignmentId(taskAssignmentId);
 
         if (page < 0) {
             throw new ValidationException(
@@ -103,10 +101,10 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
         }
     }
 
-    private void validateTaskId(Long taskId) {
-        if (taskId == null || taskId <= 0) {
+    private void validateTaskAssignmentId(Long taskAssignmentId) {
+        if (taskAssignmentId == null || taskAssignmentId <= 0) {
             throw new ValidationException(
-                "Task id must be a positive number",
+                "Task assignment id must be a positive number",
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }

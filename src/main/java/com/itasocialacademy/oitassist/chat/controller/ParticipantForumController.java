@@ -14,7 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/tasks/{taskId}/questions")
+@RequestMapping("/api/v1/task-assignments/{taskAssignmentId}/questions")
 @RequiredArgsConstructor
 @Tag(
     name = "Participant Forum V1",
@@ -25,13 +25,13 @@ public class ParticipantForumController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<QuestionThreadSummaryResponseDTO>> getParticipantForum(
-        @PathVariable Long taskId,
+        @PathVariable Long taskAssignmentId,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(
             PageResponse.from(
                 participantForumService.getForumQuestions(
-                    taskId,
+                    taskAssignmentId,
                     page,
                     size)));
     }
@@ -39,10 +39,10 @@ public class ParticipantForumController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<QuestionThreadResponseDTO> createQuestion(
-        @PathVariable Long taskId,
+        @PathVariable Long taskAssignmentId,
         @Valid @RequestBody CreateQuestionRequestDTO request) {
         QuestionThreadResponseDTO response =
-            participantForumService.createQuestion(taskId, request);
+            participantForumService.createQuestion(taskAssignmentId, request);
 
         return ResponseEntity
             .status(HttpStatus.CREATED)
