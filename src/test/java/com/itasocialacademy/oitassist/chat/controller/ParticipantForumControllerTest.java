@@ -6,7 +6,7 @@ import com.itasocialacademy.oitassist.chat.service.interfaces.ParticipantForumSe
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
-import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
+import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -376,7 +376,7 @@ class ParticipantForumControllerTest
         when(participantForumService.getForumQuestions(
             missingTaskAssignmentId,
             DEFAULT_PAGE,
-            DEFAULT_SIZE)).thenThrow(new TaskNotFoundException(missingTaskAssignmentId));
+            DEFAULT_SIZE)).thenThrow(new TaskAssignmentNotFoundException(missingTaskAssignmentId));
 
         mockMvc.perform(
             get(
@@ -385,11 +385,11 @@ class ParticipantForumControllerTest
                 .param("page", String.valueOf(DEFAULT_PAGE))
                 .param("size", String.valueOf(DEFAULT_SIZE)))
             .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$.code").value("TASK_NOT_FOUND"))
+            .andExpect(jsonPath("$.code").value("TASK_ASSIGNMENT_NOT_FOUND"))
             .andExpect(
                 jsonPath("$.message")
                     .value(
-                        "Task with id %s was not found"
+                        "Task assignment with id %s was not found"
                             .formatted(missingTaskAssignmentId)));
 
         verify(participantForumService).getForumQuestions(
@@ -767,7 +767,7 @@ class ParticipantForumControllerTest
 
         when(participantForumService.createQuestion(
             missingtaskAssignmentId,
-            request)).thenThrow(new TaskNotFoundException(missingtaskAssignmentId));
+            request)).thenThrow(new TaskAssignmentNotFoundException(missingtaskAssignmentId));
 
         mockMvc.perform(post(
             FORUM_URL,
@@ -776,11 +776,11 @@ class ParticipantForumControllerTest
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isNotFound())
             .andExpect(
-                jsonPath("$.code").value("TASK_NOT_FOUND"))
+                jsonPath("$.code").value("TASK_ASSIGNMENT_NOT_FOUND"))
             .andExpect(
                 jsonPath("$.message")
                     .value(
-                        "Task with id %s was not found"
+                        "Task assignment with id %s was not found"
                             .formatted(missingtaskAssignmentId)));
 
         verify(participantForumService).createQuestion(

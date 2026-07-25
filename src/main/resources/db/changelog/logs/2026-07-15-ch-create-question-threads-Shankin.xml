@@ -13,10 +13,6 @@
                         nullable="false"/>
             </column>
 
-            <!--
-                Temporary TaskBody reference.
-                Replace with task_assignment_id after TaskAssignment is implemented.
-            -->
             <column name="task_assignment_id" type="BIGINT">
                 <constraints nullable="false"/>
             </column>
@@ -146,7 +142,7 @@
 
             <dropIndex
                     tableName="question_threads"
-                    indexName="idx_question_threads_task_visibility_state_created"/>
+                    indexName="idx_question_threads_assignment_visibility_created"/>
         </rollback>
     </changeSet>
 
