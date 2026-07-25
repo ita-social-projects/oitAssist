@@ -8,6 +8,7 @@ import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepo
 import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.dao.specification.CompetitionSpecification;
+import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
@@ -69,24 +70,26 @@ public class CompetitionServiceImpl implements CompetitionService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CompetitionResponse> getAllVisible(Pageable pageable) {
-        Specification<Competition> spec;
+    public Page<CompetitionResponse> getAllVisible(CompetitionSearchFilter filter, Pageable pageable) {
+        Specification<Competition> visibilitySpec;
 
         if (securityFacade.hasRole("ADMIN") || securityFacade.hasRole("ORG")) {
-            spec = CompetitionSpecification.isVisibleToAdminOrOrg();
+            visibilitySpec = CompetitionSpecification.isVisibleToAdminOrOrg();
         } else {
-            spec = CompetitionSpecification.isVisibleToUser();
+            visibilitySpec = CompetitionSpecification.isVisibleToUser();
         }
+        Specification<Competition> spec = visibilitySpec.and(buildSearchSpecification(filter));
 
         return competitionRepository.findAll(spec, pageable).map(mapper::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<CompetitionResponse> getArchived(Pageable pageable) {
-        return competitionRepository
-            .findAll(CompetitionSpecification.isArchived(), pageable)
-            .map(mapper::toResponse);
+    public Page<CompetitionResponse> getArchived(CompetitionSearchFilter filter, Pageable pageable) {
+        Specification<Competition> finalSpec = CompetitionSpecification.isArchived()
+            .and(buildSearchSpecification(filter));
+
+        return competitionRepository.findAll(finalSpec, pageable).map(mapper::toResponse);
     }
 
     @Override
@@ -150,5 +153,12 @@ public class CompetitionServiceImpl implements CompetitionService {
             throw new CompetitionHierarchyValidationException(
                 "Cannot publish: All stages must have at least one tour. Found " + emptyStages + " empty stage(s).");
         }
+    }
+
+    private Specification<Competition> buildSearchSpecification(CompetitionSearchFilter filter) {
+        return Specification.where(CompetitionSpecification.hasTitle(filter.title()))
+            .and(CompetitionSpecification.startsAfterOrEqual(filter.dateStart()))
+            .and(CompetitionSpecification.finishesBeforeOrEqual(filter.dateFinish()))
+            .and(CompetitionSpecification.hasAnyStatus(filter.statuses()));
     }
 }

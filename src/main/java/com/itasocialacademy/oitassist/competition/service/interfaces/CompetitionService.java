@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.competition.service.interfaces;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
+import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
@@ -40,13 +41,13 @@ public interface CompetitionService {
      */
     CompetitionResponse changeStatus(Long competitionId, CompetitionStatus status);
 
-    Page<CompetitionResponse> getAllVisible(Pageable pageable);
+    Page<CompetitionResponse> getAllVisible(CompetitionSearchFilter filter, Pageable pageable);
 
     /**
      * Retrieves a paginated list of competitions that have been archived.
      *
      */
-    Page<CompetitionResponse> getArchived(Pageable pageable);
+    Page<CompetitionResponse> getArchived(CompetitionSearchFilter filter, Pageable pageable);
 
     CompetitionTreeResponse getCompetitionTree(Long competitionId);
 }

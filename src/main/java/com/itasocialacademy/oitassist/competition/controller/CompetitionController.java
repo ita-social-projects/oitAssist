@@ -1,9 +1,10 @@
 package com.itasocialacademy.oitassist.competition.controller;
 
+import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
 import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
-import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
+import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
@@ -67,8 +68,9 @@ public class CompetitionController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<CompetitionResponse>> getAllVisible(
+        @Valid @ParameterObject CompetitionSearchFilter filter,
         @ParameterObject @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
-        return ResponseEntity.ok(PageResponse.from(competitionService.getAllVisible(pageable)));
+        return ResponseEntity.ok(PageResponse.from(competitionService.getAllVisible(filter, pageable)));
     }
 
     @Operation(
@@ -81,8 +83,9 @@ public class CompetitionController {
     @GetMapping("/archived")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<CompetitionResponse>> getArchived(
+        @Valid @ParameterObject CompetitionSearchFilter filter,
         @ParameterObject @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
-        return ResponseEntity.ok(PageResponse.from(competitionService.getArchived(pageable)));
+        return ResponseEntity.ok(PageResponse.from(competitionService.getArchived(filter, pageable)));
     }
 
     @Operation(
