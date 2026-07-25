@@ -4,7 +4,6 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
-import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,9 +33,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -75,109 +72,6 @@ class QuestionAccessPolicyTest {
 
     @InjectMocks
     private QuestionAccessPolicy questionAccessPolicy;
-
-    @Test
-    void requireTaskForumAccess_existingTask_shouldReturnCurrentUserId() {
-        TaskBodyDetail taskBodyDetail = createTaskBodyDetail();
-
-        when(securityFacade.getCurrentUserId())
-            .thenReturn(Optional.of(USER_ID));
-        when(taskBodyFacade.findTaskBodyById(TASK_ID))
-            .thenReturn(Optional.of(taskBodyDetail));
-
-        Long result =
-            questionAccessPolicy.requireTaskForumAccess(TASK_ID);
-
-        assertEquals(USER_ID, result);
-
-        verify(securityFacade).getCurrentUserId();
-        verify(taskBodyFacade).findTaskBodyById(TASK_ID);
-    }
-
-    @Test
-    void requireTaskForumAccess_unauthenticated_shouldThrowAuthenticationException() {
-        when(securityFacade.getCurrentUserId())
-            .thenReturn(Optional.empty());
-
-        assertThrows(
-            AuthenticationException.class,
-            () -> questionAccessPolicy.requireTaskForumAccess(TASK_ID));
-
-        verify(securityFacade).getCurrentUserId();
-        verifyNoInteractions(taskBodyFacade);
-    }
-
-    @Test
-    void requireTaskForumAccess_missingTask_shouldThrowTaskNotFoundException() {
-        when(securityFacade.getCurrentUserId())
-            .thenReturn(Optional.of(USER_ID));
-        when(taskBodyFacade.findTaskBodyById(TASK_ID))
-            .thenReturn(Optional.empty());
-
-        assertThrows(
-            TaskNotFoundException.class,
-            () -> questionAccessPolicy.requireTaskForumAccess(TASK_ID));
-
-        verify(securityFacade).getCurrentUserId();
-        verify(taskBodyFacade).findTaskBodyById(TASK_ID);
-    }
-
-    @Test
-    void hasTaskAccess_existingTaskAndAuthenticatedUser_shouldReturnTrue() {
-        TaskBodyDetail taskBodyDetail = createTaskBodyDetail();
-
-        when(securityFacade.getCurrentUserId())
-            .thenReturn(Optional.of(USER_ID));
-        when(taskBodyFacade.findTaskBodyById(TASK_ID))
-            .thenReturn(Optional.of(taskBodyDetail));
-
-        boolean result =
-            questionAccessPolicy.hasTaskAccess(TASK_ID);
-
-        assertTrue(result);
-
-        verify(securityFacade).getCurrentUserId();
-        verify(taskBodyFacade).findTaskBodyById(TASK_ID);
-    }
-
-    @Test
-    void hasTaskAccess_missingTask_shouldReturnFalse() {
-        when(securityFacade.getCurrentUserId())
-            .thenReturn(Optional.of(USER_ID));
-        when(taskBodyFacade.findTaskBodyById(TASK_ID))
-            .thenReturn(Optional.empty());
-
-        boolean result =
-            questionAccessPolicy.hasTaskAccess(TASK_ID);
-
-        assertFalse(result);
-
-        verify(securityFacade).getCurrentUserId();
-        verify(taskBodyFacade).findTaskBodyById(TASK_ID);
-    }
-
-    @Test
-    void hasTaskAccess_unauthenticatedUser_shouldReturnFalse() {
-        when(securityFacade.getCurrentUserId())
-            .thenReturn(Optional.empty());
-
-        boolean result =
-            questionAccessPolicy.hasTaskAccess(TASK_ID);
-
-        assertFalse(result);
-
-        verify(securityFacade).getCurrentUserId();
-        verifyNoInteractions(taskBodyFacade);
-    }
-
-    @Test
-    void hasTaskAccess_invalidTaskId_shouldReturnFalse() {
-        assertFalse(questionAccessPolicy.hasTaskAccess((Long) null));
-        assertFalse(questionAccessPolicy.hasTaskAccess(0L));
-        assertFalse(questionAccessPolicy.hasTaskAccess(-1L));
-
-        verifyNoInteractions(securityFacade, taskBodyFacade);
-    }
 
     @Test
     void requireTaskAssignmentForumAccess_visibleAssignmentAndParticipant_shouldReturnUserId() {

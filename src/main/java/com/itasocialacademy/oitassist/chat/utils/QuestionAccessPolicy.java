@@ -4,9 +4,7 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
-import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
 import java.util.Objects;
-import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionCreationNotAllowedException;
@@ -53,55 +51,6 @@ public class QuestionAccessPolicy {
      */
     public boolean isAdministrator() {
         return securityFacade.hasRole(ADMIN_ROLE);
-    }
-
-    /**
-     * Determines whether the current user may access the temporary TaskBody-based
-     * forum context.
-     */
-    public boolean hasTaskAccess(QuestionThread questionThread) {
-        return hasTaskAccess(questionThread.getTaskAssignmentId());
-    }
-
-    /**
-     * Determines whether the current user may access the temporary TaskBody-based
-     * forum context.
-     */
-    public boolean hasTaskAccess(Long taskId) {
-        // TODO: use the TaskAssignmentFacade to check for the access
-        if (taskId == null || taskId <= 0) {
-            return false;
-        }
-
-        return securityFacade.getCurrentUserId().isPresent()
-                && taskBodyFacade.findTaskBodyById(taskId).isPresent();
-    }
-
-    /**
-     * Requires the current user to be authenticated and verifies that the temporary
-     * TaskBody-based forum context exists.
-     *
-     * <p>
-     * This method is used by participant forum operations that need both the
-     * authenticated user identifier and validation of the requested task. The
-     * TaskBody-based access check is temporary and will be replaced with
-     * TaskAssignment hierarchy access.
-     * </p>
-     *
-     * @param taskId identifier of the task whose forum is being accessed
-     * @return identifier of the currently authenticated user
-     * @throws AuthenticationException if the current user is not authenticated
-     */
-    public Long requireTaskForumAccess(Long taskId) {
-        // TODO: replace temporary TaskBody access with TaskAssignment hierarchy access.
-        Long currentUserId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthenticationException("Authentication is required to access the question forum",
-                ErrorCode.AUTHENTICATION_REQUIRED));
-
-        taskBodyFacade.findTaskBodyById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException(taskId));
-
-        return currentUserId;
     }
 
     /**
