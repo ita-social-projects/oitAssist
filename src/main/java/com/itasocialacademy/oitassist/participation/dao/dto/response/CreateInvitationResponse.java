@@ -1,9 +1,9 @@
 package com.itasocialacademy.oitassist.participation.dao.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.util.List;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import java.util.List;
 
 @Getter
 @Setter
@@ -14,8 +14,11 @@ import lombok.experimental.SuperBuilder;
 @Schema(description = "DTO representing an Invitation creation response")
 public class CreateInvitationResponse extends EnrollmentResponse {
     @Schema(
-        description = "List of students IDs",
-        type = "array", example = "[1, 3, 4]",
-        requiredMode = Schema.RequiredMode.REQUIRED)
-    private List<Long> studentIds;
+        description = "List of students IDs that were successfully invited",
+        type = "array", example = "[1, 3, 4]")
+    private List<Long> succeeded;
+    @Schema(
+        description = "List of students IDs that were failed to be invited",
+        type = "array", example = "[2, 5]")
+    private List<Long> failed;
 }

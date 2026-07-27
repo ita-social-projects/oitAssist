@@ -2,12 +2,12 @@ package com.itasocialacademy.oitassist.participation.dao.dto.response;
 
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import java.time.Instant;
 
 @SuperBuilder
 @Getter
