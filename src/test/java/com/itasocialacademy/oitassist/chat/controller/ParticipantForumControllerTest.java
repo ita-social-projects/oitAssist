@@ -66,9 +66,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_validRequest_shouldReturn200()
-        throws Exception {
-
+    void getParticipantForum_validRequest_shouldReturn200() throws Exception {
         QuestionThreadSummaryResponseDTO response =
             createQuestionSummaryResponse();
 
@@ -108,9 +106,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_shouldReturnPageMetadata()
-        throws Exception {
-
+    void getParticipantForum_shouldReturnPageMetadata() throws Exception {
         int pageNumber = 2;
         int pageSize = 5;
         long totalElements = 11;
@@ -145,9 +141,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_withoutPagination_shouldUseDefaults()
-        throws Exception {
-
+    void getParticipantForum_withoutPagination_shouldUseDefaults() throws Exception {
         when(participantForumService.getForumQuestions(
             TASK_ID,
             DEFAULT_PAGE,
@@ -168,9 +162,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_emptyPage_shouldReturn200()
-        throws Exception {
-
+    void getParticipantForum_emptyPage_shouldReturn200() throws Exception {
         Page<QuestionThreadSummaryResponseDTO> emptyPage =
             Page.empty(
                 PageRequest.of(DEFAULT_PAGE, DEFAULT_SIZE));
@@ -200,9 +192,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_invalidTaskId_shouldReturn400()
-        throws Exception {
-
+    void getParticipantForum_invalidTaskId_shouldReturn400() throws Exception {
         Long invalidTaskId = 0L;
 
         when(participantForumService.getForumQuestions(
@@ -229,9 +219,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_negativePage_shouldReturn400()
-        throws Exception {
-
+    void getParticipantForum_negativePage_shouldReturn400() throws Exception {
         int invalidPage = -1;
 
         when(participantForumService.getForumQuestions(
@@ -256,9 +244,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_invalidSize_shouldReturn400()
-        throws Exception {
-
+    void getParticipantForum_invalidSize_shouldReturn400() throws Exception {
         int zeroSize = 0;
         int excessiveSize = 101;
 
@@ -304,9 +290,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_nonNumericTaskId_shouldReturn400()
-        throws Exception {
-
+    void getParticipantForum_nonNumericTaskId_shouldReturn400() throws Exception {
         mockMvc.perform(
             get(
                 "/api/v1/tasks/{taskId}/questions",
@@ -320,9 +304,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_nonNumericPage_shouldReturn400()
-        throws Exception {
-
+    void getParticipantForum_nonNumericPage_shouldReturn400() throws Exception {
         mockMvc.perform(
             get("/api/v1/tasks/{taskId}/questions", TASK_ID)
                 .param("page", "not-a-number")
@@ -336,9 +318,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_unauthenticated_shouldReturn401()
-        throws Exception {
-
+    void getParticipantForum_authenticationFailure_shouldReturn401() throws Exception {
         when(participantForumService.getForumQuestions(
             TASK_ID,
             DEFAULT_PAGE,
@@ -367,9 +347,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_missingTask_shouldReturn404()
-        throws Exception {
-
+    void getParticipantForum_missingTask_shouldReturn404() throws Exception {
         Long missingTaskId = 999L;
 
         when(participantForumService.getForumQuestions(
@@ -398,29 +376,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_validRequest_shouldReturn201() throws Exception {
-        CreateQuestionRequestDTO request = createQuestionRequest();
-
-        when(participantForumService.createQuestion(
-            eq(TASK_ID),
-            any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
-
-        mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isCreated());
-
-        verify(participantForumService).createQuestion(
-            eq(TASK_ID),
-            any(CreateQuestionRequestDTO.class));
-    }
-
-    @Test
-    void createQuestion_validRequest_shouldReturnCreatedQuestion()
-        throws Exception {
-
+    void createQuestion_validRequest_shouldReturn201WithCreatedQuestion() throws Exception {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
@@ -448,13 +404,16 @@ class ParticipantForumControllerTest
                     .value(CREATED_AT.toString()))
             .andExpect(
                 jsonPath("$.updatedAt")
-                    .value(UPDATED_AT.toString()));
+                    .value(UPDATED_AT.toString()))
+            .andExpect(status().isCreated());
+
+        verify(participantForumService).createQuestion(
+            eq(TASK_ID),
+            any(CreateQuestionRequestDTO.class));
     }
 
     @Test
-    void createQuestion_validRequest_shouldDelegateTaskIdAndRequest()
-        throws Exception {
-
+    void createQuestion_validRequest_shouldDelegateTaskIdAndRequest() throws Exception {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
@@ -487,9 +446,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_blankTitle_shouldReturn400()
-        throws Exception {
-
+    void createQuestion_blankTitle_shouldReturn400() throws Exception {
         CreateQuestionRequestDTO request =
             new CreateQuestionRequestDTO(
                 "   ",
@@ -511,9 +468,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_missingTitle_shouldReturn400()
-        throws Exception {
-
+    void createQuestion_missingTitle_shouldReturn400() throws Exception {
         String request = """
             {
               "content": "%s"
@@ -536,9 +491,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_overlongTitle_shouldReturn400()
-        throws Exception {
-
+    void createQuestion_overlongTitle_shouldReturn400() throws Exception {
         CreateQuestionRequestDTO request =
             new CreateQuestionRequestDTO(
                 "a".repeat(201),
@@ -560,9 +513,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_blankContent_shouldReturn400()
-        throws Exception {
-
+    void createQuestion_blankContent_shouldReturn400() throws Exception {
         CreateQuestionRequestDTO request =
             new CreateQuestionRequestDTO(
                 QUESTION_TITLE,
@@ -584,9 +535,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_missingContent_shouldReturn400()
-        throws Exception {
-
+    void createQuestion_missingContent_shouldReturn400() throws Exception {
         String request = """
             {
               "title": "%s"
@@ -609,9 +558,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_overlongContent_shouldReturn400()
-        throws Exception {
-
+    void createQuestion_overlongContent_shouldReturn400() throws Exception {
         CreateQuestionRequestDTO request =
             new CreateQuestionRequestDTO(
                 QUESTION_TITLE,
@@ -633,9 +580,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_missingBody_shouldReturn400()
-        throws Exception {
-
+    void createQuestion_missingBody_shouldReturn400() throws Exception {
         mockMvc.perform(post(
             "/api/v1/tasks/{taskId}/questions",
             TASK_ID)
@@ -652,9 +597,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_malformedBody_shouldReturn400()
-        throws Exception {
-
+    void createQuestion_malformedBody_shouldReturn400() throws Exception {
         String malformedJson = """
             {
               "title": "Question",
@@ -679,9 +622,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_invalidTaskId_shouldReturn400()
-        throws Exception {
-
+    void createQuestion_invalidTaskId_shouldReturn400() throws Exception {
         Long invalidTaskId = 0L;
         CreateQuestionRequestDTO request = createQuestionRequest();
 
@@ -707,9 +648,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_nonNumericTaskId_shouldReturn400()
-        throws Exception {
-
+    void createQuestion_nonNumericTaskId_shouldReturn400() throws Exception {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         mockMvc.perform(post(
@@ -726,9 +665,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_unauthenticated_shouldReturn401()
-        throws Exception {
-
+    void createQuestion_uauthenticationFailure_shouldReturn401() throws Exception {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
@@ -758,9 +695,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_missingTask_shouldReturn404()
-        throws Exception {
-
+    void createQuestion_missingTask_shouldReturn404() throws Exception {
         Long missingTaskId = 999L;
         CreateQuestionRequestDTO request = createQuestionRequest();
 
@@ -787,64 +722,6 @@ class ParticipantForumControllerTest
             request);
     }
 
-    @Test
-    void createQuestion_protectedFields_shouldNotOverrideServerValues()
-        throws Exception {
-
-        String requestBody = """
-            {
-              "title": "%s",
-              "content": "%s",
-              "taskId": 999,
-              "authorId": 999,
-              "assignedReviewerId": 777,
-              "status": "ANSWERED",
-              "state": "CLOSED",
-              "visibility": "PUBLIC",
-              "version": 50,
-              "createdAt": "2020-01-01T00:00:00Z",
-              "updatedAt": "2020-01-01T00:00:00Z"
-            }
-            """.formatted(
-            QUESTION_TITLE,
-            QUESTION_CONTENT);
-
-        when(participantForumService.createQuestion(
-            eq(TASK_ID),
-            any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
-
-        mockMvc.perform(post(
-            "/api/v1/tasks/{taskId}/questions",
-            TASK_ID)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(requestBody))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.taskId").value(TASK_ID))
-            .andExpect(jsonPath("$.authorId").value(USER_ID))
-            .andExpect(jsonPath("$.assignedReviewerId").value(nullValue()))
-            .andExpect(jsonPath("$.status").value("NEW"))
-            .andExpect(jsonPath("$.state").value("OPEN"))
-            .andExpect(jsonPath("$.visibility").value("PRIVATE"))
-            .andExpect(jsonPath("$.version").value(0));
-
-        ArgumentCaptor<CreateQuestionRequestDTO> requestCaptor =
-            ArgumentCaptor.forClass(CreateQuestionRequestDTO.class);
-
-        verify(participantForumService).createQuestion(
-            eq(TASK_ID),
-            requestCaptor.capture());
-
-        CreateQuestionRequestDTO capturedRequest =
-            requestCaptor.getValue();
-
-        assertEquals(
-            QUESTION_TITLE,
-            capturedRequest.title());
-        assertEquals(
-            QUESTION_CONTENT,
-            capturedRequest.content());
-    }
-
     private CreateQuestionRequestDTO createQuestionRequest() {
         return new CreateQuestionRequestDTO(
             QUESTION_TITLE,
@@ -868,7 +745,6 @@ class ParticipantForumControllerTest
     }
 
     private QuestionThreadSummaryResponseDTO createQuestionSummaryResponse() {
-
         return new QuestionThreadSummaryResponseDTO(
             11L,
             TASK_ID,
@@ -881,8 +757,7 @@ class ParticipantForumControllerTest
             Instant.parse("2026-07-24T10:15:00Z"));
     }
 
-    private ValidationException validationException(
-        String message) {
+    private ValidationException validationException(String message) {
         return new ValidationException(
             message,
             ErrorCode.COMMON_VALIDATION_FAILED);

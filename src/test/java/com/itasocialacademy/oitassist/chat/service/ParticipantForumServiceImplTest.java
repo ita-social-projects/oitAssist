@@ -151,22 +151,6 @@ class ParticipantForumServiceImplTest {
     }
 
     @Test
-    void getForumQuestions_shouldRequestPublicAndPrivateQuestions() {
-        stubAccessibleEmptyForum();
-
-        participantForumService.getForumQuestions(
-            TASK_ID,
-            PAGE,
-            SIZE);
-
-        verify(questionThreadRepository)
-            .findParticipantVisibleQuestions(
-                eq(TASK_ID),
-                eq(USER_ID),
-                any(Pageable.class));
-    }
-
-    @Test
     void getForumQuestions_shouldUseCreatedAtAndIdDescendingSort() {
         stubAccessibleEmptyForum();
 

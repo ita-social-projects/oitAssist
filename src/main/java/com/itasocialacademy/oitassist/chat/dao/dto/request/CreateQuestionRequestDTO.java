@@ -12,14 +12,12 @@ public record CreateQuestionRequestDTO(
         example = "Clarification about input format",
         maxLength = 200,
         requiredMode = Schema.RequiredMode.REQUIRED) @NotBlank(message = "Question title must not be blank") @Size(
-            max = 200,
-            message = "Question title must not exceed 200 characters") String title,
+            max = 200, message = "Question title must not exceed 200 characters") String title,
 
     @Schema(
         description = "Question content",
         example = "May the input contain duplicate values?",
         maxLength = 10_000,
         requiredMode = Schema.RequiredMode.REQUIRED) @NotBlank(message = "Question content must not be blank") @Size(
-            max = 10_000,
-            message = "Question content must not exceed 10000 characters") String content) {
+            max = 10_000, message = "Question content must not exceed 10000 characters") String content) {
 }
