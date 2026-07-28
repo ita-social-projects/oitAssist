@@ -23,7 +23,7 @@
         <createIndex tableName="invitations"
                      indexName="idx_unique_pending_invitation"
                      unique="true">
-            <column name="issued_by"/>
+            <column name="student_id"/>
             <column name="competition_id"/>
             <column name="stage_id"/>
         </createIndex>
