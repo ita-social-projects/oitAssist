@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.participation.dao.dto.response;
 
-import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
