@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /**
@@ -170,6 +171,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, "Validation failed",
                 HttpStatus.BAD_REQUEST.value(), Map.of("errors", fieldErrors)));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(
+        MethodArgumentTypeMismatchException ex,
+        HttpServletRequest request) {
+        String message = "Invalid value for parameter '%s'".formatted(ex.getName());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(buildResponse(
+                request,
+                ErrorCode.COMMON_VALIDATION_FAILED,
+                message,
+                HttpStatus.BAD_REQUEST.value(),
+                Map.of(
+                    "parameter", ex.getName(),
+                    "value", String.valueOf(ex.getValue()))));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
