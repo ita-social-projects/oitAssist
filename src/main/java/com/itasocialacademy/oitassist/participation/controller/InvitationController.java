@@ -1,11 +1,8 @@
 package com.itasocialacademy.oitassist.participation.controller;
 
-import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateInvitationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessInvitationResponse;
 import com.itasocialacademy.oitassist.participation.service.interfaces.InvitationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,32 +22,35 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/competitions/invitations")
-@Tag(name = "Application Manager v1", description = "Operations related to competition invitations")
+@Tag(name = "Invitation Manager v1", description = "Operations related to competition invitations")
 public class InvitationController {
     private final InvitationService invitationService;
 
     @Operation(
         summary = "Invite to the Competition",
-        description = "Creates an invitation requests. "
+        description = "Creates invitation requests. "
             + "The newly created invitations will initially have the PENDING status.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Invitations submitted successfully",
+        @ApiResponse(responseCode = "201", description = """
+            The request was processed. Note that a 201 response does not guarantee \s
+            every student was successfully invited - check the `succeeded` and `failed` \s
+            fields in the response body for the per-student outcome (possible reasons: \s
+            student not found, wrong role, already has a pending invitation, already a participant).
+            """,
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = CreateInvitationResponse.class))),
         @ApiResponse(responseCode = "400", description = """
-            User is unable to apply. Possible reasons:\s
-            - User already has a pending request for this stage.\s
-            - User is already a participant in this stage.\s
-            - The competition is not currently accepting applications.\s
-            - Sending application requests is limited to District and City stages.\s
+            Could not send the invitations. Possible reasons:\s
+            - The competition is currently unable to process invitations.\s
             - The specified stage ID does not belong to the competition ID.""",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "403", description = "Access denied (requires USER role)",
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ORG role)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = """
             Resource missing. Possible reasons:\s
             - The requested competition does not exist.\s
-            - The requested stage does not exist.""",
+            - The requested stage does not exist.\s
+            - The request contains duplicate student IDs.""",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PreAuthorize("hasRole('ORG')")
@@ -63,7 +63,7 @@ public class InvitationController {
 
     @Operation(
         summary = "Accept competition invitation",
-        description = "Accepts the invitation and creates a Participation record. ")
+        description = "Accepts the invitation and creates a Participation record.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Invitation accepted successfully. "
             + "Participation Record created successfully.",
@@ -71,7 +71,7 @@ public class InvitationController {
                 schema = @Schema(implementation = ProcessInvitationResponse.class))),
         @ApiResponse(responseCode = "400", description = "The invitation request's status is not PENDING",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "403", description = "Access denied (requires ORG role)",
+        @ApiResponse(responseCode = "403", description = "Access denied (requires USER role)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "The invitation was not found",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
@@ -85,14 +85,14 @@ public class InvitationController {
 
     @Operation(
         summary = "Reject competition invitation",
-        description = "Rejects the invitation with provided rejection reason. ")
+        description = "Rejects the invitation with provided rejection reason.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Invitation rejected successfully",
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ProcessInvitationResponse.class))),
         @ApiResponse(responseCode = "400", description = "The invitation request's status is not PENDING",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "403", description = "Access denied (requires ORG role)",
+        @ApiResponse(responseCode = "403", description = "Access denied (requires USER role)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "The invitation was not found",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
@@ -108,7 +108,7 @@ public class InvitationController {
 
     @Operation(
         summary = "Cancel invitation",
-        description = "Cancels the invitation for a specific user. ")
+        description = "Cancels the invitation for a specific user.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Invitation cancelled successfully",
             content = @Content(mediaType = "application/json",
@@ -118,7 +118,7 @@ public class InvitationController {
             - The user is not the owner of the invitation.\s
             - The invitation request's status is not PENDING.""",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "403", description = "Access denied (requires USER role)",
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ORG role)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "The invitation was not found",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
