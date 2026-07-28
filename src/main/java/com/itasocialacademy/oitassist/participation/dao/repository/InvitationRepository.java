@@ -12,6 +12,5 @@ public interface InvitationRepository extends JpaRepository<Invitation, Long> {
         List<Long> studentId,
         Long competitionId,
         Long stageId,
-        RequestStatus status
-    );
+        RequestStatus status);
 }
