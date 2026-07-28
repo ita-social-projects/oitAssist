@@ -9,6 +9,9 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFound
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.FailedInvitationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.SucceededInvitationResponse;
+import com.itasocialacademy.oitassist.participation.dao.model.Participation;
 import com.itasocialacademy.oitassist.participation.saver.InvitationRequestsSaver;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
@@ -20,7 +23,6 @@ import com.itasocialacademy.oitassist.participation.dao.repository.InvitationRep
 import com.itasocialacademy.oitassist.participation.dao.repository.ParticipationRepository;
 import com.itasocialacademy.oitassist.participation.exceptions.*;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
-import com.itasocialacademy.oitassist.participation.mapper.interfaces.InvitationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessInvitationMapper;
 import com.itasocialacademy.oitassist.participation.service.interfaces.InvitationService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -32,18 +34,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class InvitationServiceImpl implements InvitationService {
+    private static final String ALREADY_PENDING_MESSAGE = "Student already has a pending invitation";
+
     private final ParticipationRepository participationRepository;
     private final InvitationRepository invitationRepository;
-    private final InvitationMapper invitationMapper;
     private final SecurityFacade securityFacade;
     private final UserFacade userFacade;
     private final InvitationRequestsSaver invitationRequestsSaver;
@@ -54,29 +54,54 @@ public class InvitationServiceImpl implements InvitationService {
     @Override
     public CreateInvitationResponse sendEnrollmentRequest(CreateInvitationRequest request) {
         validateCompetitionAndStageInfo(request.getCompetitionId(), request.getStageId());
-        List<Long> studentIds = getAndValidateStudentIdsOrThrow(request);
-        List<Long> succeeded = new ArrayList<>();
-        List<Long> failed = new ArrayList<>();
+        List<Long> studentIds = validateNoDuplicatesOrThrow(request.getStudentIds());
+
+        List<UserAuthDetails> foundUsers = userFacade.findByIds(studentIds);
+        Map<Long, UserAuthDetails> foundById = foundUsers.stream()
+            .collect(Collectors.toMap(UserAuthDetails::id, u -> u));
+
         Set<Long> alreadyPending = findStudentsWithPendingInvitations(studentIds, request);
-        CreateInvitationResponse createInvitationResponse = CreateInvitationResponse.builder()
-            .competitionId(request.getCompetitionId())
-            .stageId(request.getStageId())
-            .build();
+        Set<Long> alreadyParticipants = findParticipants(studentIds, request);
+
+        List<SucceededInvitationResponse> succeeded = new ArrayList<>();
+        List<FailedInvitationResponse> failed = new ArrayList<>();
+
         for (Long studentId : studentIds) {
+            UserAuthDetails user = foundById.get(studentId);
+
+            if (user == null) {
+                failed.add(new FailedInvitationResponse(studentId, "Student not found"));
+                continue;
+            }
+            if (user.role() != Role.USER) {
+                failed.add(new FailedInvitationResponse(studentId, "User does not have the required role"));
+                continue;
+            }
             if (alreadyPending.contains(studentId)) {
-                failed.add(studentId);
+                failed.add(new FailedInvitationResponse(studentId, ALREADY_PENDING_MESSAGE));
+                continue;
+            }
+            if (alreadyParticipants.contains(studentId)) {
+                failed.add(new FailedInvitationResponse(studentId, "Student already participate"));
                 continue;
             }
             try {
-                invitationRequestsSaver.saveSingleInvitation(studentId, request);
-                succeeded.add(studentId);
-            } catch (DataIntegrityViolationException _) {
-                failed.add(studentId);
+                Invitation invitation = invitationRequestsSaver.saveSingleInvitation(studentId, request);
+                succeeded.add(new SucceededInvitationResponse(invitation.getId(), studentId));
+            } catch (DataIntegrityViolationException e) {
+                failed.add(
+                    new FailedInvitationResponse(studentId, ALREADY_PENDING_MESSAGE));
             }
         }
-        createInvitationResponse.setSucceeded(succeeded);
-        createInvitationResponse.setFailed(failed);
-        return createInvitationResponse;
+        return CreateInvitationResponse.builder()
+            .competitionId(request.getCompetitionId())
+            .stageId(request.getStageId())
+            .succeeded(succeeded)
+            .failed(failed)
+            .issuedBy(getCurrentUserIdOrThrow())
+            .issuedAt(Instant.now())
+            .status(succeeded.isEmpty() ? null : RequestStatus.PENDING)
+            .build();
     }
 
     @Override
@@ -119,13 +144,19 @@ public class InvitationServiceImpl implements InvitationService {
             studentIds,
             request.getCompetitionId(),
             request.getStageId(),
-            RequestStatus.PENDING
-        );
+            RequestStatus.PENDING);
         return pendingInvitations.stream().map(Invitation::getStudentId).collect(Collectors.toSet());
     }
 
-    private List<Long> getAndValidateStudentIdsOrThrow(CreateInvitationRequest request) {
-        List<Long> rawIds = request.getStudentIds();
+    private Set<Long> findParticipants(List<Long> studentIds, CreateInvitationRequest request) {
+        List<Participation> participationRecords = participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(
+            studentIds,
+            request.getCompetitionId(),
+            request.getStageId());
+        return participationRecords.stream().map(Participation::getUserId).collect(Collectors.toSet());
+    }
+
+    private List<Long> validateNoDuplicatesOrThrow(List<Long> rawIds) {
         Set<Long> seen = new HashSet<>();
         Set<Long> duplicates = rawIds.stream()
             .filter(id -> !seen.add(id))
@@ -133,25 +164,7 @@ public class InvitationServiceImpl implements InvitationService {
         if (!duplicates.isEmpty()) {
             throw new UserInvitationRequestException("Duplicate student IDs: " + duplicates);
         }
-
-        List<UserAuthDetails> foundUsers = userFacade.findByIds(rawIds);
-        Set<Long> foundIds = foundUsers.stream()
-            .map(UserAuthDetails::id)
-            .collect(Collectors.toSet());
-        List<Long> missingIds = rawIds.stream()
-            .filter(id -> !foundIds.contains(id)).toList();
-
-        if (!missingIds.isEmpty()) {
-            throw new UserInvitationRequestException("Students with IDs: " + missingIds + " not found");
-        }
-        List<Long> wrongRoleIds = foundUsers.stream()
-            .filter(user -> user.role() != Role.USER)
-            .map(UserAuthDetails::id)
-            .toList();
-        if (!wrongRoleIds.isEmpty()) {
-            throw new UserInvitationRequestException("Users do not have the required role: " + wrongRoleIds);
-        }
-        return new ArrayList<>(rawIds);
+        return rawIds;
     }
 
     private void validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
