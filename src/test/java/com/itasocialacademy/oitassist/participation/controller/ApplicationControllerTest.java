@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.participation.controller;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
+import com.itasocialacademy.oitassist.participation.controller.ApplicationController;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;

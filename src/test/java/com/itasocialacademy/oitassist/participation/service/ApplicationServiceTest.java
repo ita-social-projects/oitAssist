@@ -24,6 +24,7 @@ import com.itasocialacademy.oitassist.participation.exceptions.UserApplicationRe
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
+import com.itasocialacademy.oitassist.participation.service.ApplicationServiceImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.Instant;
 import java.util.Optional;
