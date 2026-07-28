@@ -23,6 +23,4 @@ public abstract class EnrollmentResponse {
     private Long issuedBy;
     @Schema(description = "Request creation date", example = "2026-06-07T09:50:30Z")
     private Instant issuedAt;
-    @Schema(description = "Current request status", example = "PENDING")
-    private RequestStatus status;
 }

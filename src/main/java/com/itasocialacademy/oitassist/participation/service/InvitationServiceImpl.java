@@ -82,7 +82,7 @@ public class InvitationServiceImpl implements InvitationService {
                 continue;
             }
             if (alreadyParticipants.contains(studentId)) {
-                failed.add(new FailedInvitationResponse(studentId, "Student already participate"));
+                failed.add(new FailedInvitationResponse(studentId, "Student is already a participant"));
                 continue;
             }
             try {
@@ -100,7 +100,6 @@ public class InvitationServiceImpl implements InvitationService {
             .failed(failed)
             .issuedBy(getCurrentUserIdOrThrow())
             .issuedAt(Instant.now())
-            .status(succeeded.isEmpty() ? null : RequestStatus.PENDING)
             .build();
     }
 
