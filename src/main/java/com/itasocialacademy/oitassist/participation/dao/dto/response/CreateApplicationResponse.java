@@ -11,4 +11,6 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @Schema(description = "DTO representing an Application creation response")
 public class CreateApplicationResponse extends EnrollmentResponse {
+    @Schema(description = "Unique identifier of the enrollment request", example = "1")
+    private Long id;
 }
