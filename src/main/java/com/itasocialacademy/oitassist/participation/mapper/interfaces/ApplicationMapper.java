@@ -7,6 +7,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.WARN)
-public interface ApplicationMapper
-    extends EnrollmentMapper<Application, CreateApplicationRequest, CreateApplicationResponse> {
+public interface ApplicationMapper {
+    Application toEntity(CreateApplicationRequest request);
+
+    CreateApplicationResponse toResponse(Application event);
 }
