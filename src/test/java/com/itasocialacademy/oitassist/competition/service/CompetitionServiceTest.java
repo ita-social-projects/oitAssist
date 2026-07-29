@@ -9,17 +9,27 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
+import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
+import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
+import com.itasocialacademy.oitassist.competition.dao.enums.StageStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
+import com.itasocialacademy.oitassist.competition.dao.model.Stage;
+import com.itasocialacademy.oitassist.competition.dao.model.Tour;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
 import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
+import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
+import com.itasocialacademy.oitassist.competition.dto.response.StageResponse;
+import com.itasocialacademy.oitassist.competition.dto.response.StageTreeResponse;
+import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
 import com.itasocialacademy.oitassist.competition.mapper.CompetitionMapper;
@@ -255,6 +265,84 @@ class CompetitionServiceTest {
     // ---- getCompetitionTree ----
 
     @Test
+    void getCompetitionTree_withStagesAndTours_shouldGroupToursByStageCorrectly() {
+        Stage stage1 = Stage.builder()
+            .id(10L).competitionId(1L).title("Stage 1")
+            .dateStart(testDateStart()).dateFinish(testDateFinish())
+            .sortPosition((short) 1).scope(StageScope.REGIONAL).status(StageStatus.SCHEDULED)
+            .build();
+        Stage stage2 = Stage.builder()
+            .id(20L).competitionId(1L).title("Stage 2")
+            .dateStart(testDateStart()).dateFinish(testDateFinish())
+            .sortPosition((short) 2).scope(StageScope.REGIONAL).status(StageStatus.SCHEDULED)
+            .build();
+
+        Tour tourA = Tour.builder()
+            .id(100L).stageId(10L).title("Tour A")
+            .dateStart(testDateStart()).dateFinish(testDateFinish())
+            .sortPosition((short) 1).location("Room 101").executionStatus(ExecutionStatus.SCHEDULED)
+            .build();
+        Tour tourB = Tour.builder()
+            .id(101L).stageId(10L).title("Tour B")
+            .dateStart(testDateStart()).dateFinish(testDateFinish())
+            .sortPosition((short) 2).location("Room 102").executionStatus(ExecutionStatus.SCHEDULED)
+            .build();
+
+        StageResponse stage1Response = StageResponse.builder().id(10L).title("Stage 1").build();
+        StageResponse stage2Response = StageResponse.builder().id(20L).title("Stage 2").build();
+        TourResponse tourAResponse = TourResponse.builder().id(100L).title("Tour A").build();
+        TourResponse tourBResponse = TourResponse.builder().id(101L).title("Tour B").build();
+
+        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(mapper.toResponse(competition)).thenReturn(getCompetitionResponse());
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L))
+            .thenReturn(List.of(stage1, stage2));
+        when(tourRepository.findAllByStageIdInOrderBySortPositionAsc(List.of(10L, 20L)))
+            .thenReturn(List.of(tourA, tourB));
+        when(stageMapper.toResponse(stage1)).thenReturn(stage1Response);
+        when(stageMapper.toResponse(stage2)).thenReturn(stage2Response);
+        when(tourMapper.toResponse(tourA)).thenReturn(tourAResponse);
+        when(tourMapper.toResponse(tourB)).thenReturn(tourBResponse);
+
+        CompetitionTreeResponse tree = competitionService.getCompetitionTree(1L);
+
+        assertNotNull(tree);
+        verify(validator).checkVisibilityAccess(1L);
+
+        CompetitionTreeResponse expected = new CompetitionTreeResponse(
+            getCompetitionResponse(),
+            List.of(
+                new StageTreeResponse(stage1Response, List.of(tourAResponse, tourBResponse)),
+                new StageTreeResponse(stage2Response, List.of())));
+        assertEquals(expected, tree);
+    }
+
+    @Test
+    void getCompetitionTree_shouldFetchToursOnlyOnceForAllStages() {
+        Stage stage1 = Stage.builder()
+            .id(10L).competitionId(1L).title("Stage 1")
+            .dateStart(testDateStart()).dateFinish(testDateFinish())
+            .sortPosition((short) 1).scope(StageScope.CITY).status(StageStatus.SCHEDULED)
+            .build();
+        Stage stage2 = Stage.builder()
+            .id(20L).competitionId(1L).title("Stage 2")
+            .dateStart(testDateStart()).dateFinish(testDateFinish())
+            .sortPosition((short) 2).scope(StageScope.CITY).status(StageStatus.SCHEDULED)
+            .build();
+
+        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(mapper.toResponse(competition)).thenReturn(getCompetitionResponse());
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L))
+            .thenReturn(List.of(stage1, stage2));
+        when(tourRepository.findAllByStageIdInOrderBySortPositionAsc(any())).thenReturn(List.of());
+        when(stageMapper.toResponse(any(Stage.class))).thenReturn(StageResponse.builder().id(1L).title("S").build());
+
+        competitionService.getCompetitionTree(1L);
+
+        verify(tourRepository, times(1)).findAllByStageIdInOrderBySortPositionAsc(List.of(10L, 20L));
+    }
+
+    @Test
     void getCompetitionTree_whenNoStages_shouldReturnEmptyStageList() {
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
         when(mapper.toResponse(competition)).thenReturn(getCompetitionResponse());
@@ -277,11 +365,72 @@ class CompetitionServiceTest {
         verify(stageRepository, never()).findAllByCompetitionIdOrderBySortPositionAsc(anyLong());
     }
 
+    // ---- getAllVisible ----
+
+    @Test
+    void getAllVisible_asAdmin_shouldQueryWithoutCallingOrgCheck() {
+        Pageable pageable = PageRequest.of(0, 20);
+        CompetitionSearchFilter filter = CompetitionSearchFilter.builder().build();
+
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+
+        Page<Competition> competitions = new PageImpl<>(List.of(competition), pageable, 1);
+        when(competitionRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(competitions);
+        when(mapper.toResponse(competition)).thenReturn(getCompetitionResponse());
+
+        Page<CompetitionResponse> result = competitionService.getAllVisible(filter, pageable);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        verify(securityFacade).hasRole("ADMIN");
+        verify(securityFacade, never()).hasRole("ORG"); // short-circuit ||
+        verify(competitionRepository).findAll(any(Specification.class), eq(pageable));
+    }
+
+    @Test
+    void getAllVisible_asOrg_shouldUseAdminOrgVisibility() {
+        Pageable pageable = PageRequest.of(0, 20);
+        CompetitionSearchFilter filter = CompetitionSearchFilter.builder().build();
+
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.hasRole("ORG")).thenReturn(true);
+
+        Page<Competition> competitions = new PageImpl<>(List.of(competition), pageable, 1);
+        when(competitionRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(competitions);
+        when(mapper.toResponse(competition)).thenReturn(getCompetitionResponse());
+
+        Page<CompetitionResponse> result = competitionService.getAllVisible(filter, pageable);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        verify(securityFacade).hasRole("ADMIN");
+        verify(securityFacade).hasRole("ORG");
+    }
+
+    @Test
+    void getAllVisible_asPlainUser_shouldUseUserVisibility() {
+        Pageable pageable = PageRequest.of(0, 20);
+        CompetitionSearchFilter filter = CompetitionSearchFilter.builder().build();
+
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.hasRole("ORG")).thenReturn(false);
+
+        Page<Competition> emptyPage = Page.empty(pageable);
+        when(competitionRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
+
+        Page<CompetitionResponse> result = competitionService.getAllVisible(filter, pageable);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        verify(mapper, never()).toResponse(any());
+    }
+
     // ---- getArchived ----
 
     @Test
     void getArchived_whenCompetitionsExist_shouldReturnMappedPage() {
         Pageable pageable = PageRequest.of(0, 10);
+        CompetitionSearchFilter filter = CompetitionSearchFilter.builder().build();
 
         Competition secondCompetition = Competition.builder()
             .id(2L)
@@ -306,7 +455,7 @@ class CompetitionServiceTest {
         when(mapper.toResponse(competition)).thenReturn(firstResponse);
         when(mapper.toResponse(secondCompetition)).thenReturn(secondResponse);
 
-        Page<CompetitionResponse> result = competitionService.getArchived(pageable);
+        Page<CompetitionResponse> result = competitionService.getArchived(filter, pageable);
 
         assertNotNull(result);
         assertEquals(2, result.getTotalElements());
@@ -321,12 +470,12 @@ class CompetitionServiceTest {
     @Test
     void getArchived_whenNoCompetitions_shouldReturnEmptyPage() {
         Pageable pageable = PageRequest.of(0, 10);
+        CompetitionSearchFilter filter = CompetitionSearchFilter.builder().build();
 
         Page<Competition> emptyPage = Page.empty(pageable);
-
         when(competitionRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
 
-        Page<CompetitionResponse> result = competitionService.getArchived(pageable);
+        Page<CompetitionResponse> result = competitionService.getArchived(filter, pageable);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
@@ -346,5 +495,13 @@ class CompetitionServiceTest {
             CompetitionStatus.DRAFT,
             100L,
             100L);
+    }
+
+    private static ZonedDateTime testDateStart() {
+        return ZonedDateTime.of(2026, 6, 25, 10, 0, 0, 0, ZoneId.of("UTC"));
+    }
+
+    private static ZonedDateTime testDateFinish() {
+        return testDateStart().plusDays(10);
     }
 }

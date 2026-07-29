@@ -22,15 +22,20 @@ public class UserDetailsImpl implements UserDetails {
     private final Long id;
     private final String email;
     private final String password;
-    private final boolean enabled;
+    private final boolean isEnabled;
+    private final boolean isAccountNonLocked;
+    private final boolean isAccountNonExpired;
     private final Collection<? extends GrantedAuthority> authorities;
 
-    public UserDetailsImpl(Long id, String email, String password, boolean enabled,
+    public UserDetailsImpl(Long id, String email, String password, boolean isEnabled, boolean isAccountNonLocked,
+        boolean isAccountNonExpired,
         Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.email = email;
         this.password = password;
-        this.enabled = enabled;
+        this.isEnabled = isEnabled;
+        this.isAccountNonLocked = isAccountNonLocked;
+        this.isAccountNonExpired = isAccountNonExpired;
         this.authorities =
             authorities != null ? Collections.unmodifiableCollection(authorities) : Collections.emptyList();
     }
@@ -52,12 +57,12 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return true;
+        return isAccountNonExpired;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return isAccountNonLocked;
     }
 
     @Override
@@ -67,7 +72,7 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return enabled;
+        return isEnabled;
     }
 
     @Override

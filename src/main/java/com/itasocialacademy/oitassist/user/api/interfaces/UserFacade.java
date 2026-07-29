@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.user.api.interfaces;
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import org.springframework.modulith.NamedInterface;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -107,11 +108,12 @@ public interface UserFacade {
     Optional<UserAuthDetails> findByEmail(String email);
 
     /**
-     * Similar to {@code UserFacade.findByEmail}, this one looks up a user by their
-     * ID and returns the authentication-side projection needed by {@code security}.
+     * Searches for the list of users by their IDs and returns the list of auth-side
+     * projections required by {@code UserFacade.findByIds}. Returns empty if no
+     * users were found.
      *
-     * @param userId the user's ID
-     * @return the user's auth details DTO
+     * @param userIds the users' IDs
+     * @return the users' auth details DTOs
      */
-    Optional<UserAuthDetails> findById(Long userId);
+    List<UserAuthDetails> findByIds(List<Long> userIds);
 }

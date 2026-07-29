@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.task.mapper;
 
+import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
 import com.itasocialacademy.oitassist.task.dao.model.TaskBody;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
@@ -11,4 +12,6 @@ public interface TaskBodyMapper {
     TaskBody toEntity(CreateTaskRequestDTO taskBody);
 
     TaskResponseDTO toResponse(TaskBody taskBody);
+
+    TaskBodyDetail toTaskBodyDetail(TaskBody taskBody);
 }
