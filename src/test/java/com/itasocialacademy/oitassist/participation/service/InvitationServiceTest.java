@@ -20,6 +20,7 @@ import com.itasocialacademy.oitassist.participation.dao.repository.InvitationRep
 import com.itasocialacademy.oitassist.participation.dao.repository.ParticipationRepository;
 import com.itasocialacademy.oitassist.participation.exceptions.InvitationNotFoundException;
 import com.itasocialacademy.oitassist.participation.exceptions.UnableToProcessInvitationException;
+import com.itasocialacademy.oitassist.participation.exceptions.UnexpectedConstraintViolationException;
 import com.itasocialacademy.oitassist.participation.exceptions.UserInvitationRequestException;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessInvitationMapper;
@@ -28,6 +29,7 @@ import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -293,14 +295,37 @@ public class InvitationServiceTest {
             List.of(10L), 2L, 3L, RequestStatus.PENDING)).thenReturn(List.of());
         when(participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(List.of(10L), 2L, 3L))
             .thenReturn(List.of());
+        ConstraintViolationException constraintViolation = new ConstraintViolationException(
+            "duplicate pending invitation", null, "idx_unique_pending_invitation");
+
         when(invitationRequestsSaver.saveSingleInvitation(10L, createInvitationRequest))
-            .thenThrow(new DataIntegrityViolationException("unique constraint violation"));
+            .thenThrow(new DataIntegrityViolationException("constraint violation", constraintViolation));
 
         CreateInvitationResponse response = invitationService.sendEnrollmentRequest(createInvitationRequest);
 
         assertTrue(response.getSucceeded().isEmpty());
         assertEquals(1, response.getFailed().size());
         assertEquals("Student already has a pending invitation", response.getFailed().getFirst().reason());
+    }
+
+    @Test
+    void sendEnrollmentRequest_unrelatedConstraintViolation_shouldThrowUnexpectedConstraintViolationException() {
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+        when(userFacade.findByIds(List.of(10L))).thenReturn(List.of(validUser));
+        when(invitationRepository.findByStudentIdInAndCompetitionIdAndStageIdAndStatus(
+            List.of(10L), 2L, 3L, RequestStatus.PENDING)).thenReturn(List.of());
+        when(participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(List.of(10L), 2L, 3L))
+            .thenReturn(List.of());
+
+        ConstraintViolationException unrelatedViolation = new ConstraintViolationException(
+            "not-null violation", null, "some_other_constraint");
+
+        when(invitationRequestsSaver.saveSingleInvitation(10L, createInvitationRequest))
+            .thenThrow(new DataIntegrityViolationException("constraint violation", unrelatedViolation));
+
+        assertThrows(UnexpectedConstraintViolationException.class,
+            () -> invitationService.sendEnrollmentRequest(createInvitationRequest));
     }
 
     // ---- acceptRequest ----

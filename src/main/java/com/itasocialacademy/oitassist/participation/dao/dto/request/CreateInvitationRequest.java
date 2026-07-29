@@ -1,8 +1,8 @@
 package com.itasocialacademy.oitassist.participation.dao.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -19,6 +19,5 @@ public class CreateInvitationRequest extends EnrollmentRequest {
         description = "List of students IDs",
         type = "array", example = "[1, 3, 4]",
         requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotEmpty
-    private List<Long> studentIds;
+    private List<@NotNull Long> studentIds;
 }

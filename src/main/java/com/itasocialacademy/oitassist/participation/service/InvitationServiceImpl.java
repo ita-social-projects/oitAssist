@@ -31,6 +31,7 @@ import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class InvitationServiceImpl implements InvitationService {
     private static final String ALREADY_PENDING_MESSAGE = "Student already has a pending invitation";
+    private static final String PENDING_INVITATION_CONSTRAINT = "idx_unique_pending_invitation";
 
     private final ParticipationRepository participationRepository;
     private final InvitationRepository invitationRepository;
@@ -89,8 +91,14 @@ public class InvitationServiceImpl implements InvitationService {
                 Invitation invitation = invitationRequestsSaver.saveSingleInvitation(studentId, request);
                 succeeded.add(new SucceededInvitationResponse(invitation.getId(), studentId));
             } catch (DataIntegrityViolationException e) {
-                failed.add(
-                    new FailedInvitationResponse(studentId, ALREADY_PENDING_MESSAGE));
+                if (isPendingInvitationConstraintViolation(e)) {
+                    failed.add(new FailedInvitationResponse(studentId, ALREADY_PENDING_MESSAGE));
+                } else {
+                    throw new UnexpectedConstraintViolationException(
+                        "Unexpected database constraint violation while saving invitation",
+                        ErrorCode.DATA_ACCESS_ERROR,
+                        e);
+                }
             }
         }
         return CreateInvitationResponse.builder()
@@ -204,5 +212,12 @@ public class InvitationServiceImpl implements InvitationService {
         if (!userId.equals(invitation.getIssuedBy())) {
             throw new UnableToProcessInvitationException("The invitation is not issued by the current user");
         }
+    }
+
+    private boolean isPendingInvitationConstraintViolation(DataIntegrityViolationException e) {
+        if (e.getCause() instanceof ConstraintViolationException cve) {
+            return PENDING_INVITATION_CONSTRAINT.equals(cve.getConstraintName());
+        }
+        return false;
     }
 }
