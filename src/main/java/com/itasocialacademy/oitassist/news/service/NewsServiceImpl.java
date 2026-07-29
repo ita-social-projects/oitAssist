@@ -8,6 +8,7 @@ import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequeste
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsAdminListItemDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
@@ -108,11 +109,14 @@ public class NewsServiceImpl implements NewsService {
 
     @Override
     public Page<ResponseNewsListItemDto> getPublishedNews(Pageable pageable, String search, LocalDate date) {
-        Specification<News> spec = NewsSpecification.withFilters(
-            NewsStatus.PUBLISHED,
-            search,
-            date);
-        return repository.findAll(spec, pageable).map(this::toNewsListItemDto);
+        Specification<News> spec = NewsSpecification.withFilters(NewsStatus.PUBLISHED, search, date);
+        return repository.findAll(spec, pageable).map(mapper::toListItemDto);
+    }
+
+    @Override
+    public Page<ResponseNewsAdminListItemDto> getAllNewsForAdmin(Pageable pageable, String search) {
+        Specification<News> spec = NewsSpecification.withAllStatuses(search);
+        return repository.findAll(spec, pageable).map(mapper::toAdminListItemDto);
     }
 
     private void publishAttachEvent(Long newsId, List<Long> fileIds) {
@@ -139,21 +143,5 @@ public class NewsServiceImpl implements NewsService {
 
         eventPublisher
             .publishEvent(new FilesDetachRequestedEvent(RelatedEntityType.NEWS, newsId, removedFileIds, userId));
-    }
-
-    private ResponseNewsListItemDto toNewsListItemDto(News news) {
-        return new ResponseNewsListItemDto(
-            news.getId(),
-            news.getTitle(),
-            buildPreview(news.getContent()),
-            news.getPublishedAt(),
-            news.getArchivedAt());
-    }
-
-    private String buildPreview(String content) {
-        if (content == null) {
-            return null;
-        }
-        return content.length() > PREVIEWS_LENGTH ? content.substring(0, PREVIEWS_LENGTH) + "..." : content;
     }
 }

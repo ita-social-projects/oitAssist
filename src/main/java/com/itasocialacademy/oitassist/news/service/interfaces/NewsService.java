@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.news.service.interfaces;
 
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsAdminListItemDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
 import java.time.LocalDate;
@@ -18,4 +19,6 @@ public interface NewsService {
     ResponseNewsDto getById(Long id);
 
     Page<ResponseNewsListItemDto> getPublishedNews(Pageable pageable, String search, LocalDate date);
+
+    Page<ResponseNewsAdminListItemDto> getAllNewsForAdmin(Pageable pageable, String search);
 }
