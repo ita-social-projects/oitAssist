@@ -8,7 +8,7 @@ import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.WARN)
 public interface ApplicationMapper {
-    Application toEntity(CreateApplicationRequest request);
+    Application toEntity(CreateApplicationRequest createApplicationRequest);
 
-    CreateApplicationResponse toResponse(Application event);
+    CreateApplicationResponse toResponse(Application application);
 }

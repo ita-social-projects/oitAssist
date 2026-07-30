@@ -70,21 +70,9 @@ public class InvitationServiceImpl implements InvitationService {
 
         for (Long studentId : studentIds) {
             UserAuthDetails user = foundById.get(studentId);
-
-            if (user == null) {
-                failed.add(new FailedInvitationResponse(studentId, "Student not found"));
-                continue;
-            }
-            if (user.role() != Role.USER) {
-                failed.add(new FailedInvitationResponse(studentId, "User does not have the required role"));
-                continue;
-            }
-            if (alreadyPending.contains(studentId)) {
-                failed.add(new FailedInvitationResponse(studentId, ALREADY_PENDING_MESSAGE));
-                continue;
-            }
-            if (alreadyParticipants.contains(studentId)) {
-                failed.add(new FailedInvitationResponse(studentId, "Student is already a participant"));
+            String failureReason = determineFailureReason(studentId, user, alreadyPending, alreadyParticipants);
+            if (failureReason != null) {
+                failed.add(new FailedInvitationResponse(studentId, failureReason));
                 continue;
             }
             try {
@@ -194,6 +182,23 @@ public class InvitationServiceImpl implements InvitationService {
             throw new UnableToProcessInvitationException("The invitation request is not in the PENDING status");
         }
         return invitation;
+    }
+
+    private String determineFailureReason(
+        Long studentId,
+        UserAuthDetails user,
+        Set<Long> alreadyPending,
+        Set<Long> alreadyParticipants) {
+        if (user == null) {
+            return "Student not found";
+        } else if (user.role() != Role.USER) {
+            return "User does not have the required role";
+        } else if (alreadyPending.contains(studentId)) {
+            return ALREADY_PENDING_MESSAGE;
+        } else if (alreadyParticipants.contains(studentId)) {
+            return "Student is already a participant";
+        }
+        return null;
     }
 
     private Long getCurrentUserIdOrThrow() {
