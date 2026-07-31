@@ -173,15 +173,18 @@ class NewsServiceImplTest {
         Pageable pageable = PageRequest.of(0, 5);
 
         News news = new News();
-        news.setId(1L);
-        news.setTitle("Published news title");
-        news.setContent("Short content");
-        news.setStatus(NewsStatus.PUBLISHED);
-        news.setPublishedAt(OffsetDateTime.parse("2026-03-12T13:44:56Z"));
+
+        ResponseNewsListItemDto dto = ResponseNewsListItemDto.builder()
+            .id(1L)
+            .title("Published news title")
+            .contentPreview("Short content")
+            .publishedAt(OffsetDateTime.parse("2026-03-12T13:44:56Z"))
+            .build();
 
         Page<News> newsPage = new PageImpl<>(List.of(news), pageable, 1);
 
         when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(newsPage);
+        when(newsMapper.toListItemDto(news)).thenReturn(dto);
 
         Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable, null, null);
 
@@ -203,27 +206,22 @@ class NewsServiceImplTest {
     @Test
     void shouldTrimContentPreviewWhenContentIsLong() {
         Pageable pageable = PageRequest.of(0, 5);
-
-        String longContent = "a".repeat(350);
-
         News news = new News();
-        news.setId(2L);
-        news.setTitle("Long content news");
-        news.setContent(longContent);
-        news.setStatus(NewsStatus.PUBLISHED);
-        news.setPublishedAt(OffsetDateTime.parse("2026-03-12T13:44:56Z"));
+
+        String expectedPreview = "a".repeat(300) + "...";
+        ResponseNewsListItemDto dto = ResponseNewsListItemDto.builder()
+            .id(2L)
+            .contentPreview(expectedPreview)
+            .build();
 
         Page<News> newsPage = new PageImpl<>(List.of(news), pageable, 1);
 
         when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(newsPage);
+        when(newsMapper.toListItemDto(news)).thenReturn(dto);
 
         Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable, null, null);
 
-        ResponseNewsListItemDto item = result.getContent().getFirst();
-
-        assertThat(item.getContentPreview())
-            .hasSize(303)
-            .isEqualTo(longContent.substring(0, 300) + "...");
+        assertThat(result.getContent()).containsExactly(dto);
 
         verify(newsRepository).findAll(any(Specification.class), eq(pageable));
     }
@@ -231,23 +229,21 @@ class NewsServiceImplTest {
     @Test
     void shouldReturnNullPreviewWhenContentIsNull() {
         Pageable pageable = PageRequest.of(0, 5);
-
         News news = new News();
-        news.setId(3L);
-        news.setTitle("Null content news");
-        news.setContent(null);
-        news.setStatus(NewsStatus.PUBLISHED);
-        news.setPublishedAt(OffsetDateTime.parse("2026-03-12T13:44:56Z"));
+
+        ResponseNewsListItemDto dto = ResponseNewsListItemDto.builder()
+            .id(3L)
+            .contentPreview(null)
+            .build();
 
         Page<News> newsPage = new PageImpl<>(List.of(news), pageable, 1);
 
         when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(newsPage);
+        when(newsMapper.toListItemDto(news)).thenReturn(dto);
 
         Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable, null, null);
 
-        ResponseNewsListItemDto item = result.getContent().getFirst();
-
-        assertThat(item.getContentPreview()).isNull();
+        assertThat(result.getContent()).containsExactly(dto);
 
         verify(newsRepository).findAll(any(Specification.class), eq(pageable));
     }
