@@ -20,6 +20,8 @@ public class ResponseNewsAdminListItemDto {
     private String contentPreview;
     @Schema(description = "Status of the news")
     private NewsStatus status;
+    @Schema(description = "Date and time when the news was created")
+    private OffsetDateTime createdAt;
     @Schema(description = "Date and time when the news was published")
     private OffsetDateTime publishedAt;
     @Schema(description = "Date and time when the news was archived")

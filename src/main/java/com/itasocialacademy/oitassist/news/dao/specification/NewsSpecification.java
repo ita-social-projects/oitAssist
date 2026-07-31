@@ -9,6 +9,7 @@ import jakarta.persistence.criteria.Root;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
@@ -50,7 +51,7 @@ public class NewsSpecification {
         if (search == null || search.isBlank()) {
             return;
         }
-        String like = "%" + search.toLowerCase() + "%";
+        String like = "%" + search.toLowerCase(Locale.ROOT) + "%";
         Predicate title = cb.like(cb.lower(root.get("title")), like);
         Predicate content = cb.like(cb.lower(root.get("content")), like);
         predicates.add(cb.or(title, content));
