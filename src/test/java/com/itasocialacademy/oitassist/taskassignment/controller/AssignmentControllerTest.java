@@ -2,12 +2,14 @@ package com.itasocialacademy.oitassist.taskassignment.controller;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.dao.model.TaskRequirements;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.TaskRequirementsRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.response.DetailedTaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
@@ -35,6 +37,7 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
     private AssignmentController assignmentController;
 
     private TaskAssignmentResponseDTO mockAssignmentResponse;
+    private DetailedTaskAssignmentResponseDTO mockDetailedResponse;
     private TaskRequirementsRequestDTO validRequirements;
 
     @Override
@@ -48,18 +51,26 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
             new TaskRequirementsRequestDTO.RequiredFileRequest("Файл розв'язку", "PowerPoint_РіздвянаЗірка",
                 List.of(".pptx"), 50)));
 
+        TaskRequirements requirements = new TaskRequirements(List.of(
+            new TaskRequirements.RequiredFile("Файл розв'язку", "PowerPoint_РіздвянаЗірка",
+                List.of(".pptx"), 50)));
+
+        List<FileDetailsDTO> testFiles = List.of(
+            new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
+                "/uploads/task/problem.pdf"));
+
         mockAssignmentResponse = TaskAssignmentResponseDTO.builder()
             .id(1L)
             .taskBodyId(3L)
             .taskTitle("PowerPoint Різдвяна зірка")
             .tourId(10L)
-            .visibility(AssignmentVisibility.VISIBLE)
             .maxPoints(25)
-            .requirements(new TaskRequirements(List.of(
-                new TaskRequirements.RequiredFile("Файл розв'язку", "PowerPoint_РіздвянаЗірка",
-                    List.of(".pptx"), 50))))
             .createdBy(100L)
             .build();
+
+        mockDetailedResponse = new DetailedTaskAssignmentResponseDTO(
+            1L, 3L, "PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
+            10L, AssignmentVisibility.VISIBLE, 25, requirements, testFiles, 100L);
     }
 
     // POST /api/v1/tours/{tourId}/task-assignments — assignTask
@@ -70,16 +81,19 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
             3L, AssignmentVisibility.VISIBLE, 25, validRequirements);
 
         when(assignmentService.assignTask(eq(10L), any(CreateTaskAssignmentRequestDTO.class)))
-            .thenReturn(mockAssignmentResponse);
+            .thenReturn(mockDetailedResponse);
 
         mockMvc.perform(post("/api/v1/tours/{tourId}/task-assignments", 10L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.id").value(mockAssignmentResponse.id()))
-            .andExpect(jsonPath("$.taskBodyId").value(mockAssignmentResponse.taskBodyId()))
-            .andExpect(jsonPath("$.tourId").value(mockAssignmentResponse.tourId()))
-            .andExpect(jsonPath("$.taskTitle").value(mockAssignmentResponse.taskTitle()));
+            .andExpect(jsonPath("$.id").value(mockDetailedResponse.id()))
+            .andExpect(jsonPath("$.taskBodyId").value(mockDetailedResponse.taskBodyId()))
+            .andExpect(jsonPath("$.tourId").value(mockDetailedResponse.tourId()))
+            .andExpect(jsonPath("$.taskTitle").value(mockDetailedResponse.taskTitle()))
+            .andExpect(jsonPath("$.taskDescription").value(mockDetailedResponse.taskDescription()))
+            .andExpect(jsonPath("$.visibility").value(mockDetailedResponse.visibility().name()))
+            .andExpect(jsonPath("$.files").isArray());
     }
 
     @Test
@@ -187,12 +201,16 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
 
     @Test
     void getById_existingId_shouldReturn200() throws Exception {
-        when(assignmentService.getTaskAssignmentById(1L)).thenReturn(mockAssignmentResponse);
+        when(assignmentService.getTaskAssignmentById(1L)).thenReturn(mockDetailedResponse);
 
         mockMvc.perform(get("/api/v1/task-assignments/{assignmentId}", 1L))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value(mockAssignmentResponse.id()))
-            .andExpect(jsonPath("$.taskTitle").value(mockAssignmentResponse.taskTitle()));
+            .andExpect(jsonPath("$.id").value(mockDetailedResponse.id()))
+            .andExpect(jsonPath("$.taskTitle").value(mockDetailedResponse.taskTitle()))
+            .andExpect(jsonPath("$.taskDescription").value(mockDetailedResponse.taskDescription()))
+            .andExpect(jsonPath("$.visibility").value(mockDetailedResponse.visibility().name()))
+            .andExpect(jsonPath("$.files").isArray())
+            .andExpect(jsonPath("$.files[0].originalFilename").value("problem.pdf"));
     }
 
     @Test
@@ -234,13 +252,15 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
             AssignmentVisibility.HIDDEN, 30, validRequirements);
 
         when(assignmentService.updateTaskAssignment(eq(1L), any(UpdateTaskAssignmentRequestDTO.class)))
-            .thenReturn(mockAssignmentResponse);
+            .thenReturn(mockDetailedResponse);
 
         mockMvc.perform(patch("/api/v1/task-assignments/{assignmentId}", 1L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value(mockAssignmentResponse.id()));
+            .andExpect(jsonPath("$.id").value(mockDetailedResponse.id()))
+            .andExpect(jsonPath("$.taskDescription").value(mockDetailedResponse.taskDescription()))
+            .andExpect(jsonPath("$.files").isArray());
     }
 
     @Test
