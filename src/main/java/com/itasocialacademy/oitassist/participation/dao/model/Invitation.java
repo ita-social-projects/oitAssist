@@ -7,19 +7,19 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(name = "applications")
+@Table(name = "invitations")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-public class Application extends ParticipationRequestEvent {
-    @Column(name = "processed_by")
-    private Long processedBy;
+public class Invitation extends ParticipationRequestEvent {
+    @Column(name = "student_id")
+    private Long studentId;
 
     @Override
     public Long getUserId() {
-        return getIssuedBy();
+        return getStudentId();
     }
 }

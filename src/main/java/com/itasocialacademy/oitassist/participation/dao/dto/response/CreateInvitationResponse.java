@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.participation.dao.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import java.util.List;
 
 @Getter
 @Setter
@@ -10,8 +11,8 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-@Schema(description = "DTO representing an Application processing response")
-public class ProcessApplicationResponse extends ProcessEnrollmentResponse {
-    @Schema(description = "ID of the user who last updated the application", example = "5")
-    Long processedBy;
+@Schema(description = "DTO representing an Invitation creation response")
+public class CreateInvitationResponse extends EnrollmentResponse {
+    private List<SucceededInvitationResponse> succeeded;
+    private List<FailedInvitationResponse> failed;
 }

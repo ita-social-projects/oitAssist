@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.participation.controller;
 
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
@@ -55,7 +55,7 @@ public class ApplicationController {
     public ResponseEntity<CreateApplicationResponse> apply(
         @Valid @RequestBody CreateApplicationRequest createApplicationRequest) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(applicationService.userApply(createApplicationRequest));
+            .body((CreateApplicationResponse) applicationService.sendEnrollmentRequest(createApplicationRequest));
     }
 
     @Operation(
@@ -77,7 +77,7 @@ public class ApplicationController {
     @PostMapping("/accept/{id}")
     public ResponseEntity<ProcessApplicationResponse> acceptRequest(@PathVariable Long id) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(applicationService.acceptUserApplication(id));
+            .body((ProcessApplicationResponse) applicationService.acceptRequest(id));
     }
 
     @Operation(
@@ -98,9 +98,9 @@ public class ApplicationController {
     @PatchMapping("/reject/{id}")
     public ResponseEntity<ProcessApplicationResponse> rejectRequest(
         @PathVariable Long id,
-        @RequestBody RejectApplicationRequest rejectApplicationRequest) {
+        @RequestBody RejectEnrollmentRequest rejectEnrollmentRequest) {
         return ResponseEntity.status(HttpStatus.OK)
-            .body(applicationService.rejectUserApplication(id, rejectApplicationRequest));
+            .body((ProcessApplicationResponse) applicationService.rejectRequest(id, rejectEnrollmentRequest));
     }
 
     @Operation(
@@ -124,6 +124,6 @@ public class ApplicationController {
     @PatchMapping("/cancel/{id}")
     public ResponseEntity<ProcessApplicationResponse> cancelRequest(@PathVariable Long id) {
         return ResponseEntity.status(HttpStatus.OK)
-            .body(applicationService.cancelUserApplication(id));
+            .body((ProcessApplicationResponse) applicationService.cancelRequest(id));
     }
 }

@@ -47,4 +47,6 @@ public abstract class ParticipationRequestEvent {
 
     @Column(name = "rejection_reason")
     private String rejectionReason;
+
+    public abstract Long getUserId();
 }
