@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.news.service;
 
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsAdminListItemDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
@@ -244,6 +245,92 @@ class NewsServiceImplTest {
         Page<ResponseNewsListItemDto> result = newsService.getPublishedNews(pageable, null, null);
 
         assertThat(result.getContent()).containsExactly(dto);
+
+        verify(newsRepository).findAll(any(Specification.class), eq(pageable));
+    }
+
+    @Test
+    void shouldReturnAllNewsForAdminWithAllStatuses() {
+        Pageable pageable = PageRequest.of(0, 15);
+
+        News news = new News();
+
+        ResponseNewsAdminListItemDto dto = ResponseNewsAdminListItemDto.builder()
+            .id(1L)
+            .title("Admin news title")
+            .contentPreview("Short preview")
+            .status(NewsStatus.PUBLISHED)
+            .publishedAt(OffsetDateTime.parse("2026-03-15T10:30:00Z"))
+            .archivedAt(null)
+            .build();
+
+        Page<News> newsPage = new PageImpl<>(List.of(news), pageable, 1);
+
+        when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(newsPage);
+        when(newsMapper.toAdminListItemDto(news)).thenReturn(dto);
+
+        Page<ResponseNewsAdminListItemDto> result = newsService.getAllNewsForAdmin(pageable, null);
+
+        assertThat(result.getContent()).hasSize(1);
+
+        ResponseNewsAdminListItemDto item = result.getContent().getFirst();
+        assertThat(item.getId()).isEqualTo(1L);
+        assertThat(item.getTitle()).isEqualTo("Admin news title");
+        assertThat(item.getContentPreview()).isEqualTo("Short preview");
+        assertThat(item.getStatus()).isEqualTo(NewsStatus.PUBLISHED);
+
+        assertThat(result.getNumber()).isEqualTo(0);
+        assertThat(result.getSize()).isEqualTo(15);
+        assertThat(result.getTotalElements()).isEqualTo(1);
+
+        verify(newsRepository).findAll(any(Specification.class), eq(pageable));
+    }
+
+    @Test
+    void shouldReturnAllNewsForAdminWithSearch() {
+        Pageable pageable = PageRequest.of(0, 15);
+        String search = "draft";
+
+        News news = new News();
+
+        ResponseNewsAdminListItemDto dto = ResponseNewsAdminListItemDto.builder()
+            .id(2L)
+            .title("Draft news title")
+            .contentPreview("Draft preview")
+            .status(NewsStatus.DRAFT)
+            .publishedAt(null)
+            .archivedAt(null)
+            .build();
+
+        Page<News> newsPage = new PageImpl<>(List.of(news), pageable, 1);
+
+        when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(newsPage);
+        when(newsMapper.toAdminListItemDto(news)).thenReturn(dto);
+
+        Page<ResponseNewsAdminListItemDto> result = newsService.getAllNewsForAdmin(pageable, search);
+
+        assertThat(result.getContent()).hasSize(1);
+
+        ResponseNewsAdminListItemDto item = result.getContent().getFirst();
+        assertThat(item.getId()).isEqualTo(2L);
+        assertThat(item.getTitle()).isEqualTo("Draft news title");
+        assertThat(item.getStatus()).isEqualTo(NewsStatus.DRAFT);
+
+        verify(newsRepository).findAll(any(Specification.class), eq(pageable));
+    }
+
+    @Test
+    void shouldReturnEmptyPageForAdminWhenNoNewsFound() {
+        Pageable pageable = PageRequest.of(0, 15);
+
+        Page<News> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+
+        when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
+
+        Page<ResponseNewsAdminListItemDto> result = newsService.getAllNewsForAdmin(pageable, null);
+
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isEqualTo(0);
 
         verify(newsRepository).findAll(any(Specification.class), eq(pageable));
     }
