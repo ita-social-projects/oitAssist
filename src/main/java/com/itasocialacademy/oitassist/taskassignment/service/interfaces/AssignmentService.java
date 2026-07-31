@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibil
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.response.DetailedTaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
@@ -27,7 +28,7 @@ public interface AssignmentService {
      *                                      specified tour
      * @throws TourNotFoundException        if the tour or task does not exist
      */
-    TaskAssignmentResponseDTO assignTask(Long tourId, CreateTaskAssignmentRequestDTO request);
+    DetailedTaskAssignmentResponseDTO assignTask(Long tourId, CreateTaskAssignmentRequestDTO request);
 
     /**
      * Retrieves all task assignments for a specific tour with pagination support.
@@ -44,11 +45,12 @@ public interface AssignmentService {
      * Retrieves a task assignment by its id.
      *
      * @param taskAssignmentId the id of the task assignment to retrieve
-     * @return the {@link TaskAssignmentResponseDTO} with the assignment details
+     * @return the {@link DetailedTaskAssignmentResponseDTO} with the assignment
+     *         details
      * @throws TaskAssignmentNotFoundException if no task assignment exists with the
      *                                         given id
      */
-    TaskAssignmentResponseDTO getTaskAssignmentById(Long taskAssignmentId);
+    DetailedTaskAssignmentResponseDTO getTaskAssignmentById(Long taskAssignmentId);
 
     /**
      * Updates an existing task assignment with new values. Allows partial updates
@@ -63,7 +65,8 @@ public interface AssignmentService {
      * @throws TaskAssignmentNotFoundException if no task assignment exists with the
      *                                         given id
      */
-    TaskAssignmentResponseDTO updateTaskAssignment(Long taskAssignmentId, UpdateTaskAssignmentRequestDTO request);
+    DetailedTaskAssignmentResponseDTO updateTaskAssignment(Long taskAssignmentId,
+        UpdateTaskAssignmentRequestDTO request);
 
     /**
      * Deletes a task assignment by its id.
