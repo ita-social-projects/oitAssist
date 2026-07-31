@@ -41,7 +41,8 @@ public class InvitationController {
                 schema = @Schema(implementation = CreateInvitationResponse.class))),
         @ApiResponse(responseCode = "400", description = """
             Could not send the invitations. Possible reasons:\s
-            - The competition is currently unable to process invitations.\s
+            - The request contains duplicate student IDs.\s
+            - The competition is currently not in the state to process invitations.\s
             - The specified stage ID does not belong to the competition ID.""",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "403", description = "Access denied (requires ORG role)",
@@ -49,8 +50,7 @@ public class InvitationController {
         @ApiResponse(responseCode = "404", description = """
             Resource missing. Possible reasons:\s
             - The requested competition does not exist.\s
-            - The requested stage does not exist.\s
-            - The request contains duplicate student IDs.""",
+            - The requested stage does not exist.""",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PreAuthorize("hasRole('ORG')")
@@ -101,7 +101,7 @@ public class InvitationController {
     @PatchMapping("/reject/{id}")
     public ResponseEntity<ProcessInvitationResponse> rejectRequest(
         @PathVariable Long id,
-        @Valid @RequestBody RejectEnrollmentRequest rejectEnrollmentRequest) {
+        @RequestBody RejectEnrollmentRequest rejectEnrollmentRequest) {
         return ResponseEntity.status(HttpStatus.OK)
             .body((ProcessInvitationResponse) invitationService.rejectRequest(id, rejectEnrollmentRequest));
     }
