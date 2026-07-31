@@ -101,7 +101,7 @@ public class InvitationController {
     @PatchMapping("/reject/{id}")
     public ResponseEntity<ProcessInvitationResponse> rejectRequest(
         @PathVariable Long id,
-        @RequestBody RejectEnrollmentRequest rejectEnrollmentRequest) {
+        @Valid @RequestBody RejectEnrollmentRequest rejectEnrollmentRequest) {
         return ResponseEntity.status(HttpStatus.OK)
             .body((ProcessInvitationResponse) invitationService.rejectRequest(id, rejectEnrollmentRequest));
     }
