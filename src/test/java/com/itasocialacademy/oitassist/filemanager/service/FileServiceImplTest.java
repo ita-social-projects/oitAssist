@@ -35,6 +35,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+
+import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import org.springframework.data.jpa.domain.Specification;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -676,6 +680,110 @@ class FileServiceImplTest {
         assertThrows(AuthorizationException.class, () -> fileService.deleteHard(fileId));
 
         verifyNoInteractions(providerResolver, storageProvider);
+    }
+
+    // --- getFilesByEntity(entityType, entityId, roles) Tests ---
+
+    @Test
+    void getFilesByEntity_withRoles_ShouldReturnFilteredFilesWithUrls() {
+        FileAsset problemFile = new FileAsset();
+        problemFile.setId(1L);
+        problemFile.setStorageProvider(StorageProviderType.LOCAL);
+        problemFile.setStorageKey("task/problem.pdf");
+        problemFile.setOriginalFilename("problem.pdf");
+        problemFile.setMimeType("application/pdf");
+        problemFile.setSize(2048L);
+        problemFile.setFileRole(FileRole.PROBLEM);
+
+        Set<FileRole> roles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
+        FileDetailsDTO expectedDto = new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
+            "/uploads/task/problem.pdf");
+
+        when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(problemFile));
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.getFileUrl("task/problem.pdf")).thenReturn("/uploads/task/problem.pdf");
+        when(fileMapper.toDetails(problemFile, "/uploads/task/problem.pdf")).thenReturn(expectedDto);
+
+        List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
+
+        assertEquals(1, result.size());
+        assertEquals(expectedDto, result.getFirst());
+        verify(fileRepository).findAll(any(Specification.class));
+        verify(fileMapper).toDetails(problemFile, "/uploads/task/problem.pdf");
+    }
+
+    @Test
+    void getFilesByEntity_withRoles_ShouldReturnEmptyList_WhenNoFilesMatch() {
+        Set<FileRole> roles = Set.of(FileRole.SOLUTION);
+
+        when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of());
+
+        List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
+
+        assertTrue(result.isEmpty());
+        verify(fileRepository).findAll(any(Specification.class));
+        verifyNoInteractions(providerResolver, fileMapper);
+    }
+
+    @Test
+    void getFilesByEntity_withRoles_ShouldReturnMultipleFiles_WhenMultipleRolesMatch() {
+        FileAsset problemFile = new FileAsset();
+        problemFile.setId(1L);
+        problemFile.setStorageProvider(StorageProviderType.LOCAL);
+        problemFile.setStorageKey("task/problem.pdf");
+        problemFile.setFileRole(FileRole.PROBLEM);
+
+        FileAsset referenceFile = new FileAsset();
+        referenceFile.setId(2L);
+        referenceFile.setStorageProvider(StorageProviderType.LOCAL);
+        referenceFile.setStorageKey("task/reference.docx");
+        referenceFile.setFileRole(FileRole.REFERENCE);
+
+        Set<FileRole> roles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
+        FileDetailsDTO problemDto = new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 1024L, "PROBLEM",
+            "/uploads/task/problem.pdf");
+        FileDetailsDTO referenceDto = new FileDetailsDTO(2L, "reference.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 2048L, "REFERENCE",
+            "/uploads/task/reference.docx");
+
+        when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(problemFile, referenceFile));
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.getFileUrl("task/problem.pdf")).thenReturn("/uploads/task/problem.pdf");
+        when(storageProvider.getFileUrl("task/reference.docx")).thenReturn("/uploads/task/reference.docx");
+        when(fileMapper.toDetails(problemFile, "/uploads/task/problem.pdf")).thenReturn(problemDto);
+        when(fileMapper.toDetails(referenceFile, "/uploads/task/reference.docx")).thenReturn(referenceDto);
+
+        List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
+
+        assertEquals(2, result.size());
+        assertEquals(problemDto, result.get(0));
+        assertEquals(referenceDto, result.get(1));
+        verify(providerResolver, times(2)).resolve(StorageProviderType.LOCAL);
+        verify(fileMapper, times(2)).toDetails(any(), anyString());
+    }
+
+    @Test
+    void getFilesByEntity_withRoles_ShouldFilterBySingleRole() {
+        FileAsset solutionFile = new FileAsset();
+        solutionFile.setId(3L);
+        solutionFile.setStorageProvider(StorageProviderType.LOCAL);
+        solutionFile.setStorageKey("task/solution.zip");
+        solutionFile.setFileRole(FileRole.SOLUTION);
+
+        Set<FileRole> roles = Set.of(FileRole.SOLUTION);
+        FileDetailsDTO solutionDto = new FileDetailsDTO(3L, "solution.zip", "application/zip", 4096L, "SOLUTION",
+            "/uploads/task/solution.zip");
+
+        when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(solutionFile));
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.getFileUrl("task/solution.zip")).thenReturn("/uploads/task/solution.zip");
+        when(fileMapper.toDetails(solutionFile, "/uploads/task/solution.zip")).thenReturn(solutionDto);
+
+        List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
+
+        assertEquals(1, result.size());
+        assertEquals("SOLUTION", result.getFirst().fileRole());
+        verify(fileRepository).findAll(any(Specification.class));
     }
 
     // --- Helpers ---
