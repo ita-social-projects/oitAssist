@@ -260,6 +260,7 @@ class NewsServiceImplTest {
             .title("Admin news title")
             .contentPreview("Short preview")
             .status(NewsStatus.PUBLISHED)
+            .createdAt(OffsetDateTime.parse("2026-03-14T08:00:00Z"))
             .publishedAt(OffsetDateTime.parse("2026-03-15T10:30:00Z"))
             .archivedAt(null)
             .build();
@@ -298,6 +299,7 @@ class NewsServiceImplTest {
             .title("Draft news title")
             .contentPreview("Draft preview")
             .status(NewsStatus.DRAFT)
+            .createdAt(OffsetDateTime.parse("2026-03-10T12:00:00Z"))
             .publishedAt(null)
             .archivedAt(null)
             .build();

@@ -267,6 +267,7 @@ class NewsControllerTest {
             "Admin news title",
             "Short preview...",
             NewsStatus.PUBLISHED,
+            OffsetDateTime.parse("2026-03-14T08:00:00Z"),
             OffsetDateTime.parse("2026-03-15T10:30:00Z"),
             null);
 
@@ -298,6 +299,7 @@ class NewsControllerTest {
             "Draft news title",
             "Draft preview text...",
             NewsStatus.DRAFT,
+            OffsetDateTime.parse("2026-03-10T12:00:00Z"),
             OffsetDateTime.parse("2026-03-10T14:20:00Z"),
             null);
 
