@@ -706,18 +706,18 @@ class QuestionAccessPolicyTest {
     @Test
     void requireQuestionCommentAccess_publicQuestionWithParticipation_shouldReturnUserId() {
         stubParticipantAccess(
-                VISIBLE,
-                SCHEDULED);
+            VISIBLE,
+            SCHEDULED);
 
         QuestionThread question = createQuestion(
-                PUBLIC,
-                OTHER_USER_ID,
-                null,
-                OPEN);
+            PUBLIC,
+            OTHER_USER_ID,
+            null,
+            OPEN);
 
         Long result =
-                questionAccessPolicy
-                        .requireQuestionCommentAccess(question);
+            questionAccessPolicy
+                .requireQuestionCommentAccess(question);
 
         assertEquals(USER_ID, result);
     }
@@ -725,18 +725,18 @@ class QuestionAccessPolicyTest {
     @Test
     void requireQuestionCommentAccess_privateQuestionForAuthor_shouldReturnUserId() {
         stubParticipantAccess(
-                VISIBLE,
-                SCHEDULED);
+            VISIBLE,
+            SCHEDULED);
 
         QuestionThread question = createQuestion(
-                PRIVATE,
-                USER_ID,
-                null,
-                OPEN);
+            PRIVATE,
+            USER_ID,
+            null,
+            OPEN);
 
         Long result =
-                questionAccessPolicy
-                        .requireQuestionCommentAccess(question);
+            questionAccessPolicy
+                .requireQuestionCommentAccess(question);
 
         assertEquals(USER_ID, result);
     }
@@ -744,22 +744,22 @@ class QuestionAccessPolicyTest {
     @Test
     void requireQuestionCommentAccess_privateQuestionForOtherParticipant_shouldMask() {
         stubAuthenticatedHierarchy(
-                VISIBLE,
-                SCHEDULED);
+            VISIBLE,
+            SCHEDULED);
 
         when(securityFacade.hasRole(ADMIN_ROLE))
-                .thenReturn(false);
+            .thenReturn(false);
 
         QuestionThread question = createQuestion(
-                PRIVATE,
-                OTHER_USER_ID,
-                null,
-                OPEN);
+            PRIVATE,
+            OTHER_USER_ID,
+            null,
+            OPEN);
 
         assertThrows(
-                QuestionNotFoundException.class,
-                () -> questionAccessPolicy
-                        .requireQuestionCommentAccess(question));
+            QuestionNotFoundException.class,
+            () -> questionAccessPolicy
+                .requireQuestionCommentAccess(question));
 
         verifyNoInteractions(participationFacade);
     }
@@ -767,18 +767,18 @@ class QuestionAccessPolicyTest {
     @Test
     void requireQuestionCommentAccess_assignedReviewerWithParticipation_shouldReturnUserId() {
         stubParticipantAccess(
-                VISIBLE,
-                SCHEDULED);
+            VISIBLE,
+            SCHEDULED);
 
         QuestionThread question = createQuestion(
-                PRIVATE,
-                OTHER_USER_ID,
-                USER_ID,
-                OPEN);
+            PRIVATE,
+            OTHER_USER_ID,
+            USER_ID,
+            OPEN);
 
         Long result =
-                questionAccessPolicy
-                        .requireQuestionCommentAccess(question);
+            questionAccessPolicy
+                .requireQuestionCommentAccess(question);
 
         assertEquals(USER_ID, result);
     }
@@ -786,23 +786,95 @@ class QuestionAccessPolicyTest {
     @Test
     void requireQuestionCommentAccess_adminWithoutParticipation_shouldReturnUserId() {
         stubAuthenticatedHierarchy(
-                HIDDEN,
-                SCHEDULED);
+            HIDDEN,
+            SCHEDULED);
 
         when(securityFacade.hasRole(ADMIN_ROLE))
-                .thenReturn(true);
+            .thenReturn(true);
 
         QuestionThread question = createQuestion(
-                PRIVATE,
-                OTHER_USER_ID,
-                null,
-                OPEN);
+            PRIVATE,
+            OTHER_USER_ID,
+            null,
+            OPEN);
 
         Long result =
-                questionAccessPolicy
-                        .requireQuestionCommentAccess(question);
+            questionAccessPolicy
+                .requireQuestionCommentAccess(question);
 
         assertEquals(USER_ID, result);
+
+        verifyNoInteractions(participationFacade);
+    }
+
+    @Test
+    void requireQuestionCommentAccess_unauthenticated_shouldRejectBeforeHierarchyLookup() {
+        when(securityFacade.getCurrentUserId())
+            .thenReturn(Optional.empty());
+
+        QuestionThread question = createQuestion(
+            PUBLIC,
+            OTHER_USER_ID,
+            null,
+            OPEN);
+
+        assertThrows(
+            AuthenticationException.class,
+            () -> questionAccessPolicy
+                .requireQuestionCommentAccess(question));
+
+        verifyNoInteractions(
+            taskAssignmentFacade,
+            competitionFacade,
+            participationFacade);
+    }
+
+    @Test
+    void requireQuestionCommentAccess_publicQuestionWithoutParticipation_shouldReject() {
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        when(participationFacade.isUserParticipant(
+            USER_ID,
+            COMPETITION_ID,
+            STAGE_ID))
+            .thenReturn(false);
+
+        QuestionThread question = createQuestion(
+            PUBLIC,
+            OTHER_USER_ID,
+            null,
+            OPEN);
+
+        assertThrows(
+            QuestionForumAccessRestrictedException.class,
+            () -> questionAccessPolicy
+                .requireQuestionCommentAccess(question));
+    }
+
+    @Test
+    void requireQuestionCommentAccess_hiddenAssignment_shouldReject() {
+        stubAuthenticatedHierarchy(
+            HIDDEN,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        QuestionThread question = createQuestion(
+            PUBLIC,
+            OTHER_USER_ID,
+            null,
+            OPEN);
+
+        assertThrows(
+            QuestionForumAccessRestrictedException.class,
+            () -> questionAccessPolicy
+                .requireQuestionCommentAccess(question));
 
         verifyNoInteractions(participationFacade);
     }

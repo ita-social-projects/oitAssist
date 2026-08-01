@@ -31,14 +31,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @PreAuthorize("isAuthenticated()")
 @Tag(
-        name = "Participant Questions V1",
-        description = "Participant operations for question threads and messages")
+    name = "Participant Questions V1",
+    description = "Participant operations for question threads and messages")
 public class ParticipantQuestionController {
     private final ParticipantQuestionService participantQuestionService;
 
     @Operation(
-            summary = "Get question details",
-            description = """
+        summary = "Get question details",
+        description = """
             Returns the complete details of an accessible question thread.
 
             Access depends on the related TaskAssignment, question visibility,
@@ -47,59 +47,56 @@ public class ParticipantQuestionController {
             questions remain readable.
             """)
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Question details retrieved successfully",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation =
-                                            QuestionThreadResponseDTO.class))),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Question identifier is invalid",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class))),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Authentication is required",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class))),
-            @ApiResponse(
-                    responseCode = "403",
-                    description = "Access to the related task assignment is restricted",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class))),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Question was not found or was masked",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Question details retrieved successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionThreadResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question identifier is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Access to the related task assignment is restricted",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Question was not found or was masked",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
     })
     @GetMapping("/{questionId}")
-    public ResponseEntity<QuestionThreadResponseDTO>
-    getQuestionDetails(
-            @Parameter(
-                    description = "Positive identifier of the question thread",
-                    example = "42",
-                    required = true)
-            @PathVariable Long questionId) {
+    public ResponseEntity<QuestionThreadResponseDTO> getQuestionDetails(
+        @Parameter(
+            description = "Positive identifier of the question thread",
+            example = "42",
+            required = true) @PathVariable Long questionId) {
         return ResponseEntity.ok(
-                participantQuestionService
-                        .getQuestionDetails(questionId));
+            participantQuestionService
+                .getQuestionDetails(questionId));
     }
 
     @Operation(
-            summary = "Get question message history",
-            description = """
+        summary = "Get question message history",
+        description = """
             Returns a paginated history of messages belonging to an accessible
             question thread.
 
@@ -108,72 +105,68 @@ public class ParticipantQuestionController {
             COMMENT and OFFICIAL_ANSWER.
             """)
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Message history retrieved successfully",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = PageResponse.class))),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Question identifier or pagination is invalid",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class))),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Authentication is required",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class))),
-            @ApiResponse(
-                    responseCode = "403",
-                    description = "Access to the related task assignment is restricted",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class))),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Question was not found or was masked",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class)))
+        @ApiResponse(
+            responseCode = "200",
+            description = "Message history retrieved successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = PageResponse.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question identifier or pagination is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Access to the related task assignment is restricted",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Question was not found or was masked",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
     })
     @GetMapping("/{questionId}/messages")
-    public ResponseEntity<PageResponse<QuestionMessageResponseDTO>>
-    getQuestionMessages(
-            @Parameter(
-                    description = "Positive identifier of the question thread",
-                    example = "42",
-                    required = true)
-            @PathVariable Long questionId,
+    public ResponseEntity<PageResponse<QuestionMessageResponseDTO>> getQuestionMessages(
+        @Parameter(
+            description = "Positive identifier of the question thread",
+            example = "42",
+            required = true) @PathVariable Long questionId,
 
-            @Parameter(
-                    description = "Zero-based page number",
-                    example = "0")
-            @RequestParam(defaultValue = "0") int page,
+        @Parameter(
+            description = "Zero-based page number",
+            example = "0") @RequestParam(defaultValue = "0") int page,
 
-            @Parameter(
-                    description = "Page size between 1 and 100",
-                    example = "50")
-            @RequestParam(defaultValue = "50") int size) {
+        @Parameter(
+            description = "Page size between 1 and 100",
+            example = "50") @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(
-                PageResponse.from(
-                        participantQuestionService
-                                .getQuestionMessages(
-                                        questionId,
-                                        page,
-                                        size)));
+            PageResponse.from(
+                participantQuestionService
+                    .getQuestionMessages(
+                        questionId,
+                        page,
+                        size)));
     }
 
     @Operation(
-            summary = "Add a participant comment",
-            description = """
+        summary = "Add a participant comment",
+        description = """
             Creates a comment for an accessible open question thread.
 
             The request accepts only comment content. The authenticated user
@@ -182,77 +175,66 @@ public class ParticipantQuestionController {
             endpoint. Closed questions do not accept new comments.
             """)
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "201",
-                    description = "Comment created successfully",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation =
-                                            QuestionMessageResponseDTO.class))),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Question identifier or comment content is invalid",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class))),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Authentication is required",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class))),
-            @ApiResponse(
-                    responseCode = "403",
-                    description = "Participation in the question is restricted",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class))),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "Question was not found or was masked",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class))),
-            @ApiResponse(
-                    responseCode = "409",
-                    description = "The question is closed",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation = ErrorResponse.class)))
+        @ApiResponse(
+            responseCode = "201",
+            description = "Comment created successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionMessageResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question identifier or comment content is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Participation in the question is restricted",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Question was not found or was masked",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "The question is closed",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
     })
     @PostMapping("/{questionId}/comments")
-    public ResponseEntity<QuestionMessageResponseDTO>
-    addComment(
-            @Parameter(
-                    description = "Positive identifier of the question thread",
-                    example = "42",
-                    required = true)
-            @PathVariable Long questionId,
+    public ResponseEntity<QuestionMessageResponseDTO> addComment(
+        @Parameter(
+            description = "Positive identifier of the question thread",
+            example = "42",
+            required = true) @PathVariable Long questionId,
 
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Comment content",
-                    required = true,
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(
-                                    implementation =
-                                            CreateCommentRequestDTO.class)))
-            @Valid
-            @RequestBody
-            CreateCommentRequestDTO request) {
-
-        QuestionMessageResponseDTO response =
-                participantQuestionService.addComment(
-                        questionId,
-                        request);
+        @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Comment content",
+            required = true,
+            content = @Content(mediaType = "application/json", schema = @Schema(
+                implementation = CreateCommentRequestDTO.class))) @Valid @RequestBody CreateCommentRequestDTO request) {
+        QuestionMessageResponseDTO response = participantQuestionService.addComment(
+            questionId,
+            request);
         return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
+            .status(HttpStatus.CREATED)
+            .body(response);
     }
 }

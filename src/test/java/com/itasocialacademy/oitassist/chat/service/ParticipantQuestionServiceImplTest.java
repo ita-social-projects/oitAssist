@@ -24,7 +24,7 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
-import com.itasocialacademy.oitassist.chat.exceptions.QuestionInvalidStateException;
+import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
@@ -62,7 +62,7 @@ class ParticipantQuestionServiceImplTest {
     private static final Long COMMENT_ID = 10L;
 
     private static final String COMMENT_CONTENT =
-            "Could you also clarify the memory limit?";
+        "Could you also clarify the memory limit?";
 
     private static final Instant CREATED_AT =
         Instant.parse("2026-07-27T10:00:00Z");
@@ -547,41 +547,41 @@ class ParticipantQuestionServiceImplTest {
         question.setState(OPEN);
 
         CreateCommentRequestDTO request =
-                new CreateCommentRequestDTO(
-                        COMMENT_CONTENT);
+            new CreateCommentRequestDTO(
+                COMMENT_CONTENT);
 
         /*
          * Simulates a polluted mapper result to verify that the service overwrites
          * every protected field.
          */
         QuestionMessage mappedComment =
-                QuestionMessage.builder()
-                        .id(999L)
-                        .questionThreadId(999L)
-                        .authorId(999L)
-                        .type(OFFICIAL_ANSWER)
-                        .content(COMMENT_CONTENT)
-                        .createdAt(CREATED_AT)
-                        .build();
+            QuestionMessage.builder()
+                .id(999L)
+                .questionThreadId(999L)
+                .authorId(999L)
+                .type(OFFICIAL_ANSWER)
+                .content(COMMENT_CONTENT)
+                .createdAt(CREATED_AT)
+                .build();
 
         QuestionMessage savedComment =
-                QuestionMessage.builder()
-                        .id(COMMENT_ID)
-                        .questionThreadId(QUESTION_ID)
-                        .authorId(CURRENT_USER_ID)
-                        .type(COMMENT)
-                        .content(COMMENT_CONTENT)
-                        .createdAt(CREATED_AT)
-                        .build();
+            QuestionMessage.builder()
+                .id(COMMENT_ID)
+                .questionThreadId(QUESTION_ID)
+                .authorId(CURRENT_USER_ID)
+                .type(COMMENT)
+                .content(COMMENT_CONTENT)
+                .createdAt(CREATED_AT)
+                .build();
 
         QuestionMessageResponseDTO response =
-                new QuestionMessageResponseDTO(
-                        COMMENT_ID,
-                        QUESTION_ID,
-                        CURRENT_USER_ID,
-                        COMMENT,
-                        COMMENT_CONTENT,
-                        CREATED_AT);
+            new QuestionMessageResponseDTO(
+                COMMENT_ID,
+                QUESTION_ID,
+                CURRENT_USER_ID,
+                COMMENT,
+                COMMENT_CONTENT,
+                CREATED_AT);
 
         var originalStatus = question.getStatus();
         var originalState = question.getState();
@@ -590,114 +590,114 @@ class ParticipantQuestionServiceImplTest {
         var originalVersion = question.getVersion();
 
         when(questionThreadRepository.findById(QUESTION_ID))
-                .thenReturn(Optional.of(question));
+            .thenReturn(Optional.of(question));
 
         when(questionAccessPolicy
-                .requireQuestionCommentAccess(question))
-                .thenReturn(CURRENT_USER_ID);
+            .requireQuestionCommentAccess(question))
+            .thenReturn(CURRENT_USER_ID);
 
         when(questionMessageMapper.toEntity(request))
-                .thenReturn(mappedComment);
+            .thenReturn(mappedComment);
 
         when(questionMessageRepository.save(mappedComment))
-                .thenReturn(savedComment);
+            .thenReturn(savedComment);
 
         when(questionMessageMapper.toResponse(savedComment))
-                .thenReturn(response);
+            .thenReturn(response);
 
         QuestionMessageResponseDTO result =
-                participantQuestionService.addComment(
-                        QUESTION_ID,
-                        request);
+            participantQuestionService.addComment(
+                QUESTION_ID,
+                request);
 
         ArgumentCaptor<QuestionMessage> messageCaptor =
-                ArgumentCaptor.forClass(
-                        QuestionMessage.class);
+            ArgumentCaptor.forClass(
+                QuestionMessage.class);
 
         verify(questionMessageRepository)
-                .save(messageCaptor.capture());
+            .save(messageCaptor.capture());
 
         QuestionMessage persistedComment =
-                messageCaptor.getValue();
+            messageCaptor.getValue();
 
         assertAll(
-                () -> assertSame(response, result),
-                () -> assertNull(persistedComment.getId()),
-                () -> assertEquals(
-                        QUESTION_ID,
-                        persistedComment.getQuestionThreadId()),
-                () -> assertEquals(
-                        CURRENT_USER_ID,
-                        persistedComment.getAuthorId()),
-                () -> assertEquals(
-                        COMMENT,
-                        persistedComment.getType()),
-                () -> assertEquals(
-                        COMMENT_CONTENT,
-                        persistedComment.getContent()),
-                () -> assertNull(
-                        persistedComment.getCreatedAt()),
-                () -> assertEquals(
-                        originalStatus,
-                        question.getStatus()),
-                () -> assertEquals(
-                        originalState,
-                        question.getState()),
-                () -> assertEquals(
-                        originalVisibility,
-                        question.getVisibility()),
-                () -> assertEquals(
-                        originalReviewer,
-                        question.getAssignedReviewerId()),
-                () -> assertEquals(
-                        originalVersion,
-                        question.getVersion()));
+            () -> assertSame(response, result),
+            () -> assertNull(persistedComment.getId()),
+            () -> assertEquals(
+                QUESTION_ID,
+                persistedComment.getQuestionThreadId()),
+            () -> assertEquals(
+                CURRENT_USER_ID,
+                persistedComment.getAuthorId()),
+            () -> assertEquals(
+                COMMENT,
+                persistedComment.getType()),
+            () -> assertEquals(
+                COMMENT_CONTENT,
+                persistedComment.getContent()),
+            () -> assertNull(
+                persistedComment.getCreatedAt()),
+            () -> assertEquals(
+                originalStatus,
+                question.getStatus()),
+            () -> assertEquals(
+                originalState,
+                question.getState()),
+            () -> assertEquals(
+                originalVisibility,
+                question.getVisibility()),
+            () -> assertEquals(
+                originalReviewer,
+                question.getAssignedReviewerId()),
+            () -> assertEquals(
+                originalVersion,
+                question.getVersion()));
 
         InOrder order = inOrder(
-                questionThreadRepository,
-                questionAccessPolicy,
-                questionMessageMapper,
-                questionMessageRepository);
+            questionThreadRepository,
+            questionAccessPolicy,
+            questionMessageMapper,
+            questionMessageRepository);
 
         order.verify(questionThreadRepository)
-                .findById(QUESTION_ID);
+            .findById(QUESTION_ID);
 
         order.verify(questionAccessPolicy)
-                .requireQuestionCommentAccess(question);
+            .requireQuestionCommentAccess(question);
 
         order.verify(questionMessageMapper)
-                .toEntity(request);
+            .toEntity(request);
 
         order.verify(questionMessageRepository)
-                .save(mappedComment);
+            .save(mappedComment);
 
         order.verify(questionMessageMapper)
-                .toResponse(savedComment);
+            .toResponse(savedComment);
 
         verify(questionThreadRepository, never())
-                .save(any(QuestionThread.class));
+            .save(any(QuestionThread.class));
     }
 
     @Test
     void addComment_missingQuestion_shouldNotCheckAccessOrPersist() {
         CreateCommentRequestDTO request =
-                new CreateCommentRequestDTO(
-                        COMMENT_CONTENT);
+            new CreateCommentRequestDTO(
+                COMMENT_CONTENT);
 
         when(questionThreadRepository.findById(QUESTION_ID))
-                .thenReturn(Optional.empty());
+            .thenReturn(Optional.empty());
 
         assertThrows(
-                QuestionNotFoundException.class,
-                () -> participantQuestionService
-                        .addComment(
-                                QUESTION_ID,
-                                request));
+            QuestionNotFoundException.class,
+            () -> participantQuestionService
+                .addComment(
+                    QUESTION_ID,
+                    request));
 
         verifyNoInteractions(
-                questionAccessPolicy,
-                questionMessageRepository,
-                questionMessageMapper);
+            questionAccessPolicy,
+            questionMessageRepository,
+            questionMessageMapper);
     }
 
     @Test
@@ -706,31 +706,31 @@ class ParticipantQuestionServiceImplTest {
         question.setState(OPEN);
 
         CreateCommentRequestDTO request =
-                new CreateCommentRequestDTO(
-                        COMMENT_CONTENT);
+            new CreateCommentRequestDTO(
+                COMMENT_CONTENT);
 
         when(questionThreadRepository.findById(QUESTION_ID))
-                .thenReturn(Optional.of(question));
+            .thenReturn(Optional.of(question));
 
         when(questionAccessPolicy
-                .requireQuestionCommentAccess(question))
-                .thenThrow(
-                        new QuestionNotFoundException(
-                                QUESTION_ID));
+            .requireQuestionCommentAccess(question))
+            .thenThrow(
+                new QuestionNotFoundException(
+                    QUESTION_ID));
 
         assertThrows(
-                QuestionNotFoundException.class,
-                () -> participantQuestionService
-                        .addComment(
-                                QUESTION_ID,
-                                request));
+            QuestionNotFoundException.class,
+            () -> participantQuestionService
+                .addComment(
+                    QUESTION_ID,
+                    request));
 
         verifyNoInteractions(
-                questionMessageRepository,
-                questionMessageMapper);
+            questionMessageRepository,
+            questionMessageMapper);
 
         verify(questionThreadRepository, never())
-                .save(any(QuestionThread.class));
+            .save(any(QuestionThread.class));
     }
 
     @Test
@@ -739,61 +739,61 @@ class ParticipantQuestionServiceImplTest {
         question.setState(CLOSED);
 
         CreateCommentRequestDTO request =
-                new CreateCommentRequestDTO(
-                        COMMENT_CONTENT);
+            new CreateCommentRequestDTO(
+                COMMENT_CONTENT);
 
         when(questionThreadRepository.findById(QUESTION_ID))
-                .thenReturn(Optional.of(question));
+            .thenReturn(Optional.of(question));
 
         when(questionAccessPolicy
-                .requireQuestionCommentAccess(question))
-                .thenReturn(CURRENT_USER_ID);
+            .requireQuestionCommentAccess(question))
+            .thenReturn(CURRENT_USER_ID);
 
-        QuestionInvalidStateException exception =
-                assertThrows(
-                        QuestionInvalidStateException.class,
-                        () -> participantQuestionService
-                                .addComment(
-                                        QUESTION_ID,
-                                        request));
+        InvalidQuestionStateException exception =
+            assertThrows(
+                InvalidQuestionStateException.class,
+                () -> participantQuestionService
+                    .addComment(
+                        QUESTION_ID,
+                        request));
 
         assertEquals(
-                ErrorCode.QUESTION_INVALID_STATE,
-                exception.getErrorCode());
+            ErrorCode.QUESTION_INVALID_STATE,
+            exception.getErrorCode());
 
         verifyNoInteractions(
-                questionMessageRepository,
-                questionMessageMapper);
+            questionMessageRepository,
+            questionMessageMapper);
 
         verify(questionThreadRepository, never())
-                .save(any(QuestionThread.class));
+            .save(any(QuestionThread.class));
     }
 
     @Test
     void addComment_invalidQuestionId_shouldRejectBeforeRepositories() {
         CreateCommentRequestDTO request =
-                new CreateCommentRequestDTO(
-                        COMMENT_CONTENT);
+            new CreateCommentRequestDTO(
+                COMMENT_CONTENT);
 
         assertAll(
-                () -> assertThrows(
-                        ValidationException.class,
-                        () -> participantQuestionService
-                                .addComment(null, request)),
-                () -> assertThrows(
-                        ValidationException.class,
-                        () -> participantQuestionService
-                                .addComment(0L, request)),
-                () -> assertThrows(
-                        ValidationException.class,
-                        () -> participantQuestionService
-                                .addComment(-1L, request)));
+            () -> assertThrows(
+                ValidationException.class,
+                () -> participantQuestionService
+                    .addComment(null, request)),
+            () -> assertThrows(
+                ValidationException.class,
+                () -> participantQuestionService
+                    .addComment(0L, request)),
+            () -> assertThrows(
+                ValidationException.class,
+                () -> participantQuestionService
+                    .addComment(-1L, request)));
 
         verifyNoInteractions(
-                questionThreadRepository,
-                questionMessageRepository,
-                questionAccessPolicy,
-                questionMessageMapper);
+            questionThreadRepository,
+            questionMessageRepository,
+            questionAccessPolicy,
+            questionMessageMapper);
     }
 
     @Test
@@ -802,46 +802,46 @@ class ParticipantQuestionServiceImplTest {
         question.setState(OPEN);
 
         CreateCommentRequestDTO request =
-                new CreateCommentRequestDTO(
-                        COMMENT_CONTENT);
+            new CreateCommentRequestDTO(
+                COMMENT_CONTENT);
 
         QuestionMessage mappedComment =
-                QuestionMessage.builder()
-                        .content(COMMENT_CONTENT)
-                        .build();
+            QuestionMessage.builder()
+                .content(COMMENT_CONTENT)
+                .build();
 
         RuntimeException repositoryFailure =
-                new RuntimeException(
-                        "Database failure");
+            new RuntimeException(
+                "Database failure");
 
         when(questionThreadRepository.findById(QUESTION_ID))
-                .thenReturn(Optional.of(question));
+            .thenReturn(Optional.of(question));
 
         when(questionAccessPolicy
-                .requireQuestionCommentAccess(question))
-                .thenReturn(CURRENT_USER_ID);
+            .requireQuestionCommentAccess(question))
+            .thenReturn(CURRENT_USER_ID);
 
         when(questionMessageMapper.toEntity(request))
-                .thenReturn(mappedComment);
+            .thenReturn(mappedComment);
 
         when(questionMessageRepository.save(mappedComment))
-                .thenThrow(repositoryFailure);
+            .thenThrow(repositoryFailure);
 
         RuntimeException result =
-                assertThrows(
-                        RuntimeException.class,
-                        () -> participantQuestionService
-                                .addComment(
-                                        QUESTION_ID,
-                                        request));
+            assertThrows(
+                RuntimeException.class,
+                () -> participantQuestionService
+                    .addComment(
+                        QUESTION_ID,
+                        request));
 
         assertSame(repositoryFailure, result);
 
         verify(questionMessageMapper, never())
-                .toResponse(any(QuestionMessage.class));
+            .toResponse(any(QuestionMessage.class));
 
         verify(questionThreadRepository, never())
-                .save(any(QuestionThread.class));
+            .save(any(QuestionThread.class));
     }
 
     private QuestionThread createQuestion() {

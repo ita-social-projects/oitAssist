@@ -101,8 +101,7 @@ public class QuestionAccessPolicy {
      * @param question question whose details or messages are requested
      */
     public void requireQuestionViewAccess(
-            QuestionThread question) {
-
+        QuestionThread question) {
         requireQuestionAccess(question);
     }
 
@@ -110,50 +109,51 @@ public class QuestionAccessPolicy {
      * Validates that the current user may participate in the supplied question by
      * adding a comment.
      *
-     * <p>The method applies the same assignment, visibility, authorship,
-     * reviewer and administrator rules as question viewing and returns the
-     * authenticated user identifier for server-controlled message authorship.</p>
+     * <p>
+     * The method applies the same assignment, visibility, authorship, reviewer and
+     * administrator rules as question viewing and returns the authenticated user
+     * identifier for server-controlled message authorship.
+     * </p>
      *
      * @param question question to which a comment is being added
      * @return identifier of the authenticated and authorized user
      */
     public Long requireQuestionCommentAccess(
-            QuestionThread question) {
+        QuestionThread question) {
         return requireQuestionAccess(question).userId();
     }
 
     private TaskAssignmentAccessContext requireQuestionAccess(
-            QuestionThread question) {
+        QuestionThread question) {
         TaskAssignmentAccessContext context =
-                resolveTaskAssignmentContext(
-                        question.getTaskAssignmentId());
+            resolveTaskAssignmentContext(
+                question.getTaskAssignmentId());
 
         /*
-         * Administrators bypass assignment visibility and participation checks,
-         * but only after the complete hierarchy has been validated.
+         * Administrators bypass assignment visibility and participation checks, but
+         * only after the complete hierarchy has been validated.
          */
         if (isAdministrator()) {
             return context;
         }
 
         boolean author = Objects.equals(
-                context.userId(),
-                question.getAuthorId());
+            context.userId(),
+            question.getAuthorId());
 
         boolean assignedReviewer = Objects.equals(
-                context.userId(),
-                question.getAssignedReviewerId());
+            context.userId(),
+            question.getAssignedReviewerId());
 
         /*
          * Another participant's private question is masked before checking
          * participation, preventing disclosure of protected thread data.
          */
         if (question.getVisibility() == PRIVATE
-                && !author
-                && !assignedReviewer) {
-
+            && !author
+            && !assignedReviewer) {
             throw new QuestionNotFoundException(
-                    question.getId());
+                question.getId());
         }
 
         requireVisibleAssignment(context);
