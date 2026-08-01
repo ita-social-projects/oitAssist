@@ -1,7 +1,9 @@
 package com.itasocialacademy.oitassist.chat.controller;
 
 import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.service.interfaces.AdministratorQuestionService;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
@@ -16,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -242,6 +245,87 @@ public class AdministratorQuestionController {
                 .claimQuestion(
                     questionId,
                     request.version()));
+    }
+
+    @Operation(
+        summary = "Publish an official answer",
+        description = """
+            Publishes an official answer in an open question thread.
+
+            Claiming the question is not required, and reviewer assignment does
+            not restrict publication. Questions in NEW or IN_REVIEW status
+            transition to ANSWERED. Additional official answers are allowed for
+            questions already in ANSWERED status.
+
+            The authenticated global administrator becomes the message author.
+            The backend controls the author id, question id, message type,
+            identifier and creation timestamp.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "201",
+            description = "Official answer published successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionMessageResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question identifier or answer content is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global administrator role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Question was not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = """
+                Question is closed or a concurrent lifecycle operation
+                completed before publication
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/{questionId}/official-answers")
+    public ResponseEntity<QuestionMessageResponseDTO> publishOfficialAnswer(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42",
+            required = true) @PathVariable Long questionId,
+        @Valid @RequestBody CreateOfficialAnswerRequestDTO request) {
+        validateQuestionId(questionId);
+
+        QuestionMessageResponseDTO response =
+            administratorQuestionService
+                .publishOfficialAnswer(
+                    questionId,
+                    request);
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(response);
     }
 
     private void validateQuestionId(Long questionId) {
