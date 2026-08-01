@@ -6,6 +6,9 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWE
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
 import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
 import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStateRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStatusRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionVisibilityRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
@@ -268,6 +271,198 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
             savedAnswer);
     }
 
+    @Override
+    @Transactional
+    public QuestionThreadResponseDTO updateVisibility(
+        Long questionId,
+        UpdateQuestionVisibilityRequestDTO request) {
+        validateModerationRequest(
+            questionId,
+            request);
+
+        validateModerationValue(
+            request.visibility(),
+            "Question visibility");
+
+        validateExpectedVersion(
+            request.version());
+
+        Long administratorId = requireAdministrator();
+
+        log.debug(
+            "Updating question visibility: "
+                + "questionId={}, administratorId={}, "
+                + "visibility={}, expectedVersion={}",
+            questionId,
+            administratorId,
+            request.visibility(),
+            request.version());
+
+        int updatedRows =
+            questionThreadRepository
+                .updateVisibilityIfVersionMatches(
+                    questionId,
+                    request.visibility(),
+                    request.version(),
+                    Instant.now());
+
+        return completeModerationUpdate(
+            questionId,
+            administratorId,
+            request.version(),
+            "visibility",
+            request.visibility(),
+            updatedRows);
+    }
+
+    @Override
+    @Transactional
+    public QuestionThreadResponseDTO updateStatus(
+        Long questionId,
+        UpdateQuestionStatusRequestDTO request) {
+        validateModerationRequest(
+            questionId,
+            request);
+
+        validateModerationValue(
+            request.status(),
+            "Question status");
+
+        validateExpectedVersion(
+            request.version());
+
+        Long administratorId = requireAdministrator();
+
+        log.debug(
+            "Updating question status: "
+                + "questionId={}, administratorId={}, "
+                + "status={}, expectedVersion={}",
+            questionId,
+            administratorId,
+            request.status(),
+            request.version());
+
+        int updatedRows =
+            questionThreadRepository
+                .updateStatusIfVersionMatches(
+                    questionId,
+                    request.status(),
+                    request.version(),
+                    Instant.now());
+
+        return completeModerationUpdate(
+            questionId,
+            administratorId,
+            request.version(),
+            "status",
+            request.status(),
+            updatedRows);
+    }
+
+    @Override
+    @Transactional
+    public QuestionThreadResponseDTO updateState(
+        Long questionId,
+        UpdateQuestionStateRequestDTO request) {
+        validateModerationRequest(
+            questionId,
+            request);
+
+        validateModerationValue(
+            request.state(),
+            "Question state");
+
+        validateExpectedVersion(
+            request.version());
+
+        Long administratorId = requireAdministrator();
+
+        log.debug(
+            "Updating question lifecycle state: "
+                + "questionId={}, administratorId={}, "
+                + "state={}, expectedVersion={}",
+            questionId,
+            administratorId,
+            request.state(),
+            request.version());
+
+        int updatedRows =
+            questionThreadRepository
+                .updateStateIfVersionMatches(
+                    questionId,
+                    request.state(),
+                    request.version(),
+                    Instant.now());
+
+        return completeModerationUpdate(
+            questionId,
+            administratorId,
+            request.version(),
+            "state",
+            request.state(),
+            updatedRows);
+    }
+
+    private QuestionThreadResponseDTO completeModerationUpdate(
+        Long questionId,
+        Long administratorId,
+        Long expectedVersion,
+        String operation,
+        Object requestedValue,
+        int updatedRows) {
+        if (updatedRows == 0) {
+            QuestionThread currentQuestion =
+                questionThreadRepository
+                    .findById(questionId)
+                    .orElseThrow(() -> {
+                        log.warn(
+                            "Question moderation failed because question "
+                                + "does not exist: questionId={}, "
+                                + "administratorId={}, operation={}",
+                            questionId,
+                            administratorId,
+                            operation);
+
+                        return new QuestionNotFoundException(
+                            questionId);
+                    });
+
+            log.warn(
+                "Question moderation version conflict: "
+                    + "questionId={}, administratorId={}, "
+                    + "operation={}, requestedValue={}, "
+                    + "expectedVersion={}, currentVersion={}",
+                questionId,
+                administratorId,
+                operation,
+                requestedValue,
+                expectedVersion,
+                currentQuestion.getVersion());
+
+            throw new QuestionVersionConflictException(
+                questionId);
+        }
+
+        QuestionThread updatedQuestion =
+            questionThreadRepository
+                .findById(questionId)
+                .orElseThrow(() -> new QuestionNotFoundException(
+                    questionId));
+
+        log.info(
+            "Question moderation completed: "
+                + "questionId={}, administratorId={}, "
+                + "operation={}, requestedValue={}, version={}",
+            questionId,
+            administratorId,
+            operation,
+            requestedValue,
+            updatedQuestion.getVersion());
+
+        return questionThreadMapper.toResponse(
+            updatedQuestion);
+    }
+
     private void validateQuestionId(
         Long questionId) {
         if (questionId == null || questionId <= 0) {
@@ -316,12 +511,7 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
         Long questionId,
         Long expectedVersion) {
         validateQuestionId(questionId);
-
-        if (expectedVersion == null || expectedVersion < 0) {
-            throw new ValidationException(
-                "Question version must not be negative",
-                ErrorCode.COMMON_VALIDATION_FAILED);
-        }
+        validateExpectedVersion(expectedVersion);
     }
 
     private void validateQuestionAcceptsOfficialAnswers(
@@ -331,6 +521,43 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
                 question.getId(),
                 question.getState(),
                 "publish official answer");
+        }
+    }
+
+    private void validateModerationRequest(
+        Long questionId,
+        Object request) {
+        validateQuestionId(questionId);
+
+        if (request == null) {
+            throw new ValidationException(
+                "Question moderation request must not be null",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+    }
+
+    private void validateModerationValue(
+        Object value,
+        String valueName) {
+        if (value == null) {
+            throw new ValidationException(
+                "%s must not be null".formatted(valueName),
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+    }
+
+    private void validateExpectedVersion(
+        Long expectedVersion) {
+        if (expectedVersion == null) {
+            throw new ValidationException(
+                "Question version must not be null",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+
+        if (expectedVersion < 0) {
+            throw new ValidationException(
+                "Question version must not be negative",
+                ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }
 }

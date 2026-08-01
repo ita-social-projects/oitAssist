@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 import java.time.Instant;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.Modifying;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 
 @Repository
 public interface QuestionThreadRepository extends JpaRepository<QuestionThread, Long> {
@@ -90,4 +91,55 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         """)
     Optional<QuestionThread> findByIdForUpdate(
         @Param("questionId") Long questionId);
+
+    @Modifying(
+        clearAutomatically = true,
+        flushAutomatically = true)
+    @Query("""
+        UPDATE QuestionThread question
+        SET question.visibility = :visibility,
+            question.updatedAt = :updatedAt,
+            question.version = question.version + 1
+        WHERE question.id = :questionId
+          AND question.version = :expectedVersion
+        """)
+    int updateVisibilityIfVersionMatches(
+        @Param("questionId") Long questionId,
+        @Param("visibility") QuestionVisibility visibility,
+        @Param("expectedVersion") Long expectedVersion,
+        @Param("updatedAt") Instant updatedAt);
+
+    @Modifying(
+        clearAutomatically = true,
+        flushAutomatically = true)
+    @Query("""
+        UPDATE QuestionThread question
+        SET question.status = :status,
+            question.updatedAt = :updatedAt,
+            question.version = question.version + 1
+        WHERE question.id = :questionId
+          AND question.version = :expectedVersion
+        """)
+    int updateStatusIfVersionMatches(
+        @Param("questionId") Long questionId,
+        @Param("status") QuestionStatus status,
+        @Param("expectedVersion") Long expectedVersion,
+        @Param("updatedAt") Instant updatedAt);
+
+    @Modifying(
+        clearAutomatically = true,
+        flushAutomatically = true)
+    @Query("""
+        UPDATE QuestionThread question
+        SET question.state = :state,
+            question.updatedAt = :updatedAt,
+            question.version = question.version + 1
+        WHERE question.id = :questionId
+          AND question.version = :expectedVersion
+        """)
+    int updateStateIfVersionMatches(
+        @Param("questionId") Long questionId,
+        @Param("state") QuestionState state,
+        @Param("expectedVersion") Long expectedVersion,
+        @Param("updatedAt") Instant updatedAt);
 }

@@ -1,6 +1,9 @@
 package com.itasocialacademy.oitassist.chat.service.interfaces;
 
 import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStateRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStatusRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionVisibilityRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
@@ -64,4 +67,37 @@ public interface AdministratorQuestionService {
     QuestionMessageResponseDTO publishOfficialAnswer(
         Long questionId,
         CreateOfficialAnswerRequestDTO request);
+
+    /**
+     * Changes question visibility using optimistic locking.
+     *
+     * @param questionId question identifier
+     * @param request    requested visibility and expected version
+     * @return updated question
+     */
+    QuestionThreadResponseDTO updateVisibility(
+        Long questionId,
+        UpdateQuestionVisibilityRequestDTO request);
+
+    /**
+     * Changes question review status using optimistic locking.
+     *
+     * @param questionId question identifier
+     * @param request    requested status and expected version
+     * @return updated question
+     */
+    QuestionThreadResponseDTO updateStatus(
+        Long questionId,
+        UpdateQuestionStatusRequestDTO request);
+
+    /**
+     * Changes question lifecycle state using optimistic locking.
+     *
+     * @param questionId question identifier
+     * @param request    requested state and expected version
+     * @return updated question
+     */
+    QuestionThreadResponseDTO updateState(
+        Long questionId,
+        UpdateQuestionStateRequestDTO request);
 }
