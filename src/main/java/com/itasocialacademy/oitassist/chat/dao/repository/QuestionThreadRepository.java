@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import java.time.Instant;
+import org.springframework.data.jpa.repository.Modifying;
 
 @Repository
 public interface QuestionThreadRepository extends JpaRepository<QuestionThread, Long> {
@@ -44,4 +46,25 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         Long assignedReviewerId,
         QuestionStatus status,
         Pageable pageable);
+
+    @Modifying(
+            clearAutomatically = true,
+            flushAutomatically = true)
+    @Query("""
+    UPDATE QuestionThread question
+    SET question.assignedReviewerId = :administratorId,
+        question.status = IN_REVIEW,
+        question.updatedAt = :updatedAt,
+        question.version = question.version + 1
+    WHERE question.id = :questionId
+      AND question.version = :expectedVersion
+      AND question.state = OPEN
+      AND question.status = NEW
+      AND question.assignedReviewerId IS NULL
+    """)
+    int claimForReview(
+            @Param("questionId") Long questionId,
+            @Param("administratorId") Long administratorId,
+            @Param("expectedVersion") Long expectedVersion,
+            @Param("updatedAt") Instant updatedAt);
 }
