@@ -19,11 +19,14 @@
     <include file="/db/changelog/logs/2026-07-08-ch-alter-users-middle-name-Huz.xml"/>
     <include file="/db/changelog/logs/2026-07-10-ch-update-applications-Haleliuk.xml"/>
     <include file="/db/changelog/logs/2026-07-09-ch-add-ownerId-to-task-bodies-Selianyk.xml"/>
-
+    <include file="/db/changelog/logs/2026-07-15-ch-create-question-threads-Shankin.xml"/>
+    <include file="/db/changelog/logs/2026-07-15-ch-create-question-messages-Shankin.xml"/>
     <include file="/db/changelog/logs/2026-07-14-ch-add-enum-status-to-stages-and-tours-Pampukha.xml"/>
     <include file="/db/changelog/logs/2026-07-17-ch-create-task-assignments-Selianyk.xml"/>
     <include file="/db/changelog/logs/2026-07-24-ch-add-fk-task-assignment-to-task-bodies-Selianyk.xml"/>
 
     <include file="/db/changelog/logs/2026-07-15-ch-create-question-threads-Shankin.xml"/>
     <include file="/db/changelog/logs/2026-07-15-ch-create-question-messages-Shankin.xml"/>
+    <include file="/db/changelog/logs/2026-07-27-ch-create-invitations-Haleliuk.xml"/>
+    <include file="/db/changelog/logs/2026-07-27-ch-alter-invitations-Haleliuk.xml"/>
 </databaseChangeLog>

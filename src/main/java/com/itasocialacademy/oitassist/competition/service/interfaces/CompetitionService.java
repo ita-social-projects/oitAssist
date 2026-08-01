@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.competition.service.interfaces;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
+import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
@@ -40,13 +41,38 @@ public interface CompetitionService {
      */
     CompetitionResponse changeStatus(Long competitionId, CompetitionStatus status);
 
-    Page<CompetitionResponse> getAllVisible(Pageable pageable);
+    /**
+     * Retrieves a paginated list of competitions visible to the current user,
+     * filtered by {@code filter}. Visibility depends on user role:
+     * <li>a plain USER sees only competitions open for enrollment, published, or
+     * finished;</li>
+     * <li>ADMIN and ORG additionally see DRAFT competitions, including DRAFTs
+     * created by other organizations. Archived competitions are never returned here
+     * — see {@link #getArchived(CompetitionSearchFilter, Pageable)}.</li>
+     *
+     * @param filter   search/date-range/status criteria to narrow the results
+     * @param pageable pagination and sorting
+     * @return a page of {@link CompetitionResponse}
+     */
+    Page<CompetitionResponse> getAllVisible(CompetitionSearchFilter filter, Pageable pageable);
 
     /**
-     * Retrieves a paginated list of competitions that have been archived.
+     * Retrieves a paginated list of competitions that have been archived, filtered
+     * by {@code filter}.
      *
+     * @param filter   search/date-range/status criteria to narrow the results
+     * @param pageable pagination and sorting
+     * @return a page of {@link CompetitionResponse}
      */
-    Page<CompetitionResponse> getArchived(Pageable pageable);
+    Page<CompetitionResponse> getArchived(CompetitionSearchFilter filter, Pageable pageable);
 
+    /**
+     * Retrieves the competition together with its full hierarchy of stages and
+     * tours in a single nested response. Access to a DRAFT competition's tree
+     * follows the same visibility rules as {@link #getVisibleById(Long)}.
+     *
+     * @param competitionId Competition ID
+     * @return {@link CompetitionTreeResponse}
+     */
     CompetitionTreeResponse getCompetitionTree(Long competitionId);
 }
