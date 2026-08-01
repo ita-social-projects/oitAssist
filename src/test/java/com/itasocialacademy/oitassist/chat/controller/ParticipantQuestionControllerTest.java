@@ -3,16 +3,24 @@ package com.itasocialacademy.oitassist.chat.controller;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionMessageType.COMMENT;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionMessageType.OFFICIAL_ANSWER;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateCommentRequestDTO;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionInvalidStateException;
+import org.mockito.ArgumentCaptor;
+import org.springframework.http.MediaType;
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
@@ -41,6 +49,14 @@ class ParticipantQuestionControllerTest
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 50;
+
+    private static final Long COMMENT_ID = 40L;
+
+    private static final String COMMENT_CONTENT =
+            "Could you also clarify the memory limit?";
+
+    private static final String COMMENT_URL =
+            "/api/v1/questions/{questionId}/comments";
 
     private static final String QUESTION_URL =
         "/api/v1/questions/{questionId}";
@@ -617,8 +633,402 @@ class ParticipantQuestionControllerTest
         verifyNoInteractions(participantQuestionService);
     }
 
-    private QuestionThreadResponseDTO createQuestionResponse() {
+    @Test
+    void addComment_validRequest_shouldReturn201WithCreatedComment()
+            throws Exception {
 
+        QuestionMessageResponseDTO response =
+                createCommentResponse();
+
+        when(participantQuestionService.addComment(
+                eq(QUESTION_ID),
+                any(CreateCommentRequestDTO.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(
+                        post(COMMENT_URL, QUESTION_ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                {
+                  "content": "Could you also clarify the memory limit?"
+                }
+                """))
+                .andExpect(status().isCreated())
+                .andExpect(
+                        jsonPath("$.id")
+                                .value(COMMENT_ID))
+                .andExpect(
+                        jsonPath("$.questionThreadId")
+                                .value(QUESTION_ID))
+                .andExpect(
+                        jsonPath("$.authorId")
+                                .value(AUTHOR_ID))
+                .andExpect(
+                        jsonPath("$.type")
+                                .value("COMMENT"))
+                .andExpect(
+                        jsonPath("$.content")
+                                .value(COMMENT_CONTENT))
+                .andExpect(
+                        jsonPath("$.createdAt")
+                                .exists());
+
+        ArgumentCaptor<CreateCommentRequestDTO> requestCaptor =
+                ArgumentCaptor.forClass(
+                        CreateCommentRequestDTO.class);
+
+        verify(participantQuestionService)
+                .addComment(
+                        eq(QUESTION_ID),
+                        requestCaptor.capture());
+
+        assertEquals(
+                COMMENT_CONTENT,
+                requestCaptor.getValue().content());
+    }
+
+    @Test
+    void addComment_protectedFields_shouldNotOverrideRequestContract()
+            throws Exception {
+
+        QuestionMessageResponseDTO response =
+                createCommentResponse();
+
+        when(participantQuestionService.addComment(
+                eq(QUESTION_ID),
+                any(CreateCommentRequestDTO.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(
+                        post(COMMENT_URL, QUESTION_ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                {
+                  "content": "Could you also clarify the memory limit?",
+                  "questionThreadId": 999,
+                  "questionId": 999,
+                  "authorId": 999,
+                  "type": "OFFICIAL_ANSWER",
+                  "createdAt": "2020-01-01T00:00:00Z"
+                }
+                """))
+                .andExpect(status().isCreated())
+                .andExpect(
+                        jsonPath("$.questionThreadId")
+                                .value(QUESTION_ID))
+                .andExpect(
+                        jsonPath("$.authorId")
+                                .value(AUTHOR_ID))
+                .andExpect(
+                        jsonPath("$.type")
+                                .value("COMMENT"));
+
+        ArgumentCaptor<CreateCommentRequestDTO> requestCaptor =
+                ArgumentCaptor.forClass(
+                        CreateCommentRequestDTO.class);
+
+        verify(participantQuestionService)
+                .addComment(
+                        eq(QUESTION_ID),
+                        requestCaptor.capture());
+
+        assertEquals(
+                COMMENT_CONTENT,
+                requestCaptor.getValue().content());
+    }
+
+    @Test
+    void addComment_missingRequestBody_shouldReturn400()
+            throws Exception {
+
+        mockMvc.perform(
+                        post(COMMENT_URL, QUESTION_ID)
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("COMMON_VALIDATION_FAILED"));
+
+        verifyNoInteractions(
+                participantQuestionService);
+    }
+
+    @Test
+    void addComment_missingContent_shouldReturn400()
+            throws Exception {
+
+        mockMvc.perform(
+                        post(COMMENT_URL, QUESTION_ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("COMMON_VALIDATION_FAILED"));
+
+        verifyNoInteractions(
+                participantQuestionService);
+    }
+
+    @Test
+    void addComment_blankContent_shouldReturn400()
+            throws Exception {
+
+        mockMvc.perform(
+                        post(COMMENT_URL, QUESTION_ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                {
+                  "content": "   "
+                }
+                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("COMMON_VALIDATION_FAILED"));
+
+        verifyNoInteractions(
+                participantQuestionService);
+    }
+
+    @Test
+    void addComment_overlongContent_shouldReturn400()
+            throws Exception {
+
+        String requestBody =
+                objectMapper.writeValueAsString(
+                        new CreateCommentRequestDTO(
+                                "a".repeat(10_001)));
+
+        mockMvc.perform(
+                        post(COMMENT_URL, QUESTION_ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("COMMON_VALIDATION_FAILED"));
+
+        verifyNoInteractions(
+                participantQuestionService);
+    }
+
+    @Test
+    void addComment_malformedBody_shouldReturn400()
+            throws Exception {
+
+        mockMvc.perform(
+                        post(COMMENT_URL, QUESTION_ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                {
+                  "content":
+                }
+                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("COMMON_VALIDATION_FAILED"));
+
+        verifyNoInteractions(
+                participantQuestionService);
+    }
+
+    @Test
+    void addComment_nonnumericQuestionId_shouldReturn400()
+            throws Exception {
+
+        mockMvc.perform(
+                        post(COMMENT_URL, "invalid")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                {
+                  "content": "Comment"
+                }
+                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("COMMON_VALIDATION_FAILED"));
+
+        verifyNoInteractions(
+                participantQuestionService);
+    }
+
+    @Test
+    void addComment_zeroQuestionId_shouldReturn400()
+            throws Exception {
+
+        CreateCommentRequestDTO request =
+                new CreateCommentRequestDTO(
+                        COMMENT_CONTENT);
+
+        when(participantQuestionService.addComment(
+                0L,
+                request))
+                .thenThrow(validationException(
+                        "Question id must be a positive number"));
+
+        mockMvc.perform(
+                        post(COMMENT_URL, 0)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("COMMON_VALIDATION_FAILED"));
+    }
+
+    @Test
+    void addComment_negativeQuestionId_shouldReturn400()
+            throws Exception {
+
+        CreateCommentRequestDTO request =
+                new CreateCommentRequestDTO(
+                        COMMENT_CONTENT);
+
+        when(participantQuestionService.addComment(
+                -1L,
+                request))
+                .thenThrow(validationException(
+                        "Question id must be a positive number"));
+
+        mockMvc.perform(
+                        post(COMMENT_URL, -1)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("COMMON_VALIDATION_FAILED"));
+    }
+
+    @Test
+    void addComment_authenticationFailure_shouldReturn401()
+            throws Exception {
+
+        when(participantQuestionService.addComment(
+                eq(QUESTION_ID),
+                any(CreateCommentRequestDTO.class)))
+                .thenThrow(authenticationException());
+
+        mockMvc.perform(
+                        post(COMMENT_URL, QUESTION_ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                {
+                  "content": "Comment"
+                }
+                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("AUTHENTICATION_REQUIRED"));
+    }
+
+    @Test
+    void addComment_assignmentAccessFailure_shouldReturn403()
+            throws Exception {
+
+        when(participantQuestionService.addComment(
+                eq(QUESTION_ID),
+                any(CreateCommentRequestDTO.class)))
+                .thenThrow(
+                        new QuestionForumAccessRestrictedException(
+                                TASK_ASSIGNMENT_ID));
+
+        mockMvc.perform(
+                        post(COMMENT_URL, QUESTION_ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                {
+                  "content": "Comment"
+                }
+                """))
+                .andExpect(status().isForbidden())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("QUESTION_ACCESS_RESTRICTED"))
+                .andExpect(
+                        jsonPath("$.content")
+                                .doesNotExist());
+    }
+
+    @Test
+    void addComment_maskedPrivateQuestion_shouldReturn404()
+            throws Exception {
+
+        when(participantQuestionService.addComment(
+                eq(QUESTION_ID),
+                any(CreateCommentRequestDTO.class)))
+                .thenThrow(
+                        new QuestionNotFoundException(
+                                QUESTION_ID));
+
+        mockMvc.perform(
+                        post(COMMENT_URL, QUESTION_ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                {
+                  "content": "Comment"
+                }
+                """))
+                .andExpect(status().isNotFound())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("QUESTION_NOT_FOUND"))
+                .andExpect(
+                        jsonPath("$.content")
+                                .doesNotExist());
+    }
+
+    @Test
+    void addComment_closedQuestion_shouldReturn409()
+            throws Exception {
+
+        when(participantQuestionService.addComment(
+                eq(QUESTION_ID),
+                any(CreateCommentRequestDTO.class)))
+                .thenThrow(
+                        new QuestionInvalidStateException(
+                                QUESTION_ID,
+                                OPEN,
+                                CLOSED));
+
+        mockMvc.perform(
+                        post(COMMENT_URL, QUESTION_ID)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                {
+                  "content": "Comment"
+                }
+                """))
+                .andExpect(status().isConflict())
+                .andExpect(
+                        jsonPath("$.code")
+                                .value("QUESTION_INVALID_STATE"))
+                .andExpect(
+                        jsonPath("$.content")
+                                .doesNotExist());
+    }
+
+    private QuestionMessageResponseDTO
+    createCommentResponse() {
+
+        return new QuestionMessageResponseDTO(
+                COMMENT_ID,
+                QUESTION_ID,
+                AUTHOR_ID,
+                COMMENT,
+                COMMENT_CONTENT,
+                CREATED_AT);
+    }
+
+    private QuestionThreadResponseDTO createQuestionResponse() {
         return new QuestionThreadResponseDTO(
             QUESTION_ID,
             TASK_ASSIGNMENT_ID,
