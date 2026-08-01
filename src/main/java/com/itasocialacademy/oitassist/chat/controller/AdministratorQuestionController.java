@@ -26,6 +26,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.itasocialacademy.oitassist.chat.dao.dto.request.ClaimQuestionRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStateRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStatusRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionVisibilityRequestDTO;
+import org.springframework.web.bind.annotation.PatchMapping;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -326,6 +330,228 @@ public class AdministratorQuestionController {
         return ResponseEntity
             .status(HttpStatus.CREATED)
             .body(response);
+    }
+
+    @Operation(
+        summary = "Change question visibility",
+        description = """
+            Changes question visibility independently of its review status,
+            lifecycle state and reviewer assignment.
+
+            The request must contain the expected current version. A successful
+            update increments the version exactly once. A stale version produces
+            QUESTION_VERSION_CONFLICT and is not retried automatically.
+
+            Changing visibility to PUBLIC makes the question available through
+            existing participant-facing access rules. Changing it to PRIVATE hides
+            it from unauthorized participants.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Question visibility updated successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionThreadResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question id, visibility or version is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global administrator role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Question was not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Supplied question version is stale",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/{questionId}/visibility")
+    public ResponseEntity<QuestionThreadResponseDTO> updateVisibility(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42",
+            required = true) @PathVariable Long questionId,
+        @Valid @RequestBody UpdateQuestionVisibilityRequestDTO request) {
+        validateQuestionId(questionId);
+
+        return ResponseEntity.ok(
+            administratorQuestionService
+                .updateVisibility(
+                    questionId,
+                    request));
+    }
+
+    @Operation(
+        summary = "Change question review status",
+        description = """
+            Administratively overrides the question review status.
+
+            Supported values are NEW, IN_REVIEW and ANSWERED. The operation is
+            independent of lifecycle state and visibility. It does not assign,
+            replace or remove the reviewer and does not create or delete messages.
+
+            The expected current version is required. A successful update increments
+            the version exactly once. A stale request returns
+            QUESTION_VERSION_CONFLICT without an automatic retry.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Question status updated successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionThreadResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question id, status or version is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global administrator role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Question was not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Supplied question version is stale",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/{questionId}/status")
+    public ResponseEntity<QuestionThreadResponseDTO> updateStatus(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42",
+            required = true) @PathVariable Long questionId,
+        @Valid @RequestBody UpdateQuestionStatusRequestDTO request) {
+        validateQuestionId(questionId);
+
+        return ResponseEntity.ok(
+            administratorQuestionService
+                .updateStatus(
+                    questionId,
+                    request));
+    }
+
+    @Operation(
+        summary = "Change question lifecycle state",
+        description = """
+            Closes or reopens a question independently of visibility, review status
+            and reviewer assignment.
+
+            Closed questions remain readable through permitted question-details and
+            message-history flows but reject participant comments and official
+            answers. Reopening permits new messages again according to their normal
+            authorization rules.
+
+            The expected current version is required. A successful update increments
+            the version exactly once. A stale request returns
+            QUESTION_VERSION_CONFLICT without an automatic retry.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Question lifecycle state updated successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionThreadResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question id, state or version is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global administrator role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Question was not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Supplied question version is stale",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/{questionId}/state")
+    public ResponseEntity<QuestionThreadResponseDTO> updateState(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42",
+            required = true) @PathVariable Long questionId,
+        @Valid @RequestBody UpdateQuestionStateRequestDTO request) {
+        validateQuestionId(questionId);
+
+        return ResponseEntity.ok(
+            administratorQuestionService
+                .updateState(
+                    questionId,
+                    request));
     }
 
     private void validateQuestionId(Long questionId) {
