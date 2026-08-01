@@ -1,51 +1,61 @@
 package com.itasocialacademy.oitassist.chat.utils;
 
-import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
-import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
-import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
-import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
-import java.util.Optional;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
+import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.IN_PROGRESS;
+import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.SCHEDULED;
+import static com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.HIDDEN;
+import static com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.VISIBLE;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
+import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionCreationNotAllowedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionForumAccessRestrictedException;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.TaskAssignmentFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
-import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.CLOSED;
-import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.IN_PROGRESS;
-import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.SCHEDULED;
-import static com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.HIDDEN;
-import static com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.VISIBLE;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class QuestionAccessPolicyTest {
 
-    private static final Long TASK_ID = 1L;
     private static final String ADMIN_ROLE = "ADMIN";
     private static final String ORG_ROLE = "ORG";
 
     private static final Long USER_ID = 100L;
+    private static final Long OTHER_USER_ID = 101L;
+    private static final Long OTHER_REVIEWER_ID = 102L;
+
+    private static final Long QUESTION_ID = 150L;
     private static final Long TASK_ASSIGNMENT_ID = 200L;
     private static final Long TASK_BODY_ID = 300L;
     private static final Long TOUR_ID = 400L;
@@ -75,18 +85,22 @@ class QuestionAccessPolicyTest {
         stubParticipantAccess(VISIBLE, SCHEDULED);
 
         Long result = questionAccessPolicy
-            .requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID);
+            .requireTaskAssignmentForumAccess(
+                TASK_ASSIGNMENT_ID);
 
         assertEquals(USER_ID, result);
 
         verify(taskAssignmentFacade)
             .findAssignmentById(TASK_ASSIGNMENT_ID);
-        verify(competitionFacade).findTourById(TOUR_ID);
-        verify(competitionFacade).findStageById(STAGE_ID);
-        verify(participationFacade).isUserParticipant(
-            USER_ID,
-            COMPETITION_ID,
-            STAGE_ID);
+        verify(competitionFacade)
+            .findTourById(TOUR_ID);
+        verify(competitionFacade)
+            .findStageById(STAGE_ID);
+        verify(participationFacade)
+            .isUserParticipant(
+                USER_ID,
+                COMPETITION_ID,
+                STAGE_ID);
     }
 
     @Test
@@ -110,8 +124,10 @@ class QuestionAccessPolicyTest {
     void requireTaskAssignmentForumAccess_missingAssignment_shouldThrowTaskAssignmentNotFoundException() {
         when(securityFacade.getCurrentUserId())
             .thenReturn(Optional.of(USER_ID));
+
         when(taskAssignmentFacade.findAssignmentById(
-            TASK_ASSIGNMENT_ID)).thenReturn(Optional.empty());
+            TASK_ASSIGNMENT_ID))
+            .thenReturn(Optional.empty());
 
         assertThrows(
             TaskAssignmentNotFoundException.class,
@@ -131,9 +147,12 @@ class QuestionAccessPolicyTest {
     void requireTaskAssignmentForumAccess_missingTour_shouldThrowTourNotFoundException() {
         when(securityFacade.getCurrentUserId())
             .thenReturn(Optional.of(USER_ID));
+
         when(taskAssignmentFacade.findAssignmentById(
-            TASK_ASSIGNMENT_ID)).thenReturn(Optional.of(
+            TASK_ASSIGNMENT_ID))
+            .thenReturn(Optional.of(
                 createAssignment(VISIBLE)));
+
         when(competitionFacade.findTourById(TOUR_ID))
             .thenReturn(Optional.empty());
 
@@ -143,9 +162,12 @@ class QuestionAccessPolicyTest {
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
-        verify(competitionFacade).findTourById(TOUR_ID);
+        verify(competitionFacade)
+            .findTourById(TOUR_ID);
+
         verify(competitionFacade, never())
             .findStageById(anyLong());
+
         verifyNoInteractions(participationFacade);
     }
 
@@ -153,12 +175,16 @@ class QuestionAccessPolicyTest {
     void requireTaskAssignmentForumAccess_missingStage_shouldThrowStageNotFoundException() {
         when(securityFacade.getCurrentUserId())
             .thenReturn(Optional.of(USER_ID));
+
         when(taskAssignmentFacade.findAssignmentById(
-            TASK_ASSIGNMENT_ID)).thenReturn(Optional.of(
+            TASK_ASSIGNMENT_ID))
+            .thenReturn(Optional.of(
                 createAssignment(VISIBLE)));
+
         when(competitionFacade.findTourById(TOUR_ID))
             .thenReturn(Optional.of(
                 createTour(SCHEDULED)));
+
         when(competitionFacade.findStageById(STAGE_ID))
             .thenReturn(Optional.empty());
 
@@ -168,13 +194,17 @@ class QuestionAccessPolicyTest {
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
-        verify(competitionFacade).findStageById(STAGE_ID);
+        verify(competitionFacade)
+            .findStageById(STAGE_ID);
+
         verifyNoInteractions(participationFacade);
     }
 
     @Test
     void requireTaskAssignmentForumAccess_hiddenAssignment_shouldThrowAccessRestrictedException() {
-        stubAuthenticatedHierarchy(HIDDEN, SCHEDULED);
+        stubAuthenticatedHierarchy(
+            HIDDEN,
+            SCHEDULED);
 
         when(securityFacade.hasRole(ADMIN_ROLE))
             .thenReturn(false);
@@ -190,14 +220,18 @@ class QuestionAccessPolicyTest {
 
     @Test
     void requireTaskAssignmentForumAccess_withoutParticipation_shouldThrowAccessRestrictedException() {
-        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
 
         when(securityFacade.hasRole(ADMIN_ROLE))
             .thenReturn(false);
+
         when(participationFacade.isUserParticipant(
             USER_ID,
             COMPETITION_ID,
-            STAGE_ID)).thenReturn(false);
+            STAGE_ID))
+            .thenReturn(false);
 
         assertThrows(
             QuestionForumAccessRestrictedException.class,
@@ -205,27 +239,28 @@ class QuestionAccessPolicyTest {
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
-        verify(participationFacade).isUserParticipant(
-            USER_ID,
-            COMPETITION_ID,
-            STAGE_ID);
+        verify(participationFacade)
+            .isUserParticipant(
+                USER_ID,
+                COMPETITION_ID,
+                STAGE_ID);
     }
 
     @Test
     void requireTaskAssignmentForumAccess_participantFromAnotherStage_shouldThrowAccessRestrictedException() {
-        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
 
         when(securityFacade.hasRole(ADMIN_ROLE))
             .thenReturn(false);
 
-        /*
-         * The user participates only in OTHER_STAGE_ID. The exact assignment stage
-         * therefore returns false.
-         */
         when(participationFacade.isUserParticipant(
             eq(USER_ID),
             eq(COMPETITION_ID),
-            anyLong())).thenAnswer(invocation -> OTHER_STAGE_ID.equals(invocation.getArgument(2)));
+            anyLong()))
+            .thenAnswer(invocation -> OTHER_STAGE_ID.equals(
+                invocation.getArgument(2)));
 
         assertThrows(
             QuestionForumAccessRestrictedException.class,
@@ -233,27 +268,28 @@ class QuestionAccessPolicyTest {
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
-        verify(participationFacade).isUserParticipant(
-            USER_ID,
-            COMPETITION_ID,
-            STAGE_ID);
+        verify(participationFacade)
+            .isUserParticipant(
+                USER_ID,
+                COMPETITION_ID,
+                STAGE_ID);
     }
 
     @Test
     void requireTaskAssignmentForumAccess_participantFromAnotherCompetition_shouldThrowAccessRestrictedException() {
-        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
 
         when(securityFacade.hasRole(ADMIN_ROLE))
             .thenReturn(false);
 
-        /*
-         * The user participates only in OTHER_COMPETITION_ID. The assignment
-         * competition therefore returns false.
-         */
         when(participationFacade.isUserParticipant(
             eq(USER_ID),
             anyLong(),
-            eq(STAGE_ID))).thenAnswer(invocation -> OTHER_COMPETITION_ID.equals(invocation.getArgument(1)));
+            eq(STAGE_ID)))
+            .thenAnswer(invocation -> OTHER_COMPETITION_ID.equals(
+                invocation.getArgument(1)));
 
         assertThrows(
             QuestionForumAccessRestrictedException.class,
@@ -261,15 +297,18 @@ class QuestionAccessPolicyTest {
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
-        verify(participationFacade).isUserParticipant(
-            USER_ID,
-            COMPETITION_ID,
-            STAGE_ID);
+        verify(participationFacade)
+            .isUserParticipant(
+                USER_ID,
+                COMPETITION_ID,
+                STAGE_ID);
     }
 
     @Test
     void requireTaskAssignmentForumAccess_adminWithoutParticipation_shouldReturnUserId() {
-        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
 
         when(securityFacade.hasRole(ADMIN_ROLE))
             .thenReturn(true);
@@ -280,14 +319,18 @@ class QuestionAccessPolicyTest {
 
         assertEquals(USER_ID, result);
 
-        verify(competitionFacade).findTourById(TOUR_ID);
-        verify(competitionFacade).findStageById(STAGE_ID);
+        verify(competitionFacade)
+            .findTourById(TOUR_ID);
+        verify(competitionFacade)
+            .findStageById(STAGE_ID);
         verifyNoInteractions(participationFacade);
     }
 
     @Test
     void requireTaskAssignmentForumAccess_adminHiddenAssignment_shouldReturnUserId() {
-        stubAuthenticatedHierarchy(HIDDEN, SCHEDULED);
+        stubAuthenticatedHierarchy(
+            HIDDEN,
+            SCHEDULED);
 
         when(securityFacade.hasRole(ADMIN_ROLE))
             .thenReturn(true);
@@ -298,26 +341,28 @@ class QuestionAccessPolicyTest {
 
         assertEquals(USER_ID, result);
 
-        verify(competitionFacade).findTourById(TOUR_ID);
-        verify(competitionFacade).findStageById(STAGE_ID);
+        verify(competitionFacade)
+            .findTourById(TOUR_ID);
+        verify(competitionFacade)
+            .findStageById(STAGE_ID);
         verifyNoInteractions(participationFacade);
     }
 
     @Test
     void requireTaskAssignmentForumAccess_orgWithoutParticipation_shouldThrowAccessRestrictedException() {
-        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
 
-        /*
-         * This mock represents a user who has ORG but not ADMIN. The policy asks only
-         * whether ADMIN is present.
-         */
         when(securityFacade.hasRole(anyString()))
-            .thenAnswer(invocation -> ORG_ROLE.equals(invocation.getArgument(0)));
+            .thenAnswer(invocation -> ORG_ROLE.equals(
+                invocation.getArgument(0)));
 
         when(participationFacade.isUserParticipant(
             USER_ID,
             COMPETITION_ID,
-            STAGE_ID)).thenReturn(false);
+            STAGE_ID))
+            .thenReturn(false);
 
         assertThrows(
             QuestionForumAccessRestrictedException.class,
@@ -325,16 +370,21 @@ class QuestionAccessPolicyTest {
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
-        verify(securityFacade).hasRole(ADMIN_ROLE);
-        verify(participationFacade).isUserParticipant(
-            USER_ID,
-            COMPETITION_ID,
-            STAGE_ID);
+        verify(securityFacade)
+            .hasRole(ADMIN_ROLE);
+
+        verify(participationFacade)
+            .isUserParticipant(
+                USER_ID,
+                COMPETITION_ID,
+                STAGE_ID);
     }
 
     @Test
     void requireTaskAssignmentQuestionCreationAccess_inProgressTour_shouldReturnUserId() {
-        stubParticipantAccess(VISIBLE, IN_PROGRESS);
+        stubParticipantAccess(
+            VISIBLE,
+            IN_PROGRESS);
 
         Long result = questionAccessPolicy
             .requireTaskAssignmentQuestionCreationAccess(
@@ -342,15 +392,18 @@ class QuestionAccessPolicyTest {
 
         assertEquals(USER_ID, result);
 
-        verify(participationFacade).isUserParticipant(
-            USER_ID,
-            COMPETITION_ID,
-            STAGE_ID);
+        verify(participationFacade)
+            .isUserParticipant(
+                USER_ID,
+                COMPETITION_ID,
+                STAGE_ID);
     }
 
     @Test
     void requireTaskAssignmentQuestionCreationAccess_scheduledTour_shouldThrowCreationNotAllowedException() {
-        stubParticipantAccess(VISIBLE, SCHEDULED);
+        stubParticipantAccess(
+            VISIBLE,
+            SCHEDULED);
 
         assertThrows(
             QuestionCreationNotAllowedException.class,
@@ -358,15 +411,18 @@ class QuestionAccessPolicyTest {
                 .requireTaskAssignmentQuestionCreationAccess(
                     TASK_ASSIGNMENT_ID));
 
-        verify(participationFacade).isUserParticipant(
-            USER_ID,
-            COMPETITION_ID,
-            STAGE_ID);
+        verify(participationFacade)
+            .isUserParticipant(
+                USER_ID,
+                COMPETITION_ID,
+                STAGE_ID);
     }
 
     @Test
     void requireTaskAssignmentQuestionCreationAccess_closedTour_shouldThrowCreationNotAllowedException() {
-        stubParticipantAccess(VISIBLE, CLOSED);
+        stubParticipantAccess(
+            VISIBLE,
+            com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.CLOSED);
 
         assertThrows(
             QuestionCreationNotAllowedException.class,
@@ -374,15 +430,283 @@ class QuestionAccessPolicyTest {
                 .requireTaskAssignmentQuestionCreationAccess(
                     TASK_ASSIGNMENT_ID));
 
-        verify(participationFacade).isUserParticipant(
+        verify(participationFacade)
+            .isUserParticipant(
+                USER_ID,
+                COMPETITION_ID,
+                STAGE_ID);
+    }
+
+    @Test
+    void requireQuestionViewAccess_publicQuestionWithParticipation_shouldAllow() {
+        stubParticipantAccess(
+            VISIBLE,
+            SCHEDULED);
+
+        QuestionThread question = createQuestion(
+            PUBLIC,
+            OTHER_USER_ID,
+            null,
+            OPEN);
+
+        assertDoesNotThrow(() -> questionAccessPolicy
+            .requireQuestionViewAccess(question));
+    }
+
+    @Test
+    void requireQuestionViewAccess_privateQuestionForAuthor_shouldAllow() {
+        stubParticipantAccess(
+            VISIBLE,
+            SCHEDULED);
+
+        QuestionThread question = createQuestion(
+            PRIVATE,
+            USER_ID,
+            null,
+            OPEN);
+
+        assertDoesNotThrow(() -> questionAccessPolicy
+            .requireQuestionViewAccess(question));
+    }
+
+    @Test
+    void requireQuestionViewAccess_privateQuestionForOtherUser_shouldMaskAsNotFound() {
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        QuestionThread question = createQuestion(
+            PRIVATE,
+            OTHER_USER_ID,
+            null,
+            OPEN);
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> questionAccessPolicy
+                .requireQuestionViewAccess(question));
+
+        verifyNoInteractions(participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_notAssignedReviewer_shouldNotReceiveReviewerAccess() {
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        QuestionThread question = createQuestion(
+            PRIVATE,
+            OTHER_USER_ID,
+            OTHER_REVIEWER_ID,
+            OPEN);
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> questionAccessPolicy
+                .requireQuestionViewAccess(question));
+
+        verifyNoInteractions(participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_privateAuthorWithoutParticipation_shouldReject() {
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        when(participationFacade.isUserParticipant(
             USER_ID,
             COMPETITION_ID,
-            STAGE_ID);
+            STAGE_ID))
+            .thenReturn(false);
+
+        QuestionThread question = createQuestion(
+            PRIVATE,
+            USER_ID,
+            null,
+            OPEN);
+
+        assertThrows(
+            QuestionForumAccessRestrictedException.class,
+            () -> questionAccessPolicy
+                .requireQuestionViewAccess(question));
+    }
+
+    @Test
+    void requireQuestionViewAccess_assignedReviewerWithParticipation_shouldAllow() {
+        stubParticipantAccess(
+            VISIBLE,
+            SCHEDULED);
+
+        QuestionThread question = createQuestion(
+            PRIVATE,
+            OTHER_USER_ID,
+            USER_ID,
+            OPEN);
+
+        assertDoesNotThrow(() -> questionAccessPolicy
+            .requireQuestionViewAccess(question));
+    }
+
+    @Test
+    void requireQuestionViewAccess_assignedReviewerWithoutParticipation_shouldReject() {
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        when(participationFacade.isUserParticipant(
+            USER_ID,
+            COMPETITION_ID,
+            STAGE_ID))
+            .thenReturn(false);
+
+        QuestionThread question = createQuestion(
+            PRIVATE,
+            OTHER_USER_ID,
+            USER_ID,
+            OPEN);
+
+        assertThrows(
+            QuestionForumAccessRestrictedException.class,
+            () -> questionAccessPolicy
+                .requireQuestionViewAccess(question));
+    }
+
+    @Test
+    void requireQuestionViewAccess_publicQuestionWithoutParticipation_shouldReject() {
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        when(participationFacade.isUserParticipant(
+            USER_ID,
+            COMPETITION_ID,
+            STAGE_ID))
+            .thenReturn(false);
+
+        QuestionThread question = createQuestion(
+            PUBLIC,
+            OTHER_USER_ID,
+            null,
+            OPEN);
+
+        assertThrows(
+            QuestionForumAccessRestrictedException.class,
+            () -> questionAccessPolicy
+                .requireQuestionViewAccess(question));
+    }
+
+    @Test
+    void requireQuestionViewAccess_adminWithoutParticipation_shouldAllow() {
+        stubAuthenticatedHierarchy(
+            HIDDEN,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(true);
+
+        QuestionThread question = createQuestion(
+            PRIVATE,
+            OTHER_USER_ID,
+            null,
+            OPEN);
+
+        assertDoesNotThrow(() -> questionAccessPolicy
+            .requireQuestionViewAccess(question));
+
+        verify(competitionFacade)
+            .findTourById(TOUR_ID);
+        verify(competitionFacade)
+            .findStageById(STAGE_ID);
+        verifyNoInteractions(participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_adminShouldStillValidateHierarchy() {
+        when(securityFacade.getCurrentUserId())
+            .thenReturn(Optional.of(USER_ID));
+
+        when(taskAssignmentFacade.findAssignmentById(
+            TASK_ASSIGNMENT_ID))
+            .thenReturn(Optional.empty());
+
+        QuestionThread question = createQuestion(
+            PRIVATE,
+            OTHER_USER_ID,
+            null,
+            OPEN);
+
+        assertThrows(
+            TaskAssignmentNotFoundException.class,
+            () -> questionAccessPolicy
+                .requireQuestionViewAccess(question));
+
+        verify(securityFacade, never())
+            .hasRole(ADMIN_ROLE);
+
+        verifyNoInteractions(
+            competitionFacade,
+            participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_closedQuestion_shouldRemainReadable() {
+        stubParticipantAccess(
+            VISIBLE,
+            SCHEDULED);
+
+        QuestionThread question = createQuestion(
+            PUBLIC,
+            OTHER_USER_ID,
+            null,
+            CLOSED);
+
+        assertDoesNotThrow(() -> questionAccessPolicy
+            .requireQuestionViewAccess(question));
+    }
+
+    @Test
+    void requireQuestionViewAccess_unauthenticated_shouldRejectBeforeHierarchyLookup() {
+        when(securityFacade.getCurrentUserId())
+            .thenReturn(Optional.empty());
+
+        QuestionThread question = createQuestion(
+            PUBLIC,
+            OTHER_USER_ID,
+            null,
+            OPEN);
+
+        assertThrows(
+            AuthenticationException.class,
+            () -> questionAccessPolicy
+                .requireQuestionViewAccess(question));
+
+        verifyNoInteractions(
+            taskAssignmentFacade,
+            competitionFacade,
+            participationFacade);
     }
 
     private void stubParticipantAccess(
         AssignmentVisibility visibility,
         ExecutionStatus executionStatus) {
+
         stubAuthenticatedHierarchy(
             visibility,
             executionStatus);
@@ -393,17 +717,20 @@ class QuestionAccessPolicyTest {
         when(participationFacade.isUserParticipant(
             USER_ID,
             COMPETITION_ID,
-            STAGE_ID)).thenReturn(true);
+            STAGE_ID))
+            .thenReturn(true);
     }
 
     private void stubAuthenticatedHierarchy(
         AssignmentVisibility visibility,
         ExecutionStatus executionStatus) {
+
         when(securityFacade.getCurrentUserId())
             .thenReturn(Optional.of(USER_ID));
 
         when(taskAssignmentFacade.findAssignmentById(
-            TASK_ASSIGNMENT_ID)).thenReturn(Optional.of(
+            TASK_ASSIGNMENT_ID))
+            .thenReturn(Optional.of(
                 createAssignment(visibility)));
 
         when(competitionFacade.findTourById(TOUR_ID))
@@ -417,6 +744,7 @@ class QuestionAccessPolicyTest {
 
     private TaskAssignmentDetailDTO createAssignment(
         AssignmentVisibility visibility) {
+
         return new TaskAssignmentDetailDTO(
             TASK_ASSIGNMENT_ID,
             TASK_BODY_ID,
@@ -428,6 +756,7 @@ class QuestionAccessPolicyTest {
 
     private TourDetail createTour(
         ExecutionStatus executionStatus) {
+
         return TourDetail.builder()
             .id(TOUR_ID)
             .stageId(STAGE_ID)
@@ -444,11 +773,21 @@ class QuestionAccessPolicyTest {
             .build();
     }
 
-    private TaskBodyDetail createTaskBodyDetail() {
-        return new TaskBodyDetail(
-            TASK_ID,
-            "Test task",
-            "Test task description",
-            USER_ID);
+    private QuestionThread createQuestion(
+        QuestionVisibility visibility,
+        Long authorId,
+        Long assignedReviewerId,
+        QuestionState state) {
+
+        return QuestionThread.builder()
+            .id(QUESTION_ID)
+            .taskAssignmentId(TASK_ASSIGNMENT_ID)
+            .authorId(authorId)
+            .assignedReviewerId(assignedReviewerId)
+            .title("Question title")
+            .content("Question content")
+            .visibility(visibility)
+            .state(state)
+            .build();
     }
 }
