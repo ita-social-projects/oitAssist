@@ -22,6 +22,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionVersionConflictException;
+import com.itasocialacademy.oitassist.chat.utils.QuestionClaimFailureClassifier;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +45,7 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
     private final QuestionThreadRepository questionThreadRepository;
     private final QuestionThreadMapper questionThreadMapper;
     private final SecurityFacade securityFacade;
+    private final QuestionClaimFailureClassifier questionClaimFailureClassifier;
 
     @Override
     @Transactional(readOnly = true)
@@ -137,6 +143,57 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
         return result;
     }
 
+    @Override
+    @Transactional
+    public QuestionThreadResponseDTO claimQuestion(Long questionId, Long expectedVersion) {
+        validateClaimInput(questionId, expectedVersion);
+
+        Long administratorId = requireAdministrator();
+
+        log.debug(
+            "Claiming question: questionId={}, "
+                + "administratorId={}, expectedVersion={}",
+            questionId,
+            administratorId,
+            expectedVersion);
+
+        int updatedRows = questionThreadRepository.claimForReview(
+            questionId,
+            administratorId,
+            expectedVersion,
+            Instant.now());
+
+        if (updatedRows == 0) {
+            log.debug(
+                "Question claim update affected no rows: "
+                    + "questionId={}, administratorId={}, "
+                    + "expectedVersion={}",
+                questionId,
+                administratorId,
+                expectedVersion);
+
+            questionClaimFailureClassifier.classifyAndThrow(questionId, expectedVersion);
+
+            /*
+             * The classifier is required to throw. This fallback prevents accidental
+             * success if that contract is broken.
+             */
+            throw new QuestionVersionConflictException(questionId);
+        }
+
+        QuestionThread claimedQuestion = questionThreadRepository.findById(questionId)
+            .orElseThrow(() -> new QuestionNotFoundException(questionId));
+
+        log.debug(
+            "Question claimed successfully: "
+                + "questionId={}, administratorId={}, version={}",
+            questionId,
+            administratorId,
+            claimedQuestion.getVersion());
+
+        return questionThreadMapper.toResponse(claimedQuestion);
+    }
+
     private Long requireAdministrator() {
         Long currentUserId = securityFacade
             .getCurrentUserId()
@@ -168,6 +225,20 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
             throw new ValidationException(
                 "Page size must be between 1 and %d"
                     .formatted(MAX_PAGE_SIZE),
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+    }
+
+    private void validateClaimInput(Long questionId, Long expectedVersion) {
+        if (questionId == null || questionId <= 0) {
+            throw new ValidationException(
+                "Question id must be a positive number",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+
+        if (expectedVersion == null || expectedVersion < 0) {
+            throw new ValidationException(
+                "Question version must not be negative",
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }
