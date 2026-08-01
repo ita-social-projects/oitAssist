@@ -31,10 +31,6 @@ public class QuestionClaimFailureClassifier {
         QuestionThread question = questionThreadRepository.findById(questionId)
             .orElseThrow(() -> new QuestionNotFoundException(questionId));
 
-        if (question.getAssignedReviewerId() != null || question.getStatus() == IN_REVIEW) {
-            throw new QuestionAlreadyClaimedException(questionId);
-        }
-
         if (question.getState() == CLOSED) {
             throw new InvalidQuestionStateException(
                 questionId,
@@ -47,6 +43,10 @@ public class QuestionClaimFailureClassifier {
                 questionId,
                 question.getStatus(),
                 CLAIM_OPERATION);
+        }
+
+        if (question.getAssignedReviewerId() != null || question.getStatus() == IN_REVIEW) {
+            throw new QuestionAlreadyClaimedException(questionId);
         }
 
         if (!Objects.equals(question.getVersion(), expectedVersion)) {
