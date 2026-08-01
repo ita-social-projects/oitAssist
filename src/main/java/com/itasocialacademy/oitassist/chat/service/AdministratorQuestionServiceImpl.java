@@ -1,12 +1,20 @@
 package com.itasocialacademy.oitassist.chat.service;
 
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionMessageType.OFFICIAL_ANSWER;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
 import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
+import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
+import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
+import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
 import com.itasocialacademy.oitassist.chat.service.interfaces.AdministratorQuestionService;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
@@ -42,6 +50,8 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
         Sort.Order.desc("updatedAt"),
         Sort.Order.desc("id"));
 
+    private final QuestionMessageRepository questionMessageRepository;
+    private final QuestionMessageMapper questionMessageMapper;
     private final QuestionThreadRepository questionThreadRepository;
     private final QuestionThreadMapper questionThreadMapper;
     private final SecurityFacade securityFacade;
@@ -194,6 +204,79 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
         return questionThreadMapper.toResponse(claimedQuestion);
     }
 
+    @Override
+    @Transactional
+    public QuestionMessageResponseDTO publishOfficialAnswer(
+        Long questionId,
+        CreateOfficialAnswerRequestDTO request) {
+        validateQuestionId(questionId);
+
+        Long administratorId = requireAdministrator();
+
+        log.debug(
+            "Publishing official answer: "
+                + "questionId={}, administratorId={}",
+            questionId,
+            administratorId);
+
+        /*
+         * The write lock prevents a lifecycle operation from closing the question
+         * between the OPEN-state validation and message persistence.
+         */
+        QuestionThread question = questionThreadRepository
+            .findByIdForUpdate(questionId)
+            .orElseThrow(() -> new QuestionNotFoundException(
+                questionId));
+
+        validateQuestionAcceptsOfficialAnswers(question);
+
+        QuestionMessage officialAnswer =
+            questionMessageMapper
+                .toOfficialAnswerEntity(request);
+
+        /*
+         * All fields except content are controlled by the backend. The assignments are
+         * intentionally performed even if a mapper implementation returns a polluted
+         * entity.
+         */
+        officialAnswer.setId(null);
+        officialAnswer.setQuestionThreadId(questionId);
+        officialAnswer.setAuthorId(administratorId);
+        officialAnswer.setType(OFFICIAL_ANSWER);
+        officialAnswer.setCreatedAt(null);
+
+        /*
+         * QuestionThread is a managed entity loaded in the current transaction. Dirty
+         * checking persists this transition without an explicit save().
+         */
+        if (question.getStatus() != ANSWERED) {
+            question.setStatus(ANSWERED);
+        }
+
+        QuestionMessage savedAnswer =
+            questionMessageRepository.save(
+                officialAnswer);
+
+        log.info(
+            "Official answer published: "
+                + "messageId={}, questionId={}, administratorId={}",
+            savedAnswer.getId(),
+            questionId,
+            administratorId);
+
+        return questionMessageMapper.toResponse(
+            savedAnswer);
+    }
+
+    private void validateQuestionId(
+        Long questionId) {
+        if (questionId == null || questionId <= 0) {
+            throw new ValidationException(
+                "Question id must be a positive number",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+    }
+
     private Long requireAdministrator() {
         Long currentUserId = securityFacade
             .getCurrentUserId()
@@ -229,17 +312,25 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
         }
     }
 
-    private void validateClaimInput(Long questionId, Long expectedVersion) {
-        if (questionId == null || questionId <= 0) {
-            throw new ValidationException(
-                "Question id must be a positive number",
-                ErrorCode.COMMON_VALIDATION_FAILED);
-        }
+    private void validateClaimInput(
+        Long questionId,
+        Long expectedVersion) {
+        validateQuestionId(questionId);
 
         if (expectedVersion == null || expectedVersion < 0) {
             throw new ValidationException(
                 "Question version must not be negative",
                 ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+    }
+
+    private void validateQuestionAcceptsOfficialAnswers(
+        QuestionThread question) {
+        if (question.getState() != OPEN) {
+            throw new InvalidQuestionStateException(
+                question.getId(),
+                question.getState(),
+                "publish official answer");
         }
     }
 }

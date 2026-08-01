@@ -3,13 +3,16 @@ package com.itasocialacademy.oitassist.chat.dao.repository;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.time.Instant;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.Modifying;
 
 @Repository
@@ -67,4 +70,24 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         @Param("administratorId") Long administratorId,
         @Param("expectedVersion") Long expectedVersion,
         @Param("updatedAt") Instant updatedAt);
+
+    /**
+     * Loads a question while acquiring a database write lock.
+     *
+     * <p>
+     * The lock serializes official-answer publication with concurrent lifecycle
+     * operations affecting the same question.
+     * </p>
+     *
+     * @param questionId question identifier
+     * @return locked question when it exists
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT question
+        FROM QuestionThread question
+        WHERE question.id = :questionId
+        """)
+    Optional<QuestionThread> findByIdForUpdate(
+        @Param("questionId") Long questionId);
 }

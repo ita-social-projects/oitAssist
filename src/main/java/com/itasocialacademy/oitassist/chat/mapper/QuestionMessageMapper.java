@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.chat.mapper;
 
 import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateCommentRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import org.mapstruct.BeanMapping;
@@ -19,4 +20,9 @@ public interface QuestionMessageMapper {
     @Mapping(target = "content", source = "content")
     QuestionMessage toEntity(
         CreateCommentRequestDTO request);
+
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "content", source = "content")
+    QuestionMessage toOfficialAnswerEntity(
+        CreateOfficialAnswerRequestDTO request);
 }
