@@ -48,23 +48,23 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         Pageable pageable);
 
     @Modifying(
-            clearAutomatically = true,
-            flushAutomatically = true)
+        clearAutomatically = true,
+        flushAutomatically = true)
     @Query("""
-    UPDATE QuestionThread question
-    SET question.assignedReviewerId = :administratorId,
-        question.status = IN_REVIEW,
-        question.updatedAt = :updatedAt,
-        question.version = question.version + 1
-    WHERE question.id = :questionId
-      AND question.version = :expectedVersion
-      AND question.state = OPEN
-      AND question.status = NEW
-      AND question.assignedReviewerId IS NULL
-    """)
+        UPDATE QuestionThread question
+        SET question.assignedReviewerId = :administratorId,
+            question.status = IN_REVIEW,
+            question.updatedAt = :updatedAt,
+            question.version = question.version + 1
+        WHERE question.id = :questionId
+          AND question.version = :expectedVersion
+          AND question.state = OPEN
+          AND question.status = NEW
+          AND question.assignedReviewerId IS NULL
+        """)
     int claimForReview(
-            @Param("questionId") Long questionId,
-            @Param("administratorId") Long administratorId,
-            @Param("expectedVersion") Long expectedVersion,
-            @Param("updatedAt") Instant updatedAt);
+        @Param("questionId") Long questionId,
+        @Param("administratorId") Long administratorId,
+        @Param("expectedVersion") Long expectedVersion,
+        @Param("updatedAt") Instant updatedAt);
 }
