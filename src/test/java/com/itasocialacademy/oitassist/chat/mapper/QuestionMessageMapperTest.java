@@ -5,6 +5,7 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionMessageType.
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateCommentRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionMessageType;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
@@ -115,5 +116,36 @@ class QuestionMessageMapperTest {
             .content(CONTENT)
             .createdAt(CREATED_AT)
             .build();
+    }
+
+    @Test
+    void toOfficialAnswerEntity_validRequest_shouldMapOnlyContent() {
+        CreateOfficialAnswerRequestDTO request =
+            new CreateOfficialAnswerRequestDTO(
+                CONTENT);
+
+        QuestionMessage result =
+            questionMessageMapper
+                .toOfficialAnswerEntity(request);
+
+        assertThat(result).isNotNull();
+
+        assertThat(result.getContent())
+            .isEqualTo(CONTENT);
+
+        assertThat(result.getId()).isNull();
+        assertThat(result.getQuestionThreadId()).isNull();
+        assertThat(result.getAuthorId()).isNull();
+        assertThat(result.getType()).isNull();
+        assertThat(result.getCreatedAt()).isNull();
+    }
+
+    @Test
+    void toOfficialAnswerEntity_nullRequest_shouldReturnNull() {
+        QuestionMessage result =
+            questionMessageMapper
+                .toOfficialAnswerEntity(null);
+
+        assertThat(result).isNull();
     }
 }
