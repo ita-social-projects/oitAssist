@@ -22,6 +22,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.ClaimQuestionRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("/api/v1/admin/questions")
@@ -162,6 +168,88 @@ public class AdministratorQuestionController {
                         status,
                         page,
                         size)));
+    }
+
+    @Operation(
+        summary = "Claim a question for review",
+        description = """
+            Atomically assigns an eligible open and unclaimed question to the
+            authenticated global administrator.
+
+            The operation is non-idempotent. The backend assigns the reviewer,
+            changes the status to IN_REVIEW and increments the version.
+
+            A concurrent or otherwise unsuccessful claim returns a classified
+            conflict response and is not retried automatically.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Question claimed successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionThreadResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question id or expected version is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global administrator role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Question was not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = """
+                Question is already claimed, is not claimable or its version
+                conflicts with the persisted version
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/{questionId}/claim")
+    public ResponseEntity<QuestionThreadResponseDTO> claimQuestion(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42") @PathVariable Long questionId,
+        @Valid @RequestBody ClaimQuestionRequestDTO request) {
+        validateQuestionId(questionId);
+
+        return ResponseEntity.ok(
+            administratorQuestionService
+                .claimQuestion(
+                    questionId,
+                    request.version()));
+    }
+
+    private void validateQuestionId(Long questionId) {
+        if (questionId == null || questionId <= 0) {
+            throw new ValidationException(
+                "Question id must be a positive number",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
     }
 
     private void validatePageAndSize(
