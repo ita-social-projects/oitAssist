@@ -1,5 +1,7 @@
 package com.itasocialacademy.oitassist.chat.dao.repository;
 
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,5 +27,21 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
     Page<QuestionThread> findParticipantVisibleQuestions(
         @Param("taskAssignmentId") Long taskAssignmentId,
         @Param("participantId") Long participantId,
+        Pageable pageable);
+
+    Page<QuestionThread> findAllByStateAndStatusAndAssignedReviewerIdIsNull(
+        QuestionState state,
+        QuestionStatus status,
+        Pageable pageable);
+
+    Page<QuestionThread> findAllByStateAndAssignedReviewerId(
+        QuestionState state,
+        Long assignedReviewerId,
+        Pageable pageable);
+
+    Page<QuestionThread> findAllByStateAndAssignedReviewerIdAndStatus(
+        QuestionState state,
+        Long assignedReviewerId,
+        QuestionStatus status,
         Pageable pageable);
 }
