@@ -98,54 +98,68 @@ public class QuestionAccessPolicy {
     /**
      * Validates that the current user may view the supplied question thread.
      *
-     * <p>
-     * A public question is available to a participant who can access the related
-     * task assignment. A private question is available to its author or assigned
-     * reviewer when that user also satisfies the assignment-access rules.
-     * </p>
-     *
-     * <p>
-     * Administrators bypass assignment visibility and participation checks, but
-     * only after the complete assignment hierarchy has been validated. Another
-     * participant's private question is masked as not found before the
-     * participation lookup is performed.
-     * </p>
-     *
-     * @param question question thread whose details or messages are requested
-     * @throws AuthenticationException                if the current user is not
-     *                                                authenticated
-     * @throws QuestionNotFoundException              if a private question must be
-     *                                                masked
-     * @throws QuestionForumAccessRestrictedException if assignment access is
-     *                                                restricted
+     * @param question question whose details or messages are requested
      */
     public void requireQuestionViewAccess(
-        QuestionThread question) {
-        TaskAssignmentAccessContext context =
-            resolveTaskAssignmentContext(
-                question.getTaskAssignmentId());
+            QuestionThread question) {
 
+        requireQuestionAccess(question);
+    }
+
+    /**
+     * Validates that the current user may participate in the supplied question by
+     * adding a comment.
+     *
+     * <p>The method applies the same assignment, visibility, authorship,
+     * reviewer and administrator rules as question viewing and returns the
+     * authenticated user identifier for server-controlled message authorship.</p>
+     *
+     * @param question question to which a comment is being added
+     * @return identifier of the authenticated and authorized user
+     */
+    public Long requireQuestionCommentAccess(
+            QuestionThread question) {
+        return requireQuestionAccess(question).userId();
+    }
+
+    private TaskAssignmentAccessContext requireQuestionAccess(
+            QuestionThread question) {
+        TaskAssignmentAccessContext context =
+                resolveTaskAssignmentContext(
+                        question.getTaskAssignmentId());
+
+        /*
+         * Administrators bypass assignment visibility and participation checks,
+         * but only after the complete hierarchy has been validated.
+         */
         if (isAdministrator()) {
-            return;
+            return context;
         }
 
         boolean author = Objects.equals(
-            context.userId(),
-            question.getAuthorId());
+                context.userId(),
+                question.getAuthorId());
 
         boolean assignedReviewer = Objects.equals(
-            context.userId(),
-            question.getAssignedReviewerId());
+                context.userId(),
+                question.getAssignedReviewerId());
 
+        /*
+         * Another participant's private question is masked before checking
+         * participation, preventing disclosure of protected thread data.
+         */
         if (question.getVisibility() == PRIVATE
-            && !author
-            && !assignedReviewer) {
+                && !author
+                && !assignedReviewer) {
+
             throw new QuestionNotFoundException(
-                question.getId());
+                    question.getId());
         }
 
         requireVisibleAssignment(context);
         requireParticipation(context);
+
+        return context;
     }
 
     private TaskAssignmentAccessContext requireTaskAssignmentParticipantAccess(
