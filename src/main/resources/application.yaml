@@ -123,6 +123,10 @@ graph:
   drive-id: ${GRAPH_DRIVE_ID}
 
 app:
+  realtime:
+    allowed-origins: ${APP_REALTIME_ALLOWED_ORIGINS:http://localhost:5173}
+    server-heartbeat: ${APP_REALTIME_SERVER_HEARTBEAT:10000}
+    client-heartbeat: ${APP_REALTIME_CLIENT_HEARTBEAT:10000}
   storage:
     local:
       root: ${APP_STORAGE_LOCAL_ROOT:./uploads}

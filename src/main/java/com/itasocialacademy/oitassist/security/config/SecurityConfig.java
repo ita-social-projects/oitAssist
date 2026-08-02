@@ -82,6 +82,7 @@ public class SecurityConfig {
                     "/api/v1/user-activation/resend")
                 .permitAll()
                 .requestMatchers(HttpMethod.GET,
+                    "/ws",
                     "/api/v1/news/**",
                     "/api/v1/user-activation/verify")
                 .permitAll()
