@@ -10,6 +10,7 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.CommentCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
@@ -20,12 +21,14 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +44,7 @@ public class ParticipantQuestionServiceImpl
     private final QuestionThreadMapper questionThreadMapper;
     private final QuestionMessageMapper questionMessageMapper;
     private final QuestionAccessPolicy questionAccessPolicy;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -145,8 +149,21 @@ public class ParticipantQuestionServiceImpl
             questionId,
             authorId);
 
-        return questionMessageMapper.toResponse(
-            savedComment);
+        QuestionMessageResponseDTO messageResponse =
+            questionMessageMapper.toResponse(
+                savedComment);
+
+        QuestionThreadResponseDTO questionResponse =
+            questionThreadMapper.toResponse(
+                question);
+
+        applicationEventPublisher.publishEvent(
+            new CommentCreatedDomainEvent(
+                questionResponse,
+                messageResponse,
+                Instant.now()));
+
+        return messageResponse;
     }
 
     private QuestionThread loadAuthorizedQuestion(

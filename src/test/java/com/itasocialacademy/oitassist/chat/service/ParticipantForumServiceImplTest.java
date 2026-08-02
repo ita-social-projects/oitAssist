@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.chat.service;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadSummaryResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.QuestionCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
 import com.itasocialacademy.oitassist.chat.utils.QuestionAccessPolicy;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
@@ -17,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -34,16 +36,11 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWE
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 
@@ -76,6 +73,9 @@ class ParticipantForumServiceImplTest {
 
     @Mock
     private QuestionAccessPolicy questionAccessPolicy;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private ParticipantForumServiceImpl participantForumService;
@@ -329,21 +329,24 @@ class ParticipantForumServiceImplTest {
     }
 
     @Test
-    void createQuestion_accessibleTaskAssignment_shouldSaveAndReturnMappedResponse() {
-        CreateQuestionRequestDTO request = createQuestionRequest();
-        QuestionThread mappedQuestion = createMappedQuestion();
-        QuestionThread savedQuestion = createSavedQuestion();
+    void createQuestion_accessibleTaskAssignment_shouldSaveMapPublishAndReturnResponse() {
+        CreateQuestionRequestDTO request =
+            createQuestionRequest();
+
+        QuestionThread mappedQuestion =
+            createMappedQuestion();
+
+        QuestionThread savedQuestion =
+            createSavedQuestion();
+
         QuestionThreadResponseDTO expectedResponse =
             createQuestionResponse();
 
-        when(questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
-            .thenReturn(USER_ID);
-        when(questionThreadMapper.toEntity(request))
-            .thenReturn(mappedQuestion);
-        when(questionThreadRepository.save(mappedQuestion))
-            .thenReturn(savedQuestion);
-        when(questionThreadMapper.toResponse(savedQuestion))
-            .thenReturn(expectedResponse);
+        stubSuccessfulCreation(
+            request,
+            mappedQuestion,
+            savedQuestion,
+            expectedResponse);
 
         QuestionThreadResponseDTO result =
             participantForumService.createQuestion(
@@ -352,19 +355,47 @@ class ParticipantForumServiceImplTest {
 
         assertSame(expectedResponse, result);
 
-        InOrder inOrder = inOrder(
+        ArgumentCaptor<QuestionCreatedDomainEvent> eventCaptor =
+            ArgumentCaptor.forClass(
+                QuestionCreatedDomainEvent.class);
+
+        InOrder order = inOrder(
             questionAccessPolicy,
             questionThreadMapper,
-            questionThreadRepository);
+            questionThreadRepository,
+            applicationEventPublisher);
 
-        inOrder.verify(questionAccessPolicy)
-            .requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID);
-        inOrder.verify(questionThreadMapper)
+        order.verify(questionAccessPolicy)
+            .requireTaskAssignmentQuestionCreationAccess(
+                TASK_ASSIGNMENT_ID);
+
+        order.verify(questionThreadMapper)
             .toEntity(request);
-        inOrder.verify(questionThreadRepository)
+
+        order.verify(questionThreadRepository)
             .save(mappedQuestion);
-        inOrder.verify(questionThreadMapper)
+
+        order.verify(questionThreadMapper)
             .toResponse(savedQuestion);
+
+        order.verify(applicationEventPublisher)
+            .publishEvent(eventCaptor.capture());
+
+        QuestionCreatedDomainEvent event =
+            eventCaptor.getValue();
+
+        assertAll(
+            () -> assertSame(
+                expectedResponse,
+                event.question()),
+            () -> assertEquals(
+                TASK_ASSIGNMENT_ID,
+                event.taskAssignmentId()),
+            () -> assertEquals(
+                CREATED_QUESTION_ID,
+                event.questionId()),
+            () -> assertNotNull(
+                event.occurredAt()));
     }
 
     @Test
@@ -508,7 +539,8 @@ class ParticipantForumServiceImplTest {
 
         verifyNoInteractions(
             questionThreadRepository,
-            questionThreadMapper);
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     @Test
@@ -529,7 +561,8 @@ class ParticipantForumServiceImplTest {
 
         verifyNoInteractions(
             questionThreadRepository,
-            questionThreadMapper);
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     @Test
@@ -557,7 +590,8 @@ class ParticipantForumServiceImplTest {
         verifyNoInteractions(
             questionAccessPolicy,
             questionThreadRepository,
-            questionThreadMapper);
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     @Test
@@ -586,6 +620,9 @@ class ParticipantForumServiceImplTest {
         verify(questionThreadRepository).save(mappedQuestion);
         verify(questionThreadMapper, never())
             .toResponse(any(QuestionThread.class));
+
+        verifyNoInteractions(
+            applicationEventPublisher);
     }
 
     @Test
@@ -621,6 +658,54 @@ class ParticipantForumServiceImplTest {
                 eq(OTHER_TASK_ASSIGNMENT_ID),
                 anyLong(),
                 any(Pageable.class));
+    }
+
+    @Test
+    void createQuestion_success_shouldPublishDomainEvent() {
+        CreateQuestionRequestDTO request =
+            createQuestionRequest();
+
+        QuestionThread mappedQuestion =
+            createMappedQuestion();
+
+        QuestionThread savedQuestion =
+            createSavedQuestion();
+
+        QuestionThreadResponseDTO response =
+            createQuestionResponse();
+
+        stubSuccessfulCreation(
+            request,
+            mappedQuestion,
+            savedQuestion,
+            response);
+
+        participantForumService.createQuestion(
+            TASK_ASSIGNMENT_ID,
+            request);
+
+        ArgumentCaptor<QuestionCreatedDomainEvent> captor =
+            ArgumentCaptor.forClass(
+                QuestionCreatedDomainEvent.class);
+
+        verify(applicationEventPublisher)
+            .publishEvent(captor.capture());
+
+        QuestionCreatedDomainEvent event =
+            captor.getValue();
+
+        assertAll(
+            () -> assertSame(
+                response,
+                event.question()),
+            () -> assertEquals(
+                TASK_ASSIGNMENT_ID,
+                event.taskAssignmentId()),
+            () -> assertEquals(
+                CREATED_QUESTION_ID,
+                event.questionId()),
+            () -> assertNotNull(
+                event.occurredAt()));
     }
 
     private CreateQuestionRequestDTO createQuestionRequest() {

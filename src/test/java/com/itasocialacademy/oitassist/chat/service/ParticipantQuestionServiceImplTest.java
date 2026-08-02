@@ -24,6 +24,7 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.CommentCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
@@ -41,6 +42,7 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -84,6 +86,9 @@ class ParticipantQuestionServiceImplTest {
 
     @Mock
     private QuestionAccessPolicy questionAccessPolicy;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private ParticipantQuestionServiceImpl participantQuestionService;
@@ -574,7 +579,7 @@ class ParticipantQuestionServiceImplTest {
                 .createdAt(CREATED_AT)
                 .build();
 
-        QuestionMessageResponseDTO response =
+        QuestionMessageResponseDTO messageResponse =
             new QuestionMessageResponseDTO(
                 COMMENT_ID,
                 QUESTION_ID,
@@ -583,11 +588,23 @@ class ParticipantQuestionServiceImplTest {
                 COMMENT_CONTENT,
                 CREATED_AT);
 
-        var originalStatus = question.getStatus();
-        var originalState = question.getState();
-        var originalVisibility = question.getVisibility();
-        var originalReviewer = question.getAssignedReviewerId();
-        var originalVersion = question.getVersion();
+        QuestionThreadResponseDTO questionResponse =
+            createQuestionResponse(question);
+
+        var originalStatus =
+            question.getStatus();
+
+        var originalState =
+            question.getState();
+
+        var originalVisibility =
+            question.getVisibility();
+
+        var originalReviewer =
+            question.getAssignedReviewerId();
+
+        var originalVersion =
+            question.getVersion();
 
         when(questionThreadRepository.findById(QUESTION_ID))
             .thenReturn(Optional.of(question));
@@ -603,7 +620,10 @@ class ParticipantQuestionServiceImplTest {
             .thenReturn(savedComment);
 
         when(questionMessageMapper.toResponse(savedComment))
-            .thenReturn(response);
+            .thenReturn(messageResponse);
+
+        when(questionThreadMapper.toResponse(question))
+            .thenReturn(questionResponse);
 
         QuestionMessageResponseDTO result =
             participantQuestionService.addComment(
@@ -621,8 +641,11 @@ class ParticipantQuestionServiceImplTest {
             messageCaptor.getValue();
 
         assertAll(
-            () -> assertSame(response, result),
-            () -> assertNull(persistedComment.getId()),
+            () -> assertSame(
+                messageResponse,
+                result),
+            () -> assertNull(
+                persistedComment.getId()),
             () -> assertEquals(
                 QUESTION_ID,
                 persistedComment.getQuestionThreadId()),
@@ -653,11 +676,17 @@ class ParticipantQuestionServiceImplTest {
                 originalVersion,
                 question.getVersion()));
 
+        ArgumentCaptor<CommentCreatedDomainEvent> eventCaptor =
+            ArgumentCaptor.forClass(
+                CommentCreatedDomainEvent.class);
+
         InOrder order = inOrder(
             questionThreadRepository,
             questionAccessPolicy,
             questionMessageMapper,
-            questionMessageRepository);
+            questionMessageRepository,
+            questionThreadMapper,
+            applicationEventPublisher);
 
         order.verify(questionThreadRepository)
             .findById(QUESTION_ID);
@@ -673,6 +702,31 @@ class ParticipantQuestionServiceImplTest {
 
         order.verify(questionMessageMapper)
             .toResponse(savedComment);
+
+        order.verify(questionThreadMapper)
+            .toResponse(question);
+
+        order.verify(applicationEventPublisher)
+            .publishEvent(eventCaptor.capture());
+
+        CommentCreatedDomainEvent event =
+            eventCaptor.getValue();
+
+        assertAll(
+            () -> assertSame(
+                questionResponse,
+                event.question()),
+            () -> assertSame(
+                messageResponse,
+                event.message()),
+            () -> assertEquals(
+                TASK_ASSIGNMENT_ID,
+                event.taskAssignmentId()),
+            () -> assertEquals(
+                QUESTION_ID,
+                event.questionId()),
+            () -> assertNotNull(
+                event.occurredAt()));
 
         verify(questionThreadRepository, never())
             .save(any(QuestionThread.class));
@@ -697,7 +751,8 @@ class ParticipantQuestionServiceImplTest {
         verifyNoInteractions(
             questionAccessPolicy,
             questionMessageRepository,
-            questionMessageMapper);
+            questionMessageMapper,
+            applicationEventPublisher);
     }
 
     @Test
@@ -727,7 +782,8 @@ class ParticipantQuestionServiceImplTest {
 
         verifyNoInteractions(
             questionMessageRepository,
-            questionMessageMapper);
+            questionMessageMapper,
+            applicationEventPublisher);
 
         verify(questionThreadRepository, never())
             .save(any(QuestionThread.class));
@@ -763,7 +819,8 @@ class ParticipantQuestionServiceImplTest {
 
         verifyNoInteractions(
             questionMessageRepository,
-            questionMessageMapper);
+            questionMessageMapper,
+            applicationEventPublisher);
 
         verify(questionThreadRepository, never())
             .save(any(QuestionThread.class));
@@ -793,12 +850,15 @@ class ParticipantQuestionServiceImplTest {
             questionThreadRepository,
             questionMessageRepository,
             questionAccessPolicy,
-            questionMessageMapper);
+            questionMessageMapper,
+            applicationEventPublisher);
     }
 
     @Test
-    void addComment_repositoryFailure_shouldPropagateAndNotMapResponse() {
-        QuestionThread question = createQuestion();
+    void addComment_repositoryFailure_shouldPropagateWithoutMappingOrPublishing() {
+        QuestionThread question =
+            createQuestion();
+
         question.setState(OPEN);
 
         CreateCommentRequestDTO request =
@@ -840,8 +900,14 @@ class ParticipantQuestionServiceImplTest {
         verify(questionMessageMapper, never())
             .toResponse(any(QuestionMessage.class));
 
+        verify(questionThreadMapper, never())
+            .toResponse(any(QuestionThread.class));
+
         verify(questionThreadRepository, never())
             .save(any(QuestionThread.class));
+
+        verifyNoInteractions(
+            applicationEventPublisher);
     }
 
     private QuestionThread createQuestion() {
@@ -862,20 +928,26 @@ class ParticipantQuestionServiceImplTest {
     }
 
     private QuestionThreadResponseDTO createQuestionResponse() {
+        return createQuestionResponse(
+            createQuestion());
+    }
+
+    private QuestionThreadResponseDTO createQuestionResponse(
+        QuestionThread question) {
 
         return new QuestionThreadResponseDTO(
-            QUESTION_ID,
-            TASK_ASSIGNMENT_ID,
-            AUTHOR_ID,
-            REVIEWER_ID,
-            "Question title",
-            "Question content",
-            ANSWERED,
-            PRIVATE,
-            CLOSED,
-            2L,
-            CREATED_AT,
-            UPDATED_AT);
+            question.getId(),
+            question.getTaskAssignmentId(),
+            question.getAuthorId(),
+            question.getAssignedReviewerId(),
+            question.getTitle(),
+            question.getContent(),
+            question.getStatus(),
+            question.getVisibility(),
+            question.getState(),
+            question.getVersion(),
+            question.getCreatedAt(),
+            question.getUpdatedAt());
     }
 
     private QuestionMessage createMessage(

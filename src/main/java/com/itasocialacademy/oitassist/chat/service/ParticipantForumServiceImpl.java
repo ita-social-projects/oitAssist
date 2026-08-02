@@ -8,6 +8,7 @@ import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.QuestionCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
 import com.itasocialacademy.oitassist.chat.service.interfaces.ParticipantForumService;
 import com.itasocialacademy.oitassist.chat.utils.QuestionAccessPolicy;
@@ -15,12 +16,14 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +38,7 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
     private final QuestionThreadRepository questionThreadRepository;
     private final QuestionThreadMapper questionThreadMapper;
     private final QuestionAccessPolicy questionAccessPolicy;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -76,9 +80,19 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
         question.setVisibility(QuestionVisibility.PRIVATE);
         question.setAssignedReviewerId(null);
 
-        QuestionThread savedQuestion = questionThreadRepository.save(question);
+        QuestionThread savedQuestion =
+            questionThreadRepository.save(question);
 
-        return questionThreadMapper.toResponse(savedQuestion);
+        QuestionThreadResponseDTO response =
+            questionThreadMapper.toResponse(
+                savedQuestion);
+
+        applicationEventPublisher.publishEvent(
+            new QuestionCreatedDomainEvent(
+                response,
+                Instant.now()));
+
+        return response;
     }
 
     private void validateRequest(
