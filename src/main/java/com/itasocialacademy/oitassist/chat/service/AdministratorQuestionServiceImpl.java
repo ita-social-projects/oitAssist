@@ -11,11 +11,14 @@ import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStatusR
 import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionVisibilityRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.*;
 import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
@@ -27,6 +30,7 @@ import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -59,6 +63,7 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
     private final QuestionThreadMapper questionThreadMapper;
     private final SecurityFacade securityFacade;
     private final QuestionClaimFailureClassifier questionClaimFailureClassifier;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -204,7 +209,18 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
             administratorId,
             claimedQuestion.getVersion());
 
-        return questionThreadMapper.toResponse(claimedQuestion);
+        QuestionThreadResponseDTO response =
+            questionThreadMapper.toResponse(
+                claimedQuestion);
+
+        applicationEventPublisher.publishEvent(
+            new QuestionClaimedDomainEvent(
+                response,
+                null,
+                administratorId,
+                Instant.now()));
+
+        return response;
     }
 
     @Override
@@ -252,6 +268,9 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
          * QuestionThread is a managed entity loaded in the current transaction. Dirty
          * checking persists this transition without an explicit save().
          */
+
+        QuestionStatus previousStatus = question.getStatus();
+
         if (question.getStatus() != ANSWERED) {
             question.setStatus(ANSWERED);
         }
@@ -260,6 +279,29 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
             questionMessageRepository.save(
                 officialAnswer);
 
+        /*
+         * Flush is required before creating the question snapshot because the status
+         * update is persisted through dirty checking and the optimistic-lock version is
+         * incremented during flush.
+         */
+        questionThreadRepository.flush();
+
+        QuestionMessageResponseDTO messageResponse =
+            questionMessageMapper.toResponse(
+                savedAnswer);
+
+        QuestionThreadResponseDTO questionResponse =
+            questionThreadMapper.toResponse(
+                question);
+
+        applicationEventPublisher.publishEvent(
+            new OfficialAnswerPublishedDomainEvent(
+                questionResponse,
+                messageResponse,
+                previousStatus,
+                questionResponse.status(),
+                Instant.now()));
+
         log.info(
             "Official answer published: "
                 + "messageId={}, questionId={}, administratorId={}",
@@ -267,8 +309,7 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
             questionId,
             administratorId);
 
-        return questionMessageMapper.toResponse(
-            savedAnswer);
+        return messageResponse;
     }
 
     @Override
@@ -289,6 +330,12 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
 
         Long administratorId = requireAdministrator();
 
+        QuestionThread currentQuestion =
+            loadQuestion(questionId);
+
+        QuestionVisibility previousVisibility =
+            currentQuestion.getVisibility();
+
         log.debug(
             "Updating question visibility: "
                 + "questionId={}, administratorId={}, "
@@ -306,13 +353,23 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
                     request.version(),
                     Instant.now());
 
-        return completeModerationUpdate(
-            questionId,
-            administratorId,
-            request.version(),
-            "visibility",
-            request.visibility(),
-            updatedRows);
+        QuestionThreadResponseDTO response =
+            completeModerationUpdate(
+                questionId,
+                administratorId,
+                request.version(),
+                "visibility",
+                request.visibility(),
+                updatedRows);
+
+        applicationEventPublisher.publishEvent(
+            new QuestionVisibilityChangedDomainEvent(
+                response,
+                previousVisibility,
+                response.visibility(),
+                Instant.now()));
+
+        return response;
     }
 
     @Override
@@ -333,6 +390,12 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
 
         Long administratorId = requireAdministrator();
 
+        QuestionThread currentQuestion =
+            loadQuestion(questionId);
+
+        QuestionStatus previousStatus =
+            currentQuestion.getStatus();
+
         log.debug(
             "Updating question status: "
                 + "questionId={}, administratorId={}, "
@@ -350,13 +413,23 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
                     request.version(),
                     Instant.now());
 
-        return completeModerationUpdate(
-            questionId,
-            administratorId,
-            request.version(),
-            "status",
-            request.status(),
-            updatedRows);
+        QuestionThreadResponseDTO response =
+            completeModerationUpdate(
+                questionId,
+                administratorId,
+                request.version(),
+                "status",
+                request.status(),
+                updatedRows);
+
+        applicationEventPublisher.publishEvent(
+            new QuestionStatusChangedDomainEvent(
+                response,
+                previousStatus,
+                response.status(),
+                Instant.now()));
+
+        return response;
     }
 
     @Override
@@ -377,6 +450,12 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
 
         Long administratorId = requireAdministrator();
 
+        QuestionThread currentQuestion =
+            loadQuestion(questionId);
+
+        QuestionState previousState =
+            currentQuestion.getState();
+
         log.debug(
             "Updating question lifecycle state: "
                 + "questionId={}, administratorId={}, "
@@ -394,13 +473,31 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
                     request.version(),
                     Instant.now());
 
-        return completeModerationUpdate(
-            questionId,
-            administratorId,
-            request.version(),
-            "state",
-            request.state(),
-            updatedRows);
+        QuestionThreadResponseDTO response =
+            completeModerationUpdate(
+                questionId,
+                administratorId,
+                request.version(),
+                "state",
+                request.state(),
+                updatedRows);
+
+        applicationEventPublisher.publishEvent(
+            new QuestionStateChangedDomainEvent(
+                response,
+                previousState,
+                response.state(),
+                Instant.now()));
+
+        return response;
+    }
+
+    private QuestionThread loadQuestion(
+        Long questionId) {
+        return questionThreadRepository
+            .findById(questionId)
+            .orElseThrow(() -> new QuestionNotFoundException(
+                questionId));
     }
 
     private QuestionThreadResponseDTO completeModerationUpdate(

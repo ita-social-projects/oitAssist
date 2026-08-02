@@ -7,26 +7,19 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
 import static jakarta.persistence.LockModeType.PESSIMISTIC_WRITE;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.OfficialAnswerPublishedDomainEvent;
 import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
@@ -45,10 +38,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.transaction.annotation.Transactional;
@@ -90,12 +85,15 @@ class AdministratorOfficialAnswerServiceTest {
     @Mock
     private QuestionClaimFailureClassifier questionClaimFailureClassifier;
 
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
     @InjectMocks
     private AdministratorQuestionServiceImpl administratorQuestionService;
 
     @ParameterizedTest
     @EnumSource(QuestionStatus.class)
-    void publishOfficialAnswer_supportedStatus_shouldCreateServerControlledAnswer(
+    void publishOfficialAnswer_supportedStatus_shouldPersistPublishAndReturnAnswer(
         QuestionStatus initialStatus) {
 
         stubAdministrator();
@@ -107,10 +105,6 @@ class AdministratorOfficialAnswerServiceTest {
         QuestionThread question =
             createQuestion(initialStatus);
 
-        /*
-         * Polluted mapper result verifies that every protected message field is
-         * overwritten by the service.
-         */
         QuestionMessage mappedAnswer =
             QuestionMessage.builder()
                 .id(999L)
@@ -124,8 +118,14 @@ class AdministratorOfficialAnswerServiceTest {
         QuestionMessage savedAnswer =
             createSavedAnswer(MESSAGE_ID);
 
-        QuestionMessageResponseDTO response =
+        QuestionMessageResponseDTO messageResponse =
             createResponse(MESSAGE_ID);
+
+        QuestionThreadResponseDTO questionResponse =
+            createQuestionResponse(
+                question,
+                ANSWERED,
+                question.getVersion() + 1);
 
         String originalQuestionContent =
             question.getContent();
@@ -148,7 +148,10 @@ class AdministratorOfficialAnswerServiceTest {
             .thenReturn(savedAnswer);
 
         when(questionMessageMapper.toResponse(savedAnswer))
-            .thenReturn(response);
+            .thenReturn(messageResponse);
+
+        when(questionThreadMapper.toResponse(question))
+            .thenReturn(questionResponse);
 
         QuestionMessageResponseDTO result =
             administratorQuestionService
@@ -156,7 +159,7 @@ class AdministratorOfficialAnswerServiceTest {
                     QUESTION_ID,
                     request);
 
-        assertSame(response, result);
+        assertSame(messageResponse, result);
 
         assertAll(
             () -> assertEquals(
@@ -174,8 +177,7 @@ class AdministratorOfficialAnswerServiceTest {
             () -> assertEquals(
                 originalQuestionContent,
                 question.getContent()),
-            () -> assertEquals(
-                null,
+            () -> assertNull(
                 mappedAnswer.getId()),
             () -> assertEquals(
                 QUESTION_ID,
@@ -186,17 +188,22 @@ class AdministratorOfficialAnswerServiceTest {
             () -> assertEquals(
                 OFFICIAL_ANSWER,
                 mappedAnswer.getType()),
-            () -> assertEquals(
-                null,
+            () -> assertNull(
                 mappedAnswer.getCreatedAt()),
             () -> assertEquals(
                 ANSWER_CONTENT,
                 mappedAnswer.getContent()));
 
+        ArgumentCaptor<OfficialAnswerPublishedDomainEvent> eventCaptor =
+            ArgumentCaptor.forClass(
+                OfficialAnswerPublishedDomainEvent.class);
+
         InOrder order = inOrder(
             questionThreadRepository,
             questionMessageMapper,
-            questionMessageRepository);
+            questionMessageRepository,
+            questionThreadMapper,
+            applicationEventPublisher);
 
         order.verify(questionThreadRepository)
             .findByIdForUpdate(QUESTION_ID);
@@ -207,14 +214,41 @@ class AdministratorOfficialAnswerServiceTest {
         order.verify(questionMessageRepository)
             .save(mappedAnswer);
 
+        order.verify(questionThreadRepository)
+            .flush();
+
         order.verify(questionMessageMapper)
             .toResponse(savedAnswer);
+
+        order.verify(questionThreadMapper)
+            .toResponse(question);
+
+        order.verify(applicationEventPublisher)
+            .publishEvent(eventCaptor.capture());
+
+        OfficialAnswerPublishedDomainEvent event =
+            eventCaptor.getValue();
+
+        assertAll(
+            () -> assertSame(
+                questionResponse,
+                event.question()),
+            () -> assertSame(
+                messageResponse,
+                event.message()),
+            () -> assertEquals(
+                initialStatus,
+                event.previousStatus()),
+            () -> assertEquals(
+                ANSWERED,
+                event.currentStatus()),
+            () -> assertNotNull(
+                event.occurredAt()));
 
         verify(questionThreadRepository, never())
             .save(any(QuestionThread.class));
 
         verifyNoInteractions(
-            questionThreadMapper,
             questionClaimFailureClassifier);
     }
 
@@ -232,6 +266,23 @@ class AdministratorOfficialAnswerServiceTest {
 
         QuestionThread question =
             createQuestion(ANSWERED);
+
+        QuestionThreadResponseDTO firstQuestionResponse =
+            createQuestionResponse(
+                question,
+                ANSWERED,
+                4L);
+
+        QuestionThreadResponseDTO secondQuestionResponse =
+            createQuestionResponse(
+                question,
+                ANSWERED,
+                5L);
+
+        when(questionThreadMapper.toResponse(question))
+            .thenReturn(
+                firstQuestionResponse,
+                secondQuestionResponse);
 
         QuestionMessage firstMapped =
             QuestionMessage.builder()
@@ -308,6 +359,13 @@ class AdministratorOfficialAnswerServiceTest {
 
         verify(questionMessageRepository)
             .save(secondMapped);
+
+        verify(questionThreadRepository, times(2))
+            .flush();
+
+        verify(applicationEventPublisher, times(2))
+            .publishEvent(
+                any(OfficialAnswerPublishedDomainEvent.class));
     }
 
     @Test
@@ -334,7 +392,8 @@ class AdministratorOfficialAnswerServiceTest {
             questionMessageRepository,
             questionMessageMapper,
             questionThreadMapper,
-            questionClaimFailureClassifier);
+            questionClaimFailureClassifier,
+            applicationEventPublisher);
     }
 
     @Test
@@ -356,7 +415,8 @@ class AdministratorOfficialAnswerServiceTest {
             questionMessageRepository,
             questionMessageMapper,
             questionThreadMapper,
-            questionClaimFailureClassifier);
+            questionClaimFailureClassifier,
+            applicationEventPublisher);
     }
 
     @ParameterizedTest
@@ -378,7 +438,8 @@ class AdministratorOfficialAnswerServiceTest {
             questionMessageRepository,
             questionMessageMapper,
             questionThreadMapper,
-            questionClaimFailureClassifier);
+            questionClaimFailureClassifier,
+            applicationEventPublisher);
     }
 
     @Test
@@ -401,7 +462,8 @@ class AdministratorOfficialAnswerServiceTest {
             questionMessageRepository,
             questionMessageMapper,
             questionThreadMapper,
-            questionClaimFailureClassifier);
+            questionClaimFailureClassifier,
+            applicationEventPublisher);
     }
 
     @Test
@@ -424,7 +486,8 @@ class AdministratorOfficialAnswerServiceTest {
             questionMessageRepository,
             questionMessageMapper,
             questionThreadMapper,
-            questionClaimFailureClassifier);
+            questionClaimFailureClassifier,
+            applicationEventPublisher);
     }
 
     @Test
@@ -477,6 +540,26 @@ class AdministratorOfficialAnswerServiceTest {
     private CreateOfficialAnswerRequestDTO createRequest() {
         return new CreateOfficialAnswerRequestDTO(
             ANSWER_CONTENT);
+    }
+
+    private QuestionThreadResponseDTO createQuestionResponse(
+        QuestionThread question,
+        QuestionStatus status,
+        Long version) {
+
+        return new QuestionThreadResponseDTO(
+            question.getId(),
+            question.getTaskAssignmentId(),
+            question.getAuthorId(),
+            question.getAssignedReviewerId(),
+            question.getTitle(),
+            question.getContent(),
+            status,
+            question.getVisibility(),
+            question.getState(),
+            version,
+            question.getCreatedAt(),
+            question.getUpdatedAt());
     }
 
     private QuestionThread createQuestion(

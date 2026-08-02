@@ -7,11 +7,7 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.IN_RE
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -26,6 +22,10 @@ import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadRespon
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.ForumDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.QuestionStateChangedDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.QuestionStatusChangedDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.QuestionVisibilityChangedDomainEvent;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionVersionConflictException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
@@ -45,9 +45,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,16 +91,22 @@ class AdministratorQuestionModerationServiceTest {
     @Mock
     private QuestionClaimFailureClassifier questionClaimFailureClassifier;
 
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
     @InjectMocks
     private AdministratorQuestionServiceImpl administratorQuestionService;
 
     @ParameterizedTest
     @EnumSource(ModerationOperation.class)
-    void moderation_success_shouldUpdateExactlyOnceAndReturnFreshResponse(
+    void moderation_success_shouldUpdatePublishAndReturnFreshResponse(
         ModerationOperation operation) {
 
         stubAdministrator();
         stubUpdate(operation, 1);
+
+        QuestionThread previousQuestion =
+            createBaseQuestion();
 
         QuestionThread updatedQuestion =
             createUpdatedQuestion(operation);
@@ -107,7 +115,9 @@ class AdministratorQuestionModerationServiceTest {
             createResponse(updatedQuestion);
 
         when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(updatedQuestion));
+            .thenReturn(
+                Optional.of(previousQuestion),
+                Optional.of(updatedQuestion));
 
         when(questionThreadMapper.toResponse(updatedQuestion))
             .thenReturn(response);
@@ -116,15 +126,22 @@ class AdministratorQuestionModerationServiceTest {
             invoke(operation);
 
         assertSame(response, result);
-        assertEquals(UPDATED_VERSION, result.version());
+        assertEquals(
+            UPDATED_VERSION,
+            result.version());
 
         verifyUpdate(operation, 1);
 
-        verify(questionThreadRepository)
+        verify(questionThreadRepository, times(2))
             .findById(QUESTION_ID);
 
         verify(questionThreadMapper)
             .toResponse(updatedQuestion);
+
+        verifyPublishedEvent(
+            operation,
+            previousQuestion,
+            response);
 
         verifyNoInteractions(
             questionMessageRepository,
@@ -134,7 +151,7 @@ class AdministratorQuestionModerationServiceTest {
 
     @ParameterizedTest
     @MethodSource("statusTransitions")
-    void updateStatus_allSupportedTransitions_shouldSucceed(
+    void updateStatus_allSupportedTransitions_shouldPublishExactTransition(
         com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus initialStatus,
         com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus targetStatus) {
 
@@ -145,11 +162,23 @@ class AdministratorQuestionModerationServiceTest {
                 targetStatus,
                 EXPECTED_VERSION);
 
+        QuestionThread previousQuestion =
+            createBaseQuestion();
+
+        previousQuestion.setStatus(
+            initialStatus);
+
         QuestionThread updatedQuestion =
             createBaseQuestion();
 
-        updatedQuestion.setStatus(targetStatus);
-        updatedQuestion.setVersion(UPDATED_VERSION);
+        updatedQuestion.setStatus(
+            targetStatus);
+
+        updatedQuestion.setVersion(
+            UPDATED_VERSION);
+
+        QuestionThreadResponseDTO response =
+            createResponse(updatedQuestion);
 
         when(questionThreadRepository
             .updateStatusIfVersionMatches(
@@ -160,50 +189,79 @@ class AdministratorQuestionModerationServiceTest {
             .thenReturn(1);
 
         when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(updatedQuestion));
+            .thenReturn(
+                Optional.of(previousQuestion),
+                Optional.of(updatedQuestion));
 
         when(questionThreadMapper.toResponse(updatedQuestion))
-            .thenReturn(createResponse(updatedQuestion));
+            .thenReturn(response);
 
         QuestionThreadResponseDTO result =
             administratorQuestionService.updateStatus(
                 QUESTION_ID,
                 request);
 
-        assertEquals(targetStatus, result.status());
-        assertEquals(PRIVATE, result.visibility());
-        assertEquals(OPEN, result.state());
-        assertEquals(REVIEWER_ID, result.assignedReviewerId());
+        assertAll(
+            () -> assertEquals(
+                targetStatus,
+                result.status()),
+            () -> assertEquals(
+                PRIVATE,
+                result.visibility()),
+            () -> assertEquals(
+                OPEN,
+                result.state()),
+            () -> assertEquals(
+                REVIEWER_ID,
+                result.assignedReviewerId()));
 
-        verify(questionThreadRepository)
-            .updateStatusIfVersionMatches(
-                org.mockito.ArgumentMatchers.eq(QUESTION_ID),
-                org.mockito.ArgumentMatchers.eq(targetStatus),
-                org.mockito.ArgumentMatchers.eq(EXPECTED_VERSION),
-                any(Instant.class));
+        ArgumentCaptor<QuestionStatusChangedDomainEvent> eventCaptor =
+            ArgumentCaptor.forClass(
+                QuestionStatusChangedDomainEvent.class);
+
+        verify(applicationEventPublisher)
+            .publishEvent(eventCaptor.capture());
+
+        QuestionStatusChangedDomainEvent event =
+            eventCaptor.getValue();
+
+        assertAll(
+            () -> assertSame(
+                response,
+                event.question()),
+            () -> assertEquals(
+                initialStatus,
+                event.previousStatus()),
+            () -> assertEquals(
+                targetStatus,
+                event.currentStatus()));
 
         verifyNoInteractions(
             questionMessageRepository,
             questionMessageMapper);
-
-        assertNotNull(initialStatus);
     }
 
     @ParameterizedTest
     @EnumSource(ModerationOperation.class)
-    void moderation_staleVersion_shouldThrowConflictWithoutRetry(
+    void moderation_staleVersion_shouldThrowConflictWithoutPublishing(
         ModerationOperation operation) {
 
         stubAdministrator();
         stubUpdate(operation, 0);
 
+        QuestionThread previousQuestion =
+            createBaseQuestion();
+
         QuestionThread currentQuestion =
             createBaseQuestion();
 
-        currentQuestion.setVersion(UPDATED_VERSION);
+        currentQuestion.setVersion(
+            UPDATED_VERSION);
 
         when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(currentQuestion));
+            .thenReturn(
+                Optional.of(previousQuestion),
+                Optional.of(currentQuestion));
 
         assertThrows(
             QuestionVersionConflictException.class,
@@ -211,10 +269,14 @@ class AdministratorQuestionModerationServiceTest {
 
         verifyUpdate(operation, 1);
 
+        verify(questionThreadRepository, times(2))
+            .findById(QUESTION_ID);
+
         verify(questionThreadMapper, never())
             .toResponse(any(QuestionThread.class));
 
         verifyNoInteractions(
+            applicationEventPublisher,
             questionMessageRepository,
             questionMessageMapper,
             questionClaimFailureClassifier);
@@ -222,11 +284,10 @@ class AdministratorQuestionModerationServiceTest {
 
     @ParameterizedTest
     @EnumSource(ModerationOperation.class)
-    void moderation_missingQuestion_shouldThrowNotFoundWithoutRetry(
+    void moderation_missingQuestion_shouldRejectBeforeUpdateAndPublishing(
         ModerationOperation operation) {
 
         stubAdministrator();
-        stubUpdate(operation, 0);
 
         when(questionThreadRepository.findById(QUESTION_ID))
             .thenReturn(Optional.empty());
@@ -235,15 +296,18 @@ class AdministratorQuestionModerationServiceTest {
             QuestionNotFoundException.class,
             () -> invoke(operation));
 
-        verifyUpdate(operation, 1);
+        verifyUpdate(operation, 0);
 
         verify(questionThreadMapper, never())
             .toResponse(any(QuestionThread.class));
+
+        verifyNoInteractions(
+            applicationEventPublisher);
     }
 
     @ParameterizedTest
     @EnumSource(ModerationOperation.class)
-    void moderation_sameVersionUsedTwice_secondRequestShouldConflict(
+    void moderation_sameVersionUsedTwice_secondRequestShouldConflictWithoutSecondEvent(
         ModerationOperation operation) {
 
         stubAdministrator();
@@ -253,14 +317,24 @@ class AdministratorQuestionModerationServiceTest {
             1,
             0);
 
+        QuestionThread previousQuestion =
+            createBaseQuestion();
+
         QuestionThread updatedQuestion =
             createUpdatedQuestion(operation);
 
         QuestionThreadResponseDTO response =
             createResponse(updatedQuestion);
 
+        /*
+         * Call 1: previousQuestion → updatedQuestion
+         *
+         * Call 2: updatedQuestion → updatedQuestion used for conflict classification
+         */
         when(questionThreadRepository.findById(QUESTION_ID))
             .thenReturn(
+                Optional.of(previousQuestion),
+                Optional.of(updatedQuestion),
                 Optional.of(updatedQuestion),
                 Optional.of(updatedQuestion));
 
@@ -270,7 +344,9 @@ class AdministratorQuestionModerationServiceTest {
         QuestionThreadResponseDTO firstResult =
             invoke(operation);
 
-        assertSame(response, firstResult);
+        assertSame(
+            response,
+            firstResult);
 
         assertThrows(
             QuestionVersionConflictException.class,
@@ -280,6 +356,9 @@ class AdministratorQuestionModerationServiceTest {
 
         verify(questionThreadMapper, times(1))
             .toResponse(updatedQuestion);
+
+        verify(applicationEventPublisher, times(1))
+            .publishEvent(any(ForumDomainEvent.class));
     }
 
     @ParameterizedTest
@@ -302,7 +381,8 @@ class AdministratorQuestionModerationServiceTest {
             questionThreadMapper,
             questionMessageRepository,
             questionMessageMapper,
-            questionClaimFailureClassifier);
+            questionClaimFailureClassifier,
+            applicationEventPublisher);
     }
 
     @ParameterizedTest
@@ -325,7 +405,8 @@ class AdministratorQuestionModerationServiceTest {
             questionThreadMapper,
             questionMessageRepository,
             questionMessageMapper,
-            questionClaimFailureClassifier);
+            questionClaimFailureClassifier,
+            applicationEventPublisher);
     }
 
     @Test
@@ -385,7 +466,8 @@ class AdministratorQuestionModerationServiceTest {
         verifyNoInteractions(
             securityFacade,
             questionThreadRepository,
-            questionThreadMapper);
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     @Test
@@ -427,7 +509,8 @@ class AdministratorQuestionModerationServiceTest {
         verifyNoInteractions(
             securityFacade,
             questionThreadRepository,
-            questionThreadMapper);
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     @Test
@@ -469,7 +552,8 @@ class AdministratorQuestionModerationServiceTest {
         verifyNoInteractions(
             securityFacade,
             questionThreadRepository,
-            questionThreadMapper);
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     @ParameterizedTest
@@ -503,6 +587,83 @@ class AdministratorQuestionModerationServiceTest {
 
         assertNotNull(transactional);
         assertFalse(transactional.readOnly());
+    }
+
+    private void verifyPublishedEvent(
+        ModerationOperation operation,
+        QuestionThread previousQuestion,
+        QuestionThreadResponseDTO currentResponse) {
+
+        ArgumentCaptor<Object> eventCaptor =
+            ArgumentCaptor.forClass(Object.class);
+
+        verify(applicationEventPublisher)
+            .publishEvent(eventCaptor.capture());
+
+        Object publishedEvent =
+            eventCaptor.getValue();
+
+        switch (operation) {
+            case VISIBILITY -> {
+                QuestionVisibilityChangedDomainEvent event =
+                    assertInstanceOf(
+                        QuestionVisibilityChangedDomainEvent.class,
+                        publishedEvent);
+
+                assertAll(
+                    () -> assertSame(
+                        currentResponse,
+                        event.question()),
+                    () -> assertEquals(
+                        previousQuestion.getVisibility(),
+                        event.previousVisibility()),
+                    () -> assertEquals(
+                        currentResponse.visibility(),
+                        event.currentVisibility()),
+                    () -> assertNotNull(
+                        event.occurredAt()));
+            }
+
+            case STATUS -> {
+                QuestionStatusChangedDomainEvent event =
+                    assertInstanceOf(
+                        QuestionStatusChangedDomainEvent.class,
+                        publishedEvent);
+
+                assertAll(
+                    () -> assertSame(
+                        currentResponse,
+                        event.question()),
+                    () -> assertEquals(
+                        previousQuestion.getStatus(),
+                        event.previousStatus()),
+                    () -> assertEquals(
+                        currentResponse.status(),
+                        event.currentStatus()),
+                    () -> assertNotNull(
+                        event.occurredAt()));
+            }
+
+            case STATE -> {
+                QuestionStateChangedDomainEvent event =
+                    assertInstanceOf(
+                        QuestionStateChangedDomainEvent.class,
+                        publishedEvent);
+
+                assertAll(
+                    () -> assertSame(
+                        currentResponse,
+                        event.question()),
+                    () -> assertEquals(
+                        previousQuestion.getState(),
+                        event.previousState()),
+                    () -> assertEquals(
+                        currentResponse.state(),
+                        event.currentState()),
+                    () -> assertNotNull(
+                        event.occurredAt()));
+            }
+        }
     }
 
     private QuestionThreadResponseDTO invoke(

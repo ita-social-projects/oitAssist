@@ -4,9 +4,7 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.IN_REVIEW;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -19,6 +17,7 @@ import static org.mockito.Mockito.when;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.QuestionClaimedDomainEvent;
 import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionAlreadyClaimedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
@@ -37,9 +36,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class AdministratorQuestionClaimServiceTest {
@@ -62,11 +63,14 @@ class AdministratorQuestionClaimServiceTest {
     @Mock
     private QuestionClaimFailureClassifier questionClaimFailureClassifier;
 
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
     @InjectMocks
     private AdministratorQuestionServiceImpl administratorQuestionService;
 
     @Test
-    void claimQuestion_validRequest_shouldClaimAndReturnUpdatedQuestion() {
+    void claimQuestion_validRequest_shouldClaimPublishAndReturnUpdatedQuestion() {
         stubAdministrator();
 
         QuestionThread claimedQuestion =
@@ -83,7 +87,8 @@ class AdministratorQuestionClaimServiceTest {
             .thenReturn(1);
 
         when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(claimedQuestion));
+            .thenReturn(
+                Optional.of(claimedQuestion));
 
         when(questionThreadMapper.toResponse(claimedQuestion))
             .thenReturn(response);
@@ -93,21 +98,24 @@ class AdministratorQuestionClaimServiceTest {
                 QUESTION_ID,
                 EXPECTED_VERSION);
 
-        assertSame(response, result);
-        assertEquals(
-            ADMINISTRATOR_ID,
-            result.assignedReviewerId());
-        assertEquals(
-            IN_REVIEW,
-            result.status());
-        assertEquals(
-            OPEN,
-            result.state());
-        assertEquals(
-            EXPECTED_VERSION + 1,
-            result.version());
+        assertAll(
+            () -> assertSame(
+                response,
+                result),
+            () -> assertEquals(
+                ADMINISTRATOR_ID,
+                result.assignedReviewerId()),
+            () -> assertEquals(
+                IN_REVIEW,
+                result.status()),
+            () -> assertEquals(
+                OPEN,
+                result.state()),
+            () -> assertEquals(
+                EXPECTED_VERSION + 1,
+                result.version()));
 
-        verify(questionThreadRepository, times(1))
+        verify(questionThreadRepository)
             .claimForReview(
                 eq(QUESTION_ID),
                 eq(ADMINISTRATOR_ID),
@@ -122,6 +130,31 @@ class AdministratorQuestionClaimServiceTest {
 
         verifyNoInteractions(
             questionClaimFailureClassifier);
+
+        ArgumentCaptor<QuestionClaimedDomainEvent> eventCaptor =
+            ArgumentCaptor.forClass(
+                QuestionClaimedDomainEvent.class);
+
+        verify(applicationEventPublisher)
+            .publishEvent(eventCaptor.capture());
+
+        QuestionClaimedDomainEvent event =
+            eventCaptor.getValue();
+
+        assertAll(
+            () -> assertSame(
+                response,
+                event.question()),
+            () -> assertNull(
+                event.previousReviewerId()),
+            () -> assertEquals(
+                ADMINISTRATOR_ID,
+                event.currentReviewerId()),
+            () -> assertEquals(
+                QUESTION_ID,
+                event.questionId()),
+            () -> assertNotNull(
+                event.occurredAt()));
     }
 
     @ParameterizedTest
@@ -141,7 +174,8 @@ class AdministratorQuestionClaimServiceTest {
             securityFacade,
             questionThreadRepository,
             questionThreadMapper,
-            questionClaimFailureClassifier);
+            questionClaimFailureClassifier,
+            applicationEventPublisher);
     }
 
     @Test
@@ -164,7 +198,8 @@ class AdministratorQuestionClaimServiceTest {
         verifyNoInteractions(
             questionThreadRepository,
             questionThreadMapper,
-            questionClaimFailureClassifier);
+            questionClaimFailureClassifier,
+            applicationEventPublisher);
     }
 
     @Test
@@ -186,7 +221,8 @@ class AdministratorQuestionClaimServiceTest {
         verifyNoInteractions(
             questionThreadRepository,
             questionThreadMapper,
-            questionClaimFailureClassifier);
+            questionClaimFailureClassifier,
+            applicationEventPublisher);
     }
 
     @ParameterizedTest
@@ -235,7 +271,8 @@ class AdministratorQuestionClaimServiceTest {
             .findById(QUESTION_ID);
 
         verifyNoInteractions(
-            questionThreadMapper);
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     @Test
@@ -264,7 +301,8 @@ class AdministratorQuestionClaimServiceTest {
 
         verifyNoInteractions(
             questionClaimFailureClassifier,
-            questionThreadMapper);
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     private void stubAdministrator() {
