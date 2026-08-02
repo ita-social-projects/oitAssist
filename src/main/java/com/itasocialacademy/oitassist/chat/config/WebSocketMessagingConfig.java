@@ -1,5 +1,7 @@
 package com.itasocialacademy.oitassist.chat.config;
 
+import com.itasocialacademy.oitassist.chat.utils.StompAuthenticationChannelInterceptor;
+import com.itasocialacademy.oitassist.chat.utils.StompAuthorizationChannelInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +11,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.messaging.simp.config.ChannelRegistration;
+import org.springframework.security.messaging.context.SecurityContextChannelInterceptor;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -23,6 +27,10 @@ public class WebSocketMessagingConfig implements WebSocketMessageBrokerConfigure
     private static final int SCHEDULER_POOL_SIZE = 1;
 
     private final RealtimeMessagingProperties properties;
+
+    private final StompAuthenticationChannelInterceptor stompAuthenticationChannelInterceptor;
+
+    private final StompAuthorizationChannelInterceptor stompAuthorizationChannelInterceptor;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -60,5 +68,14 @@ public class WebSocketMessagingConfig implements WebSocketMessageBrokerConfigure
         scheduler.setRemoveOnCancelPolicy(true);
 
         return scheduler;
+    }
+
+    @Override
+    public void configureClientInboundChannel(
+        ChannelRegistration registration) {
+        registration.interceptors(
+            stompAuthenticationChannelInterceptor,
+            new SecurityContextChannelInterceptor(),
+            stompAuthorizationChannelInterceptor);
     }
 }
