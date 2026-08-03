@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.competition.validate;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
@@ -17,6 +18,7 @@ import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
+import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.ZoneId;
@@ -44,6 +46,8 @@ class HierarchyValidatorTest {
     private SecurityFacade securityFacade;
     @Mock
     private TourRepository tourRepository;
+    @Mock
+    private ParticipationInquiryPort participationSPI;
 
     @InjectMocks
     private HierarchyValidator validator;
@@ -162,8 +166,6 @@ class HierarchyValidatorTest {
 
     @Test
     void validateImmutabilityByCompetitionId_whenEnrollment_shouldPass() {
-        // hasActiveParticipations is currently hardcoded false (pending
-        // ParticipationRequest integration)
         draftCompetition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(draftCompetition));
 
@@ -172,11 +174,28 @@ class HierarchyValidatorTest {
 
     @Test
     void validateImmutabilityByCompetitionId_whenPublished_shouldPass() {
-        // hasActiveParticipations is currently hardcoded false (pending
-        // ParticipationRequest integration)
         when(competitionRepository.findById(2L)).thenReturn(Optional.of(publishedCompetition));
 
         assertDoesNotThrow(() -> validator.validateImmutabilityByCompetitionId(2L));
+    }
+
+    @Test
+    void validateImmutabilityByCompetitionId_whenEnrollmentAndHasActiveParticipants_shouldThrow() {
+        draftCompetition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
+        when(competitionRepository.findById(1L)).thenReturn(Optional.of(draftCompetition));
+        when(participationSPI.competitionHasParticipants(anyLong())).thenReturn(true);
+
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> validator.validateImmutabilityByCompetitionId(1L));
+    }
+
+    @Test
+    void validateImmutabilityByCompetitionId_whenPublishedHasActiveParticipants_shouldThrow() {
+        when(competitionRepository.findById(2L)).thenReturn(Optional.of(publishedCompetition));
+        when(participationSPI.competitionHasParticipants(anyLong())).thenReturn(true);
+
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> validator.validateImmutabilityByCompetitionId(2L));
     }
 
     @Test

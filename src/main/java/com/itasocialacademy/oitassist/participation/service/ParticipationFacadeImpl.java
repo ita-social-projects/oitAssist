@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.participation.service;
 
+import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
 import com.itasocialacademy.oitassist.participation.dao.repository.ParticipationRepository;
 import lombok.RequiredArgsConstructor;
@@ -7,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class ParticipationFacadeImpl implements ParticipationFacade {
+public class ParticipationFacadeImpl implements ParticipationFacade, ParticipationInquiryPort {
     private final ParticipationRepository participationRepository;
 
     @Override
