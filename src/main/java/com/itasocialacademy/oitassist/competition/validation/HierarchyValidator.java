@@ -12,6 +12,7 @@ import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
+import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -28,6 +29,7 @@ public class HierarchyValidator {
     private final StageRepository stageRepository;
     private final TourRepository tourRepository;
     private final SecurityFacade securityFacade;
+    private final ParticipationInquiryPort participationInquiryPort;
 
     @Transactional(readOnly = true)
     public void checkVisibilityAccess(Long competitionId) {
@@ -98,17 +100,14 @@ public class HierarchyValidator {
             throw new CompetitionHierarchyValidationException(
                 "Cannot modify hierarchy: Competition is ARCHIVED (read-only).");
         }
-        if (competition.getCompetitionStatus() == CompetitionStatus.ENROLLMENT
+        boolean isActiveLifecycleStatus = competition.getCompetitionStatus() == CompetitionStatus.ENROLLMENT
             || competition.getCompetitionStatus() == CompetitionStatus.PUBLISHED
-            || competition.getCompetitionStatus() == CompetitionStatus.FINISHED) {
-            // TODO: Epic Requirement - "restricted if active participations exist"
-            // STUB for future integration w ParticipationRequest
-            boolean hasActiveParticipations = false;
+            || competition.getCompetitionStatus() == CompetitionStatus.FINISHED;
 
-            if (hasActiveParticipations) {
-                throw new CompetitionHierarchyValidationException(
-                    "Cannot modify hierarchy: The competition is PUBLISHED and has active participations.");
-            }
+        if (isActiveLifecycleStatus && participationInquiryPort.competitionHasParticipants(competitionId)) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot modify hierarchy: The competition is %s and has active participations."
+                    .formatted(competition.getCompetitionStatus()));
         }
     }
 
