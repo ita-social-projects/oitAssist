@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-user-two-factor-auth-table" author="Maryna Huz">
+        <createTable tableName="user_two_factor_auth">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false" unique="true"
+                             foreignKeyName="fk_user_two_factor_auth_user"
+                             referencedTableName="users"
+                             referencedColumnNames="id"/>
+            </column>
+
+            <column name="method" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="totp_secret" type="VARCHAR(64)"/>
+
+            <column name="last_used_totp_bucket" type="BIGINT"/>
+
+            <column name="pending_email_otp_hash" type="VARCHAR(72)"/>
+
+            <column name="pending_email_otp_expires_at" type="TIMESTAMPTZ"/>
+
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+            ALTER TABLE user_two_factor_auth
+                ADD CONSTRAINT chk_user_two_factor_auth_method
+                    CHECK (method IN ('TOTP', 'EMAIL_OTP'));
+        </sql>
+    </changeSet>
+
+    <changeSet id="create-user-recovery-code-table" author="Maryna Huz">
+        <createTable tableName="user_recovery_code">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="two_factor_auth_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_user_recovery_code_two_factor_auth"
+                             referencedTableName="user_two_factor_auth"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+
+            <column name="code_hash" type="VARCHAR(72)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="used" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="used_at" type="TIMESTAMPTZ"/>
+
+            <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="user_recovery_code" indexName="idx_user_recovery_code_lookup">
+            <column name="two_factor_auth_id"/>
+            <column name="used"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
