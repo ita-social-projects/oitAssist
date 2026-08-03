@@ -10,6 +10,8 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFound
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationAcceptedEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
@@ -24,12 +26,17 @@ import com.itasocialacademy.oitassist.participation.exceptions.UserApplicationRe
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
+import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +48,8 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final ParticipationMapper participationMapper;
     private final ProcessApplicationMapper processApplicationMapper;
     private final CompetitionFacade competitionFacade;
+    private final AsyncEmailSender emailSender;
+    private final UserFacade userFacade;
 
     @Override
     @Transactional
@@ -61,7 +70,16 @@ public class ApplicationServiceImpl implements ApplicationService {
         application.setStatus(RequestStatus.ACCEPTED);
         application.setProcessedBy(userId);
         application.setProcessedAt(Instant.now());
-        return processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
+        ProcessApplicationResponse response = processApplicationMapper.toResponse(
+            applicationRepository.saveAndFlush(application));
+
+        scheduleDecisionEmailAfterCommit(
+            application.getCompetitionId(),
+            application.getStageId(),
+            application.getIssuedBy()
+        );
+
+        return response;
     }
 
     @Override
@@ -118,10 +136,8 @@ public class ApplicationServiceImpl implements ApplicationService {
     private void validateCompetitionAndStageInfo(CreateApplicationRequest createApplicationRequest) {
         Long competitionId = createApplicationRequest.getCompetitionId();
         Long stageId = createApplicationRequest.getStageId();
-        CompetitionDetail competitionDetail = competitionFacade.findCompetitionById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
-        StageDetail stageDetail = competitionFacade.findStageById(stageId)
-            .orElseThrow(() -> new StageNotFoundException(stageId));
+        CompetitionDetail competitionDetail = getCompetitionInfoOrThrow(competitionId);
+        StageDetail stageDetail = getStageInfoOrThrow(stageId);
         if (competitionDetail.competitionStatus() != CompetitionStatus.ENROLLMENT) {
             throw new UserApplicationRequestException("The competition cannot be enrolled");
         }
@@ -152,5 +168,33 @@ public class ApplicationServiceImpl implements ApplicationService {
         return securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User is not authenticated",
                 ErrorCode.ACCESS_DENIED));
+    }
+
+    private void scheduleDecisionEmailAfterCommit(Long competitionId, Long stageId, Long userId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        String competitionTitle = getCompetitionInfoOrThrow(competitionId).title();
+        String stageTitle = getStageInfoOrThrow(stageId).title();
+        UserA
+        String email = userFacade.findByIds(List.of(userId)).getFirst().email();
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                emailSender.sendDecisionEmail(new ApplicationAcceptedEvent(competitionTitle, stageTitle, email));
+            }
+        });
+    }
+
+    private CompetitionDetail getCompetitionInfoOrThrow(Long competitionId) {
+        return competitionFacade.findCompetitionById(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+    }
+
+    private StageDetail getStageInfoOrThrow(Long stageId) {
+        return competitionFacade.findStageById(stageId)
+            .orElseThrow(() -> new StageNotFoundException(stageId));
     }
 }
