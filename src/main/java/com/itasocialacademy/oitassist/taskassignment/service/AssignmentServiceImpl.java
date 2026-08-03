@@ -2,6 +2,8 @@ package com.itasocialacademy.oitassist.taskassignment.service;
 
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
+import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
+import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
@@ -51,6 +53,8 @@ public class AssignmentServiceImpl implements AssignmentService {
     public DetailedTaskAssignmentResponseDTO assignTask(Long tourId, CreateTaskAssignmentRequestDTO request) {
         TourDetail tour = competitionFacade.findTourById(tourId).orElseThrow(
             () -> new TourNotFoundException(tourId));
+
+        validateTourStatus(tour, "Cannot assign task.");
 
         TaskBodyDetail taskBody = taskBodyFacade.findTaskBodyById(request.taskBodyId()).orElseThrow(
             () -> new TaskNotFoundException(request.taskBodyId()));
@@ -127,6 +131,11 @@ public class AssignmentServiceImpl implements AssignmentService {
         TaskAssignment assignment = taskAssignmentRepository.findById(taskAssignmentId).orElseThrow(
             () -> new TaskAssignmentNotFoundException(taskAssignmentId));
 
+        TourDetail tour = competitionFacade.findTourById(assignment.getTourId()).orElseThrow(
+            () -> new TourNotFoundException(assignment.getTourId()));
+
+        validateTourStatus(tour, "Cannot update task assignment.");
+
         if (request.visibility() != null) {
             assignment.setVisibility(request.visibility());
         }
@@ -154,6 +163,11 @@ public class AssignmentServiceImpl implements AssignmentService {
         TaskAssignment assignment = taskAssignmentRepository.findById(taskAssignmentId).orElseThrow(
             () -> new TaskAssignmentNotFoundException(taskAssignmentId));
 
+        TourDetail tour = competitionFacade.findTourById(assignment.getTourId()).orElseThrow(
+            () -> new TourNotFoundException(assignment.getTourId()));
+
+        validateTourStatus(tour, "Cannot delete task assignment.");
+
         taskAssignmentRepository.delete(assignment);
 
         log.debug("Deleted Task Assignment: Id {}", assignment.getId());
@@ -164,6 +178,8 @@ public class AssignmentServiceImpl implements AssignmentService {
     public TaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request) {
         TourDetail tour = competitionFacade.findTourById(tourId)
             .orElseThrow(() -> new TourNotFoundException(tourId));
+
+        validateTourStatus(tour, "Cannot create task assignment.");
 
         TaskBodyDetail createdTask = taskBodyFacade.createTask(
             request.title(), request.description(), request.fileIds());
@@ -205,5 +221,11 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
 
         return fileManagerFacade.getFilesByEntity(RelatedEntityType.TASK, taskBodyId, allowedFileRoles);
+    }
+
+    private void validateTourStatus(TourDetail tour, String msg) {
+        if (tour.executionStatus() != ExecutionStatus.SCHEDULED) {
+            throw new CompetitionHierarchyValidationException(msg + " Tour has already started");
+        }
     }
 }
