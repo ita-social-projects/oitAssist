@@ -48,9 +48,6 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createTask(request));
     }
 
-    // TODO: tighten access to owner, ADMIN, or a participant with a visible
-    // TaskAssignment for this task, when
-    // TaskAssignment is implemented.
     @Operation(
         summary = "Get task by id",
         description = "Retrieves a specific task by its id. Requires authentication.")
@@ -62,7 +59,7 @@ public class TaskController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/{taskId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<TaskResponseDTO> getTask(@PathVariable Long taskId) {
         return ResponseEntity.ok().body(taskService.getTaskById(taskId));
     }
@@ -95,7 +92,7 @@ public class TaskController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/my")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<PageResponse<TaskResponseDTO>> getMyTasks(
         @ParameterObject @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
         return ResponseEntity.ok(PageResponse.from(taskService.getAllMyTasks(pageable)));
@@ -120,7 +117,7 @@ public class TaskController {
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PutMapping("/{taskId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<TaskResponseDTO> updateTask(@PathVariable Long taskId,
         @Valid @RequestBody UpdateTaskRequestDTO request) {
         return ResponseEntity.ok().body(taskService.updateTask(taskId, request));
