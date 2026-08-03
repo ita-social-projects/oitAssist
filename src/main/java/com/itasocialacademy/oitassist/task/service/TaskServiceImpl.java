@@ -3,8 +3,11 @@ package com.itasocialacademy.oitassist.task.service;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
+import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
+import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
@@ -24,10 +27,7 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +46,7 @@ public class TaskServiceImpl implements TaskService {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SecurityFacade securityFacade;
     private final UserFacade userFacade;
+    private final FileManagerFacade fileManagerFacade;
 
     @Override
     @Transactional
@@ -62,7 +63,7 @@ public class TaskServiceImpl implements TaskService {
         log.debug("Created Task: Id {}; Title - {}", createdTask.getId(), createdTask.getTitle());
         publishAttachEvent(createdTask.getId(), requestDTO.fileIds(), createdTask.getCreatedBy());
 
-        return taskBodyMapper.toResponse(createdTask);
+        return taskBodyMapper.toResponse(createdTask, getTaskFiles(task.getId()));
     }
 
     @Override
@@ -73,7 +74,7 @@ public class TaskServiceImpl implements TaskService {
                 () -> new TaskNotFoundException(id));
 
         log.debug("Get Task: Id {}", taskBody.getId());
-        return taskBodyMapper.toResponse(taskBody);
+        return taskBodyMapper.toResponse(taskBody, getTaskFiles(taskBody.getId()));
     }
 
     @Override
@@ -82,7 +83,8 @@ public class TaskServiceImpl implements TaskService {
         log.debug("getAllTasks: page={}, size={}, sort={}",
             pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
-        return taskBodyRepository.findAll(pageable).map(taskBodyMapper::toResponse);
+        return taskBodyRepository.findAll(pageable)
+            .map(e -> taskBodyMapper.toResponse(e, getTaskFiles(e.getId())));
     }
 
     @Override
@@ -94,7 +96,8 @@ public class TaskServiceImpl implements TaskService {
         log.debug("getAllMyTasks: userId={}, page={}, size={}, sort={}",
             currentUserId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
-        return taskBodyRepository.findAllByOwnerId(currentUserId, pageable);
+        return taskBodyRepository.findAllByOwnerId(currentUserId, pageable)
+            .map(e -> taskBodyMapper.toResponse(e, getTaskFiles(e.getId())));
     }
 
     @Override
@@ -118,7 +121,7 @@ public class TaskServiceImpl implements TaskService {
         publishAttachEvent(updatedTask.getId(), requestDTO.fileIds(), currentUserId);
         publishDetachEvent(updatedTask.getId(), requestDTO.removedFileIds(), currentUserId);
 
-        return taskBodyMapper.toResponse(updatedTask);
+        return taskBodyMapper.toResponse(updatedTask, getTaskFiles(updatedTask.getId()));
     }
 
     @Override
@@ -139,13 +142,13 @@ public class TaskServiceImpl implements TaskService {
         }
 
         if (task.getOwnerId().equals(userDetails.id())) {
-            return taskBodyMapper.toResponse(task);
+            return taskBodyMapper.toResponse(task, getTaskFiles(task.getId()));
         }
 
         task.setOwnerId(userDetails.id());
         log.debug("Task {} owner changed to user {}", task.getId(), userDetails.id());
 
-        return taskBodyMapper.toResponse(taskBodyRepository.save(task));
+        return taskBodyMapper.toResponse(taskBodyRepository.save(task), getTaskFiles(task.getId()));
     }
 
     @Override
@@ -213,5 +216,10 @@ public class TaskServiceImpl implements TaskService {
 
     private void checkForAssignments(Long taskBodyId) {
         applicationEventPublisher.publishEvent(new TaskDeletionRequestEvent(taskBodyId));
+    }
+
+    private List<FileDetailsDTO> getTaskFiles(Long taskBodyId) {
+        Set<FileRole> allowedFileRoles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE, FileRole.SOLUTION);
+        return fileManagerFacade.getFilesByEntity(RelatedEntityType.TASK, taskBodyId, allowedFileRoles);
     }
 }

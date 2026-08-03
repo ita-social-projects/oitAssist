@@ -1,7 +1,9 @@
 package com.itasocialacademy.oitassist.task.dto.response;
 
+import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
+import java.util.List;
 
 @Schema(description = "DTO representing a Task entity response")
 @Builder
@@ -17,6 +19,9 @@ public record TaskResponseDTO(
     @Schema(
         description = "Description of the task",
         example = "Cтворити у файлі-розв’язку на одному слайді ...") String description,
+
+    @Schema(
+        description = "Files attached to the task") List<FileDetailsDTO> files,
 
     @Schema(
         description = "Id of task creator",
