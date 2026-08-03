@@ -10,8 +10,7 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
-@Schema(description = "DTO representing an Application processing response")
-public class ProcessApplicationResponse extends ProcessEnrollmentResponse {
-    @Schema(description = "ID of the user who last updated the application", example = "5")
-    Long processedBy;
+@Schema(description = "DTO representing an Invitation processing response")
+public class ProcessInvitationResponse extends ProcessEnrollmentResponse {
+    private Long studentId;
 }

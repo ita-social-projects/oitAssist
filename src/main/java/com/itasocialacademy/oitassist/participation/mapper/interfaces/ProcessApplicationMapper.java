@@ -5,7 +5,6 @@ import com.itasocialacademy.oitassist.participation.dao.model.Application;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface ProcessApplicationMapper {
-    ProcessApplicationResponse toResponse(Application application);
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.WARN)
+public interface ProcessApplicationMapper extends ProcessEnrollmentMapper<ProcessApplicationResponse, Application> {
 }

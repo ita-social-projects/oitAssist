@@ -11,7 +11,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundExcept
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
@@ -44,7 +44,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
-    public CreateApplicationResponse userApply(CreateApplicationRequest createApplicationRequest) {
+    public CreateApplicationResponse sendEnrollmentRequest(CreateApplicationRequest createApplicationRequest) {
         Long userId = getCurrentUserIdOrThrow();
         validateUserCanApply(userId, createApplicationRequest);
         Application application = applicationMapper.toEntity(createApplicationRequest);
@@ -54,7 +54,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
-    public ProcessApplicationResponse acceptUserApplication(Long applicationId) {
+    public ProcessApplicationResponse acceptRequest(Long applicationId) {
         Application application = getPendingApplicationOrThrow(applicationId);
         Long userId = getCurrentUserIdOrThrow();
         participationRepository.save(participationMapper.toParticipation(application));
@@ -66,7 +66,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
-    public ProcessApplicationResponse rejectUserApplication(Long applicationId, RejectApplicationRequest request) {
+    public ProcessApplicationResponse rejectRequest(Long applicationId, RejectEnrollmentRequest request) {
         Application application = getPendingApplicationOrThrow(applicationId);
         Long userId = getCurrentUserIdOrThrow();
         application.setStatus(RequestStatus.REJECTED);
@@ -78,7 +78,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
-    public ProcessApplicationResponse cancelUserApplication(Long applicationId) {
+    public ProcessApplicationResponse cancelRequest(Long applicationId) {
         Long userId = getCurrentUserIdOrThrow();
         Application application = getPendingApplicationOrThrow(applicationId);
         validateUserCanCancelApplication(userId, application);
@@ -97,8 +97,8 @@ public class ApplicationServiceImpl implements ApplicationService {
     private void validateNoPendingApplication(Long userId, CreateApplicationRequest createApplicationRequest) {
         boolean hasPendingApplication = applicationRepository.existsByIssuedByAndCompetitionIdAndStageIdAndStatus(
             userId,
-            createApplicationRequest.competitionId(),
-            createApplicationRequest.stageId(),
+            createApplicationRequest.getCompetitionId(),
+            createApplicationRequest.getStageId(),
             RequestStatus.PENDING);
         if (hasPendingApplication) {
             throw new UserApplicationRequestException("User already has a pending request");
@@ -108,16 +108,16 @@ public class ApplicationServiceImpl implements ApplicationService {
     private void validateUserDoesNotAlreadyParticipate(Long userId, CreateApplicationRequest createApplicationRequest) {
         boolean isParticipant = participationRepository.existsByUserIdAndCompetitionIdAndStageId(
             userId,
-            createApplicationRequest.competitionId(),
-            createApplicationRequest.stageId());
+            createApplicationRequest.getCompetitionId(),
+            createApplicationRequest.getStageId());
         if (isParticipant) {
             throw new UserApplicationRequestException("User is already a participant");
         }
     }
 
     private void validateCompetitionAndStageInfo(CreateApplicationRequest createApplicationRequest) {
-        Long competitionId = createApplicationRequest.competitionId();
-        Long stageId = createApplicationRequest.stageId();
+        Long competitionId = createApplicationRequest.getCompetitionId();
+        Long stageId = createApplicationRequest.getStageId();
         CompetitionDetail competitionDetail = competitionFacade.findCompetitionById(competitionId)
             .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
         StageDetail stageDetail = competitionFacade.findStageById(stageId)

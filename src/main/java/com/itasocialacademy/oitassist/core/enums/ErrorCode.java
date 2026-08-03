@@ -65,7 +65,8 @@ public enum ErrorCode {
     AUTHENTICATION_REQUIRED(ErrorCategory.AUTHENTICATION),
 
     USER_PARTICIPATION_REQUEST_RESTRICTED(ErrorCategory.VALIDATION),
-    REQUEST_CANNOT_BE_PROCESSED(ErrorCategory.VALIDATION);
+    REQUEST_CANNOT_BE_PROCESSED(ErrorCategory.VALIDATION),
+    DATA_ACCESS_ERROR(ErrorCategory.TECHNICAL);
 
     private final ErrorCategory category;
 }
