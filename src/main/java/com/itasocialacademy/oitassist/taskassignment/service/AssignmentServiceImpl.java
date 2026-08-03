@@ -175,7 +175,7 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional
-    public TaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request) {
+    public DetailedTaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request) {
         TourDetail tour = competitionFacade.findTourById(tourId)
             .orElseThrow(() -> new TourNotFoundException(tourId));
 
@@ -196,7 +196,8 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         log.debug("Created task {} and assigned to tour {}", createdTask.id(), tour.id());
 
-        return taskAssignmentMapper.toResponse(saved, createdTask.title());
+        List<FileDetailsDTO> files = resolveTaskFiles(createdTask.id());
+        return taskAssignmentMapper.toDetailedResponse(saved, createdTask.title(), createdTask.description(), files);
     }
 
     @Override

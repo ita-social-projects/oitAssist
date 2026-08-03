@@ -90,7 +90,7 @@ public interface AssignmentService {
      *         details
      * @throws TourNotFoundException if the tour does not exist
      */
-    TaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request);
+    DetailedTaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request);
 
     /**
      * Retrieves detailed information about a task assignment by its id, intended

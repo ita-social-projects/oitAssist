@@ -74,7 +74,7 @@ public class AssignmentController {
     })
     @PostMapping("/tours/{tourId}/task-assignments/new")
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
-    public ResponseEntity<TaskAssignmentResponseDTO> createAndAssignTask(@PathVariable Long tourId,
+    public ResponseEntity<DetailedTaskAssignmentResponseDTO> createAndAssignTask(@PathVariable Long tourId,
         @Valid @RequestBody CreateAndAssignTaskRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(assignmentService.createAndAssignTask(tourId, request));
     }
