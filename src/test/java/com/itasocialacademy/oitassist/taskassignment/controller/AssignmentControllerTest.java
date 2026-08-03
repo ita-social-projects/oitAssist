@@ -145,16 +145,16 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
             "Task Title", "Task Description", List.of(1L, 2L), AssignmentVisibility.VISIBLE, 25, validRequirements);
 
         when(assignmentService.createAndAssignTask(eq(10L), any(CreateAndAssignTaskRequestDTO.class)))
-            .thenReturn(mockAssignmentResponse);
+            .thenReturn(mockDetailedResponse);
 
         mockMvc.perform(post("/api/v1/tours/{tourId}/task-assignments/new", 10L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.id").value(mockAssignmentResponse.id()))
-            .andExpect(jsonPath("$.taskBodyId").value(mockAssignmentResponse.taskBodyId()))
-            .andExpect(jsonPath("$.tourId").value(mockAssignmentResponse.tourId()))
-            .andExpect(jsonPath("$.taskTitle").value(mockAssignmentResponse.taskTitle()));
+            .andExpect(jsonPath("$.id").value(mockDetailedResponse.id()))
+            .andExpect(jsonPath("$.taskBodyId").value(mockDetailedResponse.taskBodyId()))
+            .andExpect(jsonPath("$.tourId").value(mockDetailedResponse.tourId()))
+            .andExpect(jsonPath("$.taskTitle").value(mockDetailedResponse.taskTitle()));
     }
 
     @Test

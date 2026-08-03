@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.taskassignment.service;
 
+import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -116,6 +117,7 @@ class AssignmentServiceTest {
         tourDetail = TourDetail.builder()
             .id(10L)
             .title("Tour 1")
+            .executionStatus(ExecutionStatus.SCHEDULED)
             .build();
 
         taskBodyDetail = TaskBodyDetail.builder()
@@ -302,6 +304,7 @@ class AssignmentServiceTest {
             new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, 30, null);
 
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(competitionFacade.findTourById(any())).thenReturn(Optional.of(tourDetail));
         when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
         when(taskAssignmentRepository.save(any(TaskAssignment.class))).thenReturn(taskAssignment);
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
@@ -326,6 +329,7 @@ class AssignmentServiceTest {
         TaskRequirements oldRequirements = taskAssignment.getRequirements();
 
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(competitionFacade.findTourById(any())).thenReturn(Optional.of(tourDetail));
         when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
         when(taskAssignmentRepository.save(any(TaskAssignment.class))).thenReturn(taskAssignment);
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
@@ -356,6 +360,7 @@ class AssignmentServiceTest {
     @Test
     void deleteTaskAssignment_existingId_shouldDelete() {
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(competitionFacade.findTourById(any())).thenReturn(Optional.of(tourDetail));
 
         assignmentService.deleteTaskAssignment(1L);
 
@@ -383,10 +388,12 @@ class AssignmentServiceTest {
             taskBodyDetail);
         when(taskAssignmentMapper.toRequirements(reqDTO)).thenReturn(requirements);
         when(taskAssignmentRepository.save(any(TaskAssignment.class))).thenReturn(taskAssignment);
-        when(taskAssignmentMapper.toResponse(any(TaskAssignment.class), eq("PowerPoint Різдвяна зірка")))
-            .thenReturn(assignmentResponse);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(taskAssignment, request.title(), request.description(), testFiles))
+            .thenReturn(detailedResponse);
 
-        TaskAssignmentResponseDTO result = assignmentService.createAndAssignTask(10L, request);
+        DetailedTaskAssignmentResponseDTO result = assignmentService.createAndAssignTask(10L, request);
 
         assertNotNull(result);
         verify(taskBodyFacade).createTask("PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку", List.of(1L, 2L));
@@ -425,8 +432,10 @@ class AssignmentServiceTest {
             taskBodyDetail);
         when(taskAssignmentMapper.toRequirements(reqDTO)).thenReturn(requirements);
         when(taskAssignmentRepository.save(any(TaskAssignment.class))).thenReturn(taskAssignment);
-        when(taskAssignmentMapper.toResponse(any(TaskAssignment.class), eq(taskBodyDetail.title())))
-            .thenReturn(assignmentResponse);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(taskAssignment, taskBodyDetail.title(),
+            taskBodyDetail.description(), testFiles)).thenReturn(detailedResponse);
 
         assignmentService.createAndAssignTask(10L, request);
 
