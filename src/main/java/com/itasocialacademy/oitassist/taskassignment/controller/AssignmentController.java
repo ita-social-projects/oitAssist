@@ -37,7 +37,7 @@ public class AssignmentController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Task assignment created successfully",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = TaskAssignmentResponseDTO.class))),
+                schema = @Schema(implementation = DetailedTaskAssignmentResponseDTO.class))),
         @ApiResponse(responseCode = "400", description = "Invalid input data",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
@@ -61,7 +61,7 @@ public class AssignmentController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Task created and assigned successfully",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = TaskAssignmentResponseDTO.class))),
+                schema = @Schema(implementation = DetailedTaskAssignmentResponseDTO.class))),
         @ApiResponse(responseCode = "400", description = "Invalid input data",
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class))),
@@ -85,7 +85,7 @@ public class AssignmentController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Task assignment retrieved successfully",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = TaskAssignmentResponseDTO.class))),
+                schema = @Schema(implementation = DetailedTaskAssignmentResponseDTO.class))),
         @ApiResponse(responseCode = "404", description = "Task assignment not found",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
@@ -118,7 +118,7 @@ public class AssignmentController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Task assignment updated successfully",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = TaskAssignmentResponseDTO.class))),
+                schema = @Schema(implementation = DetailedTaskAssignmentResponseDTO.class))),
         @ApiResponse(responseCode = "400", description = "Validation failed",
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class))),
