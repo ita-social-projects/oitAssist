@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.competition.dao.model.Tour;
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.dto.request.ChangeTourStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateTourRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.ReorderToursRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.UpdateTourRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
@@ -12,7 +13,13 @@ import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundExcepti
 import com.itasocialacademy.oitassist.competition.mapper.TourMapper;
 import com.itasocialacademy.oitassist.competition.service.interfaces.TourService;
 import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -130,6 +137,39 @@ public class TourServiceImpl implements TourService {
 
         Tour updatedTour = tourRepository.save(tour);
         return mapper.toResponse(updatedTour);
+    }
+
+    @Override
+    @Transactional
+    public List<TourResponse> reorder(Long stageId, ReorderToursRequest request) {
+        // validator.validateImmutabilityByStageId(stageId);
+        validator.validateToursNotStartedByStageId(stageId);
+
+        List<Tour> existingTours = tourRepository.findAllByStageIdOrderBySortPositionAsc(stageId);
+        Map<Long, Tour> tourById = existingTours.stream()
+            .collect(Collectors.toMap(Tour::getId, Function.identity()));
+
+        Set<Long> requestedIds = new LinkedHashSet<>(request.tourIds());
+        if (requestedIds.size() != request.tourIds().size()) {
+            throw new CompetitionHierarchyValidationException(
+                "Reorder request contains duplicate tour IDs.");
+        }
+        if (!requestedIds.equals(tourById.keySet())) {
+            throw new CompetitionHierarchyValidationException(
+                "Reorder request must include exactly all tours currently under this stage.");
+        }
+
+        short position = 1;
+        List<Tour> reordered = new ArrayList<>();
+        for (Long tourId : request.tourIds()) {
+            Tour tour = tourById.get(tourId);
+            tour.setSortPosition(position++);
+            reordered.add(tour);
+        }
+
+        return tourRepository.saveAll(reordered).stream()
+            .map(mapper::toResponse)
+            .toList();
     }
 
     @Override

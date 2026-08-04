@@ -185,6 +185,19 @@ public class HierarchyValidator {
         }
     }
 
+    @Transactional(readOnly = true)
+    public void validateToursNotStartedByStageId(Long stageId) {
+        List<Tour> tours = tourRepository.findAllByStageIdOrderBySortPositionAsc(stageId);
+
+        boolean anyStarted = tours.stream()
+            .anyMatch(tour -> tour.getExecutionStatus() != ExecutionStatus.SCHEDULED);
+
+        if (anyStarted) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot reorder tours: one or more tours have already started execution.");
+        }
+    }
+
     public void validateTourStatusTransition(ExecutionStatus current, ExecutionStatus target) {
         if (current == target) {
             return;
