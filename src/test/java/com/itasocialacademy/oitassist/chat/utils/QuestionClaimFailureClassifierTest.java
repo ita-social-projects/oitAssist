@@ -31,6 +31,10 @@ class QuestionClaimFailureClassifierTest {
 
     private static final Long QUESTION_ID = 10L;
     private static final Long REVIEWER_ID = 20L;
+
+    private static final Long TASK_ASSIGNMENT_ID = 100L;
+    private static final Long OTHER_TASK_ASSIGNMENT_ID = 101L;
+
     private static final Long EXPECTED_VERSION = 3L;
 
     @Mock
@@ -41,7 +45,9 @@ class QuestionClaimFailureClassifierTest {
 
     @Test
     void classifyAndThrow_missingQuestion_shouldThrowNotFound() {
-        when(questionThreadRepository.findById(QUESTION_ID))
+
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
             .thenReturn(Optional.empty());
 
         assertThrows(
@@ -59,13 +65,18 @@ class QuestionClaimFailureClassifierTest {
 
     @Test
     void classifyAndThrow_assignedReviewer_shouldThrowAlreadyClaimed() {
+
         QuestionThread question =
-            eligibleQuestion(EXPECTED_VERSION);
+            eligibleQuestion(
+                EXPECTED_VERSION);
 
-        question.setAssignedReviewerId(REVIEWER_ID);
+        question.setAssignedReviewerId(
+            REVIEWER_ID);
 
-        when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(question));
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(
+                Optional.of(question));
 
         assertThrows(
             QuestionAlreadyClaimedException.class,
@@ -76,13 +87,18 @@ class QuestionClaimFailureClassifierTest {
 
     @Test
     void classifyAndThrow_inReviewStatus_shouldThrowAlreadyClaimed() {
+
         QuestionThread question =
-            eligibleQuestion(EXPECTED_VERSION);
+            eligibleQuestion(
+                EXPECTED_VERSION);
 
-        question.setStatus(IN_REVIEW);
+        question.setStatus(
+            IN_REVIEW);
 
-        when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(question));
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(
+                Optional.of(question));
 
         assertThrows(
             QuestionAlreadyClaimedException.class,
@@ -93,14 +109,21 @@ class QuestionClaimFailureClassifierTest {
 
     @Test
     void classifyAndThrow_concurrentWinner_shouldPreferAlreadyClaimed() {
+
         QuestionThread question =
-            eligibleQuestion(EXPECTED_VERSION + 1);
+            eligibleQuestion(
+                EXPECTED_VERSION + 1);
 
-        question.setAssignedReviewerId(REVIEWER_ID);
-        question.setStatus(IN_REVIEW);
+        question.setAssignedReviewerId(
+            REVIEWER_ID);
 
-        when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(question));
+        question.setStatus(
+            IN_REVIEW);
+
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(
+                Optional.of(question));
 
         assertThrows(
             QuestionAlreadyClaimedException.class,
@@ -111,13 +134,18 @@ class QuestionClaimFailureClassifierTest {
 
     @Test
     void classifyAndThrow_closedQuestion_shouldThrowInvalidState() {
+
         QuestionThread question =
-            eligibleQuestion(EXPECTED_VERSION);
+            eligibleQuestion(
+                EXPECTED_VERSION);
 
-        question.setState(CLOSED);
+        question.setState(
+            CLOSED);
 
-        when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(question));
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(
+                Optional.of(question));
 
         assertThrows(
             InvalidQuestionStateException.class,
@@ -128,13 +156,18 @@ class QuestionClaimFailureClassifierTest {
 
     @Test
     void classifyAndThrow_answeredQuestion_shouldThrowInvalidState() {
+
         QuestionThread question =
-            eligibleQuestion(EXPECTED_VERSION);
+            eligibleQuestion(
+                EXPECTED_VERSION);
 
-        question.setStatus(ANSWERED);
+        question.setStatus(
+            ANSWERED);
 
-        when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(question));
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(
+                Optional.of(question));
 
         assertThrows(
             InvalidQuestionStateException.class,
@@ -145,11 +178,15 @@ class QuestionClaimFailureClassifierTest {
 
     @Test
     void classifyAndThrow_staleVersion_shouldThrowVersionConflict() {
-        QuestionThread question =
-            eligibleQuestion(EXPECTED_VERSION + 1);
 
-        when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(question));
+        QuestionThread question =
+            eligibleQuestion(
+                EXPECTED_VERSION + 1);
+
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(
+                Optional.of(question));
 
         assertThrows(
             QuestionVersionConflictException.class,
@@ -160,11 +197,15 @@ class QuestionClaimFailureClassifierTest {
 
     @Test
     void classifyAndThrow_sameVersionFallback_shouldThrowVersionConflict() {
-        QuestionThread question =
-            eligibleQuestion(EXPECTED_VERSION);
 
-        when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(question));
+        QuestionThread question =
+            eligibleQuestion(
+                EXPECTED_VERSION);
+
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(
+                Optional.of(question));
 
         assertThrows(
             QuestionVersionConflictException.class,
@@ -172,22 +213,24 @@ class QuestionClaimFailureClassifierTest {
                 QUESTION_ID,
                 EXPECTED_VERSION));
 
-        verify(questionThreadRepository)
-            .findById(QUESTION_ID);
-
         verify(questionThreadRepository, never())
             .save(any(QuestionThread.class));
     }
 
     @Test
     void classifyAndThrow_shouldNotMutateQuestion() {
+
         QuestionThread question =
-            eligibleQuestion(EXPECTED_VERSION + 1);
+            eligibleQuestion(
+                EXPECTED_VERSION + 1);
 
-        Long originalVersion = question.getVersion();
+        Long originalVersion =
+            question.getVersion();
 
-        when(questionThreadRepository.findById(QUESTION_ID))
-            .thenReturn(Optional.of(question));
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(
+                Optional.of(question));
 
         assertThrows(
             QuestionVersionConflictException.class,
@@ -208,12 +251,101 @@ class QuestionClaimFailureClassifierTest {
             question.getState());
     }
 
+    @Test
+    void classifyResponderClaim_missingQuestion_shouldReturnMaskedNotFound() {
+
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(Optional.empty());
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> classifier
+                .classifyResponderClaimAndThrow(
+                    QUESTION_ID,
+                    EXPECTED_VERSION,
+                    TASK_ASSIGNMENT_ID));
+    }
+
+    @Test
+    void classifyResponderClaim_otherAssignment_shouldReturnMaskedNotFound() {
+
+        QuestionThread question =
+            eligibleQuestion(
+                EXPECTED_VERSION);
+
+        question.setTaskAssignmentId(
+            OTHER_TASK_ASSIGNMENT_ID);
+
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(
+                Optional.of(question));
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> classifier
+                .classifyResponderClaimAndThrow(
+                    QUESTION_ID,
+                    EXPECTED_VERSION,
+                    TASK_ASSIGNMENT_ID));
+    }
+
+    @Test
+    void classifyResponderClaim_inScopeStaleVersion_shouldReturnConflict() {
+
+        QuestionThread question =
+            eligibleQuestion(
+                EXPECTED_VERSION + 1);
+
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(
+                Optional.of(question));
+
+        assertThrows(
+            QuestionVersionConflictException.class,
+            () -> classifier
+                .classifyResponderClaimAndThrow(
+                    QUESTION_ID,
+                    EXPECTED_VERSION,
+                    TASK_ASSIGNMENT_ID));
+    }
+
+    @Test
+    void classifyResponderClaim_inScopeAlreadyClaimed_shouldReturnConflict() {
+
+        QuestionThread question =
+            eligibleQuestion(
+                EXPECTED_VERSION);
+
+        question.setAssignedReviewerId(
+            REVIEWER_ID);
+
+        question.setStatus(
+            IN_REVIEW);
+
+        when(questionThreadRepository
+            .findById(QUESTION_ID))
+            .thenReturn(
+                Optional.of(question));
+
+        assertThrows(
+            QuestionAlreadyClaimedException.class,
+            () -> classifier
+                .classifyResponderClaimAndThrow(
+                    QUESTION_ID,
+                    EXPECTED_VERSION,
+                    TASK_ASSIGNMENT_ID));
+    }
+
     private QuestionThread eligibleQuestion(
         Long version) {
 
         return QuestionThread.builder()
             .id(QUESTION_ID)
-            .taskAssignmentId(100L)
+            .taskAssignmentId(
+                TASK_ASSIGNMENT_ID)
             .authorId(200L)
             .title("Question title")
             .content("Question content")

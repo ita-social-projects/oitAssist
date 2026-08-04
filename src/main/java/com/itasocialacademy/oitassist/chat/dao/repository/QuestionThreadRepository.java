@@ -95,6 +95,14 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         Long assignedReviewerId,
         QuestionState state);
 
+    @Query("""
+        SELECT question.taskAssignmentId
+        FROM QuestionThread question
+        WHERE question.id = :questionId
+        """)
+    Optional<Long> findTaskAssignmentIdByQuestionId(
+        @Param("questionId") Long questionId);
+
     @Modifying(
         clearAutomatically = true,
         flushAutomatically = true)
@@ -113,6 +121,29 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
     int claimForReview(
         @Param("questionId") Long questionId,
         @Param("administratorId") Long administratorId,
+        @Param("expectedVersion") Long expectedVersion,
+        @Param("updatedAt") Instant updatedAt);
+
+    @Modifying(
+        clearAutomatically = true,
+        flushAutomatically = true)
+    @Query("""
+        UPDATE QuestionThread question
+        SET question.assignedReviewerId = :responderUserId,
+            question.status = IN_REVIEW,
+            question.updatedAt = :updatedAt,
+            question.version = question.version + 1
+        WHERE question.id = :questionId
+          AND question.taskAssignmentId = :taskAssignmentId
+          AND question.version = :expectedVersion
+          AND question.state = OPEN
+          AND question.status = NEW
+          AND question.assignedReviewerId IS NULL
+        """)
+    int claimForReviewAsResponder(
+        @Param("questionId") Long questionId,
+        @Param("responderUserId") Long responderUserId,
+        @Param("taskAssignmentId") Long taskAssignmentId,
         @Param("expectedVersion") Long expectedVersion,
         @Param("updatedAt") Instant updatedAt);
 
