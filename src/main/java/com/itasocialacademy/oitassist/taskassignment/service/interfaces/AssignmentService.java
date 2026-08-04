@@ -22,7 +22,7 @@ public interface AssignmentService {
      * @param tourId  the id of the tour to assign the task to
      * @param request the task assignment creation request containing task body id,
      *                visibility level, and other assignment details
-     * @return the created {@link TaskAssignmentResponseDTO} with the assigned task
+     * @return the created {@link DetailedTaskAssignmentResponseDTO} with the assigned task
      *         details
      * @throws TaskAlreadyAssignedException if the task is already assigned to the
      *                                      specified tour
@@ -60,7 +60,7 @@ public interface AssignmentService {
      * @param taskAssignmentId the id of the task assignment to update
      * @param request          the update request containing the new values for the
      *                         assignment;
-     * @return the updated {@link TaskAssignmentResponseDTO} with the new assignment
+     * @return the updated {@link DetailedTaskAssignmentResponseDTO} with the new assignment
      *         details
      * @throws TaskAssignmentNotFoundException if no task assignment exists with the
      *                                         given id
@@ -86,7 +86,7 @@ public interface AssignmentService {
      * @param request the request containing task body fields (title, description,
      *                file ids) and assignment fields (visibility, max points,
      *                requirements)
-     * @return the created {@link TaskAssignmentResponseDTO} with the assignment
+     * @return the created {@link DetailedTaskAssignmentResponseDTO} with the assignment
      *         details
      * @throws TourNotFoundException if the tour does not exist
      */
