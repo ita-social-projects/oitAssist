@@ -50,11 +50,13 @@ public class TaskController {
 
     @Operation(
         summary = "Get task by id",
-        description = "Retrieves a specific task by its id. Requires authentication.")
+        description = "Retrieves a specific task by its id. Requires ADMIN or ORG role.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Task retrieved successfully",
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = TaskResponseDTO.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Task not found",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
@@ -83,12 +85,15 @@ public class TaskController {
 
     @Operation(
         summary = "Get current user's tasks",
-        description = "Retrieves all tasks owned by the currently authenticated user with pagination support.")
+        description = "Retrieves all tasks owned by the currently authenticated user with pagination support."
+            + "Requires ADMIN or ORG role.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "User's tasks retrieved successfully",
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = PageResponse.class))),
         @ApiResponse(responseCode = "401", description = "Unauthorized",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/my")
