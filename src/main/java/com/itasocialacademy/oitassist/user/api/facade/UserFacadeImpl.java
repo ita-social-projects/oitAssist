@@ -91,4 +91,9 @@ public class UserFacadeImpl implements UserFacade {
     public Optional<ForumResponderCandidate> findForumResponderCandidateById(Long userId) {
         return userService.findForumResponderCandidateById(userId);
     }
+
+    @Override
+    public List<ForumResponderCandidate> findForumResponderCandidatesByIds(List<Long> userIds) {
+        return userService.findForumResponderCandidatesByIds(userIds);
+    }
 }

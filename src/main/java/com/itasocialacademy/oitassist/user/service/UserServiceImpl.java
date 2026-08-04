@@ -58,6 +58,18 @@ public class UserServiceImpl implements UserService {
             .map(mapper::toForumResponderCandidate);
     }
 
+    @Override
+    public List<ForumResponderCandidate> findForumResponderCandidatesByIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+
+        return repository.findAllById(userIds)
+            .stream()
+            .map(mapper::toForumResponderCandidate)
+            .toList();
+    }
+
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {
         Optional<User> user = repository.findUserByEmail(username);
         return user.map(mapper::toUserDetails).orElse(null);

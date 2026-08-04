@@ -131,4 +131,6 @@ public interface UserFacade {
      * @return responder candidate, or empty when the user does not exist
      */
     Optional<ForumResponderCandidate> findForumResponderCandidateById(Long userId);
+
+    List<ForumResponderCandidate> findForumResponderCandidatesByIds(List<Long> userIds);
 }

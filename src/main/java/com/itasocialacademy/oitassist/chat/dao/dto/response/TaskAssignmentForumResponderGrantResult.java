@@ -9,5 +9,5 @@ package com.itasocialacademy.oitassist.chat.dao.dto.response;
  */
 public record TaskAssignmentForumResponderGrantResult(
     boolean created,
-    TaskAssignmentForumResponderDTO responder) {
+    TaskAssignmentForumResponderResponseDTO responder) {
 }

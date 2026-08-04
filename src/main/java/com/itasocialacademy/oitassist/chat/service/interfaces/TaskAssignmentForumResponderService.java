@@ -1,6 +1,8 @@
 package com.itasocialacademy.oitassist.chat.service.interfaces;
 
 import com.itasocialacademy.oitassist.chat.dao.dto.response.TaskAssignmentForumResponderGrantResult;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.TaskAssignmentForumResponderResponseDTO;
+import org.springframework.data.domain.Page;
 import java.util.List;
 
 public interface TaskAssignmentForumResponderService {
@@ -48,4 +50,9 @@ public interface TaskAssignmentForumResponderService {
      */
     List<Long> findTaskAssignmentIdsByResponder(
         Long responderUserId);
+
+    Page<TaskAssignmentForumResponderResponseDTO> getResponders(
+        Long taskAssignmentId,
+        int page,
+        int size);
 }

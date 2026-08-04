@@ -1,7 +1,8 @@
 package com.itasocialacademy.oitassist.chat.service;
 
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
-import com.itasocialacademy.oitassist.chat.dao.dto.response.TaskAssignmentForumResponderDTO;
+import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.TaskAssignmentForumResponderResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.TaskAssignmentForumResponderGrantResult;
 import com.itasocialacademy.oitassist.chat.dao.model.TaskAssignmentForumResponder;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
@@ -25,9 +26,13 @@ import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +41,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentForumResponderService {
     private static final String ADMIN_ROLE = "ADMIN";
+
+    private static final Sort RESPONDER_SORT =
+        Sort.by(
+            Sort.Order.desc("assignedAt"),
+            Sort.Order.desc("id"));
 
     private final TaskAssignmentForumResponderRepository responderRepository;
     private final QuestionThreadRepository questionThreadRepository;
@@ -96,8 +106,10 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
                             taskAssignmentId,
                             responderUserId)));
 
-        TaskAssignmentForumResponderDTO responder =
-            responderMapper.toDto(assignment);
+        TaskAssignmentForumResponderResponseDTO responder =
+            responderMapper.toResponse(
+                assignment,
+                candidate);
 
         boolean created = insertedRows == 1;
 
@@ -129,6 +141,15 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
 
         requireTaskAssignmentExists(
             taskAssignmentId);
+
+        /*
+         * Validate only that the user still exists.
+         *
+         * Do not require ORG + ACTIVE here. An administrator must be able to revoke an
+         * assignment after the user's role or account status has changed.
+         */
+        requireResponderCandidate(
+            responderUserId);
 
         Optional<TaskAssignmentForumResponder> assignment =
             responderRepository
@@ -231,6 +252,94 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
                 responderUserId);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TaskAssignmentForumResponderResponseDTO> getResponders(
+        Long taskAssignmentId,
+        int page,
+        int size) {
+        validateIdentifier(
+            taskAssignmentId,
+            "Task assignment id");
+
+        validatePageAndSize(page, size);
+
+        Long administratorId =
+            requireAdministrator();
+
+        requireTaskAssignmentExists(
+            taskAssignmentId);
+
+        Pageable pageable =
+            PageRequest.of(
+                page,
+                size,
+                RESPONDER_SORT);
+
+        Page<TaskAssignmentForumResponder> assignments =
+            responderRepository.findAllByTaskAssignmentId(
+                taskAssignmentId,
+                pageable);
+
+        if (assignments.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<Long> responderIds =
+            assignments.getContent()
+                .stream()
+                .map(
+                    TaskAssignmentForumResponder::getResponderUserId)
+                .distinct()
+                .toList();
+
+        Map<Long, ForumResponderCandidate> candidatesById =
+            userFacade
+                .findForumResponderCandidatesByIds(
+                    responderIds)
+                .stream()
+                .collect(
+                    Collectors.toMap(
+                        ForumResponderCandidate::id,
+                        Function.identity()));
+
+        List<TaskAssignmentForumResponderResponseDTO> content =
+            assignments.getContent()
+                .stream()
+                .map(assignment -> {
+                    ForumResponderCandidate candidate =
+                        candidatesById.get(
+                            assignment.getResponderUserId());
+
+                    if (candidate == null) {
+                        throw new IllegalStateException(
+                            ("User summary is missing for persisted "
+                                + "forum responder %s").formatted(
+                                    assignment.getResponderUserId()));
+                    }
+
+                    return responderMapper.toResponse(
+                        assignment,
+                        candidate);
+                })
+                .toList();
+
+        log.debug(
+            "Forum responders retrieved: "
+                + "taskAssignmentId={}, administratorId={}, "
+                + "page={}, returnedElements={}, totalElements={}",
+            taskAssignmentId,
+            administratorId,
+            page,
+            content.size(),
+            assignments.getTotalElements());
+
+        return new PageImpl<>(
+            content,
+            assignments.getPageable(),
+            assignments.getTotalElements());
+    }
+
     private Long requireAdministrator() {
         Long administratorId =
             securityFacade.getCurrentUserId()
@@ -298,6 +407,23 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
             throw new ValidationException(
                 "%s must be a positive number"
                     .formatted(fieldName),
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+    }
+
+    private void validatePageAndSize(
+        int page,
+        int size) {
+        if (page < 0) {
+            throw new ValidationException(
+                "Page number must not be negative",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new ValidationException(
+                "Page size must be between 1 and %d"
+                    .formatted(MAX_PAGE_SIZE),
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }

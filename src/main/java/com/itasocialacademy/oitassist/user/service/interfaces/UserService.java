@@ -50,6 +50,8 @@ public interface UserService {
      */
     Optional<ForumResponderCandidate> findForumResponderCandidateById(Long userId);
 
+    List<ForumResponderCandidate> findForumResponderCandidatesByIds(List<Long> userIds);
+
     UserDetailsImpl loadUserByUsername(String username);
 
     /**
