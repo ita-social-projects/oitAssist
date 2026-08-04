@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.chat.dao.repository;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
+import com.itasocialacademy.oitassist.chat.dao.model.TaskAssignmentForumResponder;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +39,44 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
     Page<QuestionThread> findAllByStateAndStatusAndAssignedReviewerIdIsNull(
         QuestionState state,
         QuestionStatus status,
+        Pageable pageable);
+
+    /**
+     * Returns unclaimed questions visible to one exact TaskAssignment forum
+     * responder.
+     *
+     * <p>
+     * Responder eligibility is evaluated in the database through the chat-owned
+     * {@link TaskAssignmentForumResponder} entity. Visibility is deliberately not
+     * part of the query because eligible responders may review both private and
+     * public questions.
+     * </p>
+     *
+     * @param responderUserId current authenticated ORG user identifier
+     * @param state           required lifecycle state
+     * @param status          required review status
+     * @param pageable        page and deterministic ordering
+     * @return responder-scoped unclaimed question page
+     */
+    @Query("""
+        SELECT question
+        FROM QuestionThread question
+        WHERE question.state = :state
+          AND question.status = :status
+          AND question.assignedReviewerId IS NULL
+          AND EXISTS (
+              SELECT responder.id
+              FROM TaskAssignmentForumResponder responder
+              WHERE responder.taskAssignmentId =
+                    question.taskAssignmentId
+                AND responder.responderUserId =
+                    :responderUserId
+          )
+        """)
+    Page<QuestionThread> findResponderUnclaimedQuestions(
+        @Param("responderUserId") Long responderUserId,
+        @Param("state") QuestionState state,
+        @Param("status") QuestionStatus status,
         Pageable pageable);
 
     Page<QuestionThread> findAllByStateAndAssignedReviewerId(
