@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.taskassignment.service;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -293,7 +295,10 @@ class AssignmentServiceTest {
 
         verify(securityFacade).hasRole("ADMIN");
         verify(securityFacade).hasRole("ORG");
-        verify(fileManagerFacade).getFilesByEntity(any(), eq(3L), any());
+
+        ArgumentCaptor<Set> captor = ArgumentCaptor.forClass(Set.class);
+        verify(fileManagerFacade).getFilesByEntity(any(), eq(3L), captor.capture());
+        assertEquals(Set.of(FileRole.PROBLEM, FileRole.REFERENCE),  captor.getValue());
     }
 
     // ---- updateTaskAssignment ----
