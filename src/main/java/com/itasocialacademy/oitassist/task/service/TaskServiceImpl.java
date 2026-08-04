@@ -83,8 +83,9 @@ public class TaskServiceImpl implements TaskService {
         log.debug("getAllTasks: page={}, size={}, sort={}",
             pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
-        return taskBodyRepository.findAll(pageable)
-            .map(e -> taskBodyMapper.toResponse(e, getTaskFiles(e.getId())));
+        Page<TaskBody> tasksPage = taskBodyRepository.findAll(pageable);
+
+        return getTaskResponseBulkDTO(tasksPage);
     }
 
     @Override
@@ -96,8 +97,9 @@ public class TaskServiceImpl implements TaskService {
         log.debug("getAllMyTasks: userId={}, page={}, size={}, sort={}",
             currentUserId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
-        return taskBodyRepository.findAllByOwnerId(currentUserId, pageable)
-            .map(e -> taskBodyMapper.toResponse(e, getTaskFiles(e.getId())));
+        Page<TaskBody> myTasksPage = taskBodyRepository.findAllByOwnerId(currentUserId, pageable);
+
+        return getTaskResponseBulkDTO(myTasksPage);
     }
 
     @Override
@@ -221,5 +223,26 @@ public class TaskServiceImpl implements TaskService {
     private List<FileDetailsDTO> getTaskFiles(Long taskBodyId) {
         Set<FileRole> allowedFileRoles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE, FileRole.SOLUTION);
         return fileManagerFacade.getFilesByEntity(RelatedEntityType.TASK, taskBodyId, allowedFileRoles);
+    }
+
+    private Map<Long, List<FileDetailsDTO>> getTaskFilesBulk(List<Long> taskIds) {
+        if (taskIds == null || taskIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return fileManagerFacade.getFilesByEntities(
+            RelatedEntityType.TASK,
+            taskIds,
+            Set.of(FileRole.PROBLEM, FileRole.REFERENCE, FileRole.SOLUTION));
+    }
+
+    private Page<TaskResponseDTO> getTaskResponseBulkDTO(Page<TaskBody> myTasksPage) {
+        List<Long> taskIds = myTasksPage.getContent().stream()
+            .map(TaskBody::getId)
+            .toList();
+
+        Map<Long, List<FileDetailsDTO>> files = getTaskFilesBulk(taskIds);
+
+        return myTasksPage
+            .map(e -> taskBodyMapper.toResponse(e, files.getOrDefault(e.getId(), Collections.emptyList())));
     }
 }
