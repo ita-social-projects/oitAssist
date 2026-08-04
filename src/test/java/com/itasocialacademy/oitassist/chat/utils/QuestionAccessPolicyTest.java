@@ -14,6 +14,7 @@ import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -143,6 +144,6 @@ class QuestionAccessPolicyTest {
             TASK_ID,
             "Test task",
             "Test task description",
-            USER_ID);
+            Set.of(USER_ID));
     }
 }

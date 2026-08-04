@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.taskassignment.service;
 
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -104,7 +105,7 @@ class AssignmentServiceTest {
             .id(3L)
             .title("PowerPoint Різдвяна зірка")
             .description("Створити у файлі-розв'язку")
-            .ownerId(100L)
+            .ownerIds(Set.of(100L))
             .build();
     }
 

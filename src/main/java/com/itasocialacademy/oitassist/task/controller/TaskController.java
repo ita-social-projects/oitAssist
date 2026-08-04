@@ -2,8 +2,9 @@ package com.itasocialacademy.oitassist.task.controller;
 
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
-import com.itasocialacademy.oitassist.task.dto.request.ChangeOwnerRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.AddOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.RemoveOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
@@ -127,11 +128,11 @@ public class TaskController {
     }
 
     @Operation(
-        summary = "Change task owner",
-        description = "Assigns a task to a new owner. The new owner must have ADMIN or ORG role. "
+        summary = "Add task owner",
+        description = "Assigns a new owner to a task. The new owner must have ADMIN or ORG role. "
             + "Only users with ADMIN role can perform this action.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Task owner changed successfully",
+        @ApiResponse(responseCode = "200", description = "Task owner added successfully",
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = TaskResponseDTO.class))),
         @ApiResponse(responseCode = "400", description = "Validation failed",
@@ -144,11 +145,36 @@ public class TaskController {
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PatchMapping("/{taskId}/change-owner")
+    @PatchMapping("/{taskId}/add-owner")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<TaskResponseDTO> changeOwner(@PathVariable Long taskId,
-        @Valid @RequestBody ChangeOwnerRequestDTO changeOwnerRequest) {
-        return ResponseEntity.ok().body(taskService.changeTaskOwner(taskId, changeOwnerRequest));
+    public ResponseEntity<TaskResponseDTO> addOwner(@PathVariable Long taskId,
+        @Valid @RequestBody AddOwnerRequestDTO addOwnerRequestDTO) {
+        return ResponseEntity.ok().body(taskService.addTaskOwner(taskId, addOwnerRequestDTO));
+    }
+
+    @Operation(
+        summary = "Remove task owner",
+        description = "Removes an owner from the task. "
+            + "Only users with ADMIN role can perform this action.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Task owner removed successfully",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = TaskResponseDTO.class))),
+        @ApiResponse(responseCode = "400", description = "Validation failed",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied - User does not have ADMIN role",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Task or user not found",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/{taskId}/remove-owner")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TaskResponseDTO> removeOwner(@PathVariable Long taskId,
+        @Valid @RequestBody RemoveOwnerRequestDTO removeOwnerRequestDTO) {
+        return ResponseEntity.ok().body(taskService.removeTaskOwner(taskId, removeOwnerRequestDTO));
     }
 
     @Operation(

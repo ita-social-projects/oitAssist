@@ -26,4 +26,5 @@
     <include file="/db/changelog/logs/2026-07-24-ch-add-fk-task-assignment-to-task-bodies-Selianyk.xml"/>
     <include file="/db/changelog/logs/2026-07-27-ch-create-invitations-Haleliuk.xml"/>
     <include file="/db/changelog/logs/2026-07-27-ch-alter-invitations-Haleliuk.xml"/>
+    <include file="/db/changelog/logs/2026-08-04-ch-create-task-owners-table-Murashko.xml"/>
 </databaseChangeLog>

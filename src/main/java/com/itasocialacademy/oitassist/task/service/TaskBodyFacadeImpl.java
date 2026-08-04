@@ -34,7 +34,7 @@ class TaskBodyFacadeImpl implements TaskBodyFacade {
             .id(created.id())
             .title(created.title())
             .description(created.description())
-            .ownerId(created.ownerId())
+            .ownerIds(created.ownerIds())
             .build();
     }
 }
