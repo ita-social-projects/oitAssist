@@ -27,4 +27,6 @@
     <include file="/db/changelog/logs/2026-07-15-ch-create-question-messages-Shankin.xml"/>
     <include file="/db/changelog/logs/2026-07-27-ch-create-invitations-Haleliuk.xml"/>
     <include file="/db/changelog/logs/2026-07-27-ch-alter-invitations-Haleliuk.xml"/>
+
+    <include file="/db/changelog/logs/2026-08-04-ch-create-task-assignment-forum-responders-Shankin.xml"/>
 </databaseChangeLog>

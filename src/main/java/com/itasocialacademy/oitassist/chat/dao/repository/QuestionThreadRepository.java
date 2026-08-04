@@ -51,6 +51,11 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         QuestionStatus status,
         Pageable pageable);
 
+    boolean existsByTaskAssignmentIdAndAssignedReviewerIdAndState(
+        Long taskAssignmentId,
+        Long assignedReviewerId,
+        QuestionState state);
+
     @Modifying(
         clearAutomatically = true,
         flushAutomatically = true)
