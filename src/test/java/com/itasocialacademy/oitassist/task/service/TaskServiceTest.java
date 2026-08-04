@@ -37,6 +37,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
@@ -216,7 +217,7 @@ class TaskServiceTest {
         Page<TaskBody> page = new PageImpl<>(List.of(taskBody), pageable, 1);
 
         when(taskBodyRepository.findAll(pageable)).thenReturn(page);
-        when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
+        when(fileManagerFacade.getFilesByEntities(any(), eq(List.of(1L)), any())).thenReturn(Map.of(1L, testFiles));
         when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
 
         Page<TaskResponseDTO> result = taskService.getAllTasks(pageable);
@@ -252,7 +253,8 @@ class TaskServiceTest {
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
         when(taskBodyRepository.findAllByOwnerId(100L, pageable)).thenReturn(expectedRepositoryPage);
-        when(taskBodyMapper.toResponse(eq(taskBody), any())).thenReturn(taskResponse);
+        when(fileManagerFacade.getFilesByEntities(any(), eq(List.of(1L)), any())).thenReturn(Map.of(1L, testFiles));
+        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
 
         Page<TaskResponseDTO> result = taskService.getAllMyTasks(pageable);
 
