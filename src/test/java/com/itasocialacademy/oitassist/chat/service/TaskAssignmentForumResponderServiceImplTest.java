@@ -740,6 +740,10 @@ class TaskAssignmentForumResponderServiceImplTest {
             TASK_ASSIGNMENT_ID,
             RESPONDER_ID);
 
+        verify(userFacade, times(2))
+            .findForumResponderCandidateById(
+                RESPONDER_ID);
+
         verify(responderRepository, times(2))
             .findByTaskAssignmentIdAndResponderUserIdForUpdate(
                 TASK_ASSIGNMENT_ID,

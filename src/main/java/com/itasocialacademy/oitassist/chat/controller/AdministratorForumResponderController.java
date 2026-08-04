@@ -79,7 +79,7 @@ public class AdministratorForumResponderController {
                     implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "TaskAssignment was not found",
+            description = "TaskAssignment or target user was not found",
             content = @Content(
                 schema = @Schema(
                     implementation = ErrorResponse.class)))
