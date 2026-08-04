@@ -7,6 +7,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
+import java.util.Collection;
 import java.util.Set;
 
 /**
@@ -27,6 +28,10 @@ public final class FileAssetSpecification {
 
     public static Specification<FileAsset> hasEntityId(Long entityId) {
         return (root, query, cb) -> cb.equal(root.get(RELATED_ENTITY_ID), entityId);
+    }
+
+    public static Specification<FileAsset> hasEntityIdIn(Collection<Long> entityIds) {
+        return (root, query, cb) -> root.get(RELATED_ENTITY_ID).in(entityIds);
     }
 
     public static Specification<FileAsset> hasStatus(FileStatus status) {

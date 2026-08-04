@@ -27,9 +27,7 @@ import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileValid
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.io.IOException;
 import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
@@ -263,6 +261,45 @@ public class FileServiceImpl implements FileService {
                 return fileMapper.toDetails(file, provider.getFileUrl(file.getStorageKey()));
             })
             .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Uses JPA Specifications to filter by entity type, entity IDs, ATTACHED
+     * status, and the provided set of file roles. Maps results directly to
+     * {@link FileDetailsDTO} via the file mapper and groups them by entity ID.
+     * </p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<FileDetailsDTO>> getFilesByEntities(RelatedEntityType entityType, List<Long> entityIds,
+        Set<FileRole> roles) {
+        if (entityIds == null || entityIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Specification<FileAsset> spec = Specification
+            .where(FileAssetSpecification.hasEntityType(entityType))
+            .and(FileAssetSpecification.hasEntityIdIn(entityIds))
+            .and(FileAssetSpecification.hasStatus(FileStatus.ATTACHED))
+            .and(FileAssetSpecification.hasFileRoleIn(roles));
+
+        List<FileAsset> files = repository.findAll(spec);
+
+        Map<Long, List<FileDetailsDTO>> resultMap = new HashMap<>();
+        for (Long id : entityIds) {
+            resultMap.put(id, new ArrayList<>());
+        }
+
+        for (FileAsset file : files) {
+            StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+            FileDetailsDTO dto = fileMapper.toDetails(file, provider.getFileUrl(file.getStorageKey()));
+            resultMap.computeIfAbsent(file.getRelatedEntityId(), k -> new ArrayList<>()).add(dto);
+        }
+
+        return resultMap;
     }
 
     /**
