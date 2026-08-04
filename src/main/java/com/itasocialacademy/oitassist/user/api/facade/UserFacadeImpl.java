@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.user.api.facade;
 
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.service.interfaces.RegistrationService;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserActivationService;
@@ -81,5 +82,13 @@ public class UserFacadeImpl implements UserFacade {
     @Override
     public List<UserAuthDetails> findByIds(List<Long> userIds) {
         return userService.findAuthDetailsByIds(userIds);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<UserProfileDetails> findProfileById(Long userId) {
+        return userService.findProfileDetailsById(userId);
     }
 }
