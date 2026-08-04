@@ -2,8 +2,8 @@ package com.itasocialacademy.oitassist.chat.controller;
 
 import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
 import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
-import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.service.interfaces.AdministratorQuestionService;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
@@ -89,7 +89,7 @@ public class AdministratorQuestionController {
                     implementation = ErrorResponse.class)))
     })
     @GetMapping("/inbox")
-    public ResponseEntity<PageResponse<AdminQuestionInboxItemResponseDTO>> getUnclaimedQuestions(
+    public ResponseEntity<PageResponse<QuestionReviewInboxItemResponseDTO>> getUnclaimedQuestions(
         @Parameter(
             description = "Zero-based page number",
             example = "0") @RequestParam(
@@ -150,7 +150,7 @@ public class AdministratorQuestionController {
                     implementation = ErrorResponse.class)))
     })
     @GetMapping("/assigned-to-me")
-    public ResponseEntity<PageResponse<AdminQuestionInboxItemResponseDTO>> getAssignedQuestions(
+    public ResponseEntity<PageResponse<QuestionReviewInboxItemResponseDTO>> getAssignedQuestions(
         @Parameter(
             description = "Optional question-status filter",
             example = "IN_REVIEW") @RequestParam(

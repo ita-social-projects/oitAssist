@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import java.time.Instant;
@@ -179,7 +179,7 @@ class RealtimeForumEventTest {
         QuestionThreadResponseDTO question =
             questionResponse();
 
-        AdminQuestionInboxItemResponseDTO inboxQuestion =
+        QuestionReviewInboxItemResponseDTO inboxQuestion =
             inboxResponse();
 
         QuestionMessageResponseDTO message =
@@ -288,9 +288,9 @@ class RealtimeForumEventTest {
             .build();
     }
 
-    private static AdminQuestionInboxItemResponseDTO inboxResponse() {
+    private static QuestionReviewInboxItemResponseDTO inboxResponse() {
 
-        return AdminQuestionInboxItemResponseDTO.builder()
+        return QuestionReviewInboxItemResponseDTO.builder()
             .id(QUESTION_ID)
             .taskAssignmentId(TASK_ASSIGNMENT_ID)
             .authorId(AUTHOR_ID)

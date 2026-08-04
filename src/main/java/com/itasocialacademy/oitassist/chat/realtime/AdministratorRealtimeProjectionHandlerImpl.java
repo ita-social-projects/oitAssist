@@ -6,7 +6,7 @@ import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.
 import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.INBOX_UPSERTED;
 import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.MESSAGE_CREATED;
 import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.REVIEW_UPDATED;
-import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.event.CommentCreatedDomainEvent;
@@ -269,7 +269,7 @@ public class AdministratorRealtimeProjectionHandlerImpl
                     message)));
     }
 
-    private AdminQuestionInboxItemResponseDTO toAdministratorSummary(
+    private QuestionReviewInboxItemResponseDTO toAdministratorSummary(
         QuestionThreadResponseDTO question) {
         /*
          * The shared inbox and personal review queues reuse the existing administrator
@@ -277,7 +277,7 @@ public class AdministratorRealtimeProjectionHandlerImpl
          *
          * Full question content is deliberately not copied.
          */
-        return new AdminQuestionInboxItemResponseDTO(
+        return new QuestionReviewInboxItemResponseDTO(
             question.id(),
             question.taskAssignmentId(),
             question.authorId(),

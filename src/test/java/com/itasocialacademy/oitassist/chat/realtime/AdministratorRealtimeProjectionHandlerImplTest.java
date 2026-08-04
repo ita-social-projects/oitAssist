@@ -24,7 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionMessageType;
@@ -671,7 +671,7 @@ class AdministratorRealtimeProjectionHandlerImplTest {
                 InboxUpsertPayload.class,
                 event.payload());
 
-        AdminQuestionInboxItemResponseDTO summary =
+        QuestionReviewInboxItemResponseDTO summary =
             payload.question();
 
         assertAll(

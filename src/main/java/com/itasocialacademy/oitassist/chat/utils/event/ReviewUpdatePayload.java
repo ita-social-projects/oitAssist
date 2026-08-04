@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.chat.utils.event;
 
-import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import java.util.Objects;
 
 /**
@@ -8,7 +8,7 @@ import java.util.Objects;
  * review projection.
  */
 public record ReviewUpdatePayload(
-    AdminQuestionInboxItemResponseDTO question)
+    QuestionReviewInboxItemResponseDTO question)
     implements RealtimePayload {
     public ReviewUpdatePayload {
         Objects.requireNonNull(

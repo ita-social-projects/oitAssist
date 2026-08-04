@@ -9,8 +9,8 @@ import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerR
 import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStateRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStatusRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionVisibilityRequestDTO;
-import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
@@ -67,7 +67,7 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AdminQuestionInboxItemResponseDTO> getUnclaimedQuestions(
+    public Page<QuestionReviewInboxItemResponseDTO> getUnclaimedQuestions(
         int page,
         int size) {
         validatePageAndSize(page, size);
@@ -86,14 +86,14 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
             size,
             UNCLAIMED_QUESTION_SORT);
 
-        Page<AdminQuestionInboxItemResponseDTO> result =
+        Page<QuestionReviewInboxItemResponseDTO> result =
             questionThreadRepository
                 .findAllByStateAndStatusAndAssignedReviewerIdIsNull(
                     OPEN,
                     NEW,
                     pageable)
                 .map(
-                    questionThreadMapper::toAdminInboxItemResponse);
+                    questionThreadMapper::toReviewInboxItemResponse);
 
         log.debug(
             "Unclaimed administrator questions retrieved: "
@@ -109,7 +109,7 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AdminQuestionInboxItemResponseDTO> getAssignedQuestions(
+    public Page<QuestionReviewInboxItemResponseDTO> getAssignedQuestions(
         QuestionStatus status,
         int page,
         int size) {
@@ -144,9 +144,9 @@ public class AdministratorQuestionServiceImpl implements AdministratorQuestionSe
                         status,
                         pageable);
 
-        Page<AdminQuestionInboxItemResponseDTO> result =
+        Page<QuestionReviewInboxItemResponseDTO> result =
             assignedQuestions.map(
-                questionThreadMapper::toAdminInboxItemResponse);
+                questionThreadMapper::toReviewInboxItemResponse);
 
         log.debug(
             "Assigned administrator questions retrieved: "

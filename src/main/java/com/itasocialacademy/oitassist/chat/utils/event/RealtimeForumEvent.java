@@ -3,7 +3,7 @@ package com.itasocialacademy.oitassist.chat.utils.event;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
-import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 
 /**
@@ -162,7 +162,7 @@ public record RealtimeForumEvent(
     private static void validateInboxSnapshot(
         Long taskAssignmentId,
         Long questionId,
-        AdminQuestionInboxItemResponseDTO question) {
+        QuestionReviewInboxItemResponseDTO question) {
         requireMatchingId(
             taskAssignmentId,
             question.taskAssignmentId(),

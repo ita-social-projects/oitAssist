@@ -4,8 +4,8 @@ import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerR
 import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStateRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStatusRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionVisibilityRequestDTO;
-import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import org.springframework.data.domain.Page;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
@@ -18,7 +18,7 @@ public interface AdministratorQuestionService {
      * @param size requested page size
      * @return page of unclaimed administrator inbox items
      */
-    Page<AdminQuestionInboxItemResponseDTO> getUnclaimedQuestions(
+    Page<QuestionReviewInboxItemResponseDTO> getUnclaimedQuestions(
         int page,
         int size);
 
@@ -30,7 +30,7 @@ public interface AdministratorQuestionService {
      * @param size   requested page size
      * @return page of questions assigned to the current administrator
      */
-    Page<AdminQuestionInboxItemResponseDTO> getAssignedQuestions(
+    Page<QuestionReviewInboxItemResponseDTO> getAssignedQuestions(
         QuestionStatus status,
         int page,
         int size);

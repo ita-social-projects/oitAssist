@@ -19,7 +19,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.itasocialacademy.oitassist.chat.dao.dto.response.AdminQuestionInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
@@ -100,10 +100,10 @@ class AdministratorQuestionServiceImplTest {
                 NEW,
                 PUBLIC);
 
-        AdminQuestionInboxItemResponseDTO privateResponse =
+        QuestionReviewInboxItemResponseDTO privateResponse =
             createResponse(privateQuestion);
 
-        AdminQuestionInboxItemResponseDTO publicResponse =
+        QuestionReviewInboxItemResponseDTO publicResponse =
             createResponse(publicQuestion);
 
         Page<QuestionThread> repositoryPage =
@@ -122,14 +122,14 @@ class AdministratorQuestionServiceImplTest {
             .thenReturn(repositoryPage);
 
         when(questionThreadMapper
-            .toAdminInboxItemResponse(privateQuestion))
+            .toReviewInboxItemResponse(privateQuestion))
             .thenReturn(privateResponse);
 
         when(questionThreadMapper
-            .toAdminInboxItemResponse(publicQuestion))
+            .toReviewInboxItemResponse(publicQuestion))
             .thenReturn(publicResponse);
 
-        Page<AdminQuestionInboxItemResponseDTO> result =
+        Page<QuestionReviewInboxItemResponseDTO> result =
             administratorQuestionService
                 .getUnclaimedQuestions(
                     PAGE,
@@ -233,7 +233,7 @@ class AdministratorQuestionServiceImplTest {
                         PAGE,
                         SIZE)));
 
-        Page<AdminQuestionInboxItemResponseDTO> result =
+        Page<QuestionReviewInboxItemResponseDTO> result =
             administratorQuestionService
                 .getUnclaimedQuestions(
                     PAGE,
@@ -265,7 +265,7 @@ class AdministratorQuestionServiceImplTest {
                 ANSWERED,
                 PRIVATE);
 
-        AdminQuestionInboxItemResponseDTO response =
+        QuestionReviewInboxItemResponseDTO response =
             createResponse(question);
 
         when(questionThreadRepository
@@ -279,10 +279,10 @@ class AdministratorQuestionServiceImplTest {
                 1));
 
         when(questionThreadMapper
-            .toAdminInboxItemResponse(question))
+            .toReviewInboxItemResponse(question))
             .thenReturn(response);
 
-        Page<AdminQuestionInboxItemResponseDTO> result =
+        Page<QuestionReviewInboxItemResponseDTO> result =
             administratorQuestionService
                 .getAssignedQuestions(
                     null,
@@ -459,7 +459,7 @@ class AdministratorQuestionServiceImplTest {
                         PAGE,
                         SIZE)));
 
-        Page<AdminQuestionInboxItemResponseDTO> result =
+        Page<QuestionReviewInboxItemResponseDTO> result =
             administratorQuestionService
                 .getAssignedQuestions(
                     null,
@@ -606,10 +606,10 @@ class AdministratorQuestionServiceImplTest {
             .build();
     }
 
-    private AdminQuestionInboxItemResponseDTO createResponse(
+    private QuestionReviewInboxItemResponseDTO createResponse(
         QuestionThread question) {
 
-        return new AdminQuestionInboxItemResponseDTO(
+        return new QuestionReviewInboxItemResponseDTO(
             question.getId(),
             question.getTaskAssignmentId(),
             question.getAuthorId(),
