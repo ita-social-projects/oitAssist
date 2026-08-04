@@ -119,12 +119,13 @@ public interface UserFacade {
     List<UserAuthDetails> findByIds(List<Long> userIds);
 
     /**
-     * Looks up a user by their ID and returns the display-side projection
-     * needed by {@code security}.
-     * Called by {@code participation.ApplicationServiceImpl} during the
-     * email-sending process.
+     * Looks up a user by their ID and returns the display-side projection needed by
+     * {@code security}. Called by {@code participation.ApplicationServiceImpl}
+     * during the email-sending process.
+     *
      * @param userId the user's ID
-     * @return the display-side projection, or empty if no user exists with the given ID
+     * @return the display-side projection, or empty if no user exists with the
+     *         given ID
      */
     Optional<UserProfileDetails> findProfileById(Long userId);
 }
