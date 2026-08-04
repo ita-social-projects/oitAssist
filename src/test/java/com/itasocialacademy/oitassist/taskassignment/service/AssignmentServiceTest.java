@@ -25,6 +25,7 @@ import static org.mockito.Mockito.*;
 
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
+import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
@@ -170,6 +171,23 @@ class AssignmentServiceTest {
     }
 
     @Test
+    void assignTask_tourNotScheduled_shouldThrowCompetitionHierarchyValidationException() {
+        CreateTaskAssignmentRequestDTO request =
+            new CreateTaskAssignmentRequestDTO(3L, AssignmentVisibility.VISIBLE, 25, reqDTO);
+
+        TourDetail activeTour = TourDetail.builder()
+            .id(10L)
+            .title("Tour 1")
+            .executionStatus(ExecutionStatus.IN_PROGRESS)
+            .build();
+
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(activeTour));
+
+        assertThrows(CompetitionHierarchyValidationException.class, () -> assignmentService.assignTask(10L, request));
+        verify(taskAssignmentRepository, never()).save(any());
+    }
+
+    @Test
     void assignTask_taskNotFound_shouldThrowTaskNotFoundException() {
         CreateTaskAssignmentRequestDTO request =
             new CreateTaskAssignmentRequestDTO(3L, AssignmentVisibility.VISIBLE, 25, reqDTO);
@@ -298,7 +316,7 @@ class AssignmentServiceTest {
 
         ArgumentCaptor<Set> captor = ArgumentCaptor.forClass(Set.class);
         verify(fileManagerFacade).getFilesByEntity(any(), eq(3L), captor.capture());
-        assertEquals(Set.of(FileRole.PROBLEM, FileRole.REFERENCE),  captor.getValue());
+        assertEquals(Set.of(FileRole.PROBLEM, FileRole.REFERENCE), captor.getValue());
     }
 
     // ---- updateTaskAssignment ----
@@ -360,6 +378,24 @@ class AssignmentServiceTest {
         assertThrows(TaskAssignmentNotFoundException.class, () -> assignmentService.updateTaskAssignment(1L, request));
     }
 
+    @Test
+    void updateTaskAssignment_tourNotScheduled_shouldThrowCompetitionHierarchyValidationException() {
+        UpdateTaskAssignmentRequestDTO request =
+            new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, 30, null);
+
+        TourDetail activeTour = TourDetail.builder()
+            .id(10L)
+            .title("Tour 1")
+            .executionStatus(ExecutionStatus.IN_PROGRESS)
+            .build();
+
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(activeTour));
+
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> assignmentService.updateTaskAssignment(1L, request));
+    }
+
     // ---- deleteTaskAssignment ----
 
     @Test
@@ -377,6 +413,21 @@ class AssignmentServiceTest {
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(TaskAssignmentNotFoundException.class, () -> assignmentService.deleteTaskAssignment(1L));
+        verify(taskAssignmentRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteTaskAssignment_tourNotScheduled_shouldThrowCompetitionHierarchyValidationException() {
+        TourDetail activeTour = TourDetail.builder()
+            .id(10L)
+            .title("Tour 1")
+            .executionStatus(ExecutionStatus.IN_PROGRESS)
+            .build();
+
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(activeTour));
+
+        assertThrows(CompetitionHierarchyValidationException.class, () -> assignmentService.deleteTaskAssignment(1L));
         verify(taskAssignmentRepository, never()).delete(any());
     }
 
@@ -422,6 +473,26 @@ class AssignmentServiceTest {
         when(competitionFacade.findTourById(10L)).thenReturn(Optional.empty());
 
         assertThrows(TourNotFoundException.class, () -> assignmentService.createAndAssignTask(10L, request));
+        verify(taskBodyFacade, never()).createTask(any(), any(), any());
+        verify(taskAssignmentRepository, never()).save(any());
+    }
+
+    @Test
+    void createAndAssignTask_tourNotScheduled_shouldThrowCompetitionHierarchyValidationException() {
+        CreateAndAssignTaskRequestDTO request =
+            new CreateAndAssignTaskRequestDTO("PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
+                List.of(1L, 2L), AssignmentVisibility.VISIBLE, 25, reqDTO);
+
+        TourDetail activeTour = TourDetail.builder()
+            .id(10L)
+            .title("Tour 1")
+            .executionStatus(ExecutionStatus.IN_PROGRESS)
+            .build();
+
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(activeTour));
+
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> assignmentService.createAndAssignTask(10L, request));
         verify(taskBodyFacade, never()).createTask(any(), any(), any());
         verify(taskAssignmentRepository, never()).save(any());
     }

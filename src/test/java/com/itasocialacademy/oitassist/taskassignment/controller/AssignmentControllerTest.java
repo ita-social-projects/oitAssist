@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.taskassignment.controller;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
+import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
@@ -111,6 +112,20 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
     }
 
     @Test
+    void assignTask_tourNotScheduled_shouldReturn400() throws Exception {
+        CreateTaskAssignmentRequestDTO request = new CreateTaskAssignmentRequestDTO(
+            3L, AssignmentVisibility.VISIBLE, 25, validRequirements);
+
+        when(assignmentService.assignTask(eq(10L), any(CreateTaskAssignmentRequestDTO.class)))
+            .thenThrow(new CompetitionHierarchyValidationException("Cannot assign task. Tour has already started"));
+
+        mockMvc.perform(post("/api/v1/tours/{tourId}/task-assignments", 10L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void assignTask_duplicateAssignment_shouldReturn409() throws Exception {
         CreateTaskAssignmentRequestDTO request = new CreateTaskAssignmentRequestDTO(
             3L, AssignmentVisibility.VISIBLE, 25, validRequirements);
@@ -169,6 +184,21 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createAndAssignTask_tourNotScheduled_shouldReturn400() throws Exception {
+        CreateAndAssignTaskRequestDTO request = new CreateAndAssignTaskRequestDTO(
+            "Task Title", "Task Description", List.of(1L, 2L), AssignmentVisibility.VISIBLE, 25, validRequirements);
+
+        when(assignmentService.createAndAssignTask(eq(10L), any(CreateAndAssignTaskRequestDTO.class)))
+            .thenThrow(
+                new CompetitionHierarchyValidationException("Cannot create task assignment. Tour has already started"));
+
+        mockMvc.perform(post("/api/v1/tours/{tourId}/task-assignments/new", 10L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -277,6 +307,21 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
             .andExpect(status().isNotFound());
     }
 
+    @Test
+    void update_tourNotScheduled_shouldReturn400() throws Exception {
+        UpdateTaskAssignmentRequestDTO request = new UpdateTaskAssignmentRequestDTO(
+            AssignmentVisibility.HIDDEN, 30, validRequirements);
+
+        when(assignmentService.updateTaskAssignment(eq(1L), any(UpdateTaskAssignmentRequestDTO.class)))
+            .thenThrow(
+                new CompetitionHierarchyValidationException("Cannot update task assignment. Tour has already started"));
+
+        mockMvc.perform(patch("/api/v1/task-assignments/{assignmentId}", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
+
     // DELETE /api/v1/task-assignments/{assignmentId} — delete
 
     @Test
@@ -295,5 +340,14 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
 
         mockMvc.perform(delete("/api/v1/task-assignments/{assignmentId}", 99L))
             .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void delete_tourNotScheduled_shouldReturn400() throws Exception {
+        doThrow(new CompetitionHierarchyValidationException("Cannot delete task assignment. Tour has already started"))
+            .when(assignmentService).deleteTaskAssignment(1L);
+
+        mockMvc.perform(delete("/api/v1/task-assignments/{assignmentId}", 1L))
+            .andExpect(status().isBadRequest());
     }
 }
