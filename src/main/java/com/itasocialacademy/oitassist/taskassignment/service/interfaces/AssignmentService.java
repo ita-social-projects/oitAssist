@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibil
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.response.DetailedTaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
@@ -21,13 +22,13 @@ public interface AssignmentService {
      * @param tourId  the id of the tour to assign the task to
      * @param request the task assignment creation request containing task body id,
      *                visibility level, and other assignment details
-     * @return the created {@link TaskAssignmentResponseDTO} with the assigned task
-     *         details
+     * @return the created {@link DetailedTaskAssignmentResponseDTO} with the
+     *         assigned task details
      * @throws TaskAlreadyAssignedException if the task is already assigned to the
      *                                      specified tour
      * @throws TourNotFoundException        if the tour or task does not exist
      */
-    TaskAssignmentResponseDTO assignTask(Long tourId, CreateTaskAssignmentRequestDTO request);
+    DetailedTaskAssignmentResponseDTO assignTask(Long tourId, CreateTaskAssignmentRequestDTO request);
 
     /**
      * Retrieves all task assignments for a specific tour with pagination support.
@@ -44,11 +45,12 @@ public interface AssignmentService {
      * Retrieves a task assignment by its id.
      *
      * @param taskAssignmentId the id of the task assignment to retrieve
-     * @return the {@link TaskAssignmentResponseDTO} with the assignment details
+     * @return the {@link DetailedTaskAssignmentResponseDTO} with the assignment
+     *         details
      * @throws TaskAssignmentNotFoundException if no task assignment exists with the
      *                                         given id
      */
-    TaskAssignmentResponseDTO getTaskAssignmentById(Long taskAssignmentId);
+    DetailedTaskAssignmentResponseDTO getTaskAssignmentById(Long taskAssignmentId);
 
     /**
      * Updates an existing task assignment with new values. Allows partial updates
@@ -58,12 +60,13 @@ public interface AssignmentService {
      * @param taskAssignmentId the id of the task assignment to update
      * @param request          the update request containing the new values for the
      *                         assignment;
-     * @return the updated {@link TaskAssignmentResponseDTO} with the new assignment
-     *         details
+     * @return the updated {@link DetailedTaskAssignmentResponseDTO} with the new
+     *         assignment details
      * @throws TaskAssignmentNotFoundException if no task assignment exists with the
      *                                         given id
      */
-    TaskAssignmentResponseDTO updateTaskAssignment(Long taskAssignmentId, UpdateTaskAssignmentRequestDTO request);
+    DetailedTaskAssignmentResponseDTO updateTaskAssignment(Long taskAssignmentId,
+        UpdateTaskAssignmentRequestDTO request);
 
     /**
      * Deletes a task assignment by its id.
@@ -83,11 +86,11 @@ public interface AssignmentService {
      * @param request the request containing task body fields (title, description,
      *                file ids) and assignment fields (visibility, max points,
      *                requirements)
-     * @return the created {@link TaskAssignmentResponseDTO} with the assignment
-     *         details
+     * @return the created {@link DetailedTaskAssignmentResponseDTO} with the
+     *         assignment details
      * @throws TourNotFoundException if the tour does not exist
      */
-    TaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request);
+    DetailedTaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request);
 
     /**
      * Retrieves detailed information about a task assignment by its id, intended

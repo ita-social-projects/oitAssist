@@ -3,12 +3,14 @@ package com.itasocialacademy.oitassist.filemanager.service;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
+import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
+import com.itasocialacademy.oitassist.filemanager.dao.specification.FileAssetSpecification;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
@@ -25,10 +27,10 @@ import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileValid
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.io.IOException;
 import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -233,6 +235,71 @@ public class FileServiceImpl implements FileService {
                 return dto;
             })
             .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Uses JPA Specifications to filter by entity type, entity ID, ATTACHED status,
+     * and the provided set of file roles. Maps results directly to
+     * {@link FileDetailsDTO} via the file mapper.
+     * </p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<FileDetailsDTO> getFilesByEntity(RelatedEntityType entityType, Long entityId, Set<FileRole> roles) {
+        Specification<FileAsset> spec = Specification
+            .where(FileAssetSpecification.hasEntityType(entityType))
+            .and(FileAssetSpecification.hasEntityId(entityId))
+            .and(FileAssetSpecification.hasStatus(FileStatus.ATTACHED))
+            .and(FileAssetSpecification.hasFileRoleIn(roles));
+
+        return repository.findAll(spec).stream()
+            .map(file -> {
+                StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+                return fileMapper.toDetails(file, provider.getFileUrl(file.getStorageKey()));
+            })
+            .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Uses JPA Specifications to filter by entity type, entity IDs, ATTACHED
+     * status, and the provided set of file roles. Maps results directly to
+     * {@link FileDetailsDTO} via the file mapper and groups them by entity ID.
+     * </p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<FileDetailsDTO>> getFilesByEntities(RelatedEntityType entityType, List<Long> entityIds,
+        Set<FileRole> roles) {
+        if (entityIds == null || entityIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Specification<FileAsset> spec = Specification
+            .where(FileAssetSpecification.hasEntityType(entityType))
+            .and(FileAssetSpecification.hasEntityIdIn(entityIds))
+            .and(FileAssetSpecification.hasStatus(FileStatus.ATTACHED))
+            .and(FileAssetSpecification.hasFileRoleIn(roles));
+
+        List<FileAsset> files = repository.findAll(spec);
+
+        Map<Long, List<FileDetailsDTO>> resultMap = new HashMap<>();
+        for (Long id : entityIds) {
+            resultMap.put(id, new ArrayList<>());
+        }
+
+        for (FileAsset file : files) {
+            StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+            FileDetailsDTO dto = fileMapper.toDetails(file, provider.getFileUrl(file.getStorageKey()));
+            resultMap.computeIfAbsent(file.getRelatedEntityId(), k -> new ArrayList<>()).add(dto);
+        }
+
+        return resultMap;
     }
 
     /**

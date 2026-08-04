@@ -1,5 +1,7 @@
 package com.itasocialacademy.oitassist.taskassignment.service;
 
+import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -22,7 +25,11 @@ import static org.mockito.Mockito.*;
 
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
+import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
+import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
@@ -35,6 +42,7 @@ import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssig
 import com.itasocialacademy.oitassist.taskassignment.dto.request.TaskRequirementsRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.response.DetailedTaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
@@ -54,15 +62,23 @@ class AssignmentServiceTest {
     @Mock
     private TaskBodyFacade taskBodyFacade;
 
+    @Mock
+    private FileManagerFacade fileManagerFacade;
+
+    @Mock
+    private SecurityFacade securityFacade;
+
     @InjectMocks
     private AssignmentServiceImpl assignmentService;
 
     private TaskAssignment taskAssignment;
     private TaskAssignmentResponseDTO assignmentResponse;
+    private DetailedTaskAssignmentResponseDTO detailedResponse;
     private TourDetail tourDetail;
     private TaskBodyDetail taskBodyDetail;
     private TaskRequirements requirements;
     private TaskRequirementsRequestDTO reqDTO;
+    private List<FileDetailsDTO> testFiles;
 
     @BeforeEach
     void setUp() {
@@ -89,15 +105,22 @@ class AssignmentServiceTest {
             .taskBodyId(3L)
             .taskTitle("PowerPoint Різдвяна зірка")
             .tourId(10L)
-            .visibility(AssignmentVisibility.VISIBLE)
             .maxPoints(25)
-            .requirements(requirements)
             .createdBy(100L)
             .build();
+
+        testFiles = List.of(
+            new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
+                "/uploads/task/problem.pdf"));
+
+        detailedResponse = new DetailedTaskAssignmentResponseDTO(
+            1L, 3L, "PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
+            10L, AssignmentVisibility.VISIBLE, 25, requirements, testFiles, 100L);
 
         tourDetail = TourDetail.builder()
             .id(10L)
             .title("Tour 1")
+            .executionStatus(ExecutionStatus.SCHEDULED)
             .build();
 
         taskBodyDetail = TaskBodyDetail.builder()
@@ -111,7 +134,7 @@ class AssignmentServiceTest {
     // ---- assignTask ----
 
     @Test
-    void assignTask_validRequest_shouldSaveAndReturnResponse() {
+    void assignTask_validRequest_shouldSaveAndReturnDetailedResponse() {
         CreateTaskAssignmentRequestDTO request =
             new CreateTaskAssignmentRequestDTO(3L, AssignmentVisibility.VISIBLE, 25, reqDTO);
 
@@ -120,14 +143,19 @@ class AssignmentServiceTest {
         when(taskAssignmentRepository.existsByTaskBodyIdAndTourId(3L, 10L)).thenReturn(false);
         when(taskAssignmentMapper.toEntity(request)).thenReturn(taskAssignment);
         when(taskAssignmentRepository.save(taskAssignment)).thenReturn(taskAssignment);
-        when(taskAssignmentMapper.toResponse(taskAssignment, taskBodyDetail.title())).thenReturn(assignmentResponse);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(taskAssignment, taskBodyDetail.title(),
+            taskBodyDetail.description(), testFiles)).thenReturn(detailedResponse);
 
-        TaskAssignmentResponseDTO result = assignmentService.assignTask(10L, request);
+        DetailedTaskAssignmentResponseDTO result = assignmentService.assignTask(10L, request);
 
         assertNotNull(result);
         assertEquals(1L, result.id());
         assertEquals(3L, result.taskBodyId());
         assertEquals(10L, result.tourId());
+        assertEquals("Створити у файлі-розв'язку", result.taskDescription());
+        assertEquals(testFiles, result.files());
         verify(taskAssignmentRepository).save(taskAssignment);
     }
 
@@ -139,6 +167,23 @@ class AssignmentServiceTest {
         when(competitionFacade.findTourById(10L)).thenReturn(Optional.empty());
 
         assertThrows(TourNotFoundException.class, () -> assignmentService.assignTask(10L, request));
+        verify(taskAssignmentRepository, never()).save(any());
+    }
+
+    @Test
+    void assignTask_tourNotScheduled_shouldThrowCompetitionHierarchyValidationException() {
+        CreateTaskAssignmentRequestDTO request =
+            new CreateTaskAssignmentRequestDTO(3L, AssignmentVisibility.VISIBLE, 25, reqDTO);
+
+        TourDetail activeTour = TourDetail.builder()
+            .id(10L)
+            .title("Tour 1")
+            .executionStatus(ExecutionStatus.IN_PROGRESS)
+            .build();
+
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(activeTour));
+
+        assertThrows(CompetitionHierarchyValidationException.class, () -> assignmentService.assignTask(10L, request));
         verify(taskAssignmentRepository, never()).save(any());
     }
 
@@ -175,7 +220,10 @@ class AssignmentServiceTest {
         when(taskAssignmentRepository.existsByTaskBodyIdAndTourId(3L, 10L)).thenReturn(false);
         when(taskAssignmentMapper.toEntity(request)).thenReturn(taskAssignment);
         when(taskAssignmentRepository.save(any(TaskAssignment.class))).thenReturn(taskAssignment);
-        when(taskAssignmentMapper.toResponse(taskAssignment, taskBodyDetail.title())).thenReturn(assignmentResponse);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(any(), eq(taskBodyDetail.title()),
+            eq(taskBodyDetail.description()), eq(testFiles))).thenReturn(detailedResponse);
 
         assignmentService.assignTask(10L, request);
 
@@ -228,15 +276,21 @@ class AssignmentServiceTest {
     // ---- getTaskAssignmentById ----
 
     @Test
-    void getTaskAssignmentById_existingId_shouldReturnResponse() {
+    void getTaskAssignmentById_existingId_shouldReturnDetailedResponse() {
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
         when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
-        when(taskAssignmentMapper.toResponse(taskAssignment, taskBodyDetail.title())).thenReturn(assignmentResponse);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(taskAssignment, taskBodyDetail.title(),
+            taskBodyDetail.description(), testFiles)).thenReturn(detailedResponse);
 
-        TaskAssignmentResponseDTO result = assignmentService.getTaskAssignmentById(1L);
+        DetailedTaskAssignmentResponseDTO result = assignmentService.getTaskAssignmentById(1L);
 
         assertNotNull(result);
         assertEquals(1L, result.id());
+        assertEquals("PowerPoint Різдвяна зірка", result.taskTitle());
+        assertEquals("Створити у файлі-розв'язку", result.taskDescription());
+        assertEquals(testFiles, result.files());
     }
 
     @Test
@@ -246,19 +300,42 @@ class AssignmentServiceTest {
         assertThrows(TaskAssignmentNotFoundException.class, () -> assignmentService.getTaskAssignmentById(1L));
     }
 
+    @Test
+    void getTaskAssignmentById_asParticipant_shouldResolveFilesWithoutSolutions() {
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.hasRole("ORG")).thenReturn(false);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(any(), any(), any(), any())).thenReturn(detailedResponse);
+
+        assignmentService.getTaskAssignmentById(1L);
+
+        verify(securityFacade).hasRole("ADMIN");
+        verify(securityFacade).hasRole("ORG");
+
+        ArgumentCaptor<Set> captor = ArgumentCaptor.forClass(Set.class);
+        verify(fileManagerFacade).getFilesByEntity(any(), eq(3L), captor.capture());
+        assertEquals(Set.of(FileRole.PROBLEM, FileRole.REFERENCE), captor.getValue());
+    }
+
     // ---- updateTaskAssignment ----
 
     @Test
-    void updateTaskAssignment_validRequest_shouldUpdateAndReturnResponse() {
+    void updateTaskAssignment_validRequest_shouldUpdateAndReturnDetailedResponse() {
         UpdateTaskAssignmentRequestDTO request =
             new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, 30, null);
 
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(competitionFacade.findTourById(any())).thenReturn(Optional.of(tourDetail));
         when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
         when(taskAssignmentRepository.save(any(TaskAssignment.class))).thenReturn(taskAssignment);
-        when(taskAssignmentMapper.toResponse(taskAssignment, taskBodyDetail.title())).thenReturn(assignmentResponse);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(any(), eq(taskBodyDetail.title()),
+            eq(taskBodyDetail.description()), eq(testFiles))).thenReturn(detailedResponse);
 
-        TaskAssignmentResponseDTO result = assignmentService.updateTaskAssignment(1L, request);
+        DetailedTaskAssignmentResponseDTO result = assignmentService.updateTaskAssignment(1L, request);
 
         assertNotNull(result);
         ArgumentCaptor<TaskAssignment> captor = ArgumentCaptor.forClass(TaskAssignment.class);
@@ -275,9 +352,12 @@ class AssignmentServiceTest {
         TaskRequirements oldRequirements = taskAssignment.getRequirements();
 
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(competitionFacade.findTourById(any())).thenReturn(Optional.of(tourDetail));
         when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
         when(taskAssignmentRepository.save(any(TaskAssignment.class))).thenReturn(taskAssignment);
-        when(taskAssignmentMapper.toResponse(taskAssignment, taskBodyDetail.title())).thenReturn(assignmentResponse);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(any(), any(), any(), any())).thenReturn(detailedResponse);
 
         assignmentService.updateTaskAssignment(1L, request);
 
@@ -298,11 +378,30 @@ class AssignmentServiceTest {
         assertThrows(TaskAssignmentNotFoundException.class, () -> assignmentService.updateTaskAssignment(1L, request));
     }
 
+    @Test
+    void updateTaskAssignment_tourNotScheduled_shouldThrowCompetitionHierarchyValidationException() {
+        UpdateTaskAssignmentRequestDTO request =
+            new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, 30, null);
+
+        TourDetail activeTour = TourDetail.builder()
+            .id(10L)
+            .title("Tour 1")
+            .executionStatus(ExecutionStatus.IN_PROGRESS)
+            .build();
+
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(activeTour));
+
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> assignmentService.updateTaskAssignment(1L, request));
+    }
+
     // ---- deleteTaskAssignment ----
 
     @Test
     void deleteTaskAssignment_existingId_shouldDelete() {
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(competitionFacade.findTourById(any())).thenReturn(Optional.of(tourDetail));
 
         assignmentService.deleteTaskAssignment(1L);
 
@@ -314,6 +413,21 @@ class AssignmentServiceTest {
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(TaskAssignmentNotFoundException.class, () -> assignmentService.deleteTaskAssignment(1L));
+        verify(taskAssignmentRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteTaskAssignment_tourNotScheduled_shouldThrowCompetitionHierarchyValidationException() {
+        TourDetail activeTour = TourDetail.builder()
+            .id(10L)
+            .title("Tour 1")
+            .executionStatus(ExecutionStatus.IN_PROGRESS)
+            .build();
+
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(activeTour));
+
+        assertThrows(CompetitionHierarchyValidationException.class, () -> assignmentService.deleteTaskAssignment(1L));
         verify(taskAssignmentRepository, never()).delete(any());
     }
 
@@ -330,9 +444,12 @@ class AssignmentServiceTest {
             taskBodyDetail);
         when(taskAssignmentMapper.toRequirements(reqDTO)).thenReturn(requirements);
         when(taskAssignmentRepository.save(any(TaskAssignment.class))).thenReturn(taskAssignment);
-        when(taskAssignmentMapper.toResponse(taskAssignment, taskBodyDetail.title())).thenReturn(assignmentResponse);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(taskAssignment, request.title(), request.description(), testFiles))
+            .thenReturn(detailedResponse);
 
-        TaskAssignmentResponseDTO result = assignmentService.createAndAssignTask(10L, request);
+        DetailedTaskAssignmentResponseDTO result = assignmentService.createAndAssignTask(10L, request);
 
         assertNotNull(result);
         verify(taskBodyFacade).createTask("PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку", List.of(1L, 2L));
@@ -361,6 +478,26 @@ class AssignmentServiceTest {
     }
 
     @Test
+    void createAndAssignTask_tourNotScheduled_shouldThrowCompetitionHierarchyValidationException() {
+        CreateAndAssignTaskRequestDTO request =
+            new CreateAndAssignTaskRequestDTO("PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
+                List.of(1L, 2L), AssignmentVisibility.VISIBLE, 25, reqDTO);
+
+        TourDetail activeTour = TourDetail.builder()
+            .id(10L)
+            .title("Tour 1")
+            .executionStatus(ExecutionStatus.IN_PROGRESS)
+            .build();
+
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(activeTour));
+
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> assignmentService.createAndAssignTask(10L, request));
+        verify(taskBodyFacade, never()).createTask(any(), any(), any());
+        verify(taskAssignmentRepository, never()).save(any());
+    }
+
+    @Test
     void createAndAssignTask_nullVisibility_shouldDefaultToHidden() {
         CreateAndAssignTaskRequestDTO request =
             new CreateAndAssignTaskRequestDTO("PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
@@ -371,7 +508,10 @@ class AssignmentServiceTest {
             taskBodyDetail);
         when(taskAssignmentMapper.toRequirements(reqDTO)).thenReturn(requirements);
         when(taskAssignmentRepository.save(any(TaskAssignment.class))).thenReturn(taskAssignment);
-        when(taskAssignmentMapper.toResponse(taskAssignment, taskBodyDetail.title())).thenReturn(assignmentResponse);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(taskAssignment, taskBodyDetail.title(),
+            taskBodyDetail.description(), testFiles)).thenReturn(detailedResponse);
 
         assignmentService.createAndAssignTask(10L, request);
 

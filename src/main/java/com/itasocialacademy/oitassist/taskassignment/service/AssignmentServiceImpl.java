@@ -2,7 +2,14 @@ package com.itasocialacademy.oitassist.taskassignment.service;
 
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
+import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
+import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
+import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
@@ -13,6 +20,7 @@ import com.itasocialacademy.oitassist.taskassignment.dao.repository.TaskAssignme
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.response.DetailedTaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
@@ -27,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -36,12 +45,16 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final TaskAssignmentMapper taskAssignmentMapper;
     private final CompetitionFacade competitionFacade;
     private final TaskBodyFacade taskBodyFacade;
+    private final FileManagerFacade fileManagerFacade;
+    private final SecurityFacade securityFacade;
 
     @Override
     @Transactional
-    public TaskAssignmentResponseDTO assignTask(Long tourId, CreateTaskAssignmentRequestDTO request) {
+    public DetailedTaskAssignmentResponseDTO assignTask(Long tourId, CreateTaskAssignmentRequestDTO request) {
         TourDetail tour = competitionFacade.findTourById(tourId).orElseThrow(
             () -> new TourNotFoundException(tourId));
+
+        validateTourStatus(tour, "Cannot assign task.");
 
         TaskBodyDetail taskBody = taskBodyFacade.findTaskBodyById(request.taskBodyId()).orElseThrow(
             () -> new TaskNotFoundException(request.taskBodyId()));
@@ -61,8 +74,10 @@ public class AssignmentServiceImpl implements AssignmentService {
         TaskAssignment savedTaskAssignment = taskAssignmentRepository.save(taskAssignment);
 
         log.debug("Assigned task {} to tour {}", taskBody.id(), tour.id());
+        List<FileDetailsDTO> files = resolveTaskFiles(taskBody.id());
 
-        return taskAssignmentMapper.toResponse(savedTaskAssignment, taskBody.title());
+        return taskAssignmentMapper.toDetailedResponse(savedTaskAssignment, taskBody.title(), taskBody.description(),
+            files);
     }
 
     @Override
@@ -95,23 +110,31 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public TaskAssignmentResponseDTO getTaskAssignmentById(Long taskAssignmentId) {
+    public DetailedTaskAssignmentResponseDTO getTaskAssignmentById(Long taskAssignmentId) {
+        // TODO: add check to see if ordinary user is in the stage participiant list
         TaskAssignment assignment = taskAssignmentRepository.findById(taskAssignmentId).orElseThrow(
             () -> new TaskAssignmentNotFoundException(taskAssignmentId));
 
         TaskBodyDetail taskBody = taskBodyFacade.findTaskBodyById(assignment.getTaskBodyId()).orElseThrow(
             () -> new TaskNotFoundException(assignment.getTaskBodyId()));
 
+        List<FileDetailsDTO> files = resolveTaskFiles(taskBody.id());
+
         log.debug("Get Task Assignment: Id {}", assignment.getId());
-        return taskAssignmentMapper.toResponse(assignment, taskBody.title());
+        return taskAssignmentMapper.toDetailedResponse(assignment, taskBody.title(), taskBody.description(), files);
     }
 
     @Override
     @Transactional
-    public TaskAssignmentResponseDTO updateTaskAssignment(Long taskAssignmentId,
+    public DetailedTaskAssignmentResponseDTO updateTaskAssignment(Long taskAssignmentId,
         UpdateTaskAssignmentRequestDTO request) {
         TaskAssignment assignment = taskAssignmentRepository.findById(taskAssignmentId).orElseThrow(
             () -> new TaskAssignmentNotFoundException(taskAssignmentId));
+
+        TourDetail tour = competitionFacade.findTourById(assignment.getTourId()).orElseThrow(
+            () -> new TourNotFoundException(assignment.getTourId()));
+
+        validateTourStatus(tour, "Cannot update task assignment.");
 
         if (request.visibility() != null) {
             assignment.setVisibility(request.visibility());
@@ -126,9 +149,12 @@ public class AssignmentServiceImpl implements AssignmentService {
         TaskBodyDetail taskBody = taskBodyFacade.findTaskBodyById(assignment.getTaskBodyId()).orElseThrow(
             () -> new TaskNotFoundException(assignment.getTaskBodyId()));
 
-        log.debug("Update Task Assignment: Id {}", taskAssignmentId);
+        TaskAssignment savedAssignment = taskAssignmentRepository.save(assignment);
+        List<FileDetailsDTO> files = resolveTaskFiles(taskBody.id());
 
-        return taskAssignmentMapper.toResponse(taskAssignmentRepository.save(assignment), taskBody.title());
+        log.debug("Update Task Assignment: Id {}", taskAssignmentId);
+        return taskAssignmentMapper.toDetailedResponse(savedAssignment, taskBody.title(), taskBody.description(),
+            files);
     }
 
     @Override
@@ -137,6 +163,11 @@ public class AssignmentServiceImpl implements AssignmentService {
         TaskAssignment assignment = taskAssignmentRepository.findById(taskAssignmentId).orElseThrow(
             () -> new TaskAssignmentNotFoundException(taskAssignmentId));
 
+        TourDetail tour = competitionFacade.findTourById(assignment.getTourId()).orElseThrow(
+            () -> new TourNotFoundException(assignment.getTourId()));
+
+        validateTourStatus(tour, "Cannot delete task assignment.");
+
         taskAssignmentRepository.delete(assignment);
 
         log.debug("Deleted Task Assignment: Id {}", assignment.getId());
@@ -144,9 +175,11 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional
-    public TaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request) {
+    public DetailedTaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request) {
         TourDetail tour = competitionFacade.findTourById(tourId)
             .orElseThrow(() -> new TourNotFoundException(tourId));
+
+        validateTourStatus(tour, "Cannot create task assignment.");
 
         TaskBodyDetail createdTask = taskBodyFacade.createTask(
             request.title(), request.description(), request.fileIds());
@@ -163,7 +196,8 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         log.debug("Created task {} and assigned to tour {}", createdTask.id(), tour.id());
 
-        return taskAssignmentMapper.toResponse(saved, createdTask.title());
+        List<FileDetailsDTO> files = resolveTaskFiles(createdTask.id());
+        return taskAssignmentMapper.toDetailedResponse(saved, createdTask.title(), createdTask.description(), files);
     }
 
     @Override
@@ -176,5 +210,23 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Transactional(readOnly = true)
     public boolean existsByTaskBodyId(Long taskBodyId) {
         return taskAssignmentRepository.existsByTaskBodyId(taskBodyId);
+    }
+
+    private List<FileDetailsDTO> resolveTaskFiles(Long taskBodyId) {
+        Set<FileRole> allowedFileRoles;
+
+        if (securityFacade.hasRole("ADMIN") || securityFacade.hasRole("ORG")) {
+            allowedFileRoles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE, FileRole.SOLUTION);
+        } else {
+            allowedFileRoles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
+        }
+
+        return fileManagerFacade.getFilesByEntity(RelatedEntityType.TASK, taskBodyId, allowedFileRoles);
+    }
+
+    private void validateTourStatus(TourDetail tour, String msg) {
+        if (tour.executionStatus() != ExecutionStatus.SCHEDULED) {
+            throw new CompetitionHierarchyValidationException(msg + " Tour has already started");
+        }
     }
 }
