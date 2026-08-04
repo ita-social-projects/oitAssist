@@ -38,6 +38,17 @@ public interface UserMapper {
      */
     UserAuthDetails toUserAuthDetails(User entity);
 
+    /**
+     * Maps a {@link User} entity to the cross-module display-projection
+     * {@link UserProfileDetails}.
+     *
+     * <p>
+     * Called by
+     * {@link com.itasocialacademy.oitassist.user.service.interfaces.UserService#findProfileDetailsById}
+     * which is in turn called by
+     * {@link com.itasocialacademy.oitassist.user.api.facade.UserFacadeImpl#findProfileById}.
+     * </p>
+     */
     UserProfileDetails toUserProfileDetails(User entity);
 
     default List<SimpleGrantedAuthority> mapAuthorities(User entity) {

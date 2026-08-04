@@ -120,7 +120,7 @@ public interface UserFacade {
 
     /**
      * Looks up a user by their ID and returns the display-side projection needed by
-     * {@code security}. Called by {@code participation.ApplicationServiceImpl}
+     * {@code participation}. Called by {@code participation.ApplicationServiceImpl}
      * during the email-sending process.
      *
      * @param userId the user's ID
