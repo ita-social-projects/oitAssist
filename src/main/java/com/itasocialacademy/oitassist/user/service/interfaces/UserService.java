@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.user.service.interfaces;
 
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
+import com.itasocialacademy.oitassist.user.api.dto.ForumResponderCandidate;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
@@ -40,6 +41,14 @@ public interface UserService {
      * @return the users' auth details DTOs
      */
     List<UserAuthDetails> findAuthDetailsByIds(List<Long> userIds);
+
+    /**
+     * Finds a safe cross-module projection used for forum responder validation.
+     *
+     * @param userId target user identifier
+     * @return candidate projection, or empty when no user exists
+     */
+    Optional<ForumResponderCandidate> findForumResponderCandidateById(Long userId);
 
     UserDetailsImpl loadUserByUsername(String username);
 

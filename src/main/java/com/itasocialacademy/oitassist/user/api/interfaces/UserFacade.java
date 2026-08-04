@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.user.api.interfaces;
 
+import com.itasocialacademy.oitassist.user.api.dto.ForumResponderCandidate;
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import org.springframework.modulith.NamedInterface;
@@ -116,4 +117,18 @@ public interface UserFacade {
      * @return the users' auth details DTOs
      */
     List<UserAuthDetails> findByIds(List<Long> userIds);
+
+    /**
+     * Resolves the safe user projection required to validate a proposed
+     * TaskAssignment forum responder.
+     *
+     * <p>
+     * The returned projection does not contain authentication secrets or
+     * user-module persistence objects.
+     * </p>
+     *
+     * @param userId target user identifier
+     * @return responder candidate, or empty when the user does not exist
+     */
+    Optional<ForumResponderCandidate> findForumResponderCandidateById(Long userId);
 }

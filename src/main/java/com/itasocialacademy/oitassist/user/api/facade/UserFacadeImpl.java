@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.user.api.facade;
 
+import com.itasocialacademy.oitassist.user.api.dto.ForumResponderCandidate;
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
@@ -81,5 +82,13 @@ public class UserFacadeImpl implements UserFacade {
     @Override
     public List<UserAuthDetails> findByIds(List<Long> userIds) {
         return userService.findAuthDetailsByIds(userIds);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<ForumResponderCandidate> findForumResponderCandidateById(Long userId) {
+        return userService.findForumResponderCandidateById(userId);
     }
 }
