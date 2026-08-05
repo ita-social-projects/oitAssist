@@ -4,6 +4,5 @@ public record ApplicationAcceptedEvent(
     String competitionTitle,
     String stageTitle,
     String firstName,
-    String email
-) {
+    String email) {
 }

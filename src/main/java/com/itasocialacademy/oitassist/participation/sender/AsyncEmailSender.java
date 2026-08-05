@@ -17,25 +17,30 @@ public class AsyncEmailSender {
     private final EmailService emailService;
     private final WebClientProperties webClientProperties;
 
+    // TODO: the route link should be agreed with the frontend-part later
+    private static final String COMPETITION_PATH = "/competitions";
+
     @Async
     public void sendDecisionEmail(ApplicationAcceptedEvent event) {
         String email = event.email();
+        log.info("Handling ApplicationAcceptedEvent for email={}", email);
 
         String link = UriComponentsBuilder
             .fromUriString(webClientProperties.origin())
-            .path("/users/profile")
+            .path(COMPETITION_PATH)
             .build()
             .toUriString();
 
         Map<String, String> root = Map.of(
+            "firstName", event.firstName(),
             "competitionTitle", event.competitionTitle(),
             "stageTitle", event.stageTitle(),
-            "link", link
-        );
-        try {
-            emailService.sendTemplateEmail(email, "application-accepted.html", "Прийнята заявка", root);
-        } catch (Exception e) {
-            log.error("Failed to send decision email to {}", email, e);
-        }
+            "link", link);
+        emailService.sendTemplateEmail(
+            email,
+            "application-accepted.html",
+            "Статус заявки",
+            root);
+        log.info("Accepted application email sent to email={}", email);
     }
 }
