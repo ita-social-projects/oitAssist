@@ -61,44 +61,45 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 
 @ExtendWith(MockitoExtension.class)
-class AdministratorRealtimeProjectionHandlerImplTest {
+class OrganizationRealtimeProjectionHandlerImplTest {
 
     private static final Long TASK_ASSIGNMENT_ID = 10L;
     private static final Long QUESTION_ID = 20L;
     private static final Long AUTHOR_ID = 30L;
-    private static final Long REVIEWER_ID = 40L;
-    private static final Long OTHER_REVIEWER_ID = 41L;
-    private static final Long MESSAGE_ID = 50L;
 
-    private static final String INBOX_DESTINATION =
-        "/topic/admin/questions/inbox";
+    private static final Long RESPONDER_ID = 40L;
+    private static final Long OTHER_RESPONDER_ID = 41L;
+    private static final Long UNRELATED_ORG_ID = 42L;
+    private static final Long ADMINISTRATOR_ID = 90L;
+
+    private static final Long MESSAGE_ID = 50L;
 
     private static final String PERSONAL_REVIEWS_QUEUE =
         "/queue/reviews";
 
     private static final Instant CREATED_AT =
         Instant.parse(
-            "2026-08-03T10:00:00Z");
+            "2026-08-05T10:00:00Z");
 
     private static final Instant UPDATED_AT =
         Instant.parse(
-            "2026-08-03T10:15:00Z");
+            "2026-08-05T10:15:00Z");
 
     private static final Instant OCCURRED_AT =
         Instant.parse(
-            "2026-08-03T10:16:00Z");
+            "2026-08-05T10:16:00Z");
 
     @Mock
     private SimpMessageSendingOperations messagingOperations;
 
     @Mock
-    private OrganizationRealtimeRecipientResolver organizationRecipientResolver;
+    private OrganizationRealtimeRecipientResolver recipientResolver;
 
     @InjectMocks
-    private AdministratorRealtimeProjectionHandlerImpl handler;
+    private OrganizationRealtimeProjectionHandlerImpl handler;
 
     @Test
-    void privateQuestionCreation_shouldUpsertSharedInbox() {
+    void privateQuestionCreation_shouldUpsertEveryEligibleResponder() {
 
         QuestionThreadResponseDTO question =
             question(
@@ -108,24 +109,55 @@ class AdministratorRealtimeProjectionHandlerImplTest {
                 null,
                 0L);
 
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID,
+                    OTHER_RESPONDER_ID));
+
         handler.handle(
             new QuestionCreatedDomainEvent(
                 question,
                 OCCURRED_AT));
 
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
+        List<RealtimeForumEvent> firstResponderEvents =
+            captureResponderEvents(
+                RESPONDER_ID,
+                1);
+
+        List<RealtimeForumEvent> secondResponderEvents =
+            captureResponderEvents(
+                OTHER_RESPONDER_ID,
+                1);
 
         assertInboxUpsert(
-            inboxEvents.getFirst(),
+            firstResponderEvents.getFirst(),
             question);
+
+        assertInboxUpsert(
+            secondResponderEvents.getFirst(),
+            question);
+
+        verify(
+            messagingOperations,
+            never())
+            .convertAndSendToUser(
+                eq(UNRELATED_ORG_ID.toString()),
+                eq(PERSONAL_REVIEWS_QUEUE),
+                any());
+
+        assertUniqueEventIds(
+            firstResponderEvents,
+            secondResponderEvents);
 
         verifyNoMoreInteractions(
             messagingOperations);
     }
 
     @Test
-    void publicQuestionCreation_shouldAlsoUpsertSharedInbox() {
+    void publicQuestionCreation_shouldAlsoUpsertEligibleResponder() {
 
         QuestionThreadResponseDTO question =
             question(
@@ -135,147 +167,234 @@ class AdministratorRealtimeProjectionHandlerImplTest {
                 null,
                 0L);
 
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID));
+
         handler.handle(
             new QuestionCreatedDomainEvent(
                 question,
                 OCCURRED_AT));
 
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
-
-        assertInboxUpsert(
-            inboxEvents.getFirst(),
-            question);
-
-        verifyNoMoreInteractions(
-            messagingOperations);
-    }
-
-    @Test
-    void claim_shouldRemoveFromInboxAndUpdateOnlyClaimant() {
-
-        QuestionThreadResponseDTO question =
-            question(
-                PRIVATE,
-                IN_REVIEW,
-                OPEN,
-                REVIEWER_ID,
-                1L);
-
-        handler.handle(
-            new QuestionClaimedDomainEvent(
-                question,
-                null,
-                REVIEWER_ID,
-                OCCURRED_AT));
-
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
-
-        List<RealtimeForumEvent> reviewerEvents =
-            captureReviewerEvents(
-                REVIEWER_ID,
+        List<RealtimeForumEvent> events =
+            captureResponderEvents(
+                RESPONDER_ID,
                 1);
 
-        assertInboxRemoval(
-            inboxEvents.getFirst());
-
-        assertReviewUpdated(
-            reviewerEvents.getFirst(),
+        assertInboxUpsert(
+            events.getFirst(),
             question);
-
-        verify(
-            messagingOperations,
-            never())
-            .convertAndSendToUser(
-                eq(OTHER_REVIEWER_ID.toString()),
-                eq(PERSONAL_REVIEWS_QUEUE),
-                any());
-
-        assertUniqueEventIds(
-            inboxEvents,
-            reviewerEvents);
 
         verifyNoMoreInteractions(
             messagingOperations);
     }
 
     @Test
-    void orgClaim_shouldRemoveSharedInboxWithoutDuplicatePersonalReview() {
+    void questionCreation_withoutEligibleResponders_shouldSendNothing() {
+
+        QuestionThreadResponseDTO question =
+            question(
+                PRIVATE,
+                NEW,
+                OPEN,
+                null,
+                0L);
+
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of());
+
+        handler.handle(
+            new QuestionCreatedDomainEvent(
+                question,
+                OCCURRED_AT));
+
+        verifyNoInteractions(
+            messagingOperations);
+    }
+
+    @Test
+    void organizationClaim_shouldRemoveFromAllInboxesAndUpdateOnlyClaimant() {
 
         QuestionThreadResponseDTO question =
             question(
                 PRIVATE,
                 IN_REVIEW,
                 OPEN,
-                REVIEWER_ID,
+                RESPONDER_ID,
                 1L);
 
-        when(organizationRecipientResolver
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID,
+                    OTHER_RESPONDER_ID));
+
+        when(recipientResolver
             .isOrganizationResponder(
                 TASK_ASSIGNMENT_ID,
-                REVIEWER_ID))
+                RESPONDER_ID))
             .thenReturn(true);
 
         handler.handle(
             new QuestionClaimedDomainEvent(
                 question,
                 null,
-                REVIEWER_ID,
+                RESPONDER_ID,
                 OCCURRED_AT));
 
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
+        List<RealtimeForumEvent> claimantEvents =
+            captureResponderEvents(
+                RESPONDER_ID,
+                2);
+
+        List<RealtimeForumEvent> otherResponderEvents =
+            captureResponderEvents(
+                OTHER_RESPONDER_ID,
+                1);
+
+        assertEventTypes(
+            claimantEvents,
+            INBOX_REMOVED,
+            REVIEW_UPDATED);
 
         assertInboxRemoval(
-            inboxEvents.getFirst());
+            claimantEvents.get(0));
+
+        assertReviewUpdated(
+            claimantEvents.get(1),
+            question);
+
+        assertInboxRemoval(
+            otherResponderEvents.getFirst());
 
         verify(
             messagingOperations,
             never())
             .convertAndSendToUser(
-                eq(REVIEWER_ID.toString()),
+                eq(UNRELATED_ORG_ID.toString()),
                 eq(PERSONAL_REVIEWS_QUEUE),
                 any());
+
+        assertUniqueEventIds(
+            claimantEvents,
+            otherResponderEvents);
 
         verifyNoMoreInteractions(
             messagingOperations);
     }
 
     @Test
-    void assignedComment_shouldNotifyAssignedReviewerOnly() {
+    void administratorClaim_shouldRemoveFromOrgInboxesWithoutReviewUpdate() {
 
         QuestionThreadResponseDTO question =
             question(
                 PRIVATE,
                 IN_REVIEW,
                 OPEN,
-                REVIEWER_ID,
+                ADMINISTRATOR_ID,
+                1L);
+
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID,
+                    OTHER_RESPONDER_ID));
+
+        when(recipientResolver
+            .isOrganizationResponder(
+                TASK_ASSIGNMENT_ID,
+                ADMINISTRATOR_ID))
+            .thenReturn(false);
+
+        handler.handle(
+            new QuestionClaimedDomainEvent(
+                question,
+                null,
+                ADMINISTRATOR_ID,
+                OCCURRED_AT));
+
+        List<RealtimeForumEvent> firstResponderEvents =
+            captureResponderEvents(
+                RESPONDER_ID,
+                1);
+
+        List<RealtimeForumEvent> secondResponderEvents =
+            captureResponderEvents(
+                OTHER_RESPONDER_ID,
+                1);
+
+        assertInboxRemoval(
+            firstResponderEvents.getFirst());
+
+        assertInboxRemoval(
+            secondResponderEvents.getFirst());
+
+        verify(
+            messagingOperations,
+            never())
+            .convertAndSendToUser(
+                eq(ADMINISTRATOR_ID.toString()),
+                eq(PERSONAL_REVIEWS_QUEUE),
+                any());
+
+        assertUniqueEventIds(
+            firstResponderEvents,
+            secondResponderEvents);
+
+        verifyNoMoreInteractions(
+            messagingOperations);
+    }
+
+    @Test
+    void assignedComment_shouldNotifyAssignedOrgResponderOnly() {
+
+        QuestionThreadResponseDTO question =
+            question(
+                PRIVATE,
+                IN_REVIEW,
+                OPEN,
+                RESPONDER_ID,
                 2L);
 
         QuestionMessageResponseDTO message =
             message(COMMENT);
 
+        when(recipientResolver
+            .isOrganizationResponder(
+                TASK_ASSIGNMENT_ID,
+                RESPONDER_ID))
+            .thenReturn(true);
+
         handler.handle(
             new CommentCreatedDomainEvent(
                 question,
                 message,
                 OCCURRED_AT));
 
-        List<RealtimeForumEvent> reviewerEvents =
-            captureReviewerEvents(
-                REVIEWER_ID,
+        List<RealtimeForumEvent> events =
+            captureResponderEvents(
+                RESPONDER_ID,
                 1);
 
         assertMessageCreated(
-            reviewerEvents.getFirst(),
+            events.getFirst(),
             message);
 
         verify(
             messagingOperations,
             never())
             .convertAndSendToUser(
-                eq(OTHER_REVIEWER_ID.toString()),
+                eq(OTHER_RESPONDER_ID.toString()),
                 eq(PERSONAL_REVIEWS_QUEUE),
                 any());
 
@@ -284,21 +403,21 @@ class AdministratorRealtimeProjectionHandlerImplTest {
     }
 
     @Test
-    void orgAssignedComment_shouldNotProduceAdministratorPersonalProjection() {
+    void administratorAssignedComment_shouldProduceNoOrgProjection() {
 
         QuestionThreadResponseDTO question =
             question(
                 PRIVATE,
                 IN_REVIEW,
                 OPEN,
-                REVIEWER_ID,
+                ADMINISTRATOR_ID,
                 2L);
 
-        when(organizationRecipientResolver
+        when(recipientResolver
             .isOrganizationResponder(
                 TASK_ASSIGNMENT_ID,
-                REVIEWER_ID))
-            .thenReturn(true);
+                ADMINISTRATOR_ID))
+            .thenReturn(false);
 
         handler.handle(
             new CommentCreatedDomainEvent(
@@ -311,7 +430,7 @@ class AdministratorRealtimeProjectionHandlerImplTest {
     }
 
     @Test
-    void unassignedComment_shouldProduceNoAdministratorProjection() {
+    void unassignedComment_shouldProduceNoOrgProjection() {
 
         QuestionThreadResponseDTO question =
             question(
@@ -332,19 +451,33 @@ class AdministratorRealtimeProjectionHandlerImplTest {
     }
 
     @Test
-    void assignedOfficialAnswer_shouldRemoveInboxAndUpdateReviewer() {
+    void officialAnswer_shouldRemoveInboxAndUpdateAssignedOrgResponder() {
 
         QuestionThreadResponseDTO question =
             question(
                 PRIVATE,
                 ANSWERED,
                 OPEN,
-                REVIEWER_ID,
+                RESPONDER_ID,
                 3L);
 
         QuestionMessageResponseDTO message =
             message(OFFICIAL_ANSWER);
 
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID,
+                    OTHER_RESPONDER_ID));
+
+        when(recipientResolver
+            .isOrganizationResponder(
+                TASK_ASSIGNMENT_ID,
+                RESPONDER_ID))
+            .thenReturn(true);
+
         handler.handle(
             new OfficialAnswerPublishedDomainEvent(
                 question,
@@ -353,54 +486,67 @@ class AdministratorRealtimeProjectionHandlerImplTest {
                 ANSWERED,
                 OCCURRED_AT));
 
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
-
         List<RealtimeForumEvent> reviewerEvents =
-            captureReviewerEvents(
-                REVIEWER_ID,
-                2);
+            captureResponderEvents(
+                RESPONDER_ID,
+                3);
 
-        assertInboxRemoval(
-            inboxEvents.getFirst());
+        List<RealtimeForumEvent> otherResponderEvents =
+            captureResponderEvents(
+                OTHER_RESPONDER_ID,
+                1);
 
         assertEventTypes(
             reviewerEvents,
+            INBOX_REMOVED,
             MESSAGE_CREATED,
             REVIEW_UPDATED);
 
+        assertInboxRemoval(
+            reviewerEvents.get(0));
+
         assertMessageCreated(
-            reviewerEvents.get(0),
+            reviewerEvents.get(1),
             message);
 
         assertReviewUpdated(
-            reviewerEvents.get(1),
+            reviewerEvents.get(2),
             question);
 
+        assertInboxRemoval(
+            otherResponderEvents.getFirst());
+
         assertUniqueEventIds(
-            inboxEvents,
-            reviewerEvents);
+            reviewerEvents,
+            otherResponderEvents);
 
         verifyNoMoreInteractions(
             messagingOperations);
     }
 
     @Test
-    void orgAssignedOfficialAnswer_shouldOnlyRemoveSharedInbox() {
+    void officialAnswer_withoutOrgReviewer_shouldOnlyRemoveInbox() {
 
         QuestionThreadResponseDTO question =
             question(
                 PRIVATE,
                 ANSWERED,
                 OPEN,
-                REVIEWER_ID,
+                ADMINISTRATOR_ID,
                 3L);
 
-        when(organizationRecipientResolver
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID));
+
+        when(recipientResolver
             .isOrganizationResponder(
                 TASK_ASSIGNMENT_ID,
-                REVIEWER_ID))
-            .thenReturn(true);
+                ADMINISTRATOR_ID))
+            .thenReturn(false);
 
         handler.handle(
             new OfficialAnswerPublishedDomainEvent(
@@ -410,17 +556,19 @@ class AdministratorRealtimeProjectionHandlerImplTest {
                 ANSWERED,
                 OCCURRED_AT));
 
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
+        List<RealtimeForumEvent> events =
+            captureResponderEvents(
+                RESPONDER_ID,
+                1);
 
         assertInboxRemoval(
-            inboxEvents.getFirst());
+            events.getFirst());
 
         verify(
             messagingOperations,
             never())
             .convertAndSendToUser(
-                eq(REVIEWER_ID.toString()),
+                eq(ADMINISTRATOR_ID.toString()),
                 eq(PERSONAL_REVIEWS_QUEUE),
                 any());
 
@@ -429,57 +577,47 @@ class AdministratorRealtimeProjectionHandlerImplTest {
     }
 
     @Test
-    void unassignedOfficialAnswer_shouldRemoveInboxWithoutPersonalContent() {
+    void eligibleVisibilityChange_shouldUpsertCurrentSummary() {
 
         QuestionThreadResponseDTO question =
             question(
                 PUBLIC,
-                ANSWERED,
-                OPEN,
-                null,
-                3L);
-
-        handler.handle(
-            new OfficialAnswerPublishedDomainEvent(
-                question,
-                message(OFFICIAL_ANSWER),
-                NEW,
-                ANSWERED,
-                OCCURRED_AT));
-
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
-
-        assertInboxRemoval(
-            inboxEvents.getFirst());
-
-        verifyNoMoreInteractions(
-            messagingOperations);
-    }
-
-    @Test
-    void statusChangedToEligibleNew_shouldUpsertInbox() {
-
-        QuestionThreadResponseDTO question =
-            question(
-                PRIVATE,
                 NEW,
                 OPEN,
                 null,
                 4L);
 
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID,
+                    OTHER_RESPONDER_ID));
+
         handler.handle(
-            new QuestionStatusChangedDomainEvent(
+            new QuestionVisibilityChangedDomainEvent(
                 question,
-                IN_REVIEW,
-                NEW,
+                PRIVATE,
+                PUBLIC,
                 OCCURRED_AT));
 
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
+        List<RealtimeForumEvent> firstResponderEvents =
+            captureResponderEvents(
+                RESPONDER_ID,
+                1);
+
+        List<RealtimeForumEvent> secondResponderEvents =
+            captureResponderEvents(
+                OTHER_RESPONDER_ID,
+                1);
 
         assertInboxUpsert(
-            inboxEvents.getFirst(),
+            firstResponderEvents.getFirst(),
+            question);
+
+        assertInboxUpsert(
+            secondResponderEvents.getFirst(),
             question);
 
         verifyNoMoreInteractions(
@@ -487,166 +625,96 @@ class AdministratorRealtimeProjectionHandlerImplTest {
     }
 
     @Test
-    void statusChangedAwayFromNew_shouldRemoveInbox() {
+    void assignedVisibilityChange_shouldUpdateAssignedOrgResponderOnly() {
 
         QuestionThreadResponseDTO question =
             question(
                 PUBLIC,
                 IN_REVIEW,
                 OPEN,
-                null,
+                RESPONDER_ID,
                 4L);
 
+        when(recipientResolver
+            .isOrganizationResponder(
+                TASK_ASSIGNMENT_ID,
+                RESPONDER_ID))
+            .thenReturn(true);
+
         handler.handle(
-            new QuestionStatusChangedDomainEvent(
+            new QuestionVisibilityChangedDomainEvent(
                 question,
-                NEW,
-                IN_REVIEW,
+                PRIVATE,
+                PUBLIC,
                 OCCURRED_AT));
 
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
+        List<RealtimeForumEvent> events =
+            captureResponderEvents(
+                RESPONDER_ID,
+                1);
 
-        assertInboxRemoval(
-            inboxEvents.getFirst());
+        assertReviewUpdated(
+            events.getFirst(),
+            question);
+
+        verify(
+            recipientResolver,
+            never())
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID);
 
         verifyNoMoreInteractions(
             messagingOperations);
     }
 
     @Test
-    void assignedStatusChange_shouldRemoveInboxAndUpdateReviewer() {
+    void closingOpenQuestion_shouldRemoveFromEveryResponderInbox() {
 
         QuestionThreadResponseDTO question =
             question(
                 PRIVATE,
-                ANSWERED,
-                OPEN,
-                REVIEWER_ID,
+                NEW,
+                CLOSED,
+                null,
                 5L);
 
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID,
+                    OTHER_RESPONDER_ID));
+
         handler.handle(
-            new QuestionStatusChangedDomainEvent(
+            new QuestionStateChangedDomainEvent(
                 question,
-                IN_REVIEW,
-                ANSWERED,
+                OPEN,
+                CLOSED,
                 OCCURRED_AT));
 
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
+        List<RealtimeForumEvent> firstResponderEvents =
+            captureResponderEvents(
+                RESPONDER_ID,
+                1);
 
-        List<RealtimeForumEvent> reviewerEvents =
-            captureReviewerEvents(
-                REVIEWER_ID,
+        List<RealtimeForumEvent> secondResponderEvents =
+            captureResponderEvents(
+                OTHER_RESPONDER_ID,
                 1);
 
         assertInboxRemoval(
-            inboxEvents.getFirst());
-
-        assertReviewUpdated(
-            reviewerEvents.getFirst(),
-            question);
-
-        verifyNoMoreInteractions(
-            messagingOperations);
-    }
-
-    @Test
-    void closingOpenQuestion_shouldRemoveFromInbox() {
-
-        QuestionThreadResponseDTO question =
-            question(
-                PRIVATE,
-                NEW,
-                CLOSED,
-                null,
-                4L);
-
-        handler.handle(
-            new QuestionStateChangedDomainEvent(
-                question,
-                OPEN,
-                CLOSED,
-                OCCURRED_AT));
-
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
+            firstResponderEvents.getFirst());
 
         assertInboxRemoval(
-            inboxEvents.getFirst());
+            secondResponderEvents.getFirst());
 
         verifyNoMoreInteractions(
             messagingOperations);
     }
 
     @Test
-    void reopeningEligibleQuestion_shouldReturnItToInbox() {
-
-        QuestionThreadResponseDTO question =
-            question(
-                PUBLIC,
-                NEW,
-                OPEN,
-                null,
-                5L);
-
-        handler.handle(
-            new QuestionStateChangedDomainEvent(
-                question,
-                CLOSED,
-                OPEN,
-                OCCURRED_AT));
-
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
-
-        assertInboxUpsert(
-            inboxEvents.getFirst(),
-            question);
-
-        verifyNoMoreInteractions(
-            messagingOperations);
-    }
-
-    @Test
-    void reopeningAssignedQuestion_shouldNotReturnItToSharedInbox() {
-
-        QuestionThreadResponseDTO question =
-            question(
-                PRIVATE,
-                NEW,
-                OPEN,
-                REVIEWER_ID,
-                5L);
-
-        handler.handle(
-            new QuestionStateChangedDomainEvent(
-                question,
-                CLOSED,
-                OPEN,
-                OCCURRED_AT));
-
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
-
-        List<RealtimeForumEvent> reviewerEvents =
-            captureReviewerEvents(
-                REVIEWER_ID,
-                1);
-
-        assertInboxRemoval(
-            inboxEvents.getFirst());
-
-        assertReviewUpdated(
-            reviewerEvents.getFirst(),
-            question);
-
-        verifyNoMoreInteractions(
-            messagingOperations);
-    }
-
-    @Test
-    void eligibleVisibilityChange_shouldSynchronizeInboxSummary() {
+    void reopeningNewUnassignedQuestion_shouldUpsertEveryResponderInbox() {
 
         QuestionThreadResponseDTO question =
             question(
@@ -656,18 +724,37 @@ class AdministratorRealtimeProjectionHandlerImplTest {
                 null,
                 6L);
 
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID,
+                    OTHER_RESPONDER_ID));
+
         handler.handle(
-            new QuestionVisibilityChangedDomainEvent(
+            new QuestionStateChangedDomainEvent(
                 question,
-                PRIVATE,
-                PUBLIC,
+                CLOSED,
+                OPEN,
                 OCCURRED_AT));
 
-        List<RealtimeForumEvent> inboxEvents =
-            captureInboxEvents(1);
+        List<RealtimeForumEvent> firstResponderEvents =
+            captureResponderEvents(
+                RESPONDER_ID,
+                1);
+
+        List<RealtimeForumEvent> secondResponderEvents =
+            captureResponderEvents(
+                OTHER_RESPONDER_ID,
+                1);
 
         assertInboxUpsert(
-            inboxEvents.getFirst(),
+            firstResponderEvents.getFirst(),
+            question);
+
+        assertInboxUpsert(
+            secondResponderEvents.getFirst(),
             question);
 
         verifyNoMoreInteractions(
@@ -675,31 +762,107 @@ class AdministratorRealtimeProjectionHandlerImplTest {
     }
 
     @Test
-    void assignedVisibilityChange_shouldUpdateAssignedReviewerOnly() {
+    void statusChangedAwayFromNew_shouldRemoveFromEveryResponderInbox() {
 
         QuestionThreadResponseDTO question =
             question(
-                PUBLIC,
+                PRIVATE,
                 IN_REVIEW,
                 OPEN,
-                REVIEWER_ID,
-                6L);
+                null,
+                7L);
+
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID,
+                    OTHER_RESPONDER_ID));
 
         handler.handle(
-            new QuestionVisibilityChangedDomainEvent(
+            new QuestionStatusChangedDomainEvent(
                 question,
+                NEW,
+                IN_REVIEW,
+                OCCURRED_AT));
+
+        List<RealtimeForumEvent> firstResponderEvents =
+            captureResponderEvents(
+                RESPONDER_ID,
+                1);
+
+        List<RealtimeForumEvent> secondResponderEvents =
+            captureResponderEvents(
+                OTHER_RESPONDER_ID,
+                1);
+
+        assertInboxRemoval(
+            firstResponderEvents.getFirst());
+
+        assertInboxRemoval(
+            secondResponderEvents.getFirst());
+
+        verifyNoMoreInteractions(
+            messagingOperations);
+    }
+
+    @Test
+    void assignedStatusChange_shouldRemoveInboxAndUpdateAssignedResponder() {
+
+        QuestionThreadResponseDTO question =
+            question(
                 PRIVATE,
-                PUBLIC,
+                ANSWERED,
+                OPEN,
+                RESPONDER_ID,
+                8L);
+
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID,
+                    OTHER_RESPONDER_ID));
+
+        when(recipientResolver
+            .isOrganizationResponder(
+                TASK_ASSIGNMENT_ID,
+                RESPONDER_ID))
+            .thenReturn(true);
+
+        handler.handle(
+            new QuestionStatusChangedDomainEvent(
+                question,
+                IN_REVIEW,
+                ANSWERED,
                 OCCURRED_AT));
 
         List<RealtimeForumEvent> reviewerEvents =
-            captureReviewerEvents(
-                REVIEWER_ID,
+            captureResponderEvents(
+                RESPONDER_ID,
+                2);
+
+        List<RealtimeForumEvent> otherResponderEvents =
+            captureResponderEvents(
+                OTHER_RESPONDER_ID,
                 1);
 
+        assertEventTypes(
+            reviewerEvents,
+            INBOX_REMOVED,
+            REVIEW_UPDATED);
+
+        assertInboxRemoval(
+            reviewerEvents.get(0));
+
         assertReviewUpdated(
-            reviewerEvents.getFirst(),
+            reviewerEvents.get(1),
             question);
+
+        assertInboxRemoval(
+            otherResponderEvents.getFirst());
 
         verifyNoMoreInteractions(
             messagingOperations);
@@ -714,7 +877,14 @@ class AdministratorRealtimeProjectionHandlerImplTest {
                 ANSWERED,
                 CLOSED,
                 null,
-                7L);
+                9L);
+
+        when(recipientResolver
+            .resolveInboxRecipients(
+                TASK_ASSIGNMENT_ID))
+            .thenReturn(
+                List.of(
+                    RESPONDER_ID));
 
         handler.handle(
             new QuestionStateChangedDomainEvent(
@@ -724,7 +894,9 @@ class AdministratorRealtimeProjectionHandlerImplTest {
                 OCCURRED_AT));
 
         RealtimeForumEvent event =
-            captureInboxEvents(1)
+            captureResponderEvents(
+                RESPONDER_ID,
+                1)
                 .getFirst();
 
         InboxRemovalPayload payload =
@@ -744,26 +916,8 @@ class AdministratorRealtimeProjectionHandlerImplTest {
             messagingOperations);
     }
 
-    private List<RealtimeForumEvent> captureInboxEvents(
-        int invocationCount) {
-
-        ArgumentCaptor<Object> payloadCaptor =
-            ArgumentCaptor.forClass(
-                Object.class);
-
-        verify(
-            messagingOperations,
-            times(invocationCount))
-            .convertAndSend(
-                eq(INBOX_DESTINATION),
-                payloadCaptor.capture());
-
-        return toRealtimeEvents(
-            payloadCaptor.getAllValues());
-    }
-
-    private List<RealtimeForumEvent> captureReviewerEvents(
-        Long reviewerId,
+    private List<RealtimeForumEvent> captureResponderEvents(
+        Long responderId,
         int invocationCount) {
 
         ArgumentCaptor<Object> payloadCaptor =
@@ -774,7 +928,7 @@ class AdministratorRealtimeProjectionHandlerImplTest {
             messagingOperations,
             times(invocationCount))
             .convertAndSendToUser(
-                eq(reviewerId.toString()),
+                eq(responderId.toString()),
                 eq(PERSONAL_REVIEWS_QUEUE),
                 payloadCaptor.capture());
 
@@ -805,43 +959,9 @@ class AdministratorRealtimeProjectionHandlerImplTest {
                 InboxUpsertPayload.class,
                 event.payload());
 
-        QuestionReviewInboxItemResponseDTO summary =
-            payload.question();
-
-        assertAll(
-            () -> assertEquals(
-                question.id(),
-                summary.id()),
-            () -> assertEquals(
-                question.taskAssignmentId(),
-                summary.taskAssignmentId()),
-            () -> assertEquals(
-                question.authorId(),
-                summary.authorId()),
-            () -> assertEquals(
-                question.assignedReviewerId(),
-                summary.assignedReviewerId()),
-            () -> assertEquals(
-                question.title(),
-                summary.title()),
-            () -> assertEquals(
-                question.status(),
-                summary.status()),
-            () -> assertEquals(
-                question.state(),
-                summary.state()),
-            () -> assertEquals(
-                question.visibility(),
-                summary.visibility()),
-            () -> assertEquals(
-                question.version(),
-                summary.version()),
-            () -> assertEquals(
-                question.createdAt(),
-                summary.createdAt()),
-            () -> assertEquals(
-                question.updatedAt(),
-                summary.updatedAt()));
+        assertReviewSummary(
+            payload.question(),
+            question);
     }
 
     private void assertInboxRemoval(
@@ -878,18 +998,49 @@ class AdministratorRealtimeProjectionHandlerImplTest {
                 ReviewUpdatePayload.class,
                 event.payload());
 
-        assertEquals(
-            question.id(),
-            payload.question().id());
+        assertReviewSummary(
+            payload.question(),
+            question);
+    }
 
-        assertEquals(
-            question.version(),
-            payload.question().version());
+    private void assertReviewSummary(
+        QuestionReviewInboxItemResponseDTO summary,
+        QuestionThreadResponseDTO question) {
 
-        assertEquals(
-            question.assignedReviewerId(),
-            payload.question()
-                .assignedReviewerId());
+        assertAll(
+            () -> assertEquals(
+                question.id(),
+                summary.id()),
+            () -> assertEquals(
+                question.taskAssignmentId(),
+                summary.taskAssignmentId()),
+            () -> assertEquals(
+                question.authorId(),
+                summary.authorId()),
+            () -> assertEquals(
+                question.assignedReviewerId(),
+                summary.assignedReviewerId()),
+            () -> assertEquals(
+                question.title(),
+                summary.title()),
+            () -> assertEquals(
+                question.status(),
+                summary.status()),
+            () -> assertEquals(
+                question.state(),
+                summary.state()),
+            () -> assertEquals(
+                question.visibility(),
+                summary.visibility()),
+            () -> assertEquals(
+                question.version(),
+                summary.version()),
+            () -> assertEquals(
+                question.createdAt(),
+                summary.createdAt()),
+            () -> assertEquals(
+                question.updatedAt(),
+                summary.updatedAt()));
     }
 
     private void assertMessageCreated(
@@ -995,7 +1146,7 @@ class AdministratorRealtimeProjectionHandlerImplTest {
             QUESTION_ID,
             type == COMMENT
                 ? AUTHOR_ID
-                : REVIEWER_ID,
+                : RESPONDER_ID,
             type,
             type == COMMENT
                 ? "Participant comment"

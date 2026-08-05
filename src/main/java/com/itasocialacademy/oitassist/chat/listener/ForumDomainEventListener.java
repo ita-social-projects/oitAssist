@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.chat.listener;
 import com.itasocialacademy.oitassist.chat.event.ForumDomainEvent;
 import com.itasocialacademy.oitassist.chat.realtime.AdministratorRealtimeProjectionHandler;
 import com.itasocialacademy.oitassist.chat.realtime.ForumRealtimeProjectionHandler;
+import com.itasocialacademy.oitassist.chat.realtime.OrganizationRealtimeProjectionHandler;
 import com.itasocialacademy.oitassist.chat.realtime.ParticipantRealtimeProjectionHandler;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -22,9 +23,14 @@ public class ForumDomainEventListener {
     private static final String ADMINISTRATOR_PROJECTION =
         "administrator";
 
+    private static final String ORGANIZATION_PROJECTION =
+        "organization";
+
     private final ObjectProvider<ParticipantRealtimeProjectionHandler> participantHandlers;
 
     private final ObjectProvider<AdministratorRealtimeProjectionHandler> administratorHandlers;
+
+    private final ObjectProvider<OrganizationRealtimeProjectionHandler> organizationHandlers;
 
     @TransactionalEventListener(
         phase = TransactionPhase.AFTER_COMMIT)
@@ -39,6 +45,11 @@ public class ForumDomainEventListener {
             event,
             administratorHandlers.orderedStream(),
             ADMINISTRATOR_PROJECTION);
+
+        dispatch(
+            event,
+            organizationHandlers.orderedStream(),
+            ORGANIZATION_PROJECTION);
     }
 
     private void dispatch(

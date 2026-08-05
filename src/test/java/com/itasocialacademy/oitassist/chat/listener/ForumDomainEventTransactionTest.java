@@ -10,6 +10,7 @@ import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import com.itasocialacademy.oitassist.chat.event.ForumDomainEvent;
 import com.itasocialacademy.oitassist.chat.event.QuestionCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.realtime.AdministratorRealtimeProjectionHandler;
+import com.itasocialacademy.oitassist.chat.realtime.OrganizationRealtimeProjectionHandler;
 import com.itasocialacademy.oitassist.chat.realtime.ParticipantRealtimeProjectionHandler;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ class ForumDomainEventTransactionTest {
 
     @Test
     void committedTransaction_shouldDispatchAfterCommit() {
+
         try (AnnotationConfigApplicationContext context =
             new AnnotationConfigApplicationContext(
                 TestConfiguration.class)) {
@@ -51,17 +53,28 @@ class ForumDomainEventTransactionTest {
                 context.getBean(
                     RecordingAdministratorHandler.class);
 
+            RecordingOrganizationHandler organizationHandler =
+                context.getBean(
+                    RecordingOrganizationHandler.class);
+
             ForumDomainEvent event =
                 createEvent();
 
             transactionTemplate.executeWithoutResult(status -> {
                 publisher.publishEvent(event);
 
+                /*
+                 * TransactionalEventListener with AFTER_COMMIT must not dispatch while the
+                 * transaction is still active.
+                 */
                 assertTrue(
                     participantHandler.events.isEmpty());
 
                 assertTrue(
                     administratorHandler.events.isEmpty());
+
+                assertTrue(
+                    organizationHandler.events.isEmpty());
             });
 
             assertEquals(
@@ -71,11 +84,16 @@ class ForumDomainEventTransactionTest {
             assertEquals(
                 List.of(event),
                 administratorHandler.events);
+
+            assertEquals(
+                List.of(event),
+                organizationHandler.events);
         }
     }
 
     @Test
     void rolledBackTransaction_shouldNotDispatch() {
+
         try (AnnotationConfigApplicationContext context =
             new AnnotationConfigApplicationContext(
                 TestConfiguration.class)) {
@@ -95,6 +113,10 @@ class ForumDomainEventTransactionTest {
             RecordingAdministratorHandler administratorHandler =
                 context.getBean(
                     RecordingAdministratorHandler.class);
+
+            RecordingOrganizationHandler organizationHandler =
+                context.getBean(
+                    RecordingOrganizationHandler.class);
 
             transactionTemplate.executeWithoutResult(status -> {
                 publisher.publishEvent(
@@ -108,10 +130,14 @@ class ForumDomainEventTransactionTest {
 
             assertTrue(
                 administratorHandler.events.isEmpty());
+
+            assertTrue(
+                organizationHandler.events.isEmpty());
         }
     }
 
     private ForumDomainEvent createEvent() {
+
         Instant now =
             Instant.parse(
                 "2026-08-02T16:00:00Z");
@@ -123,9 +149,12 @@ class ForumDomainEventTransactionTest {
                 .authorId(30L)
                 .title("Question")
                 .content("Question content")
-                .status(QuestionStatus.NEW)
-                .visibility(QuestionVisibility.PRIVATE)
-                .state(QuestionState.OPEN)
+                .status(
+                    QuestionStatus.NEW)
+                .visibility(
+                    QuestionVisibility.PRIVATE)
+                .state(
+                    QuestionState.OPEN)
                 .version(0L)
                 .createdAt(now)
                 .updatedAt(now)
@@ -142,6 +171,7 @@ class ForumDomainEventTransactionTest {
 
         @Bean
         PlatformTransactionManager transactionManager() {
+
             return new TestTransactionManager();
         }
 
@@ -158,13 +188,21 @@ class ForumDomainEventTransactionTest {
         }
 
         @Bean
+        RecordingOrganizationHandler organizationHandler() {
+
+            return new RecordingOrganizationHandler();
+        }
+
+        @Bean
         ForumDomainEventListener forumDomainEventListener(
             ObjectProvider<ParticipantRealtimeProjectionHandler> participantHandlers,
-            ObjectProvider<AdministratorRealtimeProjectionHandler> administratorHandlers) {
+            ObjectProvider<AdministratorRealtimeProjectionHandler> administratorHandlers,
+            ObjectProvider<OrganizationRealtimeProjectionHandler> organizationHandlers) {
 
             return new ForumDomainEventListener(
                 participantHandlers,
-                administratorHandlers);
+                administratorHandlers,
+                organizationHandlers);
         }
     }
 
@@ -196,11 +234,26 @@ class ForumDomainEventTransactionTest {
         }
     }
 
+    static final class RecordingOrganizationHandler
+        implements OrganizationRealtimeProjectionHandler {
+
+        private final List<ForumDomainEvent> events =
+            new ArrayList<>();
+
+        @Override
+        public void handle(
+            ForumDomainEvent event) {
+
+            events.add(event);
+        }
+    }
+
     static final class TestTransactionManager
         extends AbstractPlatformTransactionManager {
 
         @Override
         protected Object doGetTransaction() {
+
             return new Object();
         }
 
@@ -208,18 +261,23 @@ class ForumDomainEventTransactionTest {
         protected void doBegin(
             Object transaction,
             TransactionDefinition definition) {
+
             // No external transactional resource is required.
         }
 
         @Override
         protected void doCommit(
             DefaultTransactionStatus status) {
-            // AbstractPlatformTransactionManager triggers AFTER_COMMIT callbacks.
+
+            /*
+             * AbstractPlatformTransactionManager triggers AFTER_COMMIT callbacks.
+             */
         }
 
         @Override
         protected void doRollback(
             DefaultTransactionStatus status) {
+
             // No external transactional resource is required.
         }
     }

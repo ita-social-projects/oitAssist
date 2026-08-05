@@ -13,6 +13,7 @@ import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import com.itasocialacademy.oitassist.chat.event.ForumDomainEvent;
 import com.itasocialacademy.oitassist.chat.event.QuestionCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.realtime.AdministratorRealtimeProjectionHandler;
+import com.itasocialacademy.oitassist.chat.realtime.OrganizationRealtimeProjectionHandler;
 import com.itasocialacademy.oitassist.chat.realtime.ParticipantRealtimeProjectionHandler;
 import java.time.Instant;
 import java.util.stream.Stream;
@@ -23,45 +24,71 @@ class ForumDomainEventListenerTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void handlerFailure_shouldNotPreventRemainingHandlers() {
+    void participantFailure_shouldNotPreventRemainingHandlers() {
+
         ObjectProvider<ParticipantRealtimeProjectionHandler> participantProvider =
             mock(ObjectProvider.class);
 
         ObjectProvider<AdministratorRealtimeProjectionHandler> administratorProvider =
             mock(ObjectProvider.class);
 
+        ObjectProvider<OrganizationRealtimeProjectionHandler> organizationProvider =
+            mock(ObjectProvider.class);
+
         ParticipantRealtimeProjectionHandler failingHandler =
-            mock(ParticipantRealtimeProjectionHandler.class);
+            mock(
+                ParticipantRealtimeProjectionHandler.class);
 
         ParticipantRealtimeProjectionHandler succeedingHandler =
-            mock(ParticipantRealtimeProjectionHandler.class);
+            mock(
+                ParticipantRealtimeProjectionHandler.class);
 
         AdministratorRealtimeProjectionHandler administratorHandler =
-            mock(AdministratorRealtimeProjectionHandler.class);
+            mock(
+                AdministratorRealtimeProjectionHandler.class);
+
+        OrganizationRealtimeProjectionHandler organizationHandler =
+            mock(
+                OrganizationRealtimeProjectionHandler.class);
 
         ForumDomainEvent event =
             createEvent();
 
-        when(participantProvider.orderedStream())
-            .thenReturn(Stream.of(
-                failingHandler,
-                succeedingHandler));
+        when(participantProvider
+            .orderedStream())
+            .thenReturn(
+                Stream.of(
+                    failingHandler,
+                    succeedingHandler));
 
-        when(administratorProvider.orderedStream())
-            .thenReturn(Stream.of(
-                administratorHandler));
+        when(administratorProvider
+            .orderedStream())
+            .thenReturn(
+                Stream.of(
+                    administratorHandler));
 
-        doThrow(new RuntimeException(
-            "Simulated realtime failure"))
+        when(organizationProvider
+            .orderedStream())
+            .thenReturn(
+                Stream.of(
+                    organizationHandler));
+
+        doThrow(
+            new RuntimeException(
+                "Simulated realtime failure"))
             .when(failingHandler)
             .handle(event);
 
         ForumDomainEventListener listener =
             new ForumDomainEventListener(
                 participantProvider,
-                administratorProvider);
+                administratorProvider,
+                organizationProvider);
 
-        assertDoesNotThrow(() -> listener.onForumDomainEvent(event));
+        assertDoesNotThrow(
+            () -> listener
+                .onForumDomainEvent(
+                    event));
 
         verify(failingHandler)
             .handle(event);
@@ -71,12 +98,97 @@ class ForumDomainEventListenerTest {
 
         verify(administratorHandler)
             .handle(event);
+
+        verify(organizationHandler)
+            .handle(event);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void organizationFailure_shouldNotPreventRemainingHandlers() {
+
+        ObjectProvider<ParticipantRealtimeProjectionHandler> participantProvider =
+            mock(ObjectProvider.class);
+
+        ObjectProvider<AdministratorRealtimeProjectionHandler> administratorProvider =
+            mock(ObjectProvider.class);
+
+        ObjectProvider<OrganizationRealtimeProjectionHandler> organizationProvider =
+            mock(ObjectProvider.class);
+
+        ParticipantRealtimeProjectionHandler participantHandler =
+            mock(
+                ParticipantRealtimeProjectionHandler.class);
+
+        AdministratorRealtimeProjectionHandler administratorHandler =
+            mock(
+                AdministratorRealtimeProjectionHandler.class);
+
+        OrganizationRealtimeProjectionHandler failingHandler =
+            mock(
+                OrganizationRealtimeProjectionHandler.class);
+
+        OrganizationRealtimeProjectionHandler succeedingHandler =
+            mock(
+                OrganizationRealtimeProjectionHandler.class);
+
+        ForumDomainEvent event =
+            createEvent();
+
+        when(participantProvider
+            .orderedStream())
+            .thenReturn(
+                Stream.of(
+                    participantHandler));
+
+        when(administratorProvider
+            .orderedStream())
+            .thenReturn(
+                Stream.of(
+                    administratorHandler));
+
+        when(organizationProvider
+            .orderedStream())
+            .thenReturn(
+                Stream.of(
+                    failingHandler,
+                    succeedingHandler));
+
+        doThrow(
+            new RuntimeException(
+                "Simulated ORG realtime failure"))
+            .when(failingHandler)
+            .handle(event);
+
+        ForumDomainEventListener listener =
+            new ForumDomainEventListener(
+                participantProvider,
+                administratorProvider,
+                organizationProvider);
+
+        assertDoesNotThrow(
+            () -> listener
+                .onForumDomainEvent(
+                    event));
+
+        verify(participantHandler)
+            .handle(event);
+
+        verify(administratorHandler)
+            .handle(event);
+
+        verify(failingHandler)
+            .handle(event);
+
+        verify(succeedingHandler)
+            .handle(event);
     }
 
     private ForumDomainEvent createEvent() {
+
         Instant now =
             Instant.parse(
-                "2026-08-02T16:00:00Z");
+                "2026-08-05T16:00:00Z");
 
         QuestionThreadResponseDTO question =
             QuestionThreadResponseDTO.builder()
@@ -85,9 +197,12 @@ class ForumDomainEventListenerTest {
                 .authorId(30L)
                 .title("Question")
                 .content("Question content")
-                .status(QuestionStatus.NEW)
-                .visibility(QuestionVisibility.PRIVATE)
-                .state(QuestionState.OPEN)
+                .status(
+                    QuestionStatus.NEW)
+                .visibility(
+                    QuestionVisibility.PRIVATE)
+                .state(
+                    QuestionState.OPEN)
                 .version(0L)
                 .createdAt(now)
                 .updatedAt(now)

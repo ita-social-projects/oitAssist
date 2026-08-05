@@ -14,6 +14,7 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -25,6 +26,9 @@ public class StompAuthorizationChannelInterceptor
 
     private static final String SUBSCRIPTION_NOT_ALLOWED =
         "STOMP subscription is not allowed";
+
+    private static final String ORG_AUTHORITY =
+        "ROLE_ORG";
 
     private final RealtimeSubscriptionDestinationParser destinationParser;
 
@@ -59,7 +63,9 @@ public class StompAuthorizationChannelInterceptor
 
     private void authorizeSubscription(
         StompHeaderAccessor accessor) {
-        requireAuthentication(accessor.getUser());
+        Authentication authentication =
+            requireAuthentication(
+                accessor.getUser());
 
         RealtimeSubscriptionDestination destination =
             destinationParser.parse(
@@ -75,26 +81,22 @@ public class StompAuthorizationChannelInterceptor
                     authorizePublicQuestion(
                         destination.resourceId());
 
-                case ADMINISTRATOR_INBOX,
-                    ADMINISTRATOR_REVIEWS ->
+                case ADMINISTRATOR_INBOX ->
                     requireAdministrator();
+
+                case PERSONAL_REVIEWS ->
+                    requirePersonalReviewAccess(
+                        authentication);
 
                 case PARTICIPANT_QUESTIONS -> {
                     // Every authenticated user may subscribe to their own
                     // Spring-resolved personal destination.
                 }
-                default -> {
+
+                default ->
                     throw subscriptionNotAllowed();
-                }
             }
         } catch (RuntimeException exception) {
-            /*
-             * Deliberately discard the underlying exception and message.
-             *
-             * The client must not be able to distinguish: - a missing question; - a private
-             * question; - an inaccessible TaskAssignment; - a missing participation; - an
-             * invalid hierarchy.
-             */
             throw subscriptionNotAllowed();
         }
     }
@@ -127,13 +129,37 @@ public class StompAuthorizationChannelInterceptor
         }
     }
 
-    private void requireAuthentication(
+    private Authentication requireAuthentication(
         Principal principal) {
         if (!(principal instanceof Authentication authentication)
             || !authentication.isAuthenticated()) {
             throw new AuthenticationCredentialsNotFoundException(
                 AUTHENTICATION_REQUIRED);
         }
+
+        return authentication;
+    }
+
+    private void requirePersonalReviewAccess(
+        Authentication authentication) {
+        if (questionAccessPolicy.isAdministrator()
+            || hasAuthority(
+                authentication,
+                ORG_AUTHORITY)) {
+            return;
+        }
+
+        throw subscriptionNotAllowed();
+    }
+
+    private boolean hasAuthority(
+        Authentication authentication,
+        String requiredAuthority) {
+        return authentication
+            .getAuthorities()
+            .stream()
+            .map(GrantedAuthority::getAuthority)
+            .anyMatch(requiredAuthority::equals);
     }
 
     private static AccessDeniedException subscriptionNotAllowed() {

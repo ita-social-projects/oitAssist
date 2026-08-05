@@ -84,4 +84,13 @@ public interface TaskAssignmentForumResponderRepository extends JpaRepository<Ta
         """)
     List<Long> findTaskAssignmentIdsByResponderUserId(
         @Param("responderUserId") Long responderUserId);
+
+    @Query("""
+        SELECT DISTINCT responder.responderUserId
+        FROM TaskAssignmentForumResponder responder
+        WHERE responder.taskAssignmentId = :taskAssignmentId
+        ORDER BY responder.responderUserId ASC
+        """)
+    List<Long> findDistinctResponderUserIdsByTaskAssignmentId(
+        @Param("taskAssignmentId") Long taskAssignmentId);
 }

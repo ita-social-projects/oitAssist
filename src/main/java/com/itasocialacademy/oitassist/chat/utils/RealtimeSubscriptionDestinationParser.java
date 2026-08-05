@@ -14,7 +14,7 @@ public class RealtimeSubscriptionDestinationParser {
     private static final String PARTICIPANT_QUESTIONS_DESTINATION =
         "/user/queue/questions";
 
-    private static final String ADMINISTRATOR_REVIEWS_DESTINATION =
+    private static final String PERSONAL_REVIEWS_DESTINATION =
         "/user/queue/reviews";
 
     private static final Pattern TASK_ASSIGNMENT_FORUM_PATTERN =
@@ -46,9 +46,9 @@ public class RealtimeSubscriptionDestinationParser {
                 null);
         }
 
-        if (ADMINISTRATOR_REVIEWS_DESTINATION.equals(destination)) {
+        if (PERSONAL_REVIEWS_DESTINATION.equals(destination)) {
             return new RealtimeSubscriptionDestination(
-                ADMINISTRATOR_REVIEWS,
+                PERSONAL_REVIEWS,
                 null);
         }
 
