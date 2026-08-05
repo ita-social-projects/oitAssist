@@ -139,7 +139,7 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
-    public TaskResponseDTO addTaskOwner(Long taskId, AddOwnerRequestDTO changeOwnerRequest) {
+    public TaskResponseDTO addTaskOwner(Long taskId, AddOwnerRequestDTO addOwnerRequest) {
         if (!securityFacade.hasRole(ADMIN_ROLE)) {
             throw new TaskAccessRestrictedException(taskId);
         }
@@ -147,7 +147,7 @@ public class TaskServiceImpl implements TaskService {
         TaskBody task = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        UserAuthDetails userDetails = userFacade.findByEmail(changeOwnerRequest.newOwnerEmail())
+        UserAuthDetails userDetails = userFacade.findByEmail(addOwnerRequest.newOwnerEmail())
             .orElseThrow(UserNotFoundException::new);
 
         if (!isOrgOrAdmin(userDetails)) {
@@ -253,8 +253,9 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private void checkOwnerOrAdmin(Set<Long> taskBodyOwnerIds, Long taskId) {
-        if (securityFacade.getCurrentUserId().isEmpty() || (!securityFacade.hasRole(ADMIN_ROLE)
-            && !taskBodyOwnerIds.contains(securityFacade.getCurrentUserId().get()))) {
+        Optional<Long> currentUserId = securityFacade.getCurrentUserId();
+        if (currentUserId.isEmpty() || (!securityFacade.hasRole(ADMIN_ROLE)
+            && !taskBodyOwnerIds.contains(currentUserId.get()))) {
             throw new TaskAccessRestrictedException(taskId);
         }
     }
