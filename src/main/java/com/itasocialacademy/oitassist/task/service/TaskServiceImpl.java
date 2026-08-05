@@ -50,7 +50,7 @@ public class TaskServiceImpl implements TaskService {
     private final SecurityFacade securityFacade;
     private final UserFacade userFacade;
     private final FileManagerFacade fileManagerFacade;
-    private static final String adminRoleString = "ADMIN";
+    private static final String ADMIN_ROLE = "ADMIN";
 
     @Override
     @Transactional
@@ -140,7 +140,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public TaskResponseDTO addTaskOwner(Long taskId, AddOwnerRequestDTO changeOwnerRequest) {
-        if (!securityFacade.hasRole(adminRoleString)) {
+        if (!securityFacade.hasRole(ADMIN_ROLE)) {
             throw new TaskAccessRestrictedException(taskId);
         }
 
@@ -173,7 +173,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public TaskResponseDTO removeTaskOwner(Long taskId, RemoveOwnerRequestDTO removeOwnerRequest) {
-        if (!securityFacade.hasRole(adminRoleString)) {
+        if (!securityFacade.hasRole(ADMIN_ROLE)) {
             throw new TaskAccessRestrictedException(taskId);
         }
 
@@ -253,7 +253,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private void checkOwnerOrAdmin(Set<Long> taskBodyOwnerIds, Long taskId) {
-        if (securityFacade.getCurrentUserId().isEmpty() || (!securityFacade.hasRole(adminRoleString)
+        if (securityFacade.getCurrentUserId().isEmpty() || (!securityFacade.hasRole(ADMIN_ROLE)
             && !taskBodyOwnerIds.contains(securityFacade.getCurrentUserId().get()))) {
             throw new TaskAccessRestrictedException(taskId);
         }
