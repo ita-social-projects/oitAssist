@@ -18,7 +18,7 @@ import java.util.List;
 public interface TaskBodyMapper {
     TaskBody toEntity(CreateTaskRequestDTO taskBody);
 
-    @Mapping(target = "ownerIds", source = "owners")
+    @Mapping(target = "ownerIds", source = "taskBody.owners")
     TaskResponseDTO toResponse(TaskBody taskBody, List<FileDetailsDTO> files);
 
     @Mapping(target = "ownerIds", source = "owners")

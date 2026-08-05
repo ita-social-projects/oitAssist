@@ -82,7 +82,7 @@ class TaskServiceTest {
                 .id(new TaskOwnerId(1L, 100L))
                 .task(taskBody)
                 .build())));
-      
+
         testFiles = List.of(
             new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
                 "/uploads/task/problem.pdf"));
@@ -103,12 +103,18 @@ class TaskServiceTest {
     void createTask_validRequest_shouldSaveAndReturnResponse() {
         CreateTaskRequestDTO request = new CreateTaskRequestDTO(
             "Test Task", "Test Description", List.of(51L, 52L));
+        TaskBody taskWithoutOwners = TaskBody.builder()
+            .id(1L)
+            .title("Test Task")
+            .description("Test Description")
+            .owners(new HashSet<>())
+            .build();
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
-        when(taskBodyMapper.toEntity(request)).thenReturn(taskBody);
-        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
+        when(taskBodyMapper.toEntity(request)).thenReturn(taskWithoutOwners);
+        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskWithoutOwners);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskWithoutOwners, testFiles)).thenReturn(taskResponse);
 
         TaskResponseDTO result = taskService.createTask(request);
 
@@ -118,7 +124,10 @@ class TaskServiceTest {
 
         ArgumentCaptor<TaskBody> captor = ArgumentCaptor.forClass(TaskBody.class);
         verify(taskBodyRepository).save(captor.capture());
-        assertTrue(captor.getValue().getOwners().stream().anyMatch(o -> o.getId().getOwnerId().equals(100L)));
+        assertEquals(1, captor.getValue().getOwners().size());
+
+        TaskOwner owner = captor.getValue().getOwners().iterator().next();
+        assertEquals(100L, owner.getId().getOwnerId());
     }
 
     @Test
@@ -412,7 +421,7 @@ class TaskServiceTest {
         assertTrue(taskBody.getOwners().stream()
             .anyMatch(owner -> owner.getId().getOwnerId().equals(200L)));
 
-        verify(taskBodyMapper).toResponse(taskBody);
+        verify(taskBodyMapper).toResponse(taskBody, testFiles);
     }
 
     @Test
@@ -479,6 +488,7 @@ class TaskServiceTest {
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("currentowner@mail.com")).thenReturn(Optional.of(owner));
+        when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
         when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
 
         int ownersCount = taskBody.getOwners().size();
@@ -488,7 +498,7 @@ class TaskServiceTest {
         assertNotNull(result);
         assertEquals(ownersCount, taskBody.getOwners().size());
 
-        verify(taskBodyMapper).toResponse(taskBody);
+        verify(taskBodyMapper).toResponse(taskBody, testFiles);
     }
 
     // ---- removeTaskOwner ----
@@ -513,7 +523,7 @@ class TaskServiceTest {
         assertFalse(taskBody.getOwners().stream()
             .anyMatch(o -> o.getId().getOwnerId().equals(100L)));
 
-        verify(taskBodyMapper).toResponse(taskBody);
+        verify(taskBodyMapper).toResponse(taskBody, testFiles);
     }
 
     @Test
@@ -564,6 +574,7 @@ class TaskServiceTest {
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("unknown@mail.com")).thenReturn(Optional.of(user));
+        when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
         when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
 
         int ownersCount = taskBody.getOwners().size();
@@ -573,7 +584,7 @@ class TaskServiceTest {
         assertNotNull(result);
         assertEquals(ownersCount, taskBody.getOwners().size());
 
-        verify(taskBodyMapper).toResponse(taskBody);
+        verify(taskBodyMapper).toResponse(taskBody, testFiles);
     }
 
     // ---- deleteTask ----
