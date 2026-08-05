@@ -50,7 +50,7 @@ public class TaskServiceImpl implements TaskService {
     private final SecurityFacade securityFacade;
     private final UserFacade userFacade;
     private final FileManagerFacade fileManagerFacade;
-    private final String adminRoleString = "ADMIN";
+    private static final String adminRoleString = "ADMIN";
 
     @Override
     @Transactional
