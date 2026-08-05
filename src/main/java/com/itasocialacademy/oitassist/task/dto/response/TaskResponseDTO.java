@@ -25,5 +25,5 @@ public record TaskResponseDTO(
 
     @Schema(
         description = "Ids of task's current owners",
-        example = "[2,1,3]") Set<Long> ownerIds) {
+        example = "[1,2,3]") Set<Long> ownerIds) {
 }
