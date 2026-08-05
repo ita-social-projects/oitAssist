@@ -2,6 +2,8 @@ package com.itasocialacademy.oitassist.chat.controller;
 
 import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
 import com.itasocialacademy.oitassist.chat.dao.dto.request.ClaimQuestionRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
@@ -19,9 +21,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/org/questions")
@@ -30,7 +39,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(
     name = "Organization Questions V1",
     description = """
-        TaskAssignment-scoped question review queues for organizing
+        TaskAssignment-scoped question review operations for organizing
         committee responders
         """)
 public class OrganizationQuestionController {
@@ -83,11 +92,13 @@ public class OrganizationQuestionController {
     public ResponseEntity<PageResponse<QuestionReviewInboxItemResponseDTO>> getResponderInbox(
         @Parameter(
             description = "Zero-based page number",
-            example = "0") @RequestParam(defaultValue = "0") int page,
+            example = "0") @RequestParam(
+                defaultValue = "0") int page,
 
         @Parameter(
             description = "Page size within the configured limit",
-            example = "20") @RequestParam(defaultValue = "20") int size) {
+            example = "20") @RequestParam(
+                defaultValue = "20") int size) {
         validatePageAndSize(
             page,
             size);
@@ -143,15 +154,18 @@ public class OrganizationQuestionController {
     public ResponseEntity<PageResponse<QuestionReviewInboxItemResponseDTO>> getAssignedToCurrentResponder(
         @Parameter(
             description = "Optional question-status filter",
-            example = "IN_REVIEW") @RequestParam(required = false) QuestionStatus status,
+            example = "IN_REVIEW") @RequestParam(
+                required = false) QuestionStatus status,
 
         @Parameter(
             description = "Zero-based page number",
-            example = "0") @RequestParam(defaultValue = "0") int page,
+            example = "0") @RequestParam(
+                defaultValue = "0") int page,
 
         @Parameter(
             description = "Page size within the configured limit",
-            example = "20") @RequestParam(defaultValue = "20") int size) {
+            example = "20") @RequestParam(
+                defaultValue = "20") int size) {
         validatePageAndSize(
             page,
             size);
@@ -246,6 +260,101 @@ public class OrganizationQuestionController {
                     request.version()));
     }
 
+    @Operation(
+        summary = "Publish an official answer as an ORG responder",
+        description = """
+            Publishes an official answer in an open question thread owned by
+            the authenticated organizing-committee responder.
+
+            The service verifies that the current user owns the assigned
+            review and still has responder eligibility for the question's
+            exact TaskAssignment.
+
+            The request controls only answer content. The backend controls
+            the author id, question id, message type, identifier and creation
+            timestamp.
+
+            Questions in NEW or IN_REVIEW status transition to ANSWERED.
+            An additional official answer is allowed when the question is
+            already ANSWERED.
+
+            Missing questions, questions assigned to another reviewer and
+            questions without a matching responder grant use the same
+            not-found response.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "201",
+            description = "Official answer published successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionMessageResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question identifier or answer content is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global ORG role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = """
+                Question was not found, is assigned to another reviewer or
+                has no matching responder grant
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = """
+                Question is closed or a concurrent lifecycle operation
+                prevents official-answer publication
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/{questionId}/official-answers")
+    public ResponseEntity<QuestionMessageResponseDTO> publishOfficialAnswer(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42",
+            required = true) @PathVariable Long questionId,
+        @Valid @RequestBody CreateOfficialAnswerRequestDTO request) {
+        validateQuestionId(
+            questionId);
+
+        QuestionMessageResponseDTO response =
+            organizationQuestionService
+                .publishOfficialAnswer(
+                    questionId,
+                    request);
+
+        return ResponseEntity
+            .status(
+                HttpStatus.CREATED)
+            .body(
+                response);
+    }
+
     private void validateQuestionId(
         Long questionId) {
         if (questionId == null
@@ -265,10 +374,12 @@ public class OrganizationQuestionController {
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
 
-        if (size < 1 || size > MAX_PAGE_SIZE) {
+        if (size < 1
+            || size > MAX_PAGE_SIZE) {
             throw new ValidationException(
                 "Page size must be between 1 and %d"
-                    .formatted(MAX_PAGE_SIZE),
+                    .formatted(
+                        MAX_PAGE_SIZE),
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }
