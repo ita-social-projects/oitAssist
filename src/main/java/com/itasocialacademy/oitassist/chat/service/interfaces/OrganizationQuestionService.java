@@ -1,12 +1,14 @@
 package com.itasocialacademy.oitassist.chat.service.interfaces;
 
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import org.springframework.data.domain.Page;
 
 /**
- * Provides question-review queues for the current authenticated
+ * Provides question-review operations for the current authenticated
  * organizing-committee responder.
  */
 public interface OrganizationQuestionService {
@@ -46,4 +48,21 @@ public interface OrganizationQuestionService {
     QuestionThreadResponseDTO claimQuestion(
         Long questionId,
         Long expectedVersion);
+
+    /**
+     * Publishes an official answer as the assigned organizing-committee responder.
+     *
+     * <p>
+     * The current user must own the question review and retain responder
+     * eligibility for the question's exact TaskAssignment. The question must remain
+     * open while the answer is persisted.
+     * </p>
+     *
+     * @param questionId question identifier
+     * @param request    validated official-answer content
+     * @return created immutable official-answer projection
+     */
+    QuestionMessageResponseDTO publishOfficialAnswer(
+        Long questionId,
+        CreateOfficialAnswerRequestDTO request);
 }

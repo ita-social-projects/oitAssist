@@ -1,22 +1,35 @@
 package com.itasocialacademy.oitassist.chat.service;
 
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionMessageType.OFFICIAL_ANSWER;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
 import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
+import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
+import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.OfficialAnswerPublishedDomainEvent;
 import com.itasocialacademy.oitassist.chat.event.QuestionClaimedDomainEvent;
+import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
+import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
 import com.itasocialacademy.oitassist.chat.service.interfaces.OrganizationQuestionService;
+import com.itasocialacademy.oitassist.chat.service.interfaces.TaskAssignmentForumResponderService;
 import com.itasocialacademy.oitassist.chat.utils.OrganizationQuestionClaimCoordinator;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import java.time.Instant;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,13 +39,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class OrganizationQuestionServiceImpl implements OrganizationQuestionService {
-    private static final String ORG_ROLE = "ORG";
+public class OrganizationQuestionServiceImpl
+    implements OrganizationQuestionService {
+    private static final String ORG_ROLE =
+        "ORG";
 
     private static final Sort RESPONDER_INBOX_SORT =
         Sort.by(
@@ -46,9 +60,15 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
 
     private final QuestionThreadRepository questionThreadRepository;
 
+    private final QuestionMessageRepository questionMessageRepository;
+
     private final QuestionThreadMapper questionThreadMapper;
 
+    private final QuestionMessageMapper questionMessageMapper;
+
     private final SecurityFacade securityFacade;
+
+    private final TaskAssignmentForumResponderService taskAssignmentForumResponderService;
 
     private final OrganizationQuestionClaimCoordinator organizationQuestionClaimCoordinator;
 
@@ -210,6 +230,155 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
         return response;
     }
 
+    @Override
+    @Transactional
+    public QuestionMessageResponseDTO publishOfficialAnswer(
+        Long questionId,
+        CreateOfficialAnswerRequestDTO request) {
+        validateQuestionId(
+            questionId);
+
+        /*
+         * @Transactional opens the transaction before this method body runs. Therefore
+         * authentication, ownership and eligibility are all evaluated inside the
+         * publication transaction.
+         */
+        Long responderUserId =
+            requireOrganizationMember();
+
+        log.debug(
+            "Publishing official answer as ORG responder: "
+                + "questionId={}, responderUserId={}",
+            questionId,
+            responderUserId);
+
+        /*
+         * The write lock coordinates this operation with lifecycle mutations. A
+         * concurrent close cannot be committed between the OPEN check and
+         * official-answer persistence.
+         */
+        QuestionThread question =
+            questionThreadRepository
+                .findByIdForUpdate(
+                    questionId)
+                .orElseThrow(() -> new QuestionNotFoundException(
+                    questionId));
+
+        requireAssignedResponderAccess(
+            question,
+            responderUserId);
+
+        validateQuestionAcceptsOfficialAnswers(
+            question);
+
+        QuestionMessage officialAnswer =
+            questionMessageMapper
+                .toOfficialAnswerEntity(
+                    request);
+
+        /*
+         * The request controls only content. Every remaining persisted field is
+         * overwritten by the backend even if a mapper implementation returns a polluted
+         * entity.
+         */
+        officialAnswer.setId(null);
+        officialAnswer.setQuestionThreadId(
+            questionId);
+        officialAnswer.setAuthorId(
+            responderUserId);
+        officialAnswer.setType(
+            OFFICIAL_ANSWER);
+        officialAnswer.setCreatedAt(null);
+
+        QuestionStatus previousStatus =
+            question.getStatus();
+
+        /*
+         * NEW and IN_REVIEW become ANSWERED. An already ANSWERED question accepts an
+         * additional official answer without changing its status.
+         */
+        if (question.getStatus() != ANSWERED) {
+            question.setStatus(
+                ANSWERED);
+        }
+
+        QuestionMessage savedAnswer =
+            questionMessageRepository.save(
+                officialAnswer);
+
+        /*
+         * QuestionThread is managed. Flush persists the dirty-checked status transition
+         * and updates the optimistic-lock version before the immutable question
+         * snapshot is created.
+         */
+        questionThreadRepository.flush();
+
+        QuestionMessageResponseDTO messageResponse =
+            questionMessageMapper.toResponse(
+                savedAnswer);
+
+        QuestionThreadResponseDTO questionResponse =
+            questionThreadMapper.toResponse(
+                question);
+
+        Instant eventTime =
+            Instant.now();
+
+        applicationEventPublisher.publishEvent(
+            new OfficialAnswerPublishedDomainEvent(
+                questionResponse,
+                messageResponse,
+                previousStatus,
+                questionResponse.status(),
+                eventTime));
+
+        log.info(
+            "Official answer published by ORG responder: "
+                + "messageId={}, questionId={}, responderUserId={}",
+            savedAnswer.getId(),
+            questionId,
+            responderUserId);
+
+        return messageResponse;
+    }
+
+    private void requireAssignedResponderAccess(
+        QuestionThread question,
+        Long responderUserId) {
+        /*
+         * Ownership is checked first. This avoids querying responder eligibility for a
+         * question assigned to another reviewer.
+         */
+        if (!Objects.equals(
+            question.getAssignedReviewerId(),
+            responderUserId)) {
+            throw new QuestionNotFoundException(
+                question.getId());
+        }
+
+        /*
+         * A stale or revoked responder grant removes assigned-review access. Not-found
+         * masking prevents disclosure of protected question state.
+         */
+        if (!taskAssignmentForumResponderService
+            .isResponder(
+                question.getTaskAssignmentId(),
+                responderUserId)) {
+            throw new QuestionNotFoundException(
+                question.getId());
+        }
+    }
+
+    private void validateQuestionAcceptsOfficialAnswers(
+        QuestionThread question) {
+        if (question.getState() != OPEN) {
+            throw new InvalidQuestionStateException(
+                question.getId(),
+                question.getState(),
+                "publish official answer");
+        }
+    }
+
     private Long requireOrganizationMember() {
         Long currentUserId =
             securityFacade.getCurrentUserId()
@@ -217,8 +386,8 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
                     "Authentication is required to access "
                         + "organizing committee question queues",
                     ErrorCode.AUTHENTICATION_REQUIRED));
-
-        if (!securityFacade.hasRole(ORG_ROLE)) {
+        if (!securityFacade.hasRole(
+            ORG_ROLE)) {
             throw new AuthorizationException(
                 "Global ORG role is required to access "
                     + "organizing committee question queues",
@@ -226,6 +395,16 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
         }
 
         return currentUserId;
+    }
+
+    private void validateQuestionId(
+        Long questionId) {
+        if (questionId == null
+            || questionId <= 0) {
+            throw new ValidationException(
+                "Question id must be a positive number",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
     }
 
     private void validatePageAndSize(
@@ -237,10 +416,12 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
 
-        if (size < 1 || size > MAX_PAGE_SIZE) {
+        if (size < 1
+            || size > MAX_PAGE_SIZE) {
             throw new ValidationException(
                 "Page size must be between 1 and %d"
-                    .formatted(MAX_PAGE_SIZE),
+                    .formatted(
+                        MAX_PAGE_SIZE),
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }
@@ -248,11 +429,8 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
     private void validateClaimInput(
         Long questionId,
         Long expectedVersion) {
-        if (questionId == null || questionId <= 0) {
-            throw new ValidationException(
-                "Question id must be a positive number",
-                ErrorCode.COMMON_VALIDATION_FAILED);
-        }
+        validateQuestionId(
+            questionId);
 
         if (expectedVersion == null
             || expectedVersion < 0) {

@@ -150,7 +150,6 @@ public class QuestionAccessPolicy {
         if (isAssignedOrganizationResponder(
             question,
             context.userId())) {
-
             return context;
         }
 
@@ -167,7 +166,6 @@ public class QuestionAccessPolicy {
          */
         if (question.getVisibility() == PRIVATE
             && !author) {
-
             throw new QuestionNotFoundException(
                 question.getId());
         }
@@ -188,7 +186,6 @@ public class QuestionAccessPolicy {
         if (!Objects.equals(
             currentUserId,
             question.getAssignedReviewerId())) {
-
             return false;
         }
 
