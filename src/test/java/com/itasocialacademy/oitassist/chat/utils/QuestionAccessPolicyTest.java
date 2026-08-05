@@ -25,6 +25,7 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionCreationNotAllowedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionForumAccessRestrictedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
+import com.itasocialacademy.oitassist.chat.service.interfaces.TaskAssignmentForumResponderService;
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
@@ -76,6 +77,9 @@ class QuestionAccessPolicyTest {
 
     @Mock
     private ParticipationFacade participationFacade;
+
+    @Mock
+    private TaskAssignmentForumResponderService forumResponderService;
 
     @InjectMocks
     private QuestionAccessPolicy questionAccessPolicy;
@@ -543,49 +547,6 @@ class QuestionAccessPolicyTest {
     }
 
     @Test
-    void requireQuestionViewAccess_assignedReviewerWithParticipation_shouldAllow() {
-        stubParticipantAccess(
-            VISIBLE,
-            SCHEDULED);
-
-        QuestionThread question = createQuestion(
-            PRIVATE,
-            OTHER_USER_ID,
-            USER_ID,
-            OPEN);
-
-        assertDoesNotThrow(() -> questionAccessPolicy
-            .requireQuestionViewAccess(question));
-    }
-
-    @Test
-    void requireQuestionViewAccess_assignedReviewerWithoutParticipation_shouldReject() {
-        stubAuthenticatedHierarchy(
-            VISIBLE,
-            SCHEDULED);
-
-        when(securityFacade.hasRole(ADMIN_ROLE))
-            .thenReturn(false);
-
-        when(participationFacade.isUserParticipant(
-            USER_ID,
-            COMPETITION_ID,
-            STAGE_ID))
-            .thenReturn(false);
-
-        QuestionThread question = createQuestion(
-            PRIVATE,
-            OTHER_USER_ID,
-            USER_ID,
-            OPEN);
-
-        assertThrows(
-            QuestionForumAccessRestrictedException.class,
-            () -> questionAccessPolicy
-                .requireQuestionViewAccess(question));
-    }
-
-    @Test
     void requireQuestionViewAccess_publicQuestionWithoutParticipation_shouldReject() {
         stubAuthenticatedHierarchy(
             VISIBLE,
@@ -765,22 +726,292 @@ class QuestionAccessPolicyTest {
     }
 
     @Test
-    void requireQuestionCommentAccess_assignedReviewerWithParticipation_shouldReturnUserId() {
+    void requireQuestionViewAccess_assignedOrgResponderWithExactGrant_shouldBypassParticipantRules() {
+
+        stubAuthenticatedHierarchy(
+            HIDDEN,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        when(securityFacade.hasRole(ORG_ROLE))
+            .thenReturn(true);
+
+        when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID))
+            .thenReturn(true);
+
+        QuestionThread question =
+            createQuestion(
+                PRIVATE,
+                OTHER_USER_ID,
+                USER_ID,
+                OPEN);
+
+        assertDoesNotThrow(() -> questionAccessPolicy
+            .requireQuestionViewAccess(
+                question));
+
+        verify(forumResponderService)
+            .isResponder(
+                TASK_ASSIGNMENT_ID,
+                USER_ID);
+
+        verifyNoInteractions(
+            participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_closedQuestionForAssignedOrgResponder_shouldAllow() {
+
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        when(securityFacade.hasRole(ORG_ROLE))
+            .thenReturn(true);
+
+        when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID))
+            .thenReturn(true);
+
+        QuestionThread question =
+            createQuestion(
+                PRIVATE,
+                OTHER_USER_ID,
+                USER_ID,
+                CLOSED);
+
+        assertDoesNotThrow(() -> questionAccessPolicy
+            .requireQuestionViewAccess(
+                question));
+
+        verifyNoInteractions(
+            participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_assignedOrgWithoutGrant_shouldMaskPrivateQuestion() {
+
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        when(securityFacade.hasRole(ORG_ROLE))
+            .thenReturn(true);
+
+        when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID))
+            .thenReturn(false);
+
+        QuestionThread question =
+            createQuestion(
+                PRIVATE,
+                OTHER_USER_ID,
+                USER_ID,
+                OPEN);
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> questionAccessPolicy
+                .requireQuestionViewAccess(
+                    question));
+
+        verify(forumResponderService)
+            .isResponder(
+                TASK_ASSIGNMENT_ID,
+                USER_ID);
+
+        verifyNoInteractions(
+            participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_orgResponderWhoDoesNotOwnQuestion_shouldMask() {
+
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(anyString()))
+            .thenAnswer(invocation -> ORG_ROLE.equals(
+                invocation.getArgument(0)));
+
+        QuestionThread question =
+            createQuestion(
+                PRIVATE,
+                OTHER_USER_ID,
+                OTHER_REVIEWER_ID,
+                OPEN);
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> questionAccessPolicy
+                .requireQuestionViewAccess(
+                    question));
+
+        verify(
+            forumResponderService,
+            never())
+            .isResponder(
+                TASK_ASSIGNMENT_ID,
+                USER_ID);
+
+        verifyNoInteractions(
+            participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_assignedNonOrgUser_shouldNotReceiveReviewerBypass() {
+
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        when(securityFacade.hasRole(ORG_ROLE))
+            .thenReturn(false);
+
+        QuestionThread question =
+            createQuestion(
+                PRIVATE,
+                OTHER_USER_ID,
+                USER_ID,
+                OPEN);
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> questionAccessPolicy
+                .requireQuestionViewAccess(
+                    question));
+
+        verify(
+            forumResponderService,
+            never())
+            .isResponder(
+                TASK_ASSIGNMENT_ID,
+                USER_ID);
+
+        verifyNoInteractions(
+            participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_assignedOrgWithoutGrantButParticipantOfPublicQuestion_shouldUseParticipantRules() {
+
         stubParticipantAccess(
             VISIBLE,
             SCHEDULED);
 
-        QuestionThread question = createQuestion(
-            PRIVATE,
-            OTHER_USER_ID,
-            USER_ID,
-            OPEN);
+        when(securityFacade.hasRole(ORG_ROLE))
+            .thenReturn(true);
+
+        when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID))
+            .thenReturn(false);
+
+        QuestionThread question =
+            createQuestion(
+                PUBLIC,
+                OTHER_USER_ID,
+                USER_ID,
+                OPEN);
+
+        assertDoesNotThrow(() -> questionAccessPolicy
+            .requireQuestionViewAccess(
+                question));
+
+        verify(participationFacade)
+            .isUserParticipant(
+                USER_ID,
+                COMPETITION_ID,
+                STAGE_ID);
+    }
+
+    @Test
+    void requireQuestionCommentAccess_assignedOrgResponderWithExactGrant_shouldReturnUserId() {
+
+        stubAuthenticatedHierarchy(
+            HIDDEN,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        when(securityFacade.hasRole(ORG_ROLE))
+            .thenReturn(true);
+
+        when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID))
+            .thenReturn(true);
+
+        QuestionThread question =
+            createQuestion(
+                PRIVATE,
+                OTHER_USER_ID,
+                USER_ID,
+                OPEN);
 
         Long result =
             questionAccessPolicy
-                .requireQuestionCommentAccess(question);
+                .requireQuestionCommentAccess(
+                    question);
 
-        assertEquals(USER_ID, result);
+        assertEquals(
+            USER_ID,
+            result);
+
+        verifyNoInteractions(
+            participationFacade);
+    }
+
+    @Test
+    void requireQuestionCommentAccess_assignedOrgWithoutGrant_shouldMask() {
+
+        stubAuthenticatedHierarchy(
+            VISIBLE,
+            SCHEDULED);
+
+        when(securityFacade.hasRole(ADMIN_ROLE))
+            .thenReturn(false);
+
+        when(securityFacade.hasRole(ORG_ROLE))
+            .thenReturn(true);
+
+        when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID))
+            .thenReturn(false);
+
+        QuestionThread question =
+            createQuestion(
+                PRIVATE,
+                OTHER_USER_ID,
+                USER_ID,
+                OPEN);
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> questionAccessPolicy
+                .requireQuestionCommentAccess(
+                    question));
+
+        verifyNoInteractions(
+            participationFacade);
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionCreationNotAllowedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionForumAccessRestrictedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
+import com.itasocialacademy.oitassist.chat.service.interfaces.TaskAssignmentForumResponderService;
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
@@ -27,11 +28,13 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class QuestionAccessPolicy {
     private static final String ADMIN_ROLE = "ADMIN";
+    private static final String ORG_ROLE = "ORG";
 
     private final SecurityFacade securityFacade;
     private final TaskAssignmentFacade taskAssignmentFacade;
     private final CompetitionFacade competitionFacade;
     private final ParticipationFacade participationFacade;
+    private final TaskAssignmentForumResponderService forumResponderService;
 
     /**
      * Determines whether the current user created the question.
@@ -130,28 +133,41 @@ public class QuestionAccessPolicy {
                 question.getTaskAssignmentId());
 
         /*
-         * Administrators bypass assignment visibility and participation checks, but
-         * only after the complete hierarchy has been validated.
+         * Global administrators retain the existing complete bypass, but only after the
+         * persisted TaskAssignment hierarchy has been validated.
          */
         if (isAdministrator()) {
             return context;
         }
 
-        boolean author = Objects.equals(
-            context.userId(),
-            question.getAuthorId());
+        /*
+         * An assigned ORG responder receives a question-scoped bypass of participant
+         * visibility and participation requirements.
+         *
+         * Ownership alone is insufficient: the matching responder grant for the
+         * question's exact TaskAssignment is also required.
+         */
+        if (isAssignedOrganizationResponder(
+            question,
+            context.userId())) {
 
-        boolean assignedReviewer = Objects.equals(
-            context.userId(),
-            question.getAssignedReviewerId());
+            return context;
+        }
+
+        boolean author =
+            Objects.equals(
+                context.userId(),
+                question.getAuthorId());
 
         /*
-         * Another participant's private question is masked before checking
-         * participation, preventing disclosure of protected thread data.
+         * assignedReviewerId alone must not expose a private question.
+         *
+         * A reviewer obtains the bypass only through the validated ORG branch above.
+         * The remaining branch represents ordinary participant access.
          */
         if (question.getVisibility() == PRIVATE
-            && !author
-            && !assignedReviewer) {
+            && !author) {
+
             throw new QuestionNotFoundException(
                 question.getId());
         }
@@ -160,6 +176,29 @@ public class QuestionAccessPolicy {
         requireParticipation(context);
 
         return context;
+    }
+
+    private boolean isAssignedOrganizationResponder(
+        QuestionThread question,
+        Long currentUserId) {
+        /*
+         * Check ownership first so ordinary participants and unrelated ORG users do not
+         * cause unnecessary responder-assignment queries.
+         */
+        if (!Objects.equals(
+            currentUserId,
+            question.getAssignedReviewerId())) {
+
+            return false;
+        }
+
+        if (!securityFacade.hasRole(ORG_ROLE)) {
+            return false;
+        }
+
+        return forumResponderService.isResponder(
+            question.getTaskAssignmentId(),
+            currentUserId);
     }
 
     private TaskAssignmentAccessContext requireTaskAssignmentParticipantAccess(
