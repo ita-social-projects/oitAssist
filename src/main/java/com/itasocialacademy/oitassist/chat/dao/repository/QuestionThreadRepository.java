@@ -2,23 +2,24 @@ package com.itasocialacademy.oitassist.chat.dao.repository;
 
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.model.TaskAssignmentForumResponder;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import java.time.Instant;
-import java.util.Optional;
-import org.springframework.data.jpa.repository.Modifying;
-import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 
 @Repository
-public interface QuestionThreadRepository extends JpaRepository<QuestionThread, Long> {
+public interface QuestionThreadRepository
+    extends JpaRepository<QuestionThread, Long> {
     @Query("""
         SELECT question
         FROM QuestionThread question
@@ -33,7 +34,9 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         """)
     Page<QuestionThread> findParticipantVisibleQuestions(
         @Param("taskAssignmentId") Long taskAssignmentId,
+
         @Param("participantId") Long participantId,
+
         Pageable pageable);
 
     Page<QuestionThread> findAllByStateAndStatusAndAssignedReviewerIdIsNull(
@@ -75,8 +78,11 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         """)
     Page<QuestionThread> findResponderUnclaimedQuestions(
         @Param("responderUserId") Long responderUserId,
+
         @Param("state") QuestionState state,
+
         @Param("status") QuestionStatus status,
+
         Pageable pageable);
 
     Page<QuestionThread> findAllByStateAndAssignedReviewerId(
@@ -120,8 +126,11 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         """)
     int claimForReview(
         @Param("questionId") Long questionId,
+
         @Param("administratorId") Long administratorId,
+
         @Param("expectedVersion") Long expectedVersion,
+
         @Param("updatedAt") Instant updatedAt);
 
     @Modifying(
@@ -142,9 +151,13 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         """)
     int claimForReviewAsResponder(
         @Param("questionId") Long questionId,
+
         @Param("responderUserId") Long responderUserId,
+
         @Param("taskAssignmentId") Long taskAssignmentId,
+
         @Param("expectedVersion") Long expectedVersion,
+
         @Param("updatedAt") Instant updatedAt);
 
     /**
@@ -180,8 +193,11 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         """)
     int updateVisibilityIfVersionMatches(
         @Param("questionId") Long questionId,
+
         @Param("visibility") QuestionVisibility visibility,
+
         @Param("expectedVersion") Long expectedVersion,
+
         @Param("updatedAt") Instant updatedAt);
 
     @Modifying(
@@ -197,8 +213,11 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         """)
     int updateStatusIfVersionMatches(
         @Param("questionId") Long questionId,
+
         @Param("status") QuestionStatus status,
+
         @Param("expectedVersion") Long expectedVersion,
+
         @Param("updatedAt") Instant updatedAt);
 
     @Modifying(
@@ -214,7 +233,88 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         """)
     int updateStateIfVersionMatches(
         @Param("questionId") Long questionId,
+
         @Param("state") QuestionState state,
+
         @Param("expectedVersion") Long expectedVersion,
+
+        @Param("updatedAt") Instant updatedAt);
+
+    @Modifying(
+        clearAutomatically = true,
+        flushAutomatically = true)
+    @Query("""
+        UPDATE QuestionThread question
+        SET question.visibility = :visibility,
+            question.updatedAt = :updatedAt,
+            question.version = question.version + 1
+        WHERE question.id = :questionId
+          AND question.taskAssignmentId = :taskAssignmentId
+          AND question.assignedReviewerId = :responderUserId
+          AND question.version = :expectedVersion
+        """)
+    int updateVisibilityAsResponderIfVersionMatches(
+        @Param("questionId") Long questionId,
+
+        @Param("taskAssignmentId") Long taskAssignmentId,
+
+        @Param("responderUserId") Long responderUserId,
+
+        @Param("visibility") QuestionVisibility visibility,
+
+        @Param("expectedVersion") Long expectedVersion,
+
+        @Param("updatedAt") Instant updatedAt);
+
+    @Modifying(
+        clearAutomatically = true,
+        flushAutomatically = true)
+    @Query("""
+        UPDATE QuestionThread question
+        SET question.status = :status,
+            question.updatedAt = :updatedAt,
+            question.version = question.version + 1
+        WHERE question.id = :questionId
+          AND question.taskAssignmentId = :taskAssignmentId
+          AND question.assignedReviewerId = :responderUserId
+          AND question.version = :expectedVersion
+        """)
+    int updateStatusAsResponderIfVersionMatches(
+        @Param("questionId") Long questionId,
+
+        @Param("taskAssignmentId") Long taskAssignmentId,
+
+        @Param("responderUserId") Long responderUserId,
+
+        @Param("status") QuestionStatus status,
+
+        @Param("expectedVersion") Long expectedVersion,
+
+        @Param("updatedAt") Instant updatedAt);
+
+    @Modifying(
+        clearAutomatically = true,
+        flushAutomatically = true)
+    @Query("""
+        UPDATE QuestionThread question
+        SET question.state = :state,
+            question.updatedAt = :updatedAt,
+            question.version = question.version + 1
+        WHERE question.id = :questionId
+          AND question.taskAssignmentId = :taskAssignmentId
+          AND question.assignedReviewerId = :responderUserId
+          AND question.version = :expectedVersion
+        """)
+    int updateStateAsResponderIfVersionMatches(
+        @Param("questionId") Long questionId,
+
+        @Param("taskAssignmentId") Long taskAssignmentId,
+
+        @Param("responderUserId") Long responderUserId,
+
+        @Param("state") QuestionState state,
+
+        @Param("expectedVersion") Long expectedVersion,
+
         @Param("updatedAt") Instant updatedAt);
 }

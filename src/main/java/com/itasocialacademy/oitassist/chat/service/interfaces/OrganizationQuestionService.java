@@ -1,6 +1,9 @@
 package com.itasocialacademy.oitassist.chat.service.interfaces;
 
 import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStateRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStatusRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionVisibilityRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
@@ -65,4 +68,25 @@ public interface OrganizationQuestionService {
     QuestionMessageResponseDTO publishOfficialAnswer(
         Long questionId,
         CreateOfficialAnswerRequestDTO request);
+
+    /**
+     * Changes visibility of a question assigned to the current responder.
+     */
+    QuestionThreadResponseDTO updateVisibility(
+        Long questionId,
+        UpdateQuestionVisibilityRequestDTO request);
+
+    /**
+     * Changes review status of a question assigned to the current responder.
+     */
+    QuestionThreadResponseDTO updateStatus(
+        Long questionId,
+        UpdateQuestionStatusRequestDTO request);
+
+    /**
+     * Changes lifecycle state of a question assigned to the current responder.
+     */
+    QuestionThreadResponseDTO updateState(
+        Long questionId,
+        UpdateQuestionStateRequestDTO request);
 }
