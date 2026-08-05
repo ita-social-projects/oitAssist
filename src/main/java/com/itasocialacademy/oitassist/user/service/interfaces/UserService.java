@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.user.service.interfaces;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
@@ -30,6 +31,13 @@ public interface UserService {
      * </p>
      */
     Optional<UserAuthDetails> findAuthDetailsByEmail(String email);
+
+    /**
+     * Similar to the {@link #findAuthDetailsByEmail}, this method looks up a user
+     * by their ID and returns the display-side projection required by
+     * {@code UserFacade.findProfileById}. Returns empty if no user exists.
+     */
+    Optional<UserProfileDetails> findProfileDetailsById(Long userId);
 
     /**
      * Searches for the list of users by their IDs and returns the list of auth-side

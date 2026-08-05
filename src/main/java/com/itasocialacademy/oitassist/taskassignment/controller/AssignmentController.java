@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.response.DetailedTaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.service.interfaces.AssignmentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,7 +37,7 @@ public class AssignmentController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Task assignment created successfully",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = TaskAssignmentResponseDTO.class))),
+                schema = @Schema(implementation = DetailedTaskAssignmentResponseDTO.class))),
         @ApiResponse(responseCode = "400", description = "Invalid input data",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
@@ -48,7 +49,7 @@ public class AssignmentController {
     })
     @PostMapping("/tours/{tourId}/task-assignments")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
-    public ResponseEntity<TaskAssignmentResponseDTO> assignTask(@PathVariable Long tourId,
+    public ResponseEntity<DetailedTaskAssignmentResponseDTO> assignTask(@PathVariable Long tourId,
         @Valid @RequestBody CreateTaskAssignmentRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(assignmentService.assignTask(tourId, request));
     }
@@ -60,7 +61,7 @@ public class AssignmentController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Task created and assigned successfully",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = TaskAssignmentResponseDTO.class))),
+                schema = @Schema(implementation = DetailedTaskAssignmentResponseDTO.class))),
         @ApiResponse(responseCode = "400", description = "Invalid input data",
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class))),
@@ -73,7 +74,7 @@ public class AssignmentController {
     })
     @PostMapping("/tours/{tourId}/task-assignments/new")
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
-    public ResponseEntity<TaskAssignmentResponseDTO> createAndAssignTask(@PathVariable Long tourId,
+    public ResponseEntity<DetailedTaskAssignmentResponseDTO> createAndAssignTask(@PathVariable Long tourId,
         @Valid @RequestBody CreateAndAssignTaskRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(assignmentService.createAndAssignTask(tourId, request));
     }
@@ -84,13 +85,13 @@ public class AssignmentController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Task assignment retrieved successfully",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = TaskAssignmentResponseDTO.class))),
+                schema = @Schema(implementation = DetailedTaskAssignmentResponseDTO.class))),
         @ApiResponse(responseCode = "404", description = "Task assignment not found",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/task-assignments/{assignmentId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<TaskAssignmentResponseDTO> getById(@PathVariable Long assignmentId) {
+    public ResponseEntity<DetailedTaskAssignmentResponseDTO> getById(@PathVariable Long assignmentId) {
         return ResponseEntity.ok().body(assignmentService.getTaskAssignmentById(assignmentId));
     }
 
@@ -117,7 +118,7 @@ public class AssignmentController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Task assignment updated successfully",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = TaskAssignmentResponseDTO.class))),
+                schema = @Schema(implementation = DetailedTaskAssignmentResponseDTO.class))),
         @ApiResponse(responseCode = "400", description = "Validation failed",
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class))),
@@ -130,7 +131,7 @@ public class AssignmentController {
     })
     @PatchMapping("/task-assignments/{assignmentId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
-    public ResponseEntity<TaskAssignmentResponseDTO> update(@PathVariable Long assignmentId,
+    public ResponseEntity<DetailedTaskAssignmentResponseDTO> update(@PathVariable Long assignmentId,
         @Valid @RequestBody UpdateTaskAssignmentRequestDTO request) {
         return ResponseEntity.ok().body(assignmentService.updateTaskAssignment(assignmentId, request));
     }

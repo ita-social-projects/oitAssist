@@ -1,7 +1,5 @@
 package com.itasocialacademy.oitassist.taskassignment.dto.response;
 
-import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
-import com.itasocialacademy.oitassist.taskassignment.dao.model.TaskRequirements;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
@@ -25,15 +23,8 @@ public record TaskAssignmentResponseDTO(
         example = "2") Long tourId,
 
     @Schema(
-        description = "Visibility level of the assignment",
-        example = "VISIBLE") AssignmentVisibility visibility,
-
-    @Schema(
         description = "Maximum points achievable for this assignment",
         example = "30") Integer maxPoints,
-
-    @Schema(
-        description = "File requirements and constraints for submissions") TaskRequirements requirements,
 
     @Schema(
         description = "Id of the user who created this assignment",
