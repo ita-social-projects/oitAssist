@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.chat.service.interfaces;
 
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import org.springframework.data.domain.Page;
 
@@ -33,4 +34,16 @@ public interface OrganizationQuestionService {
         QuestionStatus status,
         int page,
         int size);
+
+    /**
+     * Claims an eligible question for review by the current authenticated
+     * organizing-committee responder.
+     *
+     * @param questionId      question identifier
+     * @param expectedVersion expected current question version
+     * @return updated immutable question projection
+     */
+    QuestionThreadResponseDTO claimQuestion(
+        Long questionId,
+        Long expectedVersion);
 }

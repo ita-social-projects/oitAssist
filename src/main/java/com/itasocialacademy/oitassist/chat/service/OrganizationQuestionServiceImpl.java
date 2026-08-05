@@ -4,11 +4,14 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
 import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.QuestionClaimedDomainEvent;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
 import com.itasocialacademy.oitassist.chat.service.interfaces.OrganizationQuestionService;
+import com.itasocialacademy.oitassist.chat.utils.OrganizationQuestionClaimCoordinator;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
@@ -16,12 +19,14 @@ import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +49,10 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
     private final QuestionThreadMapper questionThreadMapper;
 
     private final SecurityFacade securityFacade;
+
+    private final OrganizationQuestionClaimCoordinator organizationQuestionClaimCoordinator;
+
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -150,6 +159,57 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
         return result;
     }
 
+    @Override
+    @Transactional
+    public QuestionThreadResponseDTO claimQuestion(
+        Long questionId,
+        Long expectedVersion) {
+        validateClaimInput(
+            questionId,
+            expectedVersion);
+
+        Long responderUserId =
+            requireOrganizationMember();
+
+        Instant claimTime =
+            Instant.now();
+
+        log.debug(
+            "Claiming question as ORG responder: "
+                + "questionId={}, responderUserId={}, expectedVersion={}",
+            questionId,
+            responderUserId,
+            expectedVersion);
+
+        QuestionThread claimedQuestion =
+            organizationQuestionClaimCoordinator
+                .claimQuestion(
+                    questionId,
+                    responderUserId,
+                    expectedVersion,
+                    claimTime);
+
+        QuestionThreadResponseDTO response =
+            questionThreadMapper.toResponse(
+                claimedQuestion);
+
+        applicationEventPublisher.publishEvent(
+            new QuestionClaimedDomainEvent(
+                response,
+                null,
+                responderUserId,
+                claimTime));
+
+        log.debug(
+            "Question claimed by ORG responder: "
+                + "questionId={}, responderUserId={}, version={}",
+            questionId,
+            responderUserId,
+            response.version());
+
+        return response;
+    }
+
     private Long requireOrganizationMember() {
         Long currentUserId =
             securityFacade.getCurrentUserId()
@@ -181,6 +241,23 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
             throw new ValidationException(
                 "Page size must be between 1 and %d"
                     .formatted(MAX_PAGE_SIZE),
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+    }
+
+    private void validateClaimInput(
+        Long questionId,
+        Long expectedVersion) {
+        if (questionId == null || questionId <= 0) {
+            throw new ValidationException(
+                "Question id must be a positive number",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+
+        if (expectedVersion == null
+            || expectedVersion < 0) {
+            throw new ValidationException(
+                "Question version must not be negative",
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }

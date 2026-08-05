@@ -1,7 +1,9 @@
 package com.itasocialacademy.oitassist.chat.controller;
 
 import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.ClaimQuestionRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.service.interfaces.OrganizationQuestionService;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
@@ -15,13 +17,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/org/questions")
@@ -163,6 +163,97 @@ public class OrganizationQuestionController {
                         status,
                         page,
                         size)));
+    }
+
+    @Operation(
+        summary = "Claim a question as an ORG responder",
+        description = """
+            Atomically assigns an eligible open, new and unclaimed question
+            to the authenticated organizing-committee responder.
+
+            The caller must have responder eligibility for the question's
+            exact TaskAssignment. The backend controls reviewer assignment,
+            status transition and version increment.
+
+            Missing and inaccessible questions use the same not-found
+            response to avoid exposing protected question information.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Question claimed successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionThreadResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question id or expected version is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global ORG role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = """
+                Question was not found or is outside the current
+                responder's TaskAssignment scope
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = """
+                Question is already assigned, is closed, is not NEW or its
+                persisted version differs from the expected version
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/{questionId}/claim")
+    public ResponseEntity<QuestionThreadResponseDTO> claimQuestion(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42",
+            required = true) @PathVariable Long questionId,
+
+        @Valid @RequestBody ClaimQuestionRequestDTO request) {
+        validateQuestionId(
+            questionId);
+
+        return ResponseEntity.ok(
+            organizationQuestionService
+                .claimQuestion(
+                    questionId,
+                    request.version()));
+    }
+
+    private void validateQuestionId(
+        Long questionId) {
+        if (questionId == null
+            || questionId <= 0) {
+            throw new ValidationException(
+                "Question id must be a positive number",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
     }
 
     private void validatePageAndSize(

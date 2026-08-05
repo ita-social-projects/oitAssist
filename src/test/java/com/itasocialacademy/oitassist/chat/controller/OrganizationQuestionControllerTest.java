@@ -15,6 +15,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionAlreadyClaimedException;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
+import org.springframework.http.MediaType;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
@@ -48,6 +55,14 @@ class OrganizationQuestionControllerTest
     private static final Long TASK_ASSIGNMENT_ID = 20L;
     private static final Long AUTHOR_ID = 30L;
     private static final Long RESPONDER_ID = 40L;
+
+    private static final Long EXPECTED_VERSION =
+        2L;
+
+    private static final String CLAIM_URL =
+        "/api/v1/org/questions/"
+            + QUESTION_ID
+            + "/claim";
 
     private static final Instant CREATED_AT =
         Instant.parse("2026-08-05T10:00:00Z");
@@ -315,6 +330,255 @@ class OrganizationQuestionControllerTest
     }
 
     @Test
+    void claimQuestion_validRequest_shouldReturnUpdatedQuestion()
+        throws Exception {
+
+        QuestionThreadResponseDTO response =
+            createClaimedResponse();
+
+        when(organizationQuestionService
+            .claimQuestion(
+                QUESTION_ID,
+                EXPECTED_VERSION))
+            .thenReturn(
+                response);
+
+        mockMvc.perform(
+            post(CLAIM_URL)
+                .contentType(
+                    MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "version": 2
+                    }
+                    """))
+            .andExpect(
+                status().isOk())
+            .andExpect(
+                content().contentTypeCompatibleWith(
+                    MediaType.APPLICATION_JSON))
+            .andExpect(
+                jsonPath("$.id")
+                    .value(QUESTION_ID))
+            .andExpect(
+                jsonPath("$.taskAssignmentId")
+                    .value(TASK_ASSIGNMENT_ID))
+            .andExpect(
+                jsonPath("$.authorId")
+                    .value(AUTHOR_ID))
+            .andExpect(
+                jsonPath("$.assignedReviewerId")
+                    .value(RESPONDER_ID))
+            .andExpect(
+                jsonPath("$.title")
+                    .value("Question title"))
+            .andExpect(
+                jsonPath("$.content")
+                    .value("Question content"))
+            .andExpect(
+                jsonPath("$.status")
+                    .value("IN_REVIEW"))
+            .andExpect(
+                jsonPath("$.state")
+                    .value("OPEN"))
+            .andExpect(
+                jsonPath("$.visibility")
+                    .value("PRIVATE"))
+            .andExpect(
+                jsonPath("$.version")
+                    .value(
+                        EXPECTED_VERSION + 1));
+
+        verify(organizationQuestionService)
+            .claimQuestion(
+                QUESTION_ID,
+                EXPECTED_VERSION);
+    }
+
+    @Test
+    void claimQuestion_nonPositiveQuestionId_shouldReturn400WithoutService()
+        throws Exception {
+
+        mockMvc.perform(
+            post(
+                "/api/v1/org/questions/0/claim")
+                .contentType(
+                    MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "version": 2
+                    }
+                    """))
+            .andExpect(
+                status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value(
+                        "COMMON_VALIDATION_FAILED"));
+
+        verifyNoInteractions(
+            organizationQuestionService);
+    }
+
+    @Test
+    void claimQuestion_missingVersion_shouldReturn400WithoutService()
+        throws Exception {
+
+        mockMvc.perform(
+            post(CLAIM_URL)
+                .contentType(
+                    MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(
+                status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value(
+                        "COMMON_VALIDATION_FAILED"));
+
+        verifyNoInteractions(
+            organizationQuestionService);
+    }
+
+    @Test
+    void claimQuestion_negativeVersion_shouldReturn400WithoutService()
+        throws Exception {
+
+        mockMvc.perform(
+            post(CLAIM_URL)
+                .contentType(
+                    MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "version": -1
+                    }
+                    """))
+            .andExpect(
+                status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value(
+                        "COMMON_VALIDATION_FAILED"));
+
+        verifyNoInteractions(
+            organizationQuestionService);
+    }
+
+    @Test
+    void claimQuestion_unauthenticated_shouldReturn401()
+        throws Exception {
+
+        when(organizationQuestionService
+            .claimQuestion(
+                QUESTION_ID,
+                EXPECTED_VERSION))
+            .thenThrow(
+                authenticationException());
+
+        mockMvc.perform(
+            post(CLAIM_URL)
+                .contentType(
+                    MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "version": 2
+                    }
+                    """))
+            .andExpect(
+                status().isUnauthorized())
+            .andExpect(
+                jsonPath("$.code")
+                    .value(
+                        "AUTHENTICATION_REQUIRED"));
+    }
+
+    @Test
+    void claimQuestion_nonOrgCaller_shouldReturn403()
+        throws Exception {
+
+        when(organizationQuestionService
+            .claimQuestion(
+                QUESTION_ID,
+                EXPECTED_VERSION))
+            .thenThrow(
+                authorizationException());
+
+        mockMvc.perform(
+            post(CLAIM_URL)
+                .contentType(
+                    MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "version": 2
+                    }
+                    """))
+            .andExpect(
+                status().isForbidden())
+            .andExpect(
+                jsonPath("$.code")
+                    .value(
+                        "ACCESS_DENIED"));
+    }
+
+    @Test
+    void claimQuestion_missingOrInaccessibleQuestion_shouldReturn404()
+        throws Exception {
+
+        when(organizationQuestionService
+            .claimQuestion(
+                QUESTION_ID,
+                EXPECTED_VERSION))
+            .thenThrow(
+                new QuestionNotFoundException(
+                    QUESTION_ID));
+
+        mockMvc.perform(
+            post(CLAIM_URL)
+                .contentType(
+                    MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "version": 2
+                    }
+                    """))
+            .andExpect(
+                status().isNotFound())
+            .andExpect(
+                jsonPath("$.code")
+                    .value(
+                        "QUESTION_NOT_FOUND"));
+    }
+
+    @Test
+    void claimQuestion_alreadyClaimed_shouldReturn409()
+        throws Exception {
+
+        when(organizationQuestionService
+            .claimQuestion(
+                QUESTION_ID,
+                EXPECTED_VERSION))
+            .thenThrow(
+                new QuestionAlreadyClaimedException(
+                    QUESTION_ID));
+
+        mockMvc.perform(
+            post(CLAIM_URL)
+                .contentType(
+                    MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "version": 2
+                    }
+                    """))
+            .andExpect(
+                status().isConflict())
+            .andExpect(
+                jsonPath("$.code")
+                    .value(
+                        "QUESTION_ALREADY_CLAIMED"));
+    }
+
+    @Test
     void getAssignedToCurrentResponder_invalidStatus_shouldReturn400WithoutService()
         throws Exception {
 
@@ -512,6 +776,23 @@ class OrganizationQuestionControllerTest
                 jsonPath("$.code")
                     .value(
                         "ACCESS_DENIED"));
+    }
+
+    private QuestionThreadResponseDTO createClaimedResponse() {
+
+        return new QuestionThreadResponseDTO(
+            QUESTION_ID,
+            TASK_ASSIGNMENT_ID,
+            AUTHOR_ID,
+            RESPONDER_ID,
+            "Question title",
+            "Question content",
+            IN_REVIEW,
+            PRIVATE,
+            OPEN,
+            EXPECTED_VERSION + 1,
+            CREATED_AT,
+            UPDATED_AT);
     }
 
     private QuestionReviewInboxItemResponseDTO createResponse(

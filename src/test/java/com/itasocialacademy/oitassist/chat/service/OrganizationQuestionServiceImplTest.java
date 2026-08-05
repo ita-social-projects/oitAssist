@@ -1,17 +1,15 @@
 package com.itasocialacademy.oitassist.chat.service;
 
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.IN_REVIEW;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
-import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -20,52 +18,62 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
-import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
-import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.QuestionClaimedDomainEvent;
+import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionAlreadyClaimedException;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionVersionConflictException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
+import com.itasocialacademy.oitassist.chat.utils.OrganizationQuestionClaimCoordinator;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
-class OrganizationQuestionServiceImplTest {
+class OrganizationQuestionClaimServiceTest {
 
-    private static final String ORG_ROLE = "ORG";
+    private static final String ORG_ROLE =
+        "ORG";
 
-    private static final Long RESPONDER_ID = 10L;
-    private static final Long OTHER_RESPONDER_ID = 11L;
+    private static final Long QUESTION_ID =
+        10L;
 
-    private static final Long PRIVATE_QUESTION_ID = 20L;
-    private static final Long PUBLIC_QUESTION_ID = 21L;
+    private static final Long TASK_ASSIGNMENT_ID =
+        20L;
 
-    private static final int PAGE = 0;
-    private static final int SIZE = 20;
+    private static final Long RESPONDER_ID =
+        30L;
+
+    private static final Long AUTHOR_ID =
+        40L;
+
+    private static final Long EXPECTED_VERSION =
+        3L;
 
     private static final Instant CREATED_AT =
-        Instant.parse("2026-08-05T10:00:00Z");
+        Instant.parse(
+            "2026-08-05T10:00:00Z");
 
     private static final Instant UPDATED_AT =
-        Instant.parse("2026-08-05T10:15:00Z");
+        Instant.parse(
+            "2026-08-05T10:15:00Z");
 
     @Mock
     private QuestionThreadRepository questionThreadRepository;
@@ -76,602 +84,355 @@ class OrganizationQuestionServiceImplTest {
     @Mock
     private SecurityFacade securityFacade;
 
+    @Mock
+    private OrganizationQuestionClaimCoordinator organizationQuestionClaimCoordinator;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
     @InjectMocks
     private OrganizationQuestionServiceImpl organizationQuestionService;
 
     @Test
-    void getResponderInbox_eligibleOrg_shouldReturnMappedPage() {
+    void claimQuestion_validRequest_shouldClaimPublishAndReturnQuestion() {
 
         stubOrganizationMember();
 
-        QuestionThread privateQuestion =
-            createQuestion(
-                PRIVATE_QUESTION_ID,
-                null,
-                NEW,
-                PRIVATE);
+        QuestionThread claimedQuestion =
+            claimedQuestion();
 
-        QuestionThread publicQuestion =
-            createQuestion(
-                PUBLIC_QUESTION_ID,
-                null,
-                NEW,
-                PUBLIC);
+        QuestionThreadResponseDTO response =
+            claimedResponse();
 
-        QuestionReviewInboxItemResponseDTO privateResponse =
-            createResponse(privateQuestion);
-
-        QuestionReviewInboxItemResponseDTO publicResponse =
-            createResponse(publicQuestion);
-
-        when(questionThreadRepository
-            .findResponderUnclaimedQuestions(
+        when(organizationQuestionClaimCoordinator
+            .claimQuestion(
+                eq(QUESTION_ID),
                 eq(RESPONDER_ID),
-                eq(OPEN),
-                eq(NEW),
-                any(Pageable.class)))
+                eq(EXPECTED_VERSION),
+                any(Instant.class)))
             .thenReturn(
-                new PageImpl<>(
-                    List.of(
-                        privateQuestion,
-                        publicQuestion),
-                    PageRequest.of(
-                        PAGE,
-                        SIZE),
-                    2));
+                claimedQuestion);
 
         when(questionThreadMapper
-            .toReviewInboxItemResponse(
-                privateQuestion))
-            .thenReturn(privateResponse);
-
-        when(questionThreadMapper
-            .toReviewInboxItemResponse(
-                publicQuestion))
-            .thenReturn(publicResponse);
-
-        Page<QuestionReviewInboxItemResponseDTO> result =
-            organizationQuestionService
-                .getResponderInbox(
-                    PAGE,
-                    SIZE);
-
-        assertAll(
-            () -> assertEquals(
-                List.of(
-                    privateResponse,
-                    publicResponse),
-                result.getContent()),
-            () -> assertEquals(
-                2,
-                result.getTotalElements()),
-            () -> assertEquals(
-                PRIVATE,
-                result.getContent()
-                    .get(0)
-                    .visibility()),
-            () -> assertEquals(
-                PUBLIC,
-                result.getContent()
-                    .get(1)
-                    .visibility()));
-
-        verify(questionThreadRepository)
-            .findResponderUnclaimedQuestions(
-                eq(RESPONDER_ID),
-                eq(OPEN),
-                eq(NEW),
-                any(Pageable.class));
-
-        verify(questionThreadRepository, never())
-            .findAllByStateAndStatusAndAssignedReviewerIdIsNull(
-                any(),
-                any(),
-                any());
-    }
-
-    @Test
-    void getResponderInbox_shouldUseCurrentUserPaginationAndOrdering() {
-
-        stubOrganizationMember();
-
-        when(questionThreadRepository
-            .findResponderUnclaimedQuestions(
-                eq(RESPONDER_ID),
-                eq(OPEN),
-                eq(NEW),
-                any(Pageable.class)))
+            .toResponse(
+                claimedQuestion))
             .thenReturn(
-                Page.empty(
-                    PageRequest.of(
-                        2,
-                        15)));
+                response);
 
-        organizationQuestionService
-            .getResponderInbox(
-                2,
-                15);
-
-        ArgumentCaptor<Pageable> pageableCaptor =
-            ArgumentCaptor.forClass(
-                Pageable.class);
-
-        verify(questionThreadRepository)
-            .findResponderUnclaimedQuestions(
-                eq(RESPONDER_ID),
-                eq(OPEN),
-                eq(NEW),
-                pageableCaptor.capture());
-
-        Pageable pageable =
-            pageableCaptor.getValue();
-
-        List<Sort.Order> orders =
-            pageable.getSort()
-                .stream()
-                .toList();
-
-        assertAll(
-            () -> assertEquals(
-                2,
-                pageable.getPageNumber()),
-            () -> assertEquals(
-                15,
-                pageable.getPageSize()),
-            () -> assertEquals(
-                2,
-                orders.size()),
-            () -> assertEquals(
-                "createdAt",
-                orders.get(0).getProperty()),
-            () -> assertEquals(
-                Sort.Direction.ASC,
-                orders.get(0).getDirection()),
-            () -> assertEquals(
-                "id",
-                orders.get(1).getProperty()),
-            () -> assertEquals(
-                Sort.Direction.ASC,
-                orders.get(1).getDirection()));
-    }
-
-    @Test
-    void getResponderInbox_orgWithoutAssignments_shouldReturnEmptyPage() {
-
-        stubOrganizationMember();
-
-        when(questionThreadRepository
-            .findResponderUnclaimedQuestions(
-                eq(RESPONDER_ID),
-                eq(OPEN),
-                eq(NEW),
-                any(Pageable.class)))
-            .thenReturn(
-                Page.empty(
-                    PageRequest.of(
-                        PAGE,
-                        SIZE)));
-
-        Page<QuestionReviewInboxItemResponseDTO> result =
+        QuestionThreadResponseDTO result =
             organizationQuestionService
-                .getResponderInbox(
-                    PAGE,
-                    SIZE);
+                .claimQuestion(
+                    QUESTION_ID,
+                    EXPECTED_VERSION);
+
+        assertSame(
+            response,
+            result);
 
         assertAll(
-            () -> assertTrue(
-                result.isEmpty()),
             () -> assertEquals(
-                PAGE,
-                result.getNumber()),
-            () -> assertEquals(
-                SIZE,
-                result.getSize()));
-
-        verifyNoInteractions(
-            questionThreadMapper);
-    }
-
-    @Test
-    void getAssignedToCurrentResponder_withoutStatus_shouldUseCurrentUser() {
-
-        stubOrganizationMember();
-
-        QuestionThread question =
-            createQuestion(
-                PRIVATE_QUESTION_ID,
                 RESPONDER_ID,
-                ANSWERED,
-                PRIVATE);
+                result.assignedReviewerId()),
+            () -> assertEquals(
+                IN_REVIEW,
+                result.status()),
+            () -> assertEquals(
+                OPEN,
+                result.state()),
+            () -> assertEquals(
+                EXPECTED_VERSION + 1,
+                result.version()));
 
-        QuestionReviewInboxItemResponseDTO response =
-            createResponse(question);
+        ArgumentCaptor<Instant> claimTimeCaptor =
+            ArgumentCaptor.forClass(
+                Instant.class);
 
-        when(questionThreadRepository
-            .findAllByStateAndAssignedReviewerId(
-                eq(OPEN),
+        verify(organizationQuestionClaimCoordinator)
+            .claimQuestion(
+                eq(QUESTION_ID),
                 eq(RESPONDER_ID),
-                any(Pageable.class)))
-            .thenReturn(
-                new PageImpl<>(
-                    List.of(question),
-                    PageRequest.of(
-                        PAGE,
-                        SIZE),
-                    1));
+                eq(EXPECTED_VERSION),
+                claimTimeCaptor.capture());
 
-        when(questionThreadMapper
-            .toReviewInboxItemResponse(
-                question))
-            .thenReturn(response);
+        ArgumentCaptor<QuestionClaimedDomainEvent> eventCaptor =
+            ArgumentCaptor.forClass(
+                QuestionClaimedDomainEvent.class);
 
-        Page<QuestionReviewInboxItemResponseDTO> result =
-            organizationQuestionService
-                .getAssignedToCurrentResponder(
-                    null,
-                    PAGE,
-                    SIZE);
+        verify(applicationEventPublisher)
+            .publishEvent(
+                eventCaptor.capture());
+
+        QuestionClaimedDomainEvent event =
+            eventCaptor.getValue();
 
         assertAll(
-            () -> assertEquals(
-                1,
-                result.getTotalElements()),
             () -> assertSame(
                 response,
-                result.getContent()
-                    .getFirst()));
+                event.question()),
+            () -> assertNull(
+                event.previousReviewerId()),
+            () -> assertEquals(
+                RESPONDER_ID,
+                event.currentReviewerId()),
+            () -> assertEquals(
+                claimTimeCaptor.getValue(),
+                event.occurredAt()),
+            () -> assertNotNull(
+                event.occurredAt()));
 
-        verify(questionThreadRepository)
-            .findAllByStateAndAssignedReviewerId(
-                eq(OPEN),
-                eq(RESPONDER_ID),
-                any(Pageable.class));
-
-        verify(questionThreadRepository, never())
-            .findAllByStateAndAssignedReviewerIdAndStatus(
-                any(),
-                any(),
-                any(),
-                any());
+        verifyNoInteractions(
+            questionThreadRepository);
     }
 
     @ParameterizedTest
-    @EnumSource(QuestionStatus.class)
-    void getAssignedToCurrentResponder_statusFilter_shouldDelegateExactStatus(
-        QuestionStatus status) {
+    @MethodSource("invalidClaimArguments")
+    void claimQuestion_invalidInput_shouldRejectBeforeSecurityAndCoordinator(
+        Long questionId,
+        Long expectedVersion) {
 
-        stubOrganizationMember();
-
-        when(questionThreadRepository
-            .findAllByStateAndAssignedReviewerIdAndStatus(
-                eq(OPEN),
-                eq(RESPONDER_ID),
-                eq(status),
-                any(Pageable.class)))
-            .thenReturn(
-                Page.empty(
-                    PageRequest.of(
-                        PAGE,
-                        SIZE)));
-
-        organizationQuestionService
-            .getAssignedToCurrentResponder(
-                status,
-                PAGE,
-                SIZE);
-
-        verify(questionThreadRepository)
-            .findAllByStateAndAssignedReviewerIdAndStatus(
-                eq(OPEN),
-                eq(RESPONDER_ID),
-                eq(status),
-                any(Pageable.class));
-
-        verify(questionThreadRepository, never())
-            .findAllByStateAndAssignedReviewerId(
-                any(),
-                any(),
-                any());
-    }
-
-    @Test
-    void getAssignedToCurrentResponder_shouldUseDescendingOrdering() {
-
-        stubOrganizationMember();
-
-        when(questionThreadRepository
-            .findAllByStateAndAssignedReviewerId(
-                eq(OPEN),
-                eq(RESPONDER_ID),
-                any(Pageable.class)))
-            .thenReturn(
-                Page.empty(
-                    PageRequest.of(
-                        3,
-                        12)));
-
-        organizationQuestionService
-            .getAssignedToCurrentResponder(
-                null,
-                3,
-                12);
-
-        ArgumentCaptor<Pageable> pageableCaptor =
-            ArgumentCaptor.forClass(
-                Pageable.class);
-
-        verify(questionThreadRepository)
-            .findAllByStateAndAssignedReviewerId(
-                eq(OPEN),
-                eq(RESPONDER_ID),
-                pageableCaptor.capture());
-
-        Pageable pageable =
-            pageableCaptor.getValue();
-
-        List<Sort.Order> orders =
-            pageable.getSort()
-                .stream()
-                .toList();
-
-        assertAll(
-            () -> assertEquals(
-                3,
-                pageable.getPageNumber()),
-            () -> assertEquals(
-                12,
-                pageable.getPageSize()),
-            () -> assertEquals(
-                "updatedAt",
-                orders.get(0).getProperty()),
-            () -> assertEquals(
-                Sort.Direction.DESC,
-                orders.get(0).getDirection()),
-            () -> assertEquals(
-                "id",
-                orders.get(1).getProperty()),
-            () -> assertEquals(
-                Sort.Direction.DESC,
-                orders.get(1).getDirection()));
-    }
-
-    @Test
-    void getAssignedToCurrentResponder_shouldNeverQueryAnotherReviewer() {
-
-        stubOrganizationMember();
-
-        when(questionThreadRepository
-            .findAllByStateAndAssignedReviewerId(
-                eq(OPEN),
-                eq(RESPONDER_ID),
-                any(Pageable.class)))
-            .thenReturn(
-                Page.empty(
-                    PageRequest.of(
-                        PAGE,
-                        SIZE)));
-
-        organizationQuestionService
-            .getAssignedToCurrentResponder(
-                null,
-                PAGE,
-                SIZE);
-
-        verify(questionThreadRepository)
-            .findAllByStateAndAssignedReviewerId(
-                eq(OPEN),
-                eq(RESPONDER_ID),
-                any(Pageable.class));
-
-        verify(questionThreadRepository, never())
-            .findAllByStateAndAssignedReviewerId(
-                eq(OPEN),
-                eq(OTHER_RESPONDER_ID),
-                any(Pageable.class));
-    }
-
-    @Test
-    void getAssignedToCurrentResponder_emptyResult_shouldReturnEmptyPage() {
-
-        stubOrganizationMember();
-
-        when(questionThreadRepository
-            .findAllByStateAndAssignedReviewerId(
-                eq(OPEN),
-                eq(RESPONDER_ID),
-                any(Pageable.class)))
-            .thenReturn(
-                Page.empty(
-                    PageRequest.of(
-                        PAGE,
-                        SIZE)));
-
-        Page<QuestionReviewInboxItemResponseDTO> result =
-            organizationQuestionService
-                .getAssignedToCurrentResponder(
-                    null,
-                    PAGE,
-                    SIZE);
-
-        assertTrue(result.isEmpty());
+        assertThrows(
+            ValidationException.class,
+            () -> organizationQuestionService
+                .claimQuestion(
+                    questionId,
+                    expectedVersion));
 
         verifyNoInteractions(
-            questionThreadMapper);
+            securityFacade,
+            questionThreadRepository,
+            questionThreadMapper,
+            organizationQuestionClaimCoordinator,
+            applicationEventPublisher);
     }
 
     @Test
-    void getResponderInbox_unauthenticated_shouldRejectBeforeRepository() {
+    void claimQuestion_unauthenticated_shouldRejectBeforeCoordinator() {
 
-        when(securityFacade.getCurrentUserId())
-            .thenReturn(Optional.empty());
+        when(securityFacade
+            .getCurrentUserId())
+            .thenReturn(
+                Optional.empty());
 
         assertThrows(
             AuthenticationException.class,
             () -> organizationQuestionService
-                .getResponderInbox(
-                    PAGE,
-                    SIZE));
+                .claimQuestion(
+                    QUESTION_ID,
+                    EXPECTED_VERSION));
 
         verify(
             securityFacade,
             never())
-            .hasRole(anyString());
+            .hasRole(
+                anyString());
 
         verifyNoInteractions(
             questionThreadRepository,
-            questionThreadMapper);
+            questionThreadMapper,
+            organizationQuestionClaimCoordinator,
+            applicationEventPublisher);
     }
 
     @Test
-    void getAssignedToCurrentResponder_unauthenticated_shouldReject() {
+    void claimQuestion_nonOrg_shouldRejectBeforeCoordinator() {
 
-        when(securityFacade.getCurrentUserId())
-            .thenReturn(Optional.empty());
+        when(securityFacade
+            .getCurrentUserId())
+            .thenReturn(
+                Optional.of(
+                    RESPONDER_ID));
 
-        assertThrows(
-            AuthenticationException.class,
-            () -> organizationQuestionService
-                .getAssignedToCurrentResponder(
-                    null,
-                    PAGE,
-                    SIZE));
-
-        verifyNoInteractions(
-            questionThreadRepository,
-            questionThreadMapper);
-    }
-
-    @Test
-    void getResponderInbox_nonOrg_shouldRejectBeforeRepository() {
-
-        stubNonOrganizationMember();
+        when(securityFacade
+            .hasRole(ORG_ROLE))
+            .thenReturn(false);
 
         assertThrows(
             AuthorizationException.class,
             () -> organizationQuestionService
-                .getResponderInbox(
-                    PAGE,
-                    SIZE));
-
-        verify(securityFacade)
-            .hasRole(ORG_ROLE);
+                .claimQuestion(
+                    QUESTION_ID,
+                    EXPECTED_VERSION));
 
         verifyNoInteractions(
             questionThreadRepository,
-            questionThreadMapper);
+            questionThreadMapper,
+            organizationQuestionClaimCoordinator,
+            applicationEventPublisher);
+    }
+
+    @ParameterizedTest
+    @MethodSource("claimFailures")
+    void claimQuestion_failedCoordinator_shouldPropagateWithoutEvent(
+        RuntimeException failure) {
+
+        stubOrganizationMember();
+
+        when(organizationQuestionClaimCoordinator
+            .claimQuestion(
+                eq(QUESTION_ID),
+                eq(RESPONDER_ID),
+                eq(EXPECTED_VERSION),
+                any(Instant.class)))
+            .thenThrow(
+                failure);
+
+        RuntimeException result =
+            assertThrows(
+                failure.getClass(),
+                () -> organizationQuestionService
+                    .claimQuestion(
+                        QUESTION_ID,
+                        EXPECTED_VERSION));
+
+        assertSame(
+            failure,
+            result);
+
+        verifyNoInteractions(
+            questionThreadRepository,
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     @Test
-    void getAssignedToCurrentResponder_globalAdminWithoutOrg_shouldReject() {
+    void claimQuestion_mapperFailure_shouldNotPublishEvent() {
 
-        stubNonOrganizationMember();
+        stubOrganizationMember();
 
-        assertThrows(
-            AuthorizationException.class,
-            () -> organizationQuestionService
-                .getAssignedToCurrentResponder(
-                    IN_REVIEW,
-                    PAGE,
-                    SIZE));
+        QuestionThread claimedQuestion =
+            claimedQuestion();
 
-        verify(securityFacade)
-            .hasRole(ORG_ROLE);
+        RuntimeException mapperFailure =
+            new RuntimeException(
+                "Mapper failure");
+
+        when(organizationQuestionClaimCoordinator
+            .claimQuestion(
+                eq(QUESTION_ID),
+                eq(RESPONDER_ID),
+                eq(EXPECTED_VERSION),
+                any(Instant.class)))
+            .thenReturn(
+                claimedQuestion);
+
+        when(questionThreadMapper
+            .toResponse(
+                claimedQuestion))
+            .thenThrow(
+                mapperFailure);
+
+        RuntimeException result =
+            assertThrows(
+                RuntimeException.class,
+                () -> organizationQuestionService
+                    .claimQuestion(
+                        QUESTION_ID,
+                        EXPECTED_VERSION));
+
+        assertSame(
+            mapperFailure,
+            result);
 
         verifyNoInteractions(
-            questionThreadRepository,
-            questionThreadMapper);
-    }
-
-    @Test
-    void queueOperations_invalidPagination_shouldRejectBeforeSecurity() {
-
-        assertAll(
-            () -> assertThrows(
-                ValidationException.class,
-                () -> organizationQuestionService
-                    .getResponderInbox(
-                        -1,
-                        SIZE)),
-            () -> assertThrows(
-                ValidationException.class,
-                () -> organizationQuestionService
-                    .getResponderInbox(
-                        PAGE,
-                        0)),
-            () -> assertThrows(
-                ValidationException.class,
-                () -> organizationQuestionService
-                    .getAssignedToCurrentResponder(
-                        null,
-                        PAGE,
-                        MAX_PAGE_SIZE + 1)));
-
-        verifyNoInteractions(
-            securityFacade,
-            questionThreadRepository,
-            questionThreadMapper);
+            applicationEventPublisher);
     }
 
     private void stubOrganizationMember() {
 
-        when(securityFacade.getCurrentUserId())
+        when(securityFacade
+            .getCurrentUserId())
             .thenReturn(
                 Optional.of(
                     RESPONDER_ID));
 
-        when(securityFacade.hasRole(ORG_ROLE))
+        when(securityFacade
+            .hasRole(ORG_ROLE))
             .thenReturn(true);
     }
 
-    private void stubNonOrganizationMember() {
-
-        when(securityFacade.getCurrentUserId())
-            .thenReturn(
-                Optional.of(
-                    RESPONDER_ID));
-
-        when(securityFacade.hasRole(ORG_ROLE))
-            .thenReturn(false);
-    }
-
-    private QuestionThread createQuestion(
-        Long questionId,
-        Long assignedReviewerId,
-        QuestionStatus status,
-        QuestionVisibility visibility) {
+    private QuestionThread claimedQuestion() {
 
         return QuestionThread.builder()
-            .id(questionId)
-            .taskAssignmentId(100L)
-            .authorId(200L)
+            .id(QUESTION_ID)
+            .taskAssignmentId(
+                TASK_ASSIGNMENT_ID)
+            .authorId(
+                AUTHOR_ID)
             .assignedReviewerId(
-                assignedReviewerId)
+                RESPONDER_ID)
             .title(
-                "Question " + questionId)
-            .content("Question content")
-            .status(status)
-            .state(OPEN)
-            .visibility(visibility)
-            .version(2L)
-            .createdAt(CREATED_AT)
-            .updatedAt(UPDATED_AT)
+                "Question title")
+            .content(
+                "Question content")
+            .status(
+                IN_REVIEW)
+            .state(
+                OPEN)
+            .visibility(
+                PRIVATE)
+            .version(
+                EXPECTED_VERSION + 1)
+            .createdAt(
+                CREATED_AT)
+            .updatedAt(
+                UPDATED_AT)
             .build();
     }
 
-    private QuestionReviewInboxItemResponseDTO createResponse(
-        QuestionThread question) {
+    private QuestionThreadResponseDTO claimedResponse() {
 
-        return new QuestionReviewInboxItemResponseDTO(
+        QuestionThread question =
+            claimedQuestion();
+
+        return new QuestionThreadResponseDTO(
             question.getId(),
             question.getTaskAssignmentId(),
             question.getAuthorId(),
             question.getAssignedReviewerId(),
             question.getTitle(),
+            question.getContent(),
             question.getStatus(),
-            question.getState(),
             question.getVisibility(),
+            question.getState(),
             question.getVersion(),
             question.getCreatedAt(),
             question.getUpdatedAt());
+    }
+
+    private static Stream<Arguments> invalidClaimArguments() {
+
+        return Stream.of(
+            Arguments.of(
+                null,
+                EXPECTED_VERSION),
+            Arguments.of(
+                0L,
+                EXPECTED_VERSION),
+            Arguments.of(
+                -1L,
+                EXPECTED_VERSION),
+            Arguments.of(
+                QUESTION_ID,
+                null),
+            Arguments.of(
+                QUESTION_ID,
+                -1L));
+    }
+
+    private static Stream<RuntimeException> claimFailures() {
+
+        return Stream.of(
+            new QuestionNotFoundException(
+                QUESTION_ID),
+            new QuestionAlreadyClaimedException(
+                QUESTION_ID),
+            new InvalidQuestionStateException(
+                QUESTION_ID,
+                CLOSED,
+                "claim for review"),
+            new QuestionVersionConflictException(
+                QUESTION_ID),
+            new RuntimeException(
+                "Database failure"));
     }
 }
