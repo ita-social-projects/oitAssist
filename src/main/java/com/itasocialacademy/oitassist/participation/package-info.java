@@ -10,7 +10,9 @@
         "competition::spi",
         "user::UserFacade",
         "user::UserAuthDetails",
-        "user::Role"
+        "user::Role",
+        "user::UserProfileDetails",
+        "user::UserNotFoundException"
     })
 package com.itasocialacademy.oitassist.participation;
 
