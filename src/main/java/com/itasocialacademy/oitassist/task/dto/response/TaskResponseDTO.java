@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.task.dto.response;
 
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.Set;
 import lombok.Builder;
 import java.util.List;
 
@@ -28,6 +29,6 @@ public record TaskResponseDTO(
         example = "1") Long createdBy,
 
     @Schema(
-        description = "Id of task's current owner",
-        example = "5") Long ownerId) {
+        description = "Ids of task's current owners",
+        example = "[1,2,3]") Set<Long> ownerIds) {
 }

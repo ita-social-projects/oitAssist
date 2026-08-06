@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.taskassignment.service;
 
+import java.util.Set;
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import org.junit.jupiter.api.BeforeEach;
@@ -127,7 +128,7 @@ class AssignmentServiceTest {
             .id(3L)
             .title("PowerPoint Різдвяна зірка")
             .description("Створити у файлі-розв'язку")
-            .ownerId(100L)
+            .ownerIds(Set.of(100L))
             .build();
     }
 

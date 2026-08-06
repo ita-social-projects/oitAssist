@@ -3,8 +3,9 @@ package com.itasocialacademy.oitassist.task.service.interfaces;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
-import com.itasocialacademy.oitassist.task.dto.request.ChangeOwnerRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.AddOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.RemoveOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.exceptions.TaskAccessRestrictedException;
@@ -68,19 +69,31 @@ public interface TaskService {
     TaskResponseDTO updateTask(Long taskId, UpdateTaskRequestDTO requestDTO);
 
     /**
-     * Changes the owner of a task to a new user. The new owner must have ADMIN or
-     * ORG role. Only users with ADMIN role can perform this operation.
+     * Adds the owner to an existing task. The new owner must have ADMIN or ORG
+     * role. Only users with ADMIN role can perform this operation.
      *
-     * @param taskId             the ID of the task to reassign
-     * @param changeOwnerRequest the request containing the new owner's email
-     *                           address
+     * @param taskId          the ID of the task to reassign
+     * @param addOwnerRequest the request containing the new owner's email address
      * @return the updated task with the new owner
      * @throws TaskNotFoundException if the task does not exist
      * @throws UserNotFoundException if the new owner user does not exist
      * @throws ValidationException   if the new owner does not have ADMIN or ORG
      *                               role
      */
-    TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO changeOwnerRequest);
+    TaskResponseDTO addTaskOwner(Long taskId, AddOwnerRequestDTO addOwnerRequest);
+
+    /**
+     * Removes the owner from an existing task. Only users with ADMIN role can
+     * perform this operation.
+     *
+     * @param taskId             the ID of the task to reassign
+     * @param removeOwnerRequest the request containing the new owner's email
+     *                           address
+     * @return the updated task with given owner removed
+     * @throws TaskNotFoundException if the task does not exist
+     * @throws UserNotFoundException if the new owner user does not exist
+     */
+    TaskResponseDTO removeTaskOwner(Long taskId, RemoveOwnerRequestDTO removeOwnerRequest);
 
     /**
      * Deletes a task by its id. Only the task owner or users with ADMIN role can

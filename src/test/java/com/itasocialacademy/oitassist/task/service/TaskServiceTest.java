@@ -12,9 +12,12 @@ import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequeste
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.dao.model.TaskBody;
+import com.itasocialacademy.oitassist.task.dao.model.TaskOwner;
+import com.itasocialacademy.oitassist.task.dao.model.id.TaskOwnerId;
 import com.itasocialacademy.oitassist.task.dao.repository.TaskBodyRepository;
-import com.itasocialacademy.oitassist.task.dto.request.ChangeOwnerRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.AddOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.RemoveOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.exceptions.TaskAccessRestrictedException;
@@ -24,6 +27,8 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,9 +74,14 @@ class TaskServiceTest {
             .id(1L)
             .title("Test Task")
             .description("Test Description")
-            .ownerId(100L)
             .createdBy(100L)
             .build();
+
+        taskBody.setOwners(new HashSet<>(Set.of(
+            TaskOwner.builder()
+                .id(new TaskOwnerId(1L, 100L))
+                .task(taskBody)
+                .build())));
 
         testFiles = List.of(
             new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
@@ -82,7 +92,7 @@ class TaskServiceTest {
             .title("Test Task")
             .description("Test Description")
             .createdBy(100L)
-            .ownerId(100L)
+            .ownerIds(new HashSet<>(Set.of(100L)))
             .files(testFiles)
             .build();
     }
@@ -93,12 +103,18 @@ class TaskServiceTest {
     void createTask_validRequest_shouldSaveAndReturnResponse() {
         CreateTaskRequestDTO request = new CreateTaskRequestDTO(
             "Test Task", "Test Description", List.of(51L, 52L));
+        TaskBody taskWithoutOwners = TaskBody.builder()
+            .id(1L)
+            .title("Test Task")
+            .description("Test Description")
+            .owners(new HashSet<>())
+            .build();
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
-        when(taskBodyMapper.toEntity(request)).thenReturn(taskBody);
-        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
+        when(taskBodyMapper.toEntity(request)).thenReturn(taskWithoutOwners);
+        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskWithoutOwners);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskWithoutOwners, testFiles)).thenReturn(taskResponse);
 
         TaskResponseDTO result = taskService.createTask(request);
 
@@ -108,7 +124,10 @@ class TaskServiceTest {
 
         ArgumentCaptor<TaskBody> captor = ArgumentCaptor.forClass(TaskBody.class);
         verify(taskBodyRepository).save(captor.capture());
-        assertEquals(100L, captor.getValue().getOwnerId());
+        assertEquals(1, captor.getValue().getOwners().size());
+
+        TaskOwner owner = captor.getValue().getOwners().iterator().next();
+        assertEquals(100L, owner.getId().getOwnerId());
     }
 
     @Test
@@ -167,7 +186,10 @@ class TaskServiceTest {
         TaskBody freshEntity = new TaskBody();
         freshEntity.setId(1L);
         freshEntity.setTitle("Test Task");
-        freshEntity.setOwnerId(100L);
+        freshEntity.setOwners(new HashSet<>(Set.of(
+            TaskOwner.builder()
+                .id(new TaskOwnerId(1L, 100L))
+                .build())));
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
         when(taskBodyMapper.toEntity(request)).thenReturn(freshEntity);
@@ -288,12 +310,11 @@ class TaskServiceTest {
             .title("Updated Title")
             .description("Updated Description")
             .createdBy(100L)
-            .ownerId(100L)
+            .ownerIds(new HashSet<>(Set.of(100L)))
             .build();
 
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
-        when(securityFacade.isOwner(100L)).thenReturn(true);
         when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
         when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(updatedResponse);
@@ -372,107 +393,198 @@ class TaskServiceTest {
 
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
-        when(securityFacade.isOwner(100L)).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(50L));
 
         assertThrows(TaskAccessRestrictedException.class, () -> taskService.updateTask(1L, request));
 
         verify(taskBodyRepository, never()).save(any());
     }
 
-    // ---- changeTaskOwner ----
+    // ---- addTaskOwner ----
 
     @Test
-    void changeTaskOwner_asAdmin_toOrgUser_shouldSucceed() {
-        ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("newowner@mail.com");
-        UserAuthDetails newOwner = new UserAuthDetails(200L, "newowner@mail.com", "12345678", Role.ORG);
-
-        TaskResponseDTO changedResponse = TaskResponseDTO.builder()
-            .id(1L).title("Test Task").description("Test Description")
-            .createdBy(100L).ownerId(200L).build();
+    void addTaskOwner_asAdmin_toOrgUser_shouldSucceed() {
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com");
+        UserAuthDetails newOwner =
+            new UserAuthDetails(200L, "newowner@mail.com", "12345678", Role.ORG);
 
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("newowner@mail.com")).thenReturn(Optional.of(newOwner));
-        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(any(TaskBody.class), any())).thenReturn(changedResponse);
+        when(taskBodyMapper.toResponse(any(TaskBody.class), any())).thenReturn(taskResponse);
 
-        TaskResponseDTO result = taskService.changeTaskOwner(1L, request);
+        TaskResponseDTO result = taskService.addTaskOwner(1L, request);
 
         assertNotNull(result);
-        assertEquals(200L, result.ownerId());
 
-        ArgumentCaptor<TaskBody> captor = ArgumentCaptor.forClass(TaskBody.class);
-        verify(taskBodyRepository).save(captor.capture());
-        assertEquals(200L, captor.getValue().getOwnerId());
+        assertTrue(taskBody.getOwners().stream()
+            .anyMatch(owner -> owner.getId().getOwnerId().equals(200L)));
+
+        verify(taskBodyMapper).toResponse(taskBody, testFiles);
     }
 
     @Test
-    void changeTaskOwner_notAdmin_shouldThrowTaskAccessRestrictedException() {
-        ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("newowner@mail.com");
+    void addTaskOwner_notAdmin_shouldThrowTaskAccessRestrictedException() {
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com");
 
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
 
-        assertThrows(TaskAccessRestrictedException.class,
-            () -> taskService.changeTaskOwner(1L, request));
+        assertThrows(
+            TaskAccessRestrictedException.class,
+            () -> taskService.addTaskOwner(1L, request));
 
         verify(taskBodyRepository, never()).findById(any());
     }
 
     @Test
-    void changeTaskOwner_taskNotFound_shouldThrowTaskNotFoundException() {
-        ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("newowner@mail.com");
+    void addTaskOwner_taskNotFound_shouldThrowTaskNotFoundException() {
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com");
 
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskBodyRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(TaskNotFoundException.class,
-            () -> taskService.changeTaskOwner(99L, request));
+        assertThrows(
+            TaskNotFoundException.class,
+            () -> taskService.addTaskOwner(99L, request));
     }
 
     @Test
-    void changeTaskOwner_userNotFound_shouldThrowUserNotFoundException() {
-        ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("unknown@mail.com");
+    void addTaskOwner_userNotFound_shouldThrowUserNotFoundException() {
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("unknown@mail.com");
 
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("unknown@mail.com")).thenReturn(Optional.empty());
 
-        assertThrows(UserNotFoundException.class,
-            () -> taskService.changeTaskOwner(1L, request));
+        assertThrows(
+            UserNotFoundException.class,
+            () -> taskService.addTaskOwner(1L, request));
     }
 
     @Test
-    void changeTaskOwner_newOwnerNotOrgOrAdmin_shouldThrowValidationException() {
-        ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("student@mail.com");
-        UserAuthDetails studentUser = new UserAuthDetails(300L, "student@mail.com", "12345678", Role.USER);
+    void addTaskOwner_newOwnerNotOrgOrAdmin_shouldThrowValidationException() {
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("student@mail.com");
+
+        UserAuthDetails studentUser =
+            new UserAuthDetails(300L, "student@mail.com", "12345678", Role.USER);
 
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("student@mail.com")).thenReturn(Optional.of(studentUser));
 
-        assertThrows(ValidationException.class,
-            () -> taskService.changeTaskOwner(1L, request));
-
-        verify(taskBodyRepository, never()).save(any());
+        assertThrows(
+            ValidationException.class,
+            () -> taskService.addTaskOwner(1L, request));
     }
 
     @Test
-    void changeTaskOwner_sameOwner_shouldReturnWithoutSaving() {
-        ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("currentowner@mail.com");
-        UserAuthDetails sameOwner = new UserAuthDetails(100L, "currentowner@mail.com", "12345678", Role.ORG);
+    void addTaskOwner_alreadyOwner_shouldReturnWithoutChanges() {
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("currentowner@mail.com");
+
+        UserAuthDetails owner =
+            new UserAuthDetails(100L, "currentowner@mail.com", "12345678", Role.ORG);
 
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
-        when(userFacade.findByEmail("currentowner@mail.com")).thenReturn(Optional.of(sameOwner));
+        when(userFacade.findByEmail("currentowner@mail.com")).thenReturn(Optional.of(owner));
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
         when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
 
-        TaskResponseDTO result = taskService.changeTaskOwner(1L, request);
+        int ownersCount = taskBody.getOwners().size();
+
+        TaskResponseDTO result = taskService.addTaskOwner(1L, request);
 
         assertNotNull(result);
-        assertEquals(100L, result.ownerId());
-        verify(taskBodyRepository, never()).save(any());
+        assertEquals(ownersCount, taskBody.getOwners().size());
+
+        verify(taskBodyMapper).toResponse(taskBody, testFiles);
+    }
+
+    // ---- removeTaskOwner ----
+
+    @Test
+    void removeTaskOwner_shouldSucceed() {
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("currentowner@mail.com");
+
+        UserAuthDetails owner =
+            new UserAuthDetails(100L, "currentowner@mail.com", "12345678", Role.ORG);
+
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
+        when(userFacade.findByEmail("currentowner@mail.com")).thenReturn(Optional.of(owner));
+        when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
+        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+
+        TaskResponseDTO result = taskService.removeTaskOwner(1L, request);
+
+        assertNotNull(result);
+
+        assertFalse(taskBody.getOwners().stream()
+            .anyMatch(o -> o.getId().getOwnerId().equals(100L)));
+
+        verify(taskBodyMapper).toResponse(taskBody, testFiles);
+    }
+
+    @Test
+    void removeTaskOwner_notAdmin_shouldThrowTaskAccessRestrictedException() {
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("currentowner@mail.com");
+
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+
+        assertThrows(
+            TaskAccessRestrictedException.class,
+            () -> taskService.removeTaskOwner(1L, request));
+
+        verify(taskBodyRepository, never()).findById(any());
+    }
+
+    @Test
+    void removeTaskOwner_taskNotFound_shouldThrowTaskNotFoundException() {
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("currentowner@mail.com");
+
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(taskBodyRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(
+            TaskNotFoundException.class,
+            () -> taskService.removeTaskOwner(99L, request));
+    }
+
+    @Test
+    void removeTaskOwner_userNotFound_shouldThrowUserNotFoundException() {
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("currentowner@mail.com");
+
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
+        when(userFacade.findByEmail("currentowner@mail.com")).thenReturn(Optional.empty());
+
+        assertThrows(
+            UserNotFoundException.class,
+            () -> taskService.removeTaskOwner(1L, request));
+    }
+
+    @Test
+    void removeTaskOwner_notOwner_shouldReturnWithoutChanges() {
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("unknown@mail.com");
+
+        UserAuthDetails user =
+            new UserAuthDetails(300L, "unknown@mail.com", "12345678", Role.ORG);
+
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
+        when(userFacade.findByEmail("unknown@mail.com")).thenReturn(Optional.of(user));
+        when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
+        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+
+        int ownersCount = taskBody.getOwners().size();
+
+        TaskResponseDTO result = taskService.removeTaskOwner(1L, request);
+
+        assertNotNull(result);
+        assertEquals(ownersCount, taskBody.getOwners().size());
+
+        verify(taskBodyMapper).toResponse(taskBody, testFiles);
     }
 
     // ---- deleteTask ----
@@ -481,7 +593,7 @@ class TaskServiceTest {
     void deleteTask_asOwner_shouldDelete() {
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
-        when(securityFacade.isOwner(100L)).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
 
         taskService.deleteTask(1L);
 
@@ -491,6 +603,7 @@ class TaskServiceTest {
     @Test
     void deleteTask_asAdmin_shouldDelete() {
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(50L));
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
 
         taskService.deleteTask(1L);
@@ -511,7 +624,7 @@ class TaskServiceTest {
     void deleteTask_notOwnerNotAdmin_shouldThrowTaskAccessRestrictedException() {
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
-        when(securityFacade.isOwner(100L)).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(50L));
 
         assertThrows(TaskAccessRestrictedException.class, () -> taskService.deleteTask(1L));
 

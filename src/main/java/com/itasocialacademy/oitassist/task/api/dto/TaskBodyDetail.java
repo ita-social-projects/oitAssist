@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.task.api.dto;
 
+import java.util.Set;
 import lombok.Builder;
 
 /**
@@ -10,5 +11,5 @@ public record TaskBodyDetail(
     Long id,
     String title,
     String description,
-    Long ownerId) {
+    Set<Long> ownerIds) {
 }

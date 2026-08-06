@@ -8,13 +8,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
-import com.itasocialacademy.oitassist.task.dto.request.ChangeOwnerRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.AddOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.RemoveOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.exceptions.TaskAccessRestrictedException;
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -47,7 +50,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .title("PowerPoint Різдвяна зірка")
             .description("Створити у файлі-розв'язку на одному слайді")
             .createdBy(100L)
-            .ownerId(100L)
+            .ownerIds(new HashSet<>(Set.of(100L)))
             .build();
     }
 
@@ -68,7 +71,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(1L))
             .andExpect(jsonPath("$.title").value("PowerPoint Різдвяна зірка"))
-            .andExpect(jsonPath("$.ownerId").value(100L));
+            .andExpect(jsonPath("$.ownerIds[0]").value(100L));
 
         verify(taskService).createTask(any(CreateTaskRequestDTO.class));
     }
@@ -180,7 +183,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content[0].id").value(1L))
-            .andExpect(jsonPath("$.content[0].ownerId").value(100L))
+            .andExpect(jsonPath("$.content[0].ownerIds[0]").value(100L))
             .andExpect(jsonPath("$.pageNumber").value(0))
             .andExpect(jsonPath("$.totalElements").value(1));
 
@@ -202,7 +205,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .title("Оновлена назва завдання")
             .description("Оновлений опис завдання")
             .createdBy(100L)
-            .ownerId(100L)
+            .ownerIds(new HashSet<>(Set.of(100L)))
             .build();
 
         when(taskService.updateTask(eq(1L), any(UpdateTaskRequestDTO.class))).thenReturn(updatedResponse);
@@ -263,58 +266,100 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
     // ---- changeOwner ----
 
     @Test
-    void changeOwner_validRequest_shouldReturn200() throws Exception {
-        ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("newowner@mail.com");
+    void addOwner_validRequest_shouldReturn200() throws Exception {
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com");
 
-        TaskResponseDTO changedOwnerResponse = TaskResponseDTO.builder()
-            .id(1L)
-            .title("PowerPoint Різдвяна зірка")
-            .description("Створити у файлі-розв'язку на одному слайді")
-            .createdBy(100L)
-            .ownerId(200L)
-            .build();
+        when(taskService.addTaskOwner(eq(1L), any(AddOwnerRequestDTO.class)))
+            .thenReturn(mockTaskResponse);
 
-        when(taskService.changeTaskOwner(eq(1L), any(ChangeOwnerRequestDTO.class)))
-            .thenReturn(changedOwnerResponse);
-
-        mockMvc.perform(patch("/api/v1/tasks/{taskId}/change-owner", 1L)
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/add-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1L))
-            .andExpect(jsonPath("$.ownerId").value(200L));
+            .andExpect(jsonPath("$.ownerIds[0]").value(100L));
 
-        verify(taskService).changeTaskOwner(eq(1L), any(ChangeOwnerRequestDTO.class));
+        verify(taskService).addTaskOwner(eq(1L), any(AddOwnerRequestDTO.class));
     }
 
     @Test
-    void changeOwner_nonAdmin_shouldReturn403() throws Exception {
-        ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("newowner@mail.com");
+    void addOwner_nonAdmin_shouldReturn403() throws Exception {
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com");
 
-        when(taskService.changeTaskOwner(eq(1L), any(ChangeOwnerRequestDTO.class)))
+        when(taskService.addTaskOwner(eq(1L), any(AddOwnerRequestDTO.class)))
             .thenThrow(new TaskAccessRestrictedException(1L));
 
-        mockMvc.perform(patch("/api/v1/tasks/{taskId}/change-owner", 1L)
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/add-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isForbidden());
     }
 
     @Test
-    void changeOwner_invalidEmail_shouldReturn400() throws Exception {
-        ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("not-an-email");
+    void addOwner_invalidEmail_shouldReturn400() throws Exception {
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("not-an-email");
 
-        mockMvc.perform(patch("/api/v1/tasks/{taskId}/change-owner", 1L)
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/add-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
     }
 
     @Test
-    void changeOwner_blankEmail_shouldReturn400() throws Exception {
-        ChangeOwnerRequestDTO request = new ChangeOwnerRequestDTO("");
+    void addOwner_blankEmail_shouldReturn400() throws Exception {
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("");
 
-        mockMvc.perform(patch("/api/v1/tasks/{taskId}/change-owner", 1L)
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/add-owner", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void removeOwner_validRequest_shouldReturn200() throws Exception {
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("owner@mail.com");
+
+        when(taskService.removeTaskOwner(eq(1L), any(RemoveOwnerRequestDTO.class)))
+            .thenReturn(mockTaskResponse);
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/remove-owner", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1L))
+            .andExpect(jsonPath("$.ownerIds[0]").value(100L));
+
+        verify(taskService).removeTaskOwner(eq(1L), any(RemoveOwnerRequestDTO.class));
+    }
+
+    @Test
+    void removeOwner_nonAdmin_shouldReturn403() throws Exception {
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("owner@mail.com");
+
+        when(taskService.removeTaskOwner(eq(1L), any(RemoveOwnerRequestDTO.class)))
+            .thenThrow(new TaskAccessRestrictedException(1L));
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/remove-owner", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void removeOwner_invalidEmail_shouldReturn400() throws Exception {
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("not-an-email");
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/remove-owner", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void removeOwner_blankEmail_shouldReturn400() throws Exception {
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("");
+
+        mockMvc.perform(patch("/api/v1/tasks/{taskId}/remove-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());

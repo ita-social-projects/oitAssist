@@ -13,10 +13,13 @@ import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
 import com.itasocialacademy.oitassist.task.api.events.TaskDeletionRequestEvent;
 import com.itasocialacademy.oitassist.task.dao.model.TaskBody;
+import com.itasocialacademy.oitassist.task.dao.model.TaskOwner;
 import com.itasocialacademy.oitassist.task.dao.model.TaskTitleView;
+import com.itasocialacademy.oitassist.task.dao.model.id.TaskOwnerId;
 import com.itasocialacademy.oitassist.task.dao.repository.TaskBodyRepository;
-import com.itasocialacademy.oitassist.task.dto.request.ChangeOwnerRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.AddOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.RemoveOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.exceptions.TaskAccessRestrictedException;
@@ -47,6 +50,7 @@ public class TaskServiceImpl implements TaskService {
     private final SecurityFacade securityFacade;
     private final UserFacade userFacade;
     private final FileManagerFacade fileManagerFacade;
+    private static final String ADMIN_ROLE = "ADMIN";
 
     @Override
     @Transactional
@@ -56,9 +60,14 @@ public class TaskServiceImpl implements TaskService {
                 ErrorCode.ACCESS_DENIED));
 
         TaskBody task = taskBodyMapper.toEntity(requestDTO);
-        task.setOwnerId(currentUserId);
 
         TaskBody createdTask = taskBodyRepository.save(task);
+
+        TaskOwner owner = TaskOwner.builder()
+            .id(new TaskOwnerId(createdTask.getId(), currentUserId))
+            .build();
+
+        createdTask.addOwner(owner);
 
         log.debug("Created Task: Id {}; Title - {}", createdTask.getId(), createdTask.getTitle());
         publishAttachEvent(createdTask.getId(), requestDTO.fileIds(), createdTask.getCreatedBy());
@@ -108,7 +117,9 @@ public class TaskServiceImpl implements TaskService {
         TaskBody existingTask = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        checkOwnerOrAdmin(existingTask.getOwnerId(), existingTask.getId());
+        checkOwnerOrAdmin(existingTask.getOwners().stream()
+            .map(o -> o.getId().getOwnerId()).collect(Collectors.toSet()),
+            existingTask.getId());
 
         existingTask.setTitle(requestDTO.title());
         existingTask.setDescription(requestDTO.description());
@@ -128,29 +139,62 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
-    public TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO changeOwnerRequest) {
-        if (!securityFacade.hasRole("ADMIN")) {
+    public TaskResponseDTO addTaskOwner(Long taskId, AddOwnerRequestDTO addOwnerRequest) {
+        if (!securityFacade.hasRole(ADMIN_ROLE)) {
             throw new TaskAccessRestrictedException(taskId);
         }
 
         TaskBody task = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        UserAuthDetails userDetails = userFacade.findByEmail(changeOwnerRequest.newOwnerEmail())
+        UserAuthDetails userDetails = userFacade.findByEmail(addOwnerRequest.newOwnerEmail())
             .orElseThrow(UserNotFoundException::new);
 
         if (!isOrgOrAdmin(userDetails)) {
             throw new ValidationException("Provided user is not ADMIN nor ORG", ErrorCode.COMMON_VALIDATION_FAILED);
         }
 
-        if (task.getOwnerId().equals(userDetails.id())) {
+        if (task.getOwners().stream()
+            .anyMatch(owner -> owner.getId().getOwnerId().equals(userDetails.id()))) {
             return taskBodyMapper.toResponse(task, getTaskFiles(task.getId()));
         }
 
-        task.setOwnerId(userDetails.id());
-        log.debug("Task {} owner changed to user {}", task.getId(), userDetails.id());
+        TaskOwner owner = TaskOwner.builder()
+            .id(new TaskOwnerId(task.getId(), userDetails.id()))
+            .build();
 
-        return taskBodyMapper.toResponse(taskBodyRepository.save(task), getTaskFiles(task.getId()));
+        task.addOwner(owner);
+
+        log.debug("User {} added to task`s {} owners", userDetails.id(), task.getId());
+
+        return taskBodyMapper.toResponse(task, getTaskFiles(task.getId()));
+    }
+
+    @Override
+    @Transactional
+    public TaskResponseDTO removeTaskOwner(Long taskId, RemoveOwnerRequestDTO removeOwnerRequest) {
+        if (!securityFacade.hasRole(ADMIN_ROLE)) {
+            throw new TaskAccessRestrictedException(taskId);
+        }
+
+        TaskBody task = taskBodyRepository.findById(taskId)
+            .orElseThrow(() -> new TaskNotFoundException(taskId));
+
+        UserAuthDetails userDetails = userFacade.findByEmail(removeOwnerRequest.ownerEmail())
+            .orElseThrow(UserNotFoundException::new);
+
+        Optional<TaskOwner> toRemove = task.getOwners().stream()
+            .filter(o -> o.getId().getOwnerId().equals(userDetails.id())).findFirst();
+
+        if (toRemove.isPresent()) {
+            task.removeOwner(toRemove.get());
+        } else {
+            return taskBodyMapper.toResponse(task, getTaskFiles(task.getId()));
+        }
+
+        log.debug("User {} removed from task`s {} owners", userDetails.id(), task.getId());
+
+        return taskBodyMapper.toResponse(task, getTaskFiles(task.getId()));
     }
 
     @Override
@@ -159,7 +203,9 @@ public class TaskServiceImpl implements TaskService {
         TaskBody taskToDelete = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        checkOwnerOrAdmin(taskToDelete.getOwnerId(), taskToDelete.getId());
+        checkOwnerOrAdmin(taskToDelete.getOwners().stream()
+            .map(o -> o.getId().getOwnerId()).collect(Collectors.toSet()),
+            taskToDelete.getId());
 
         checkForAssignments(taskId);
 
@@ -206,8 +252,10 @@ public class TaskServiceImpl implements TaskService {
             new FilesDetachRequestedEvent(RelatedEntityType.TASK, taskBodyId, removedFileIds, authorId));
     }
 
-    private void checkOwnerOrAdmin(Long taskBodyOwnerId, Long taskId) {
-        if (!securityFacade.hasRole("ADMIN") && !securityFacade.isOwner(taskBodyOwnerId)) {
+    private void checkOwnerOrAdmin(Set<Long> taskBodyOwnerIds, Long taskId) {
+        Optional<Long> currentUserId = securityFacade.getCurrentUserId();
+        if (currentUserId.isEmpty() || (!securityFacade.hasRole(ADMIN_ROLE)
+            && !taskBodyOwnerIds.contains(currentUserId.get()))) {
             throw new TaskAccessRestrictedException(taskId);
         }
     }
