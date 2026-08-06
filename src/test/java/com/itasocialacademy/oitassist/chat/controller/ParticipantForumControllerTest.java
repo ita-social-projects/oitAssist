@@ -5,6 +5,7 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -744,7 +745,7 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_protectedFields_shouldNotOverrideServerValues() throws Exception {
+    void createQuestion_unknownFields_shouldDeserializeOnlySupportedRequestFields() throws Exception {
         String requestBody = """
             {
               "title": "%s",
@@ -765,24 +766,24 @@ class ParticipantForumControllerTest
 
         when(participantForumService.createQuestion(
             eq(TASK_ASSIGNMENT_ID),
-            any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
+            any(CreateQuestionRequestDTO.class)))
+            .thenReturn(
+                createQuestionResponse());
 
-        mockMvc.perform(post(
-            FORUM_URL,
-            TASK_ASSIGNMENT_ID)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(requestBody))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.taskAssignmentId").value(TASK_ASSIGNMENT_ID))
-            .andExpect(jsonPath("$.authorId").value(USER_ID))
-            .andExpect(jsonPath("$.assignedReviewerId").value(nullValue()))
-            .andExpect(jsonPath("$.status").value("NEW"))
-            .andExpect(jsonPath("$.state").value("OPEN"))
-            .andExpect(jsonPath("$.visibility").value("PRIVATE"))
-            .andExpect(jsonPath("$.version").value(0));
+        mockMvc.perform(
+            post(
+                FORUM_URL,
+                TASK_ASSIGNMENT_ID)
+                .contentType(
+                    MediaType.APPLICATION_JSON)
+                .content(
+                    requestBody))
+            .andExpect(
+                status().isCreated());
 
         ArgumentCaptor<CreateQuestionRequestDTO> requestCaptor =
-            ArgumentCaptor.forClass(CreateQuestionRequestDTO.class);
+            ArgumentCaptor.forClass(
+                CreateQuestionRequestDTO.class);
 
         verify(participantForumService).createQuestion(
             eq(TASK_ASSIGNMENT_ID),
@@ -791,12 +792,13 @@ class ParticipantForumControllerTest
         CreateQuestionRequestDTO capturedRequest =
             requestCaptor.getValue();
 
-        assertEquals(
-            QUESTION_TITLE,
-            capturedRequest.title());
-        assertEquals(
-            QUESTION_CONTENT,
-            capturedRequest.content());
+        assertAll(
+            () -> assertEquals(
+                QUESTION_TITLE,
+                capturedRequest.title()),
+            () -> assertEquals(
+                QUESTION_CONTENT,
+                capturedRequest.content()));
     }
 
     private CreateQuestionRequestDTO createQuestionRequest() {
