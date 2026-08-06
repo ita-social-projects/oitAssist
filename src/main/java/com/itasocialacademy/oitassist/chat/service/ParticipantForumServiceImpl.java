@@ -43,9 +43,9 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
         int page,
         int size) {
         log.debug("Retrieving participant forum questions: taskAssignmentId={}, page={}, size={}",
-                taskAssignmentId,
-                page,
-                size);
+            taskAssignmentId,
+            page,
+            size);
         validateRequest(taskAssignmentId, page, size);
 
         Long participantId = questionAccessPolicy.requireTaskAssignmentForumAccess(taskAssignmentId);

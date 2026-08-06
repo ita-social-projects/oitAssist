@@ -16,9 +16,9 @@ public interface ParticipantForumService {
      * deterministic ordering.
      * </p>
      *
-     * @param taskId identifier of the task whose forum is requested
-     * @param page   zero-based page number
-     * @param size   number of questions requested per page
+     * @param taskAssignmentId identifier of the task whose forum is requested
+     * @param page             zero-based page number
+     * @param size             number of questions requested per page
      * @return page containing question-thread summaries visible to the current
      *         participant
      * @throws com.itasocialacademy.oitassist.core.exceptions.ValidationException     if
@@ -52,8 +52,10 @@ public interface ParticipantForumService {
      * by the backend and cannot be supplied by the client.
      * </p>
      *
-     * @param taskId  identifier of the task in whose forum the question is created
-     * @param request validated request containing the question title and content
+     * @param taskAssignmentId identifier of the task in whose forum the question is
+     *                         created
+     * @param request          validated request containing the question title and
+     *                         content
      * @return the created question thread
      * @throws com.itasocialacademy.oitassist.core.exceptions.ValidationException     if
      *                                                                                the

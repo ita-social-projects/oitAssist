@@ -27,7 +27,6 @@ public class QuestionAccessPolicy {
     private static final String ADMIN_ROLE = "ADMIN";
 
     private final SecurityFacade securityFacade;
-    private final TaskBodyFacade taskBodyFacade;
     private final TaskAssignmentFacade taskAssignmentFacade;
     private final CompetitionFacade competitionFacade;
     private final ParticipationFacade participationFacade;
@@ -74,8 +73,7 @@ public class QuestionAccessPolicy {
      * @return current authenticated user's identifier
      */
     public Long requireTaskAssignmentQuestionCreationAccess(Long taskAssignmentId) {
-        TaskAssignmentAccessContext context =
-            resolveTaskAssignmentAccess(taskAssignmentId);
+        TaskAssignmentAccessContext context = resolveTaskAssignmentAccess(taskAssignmentId);
 
         if (context.tour().executionStatus() != IN_PROGRESS) {
             throw new QuestionCreationNotAllowedException(
@@ -135,20 +133,20 @@ public class QuestionAccessPolicy {
             stage);
     }
 
-    private record TaskAssignmentAccessContext(
-        Long userId,
-        TaskAssignmentDetailDTO assignment,
-        TourDetail tour,
-        StageDetail stage) {
-    }
-
     private boolean currentUserMatches(Long expectedUserId) {
         if (expectedUserId == null) {
             return false;
         }
 
         return securityFacade.getCurrentUserId()
-            .map(currentUserId -> Objects.equals(currentUserId, expectedUserId))
-            .orElse(false);
+                .map(currentUserId -> Objects.equals(currentUserId, expectedUserId))
+                .orElse(false);
+    }
+
+    private record TaskAssignmentAccessContext(
+        Long userId,
+        TaskAssignmentDetailDTO assignment,
+        TourDetail tour,
+        StageDetail stage) {
     }
 }
