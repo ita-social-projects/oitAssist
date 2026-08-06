@@ -14,7 +14,7 @@ import java.util.List;
 @Repository
 public interface TaskBodyRepository extends JpaRepository<TaskBody, Long> {
     @Query("""
-        SELECT DISTINCT t
+        SELECT t
         FROM TaskBody t
         JOIN t.owners o
         WHERE o.id.ownerId = :ownerId
