@@ -1,15 +1,19 @@
 package com.itasocialacademy.oitassist.chat.utils;
 
-import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
-import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
-import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
-import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
-import java.util.Optional;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.CLOSED;
+import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.IN_PROGRESS;
+import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.SCHEDULED;
+import static com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.HIDDEN;
+import static com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.VISIBLE;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionCreationNotAllowedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionForumAccessRestrictedException;
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
@@ -18,30 +22,23 @@ import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.TaskAssignmentFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
-import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.CLOSED;
-import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.IN_PROGRESS;
-import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.SCHEDULED;
-import static com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.HIDDEN;
-import static com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.VISIBLE;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class QuestionAccessPolicyTest {
 
-    private static final Long TASK_ID = 1L;
     private static final String ADMIN_ROLE = "ADMIN";
     private static final String ORG_ROLE = "ORG";
 
@@ -442,13 +439,5 @@ class QuestionAccessPolicyTest {
             .competitionId(COMPETITION_ID)
             .title("Final stage")
             .build();
-    }
-
-    private TaskBodyDetail createTaskBodyDetail() {
-        return new TaskBodyDetail(
-            TASK_ID,
-            "Test task",
-            "Test task description",
-            USER_ID);
     }
 }

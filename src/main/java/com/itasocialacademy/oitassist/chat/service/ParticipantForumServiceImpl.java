@@ -38,10 +38,7 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<QuestionThreadSummaryResponseDTO> getForumQuestions(
-        Long taskAssignmentId,
-        int page,
-        int size) {
+    public Page<QuestionThreadSummaryResponseDTO> getForumQuestions(Long taskAssignmentId, int page, int size) {
         log.debug("Retrieving participant forum questions: taskAssignmentId={}, page={}, size={}",
             taskAssignmentId,
             page,
@@ -64,9 +61,7 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
 
     @Override
     @Transactional
-    public QuestionThreadResponseDTO createQuestion(
-        Long taskAssignmentId,
-        CreateQuestionRequestDTO request) {
+    public QuestionThreadResponseDTO createQuestion(Long taskAssignmentId, CreateQuestionRequestDTO request) {
         validateTaskAssignmentId(taskAssignmentId);
         log.debug("Creating participant question: taskAssignmentId={}", taskAssignmentId);
 
@@ -91,10 +86,7 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
         return questionThreadMapper.toResponse(savedQuestion);
     }
 
-    private void validateRequest(
-        Long taskAssignmentId,
-        int page,
-        int size) {
+    private void validateRequest(Long taskAssignmentId, int page, int size) {
         validateTaskAssignmentId(taskAssignmentId);
 
         if (page < 0) {

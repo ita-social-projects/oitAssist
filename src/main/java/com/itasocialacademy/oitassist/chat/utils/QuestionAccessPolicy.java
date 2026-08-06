@@ -1,12 +1,8 @@
 package com.itasocialacademy.oitassist.chat.utils;
 
+import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.IN_PROGRESS;
+import static com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.VISIBLE;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
-import com.itasocialacademy.oitassist.core.enums.ErrorCode;
-import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
-import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
-import java.util.Objects;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionCreationNotAllowedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionForumAccessRestrictedException;
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
@@ -14,12 +10,16 @@ import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
+import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.TaskAssignmentFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
-import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.IN_PROGRESS;
-import static com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.VISIBLE;
+import java.util.Objects;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
@@ -112,8 +112,7 @@ public class QuestionAccessPolicy {
         }
 
         if (assignment.visibility() != VISIBLE) {
-            throw new QuestionForumAccessRestrictedException(
-                taskAssignmentId);
+            throw new QuestionForumAccessRestrictedException(taskAssignmentId);
         }
 
         boolean isParticipant = participationFacade.isUserParticipant(
@@ -122,8 +121,7 @@ public class QuestionAccessPolicy {
             stage.id());
 
         if (!isParticipant) {
-            throw new QuestionForumAccessRestrictedException(
-                taskAssignmentId);
+            throw new QuestionForumAccessRestrictedException(taskAssignmentId);
         }
 
         return new TaskAssignmentAccessContext(
@@ -139,8 +137,8 @@ public class QuestionAccessPolicy {
         }
 
         return securityFacade.getCurrentUserId()
-                .map(currentUserId -> Objects.equals(currentUserId, expectedUserId))
-                .orElse(false);
+            .map(currentUserId -> Objects.equals(currentUserId, expectedUserId))
+            .orElse(false);
     }
 
     private record TaskAssignmentAccessContext(

@@ -1,5 +1,12 @@
 package com.itasocialacademy.oitassist.chat.mapper;
 
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
+import static org.assertj.core.api.Assertions.assertThat;
 import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateQuestionRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadSummaryResponseDTO;
@@ -8,13 +15,6 @@ import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
-import static org.assertj.core.api.Assertions.assertThat;
 
 class QuestionThreadMapperTest {
 

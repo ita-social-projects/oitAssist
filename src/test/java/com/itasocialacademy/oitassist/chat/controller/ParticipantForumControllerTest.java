@@ -1,6 +1,23 @@
 package com.itasocialacademy.oitassist.chat.controller;
 
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
+import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.itasocialacademy.oitassist.ControllerUnitTest;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateQuestionRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadSummaryResponseDTO;
 import com.itasocialacademy.oitassist.chat.service.interfaces.ParticipantForumService;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
@@ -10,30 +27,13 @@ import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNo
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateQuestionRequestDTO;
-import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
-import org.mockito.ArgumentCaptor;
 import org.springframework.http.MediaType;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
-import static org.hamcrest.Matchers.nullValue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
-import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class ParticipantForumControllerTest
     extends ControllerUnitTest<ParticipantForumController> {
@@ -193,11 +193,11 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void getParticipantForum_invalidtaskAssignmentId_shouldReturn400() throws Exception {
-        Long invalidtaskAssignmentId = 0L;
+    void getParticipantForum_invalidTaskAssignmentId_shouldReturn400() throws Exception {
+        Long invalidTaskAssignmentId = 0L;
 
         when(participantForumService.getForumQuestions(
-            invalidtaskAssignmentId,
+            invalidTaskAssignmentId,
             DEFAULT_PAGE,
             DEFAULT_SIZE)).thenThrow(validationException(
                 "Task id must be a positive number"));
@@ -205,7 +205,7 @@ class ParticipantForumControllerTest
         mockMvc.perform(
             get(
                 FORUM_URL,
-                invalidtaskAssignmentId)
+                invalidTaskAssignmentId)
                 .param("page", String.valueOf(DEFAULT_PAGE))
                 .param("size", String.valueOf(DEFAULT_SIZE)))
             .andExpect(status().isBadRequest())
@@ -214,7 +214,7 @@ class ParticipantForumControllerTest
                     .value("COMMON_VALIDATION_FAILED"));
 
         verify(participantForumService).getForumQuestions(
-            invalidtaskAssignmentId,
+            invalidTaskAssignmentId,
             DEFAULT_PAGE,
             DEFAULT_SIZE);
     }
@@ -643,19 +643,19 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_invalidtaskAssignmentId_shouldReturn400() throws Exception {
-        Long invalidtaskAssignmentId = 0L;
+    void createQuestion_invalidTaskAssignmentId_shouldReturn400() throws Exception {
+        Long invalidTaskAssignmentId = 0L;
         CreateQuestionRequestDTO request = createQuestionRequest();
 
         when(participantForumService.createQuestion(
-            invalidtaskAssignmentId,
+            invalidTaskAssignmentId,
             request)).thenThrow(new ValidationException(
                 "Task id must be a positive number",
                 ErrorCode.COMMON_VALIDATION_FAILED));
 
         mockMvc.perform(post(
             FORUM_URL,
-            invalidtaskAssignmentId)
+            invalidTaskAssignmentId)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest())
@@ -664,7 +664,7 @@ class ParticipantForumControllerTest
                     .value("COMMON_VALIDATION_FAILED"));
 
         verify(participantForumService).createQuestion(
-            invalidtaskAssignmentId,
+            invalidTaskAssignmentId,
             request);
     }
 
