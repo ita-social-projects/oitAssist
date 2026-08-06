@@ -80,6 +80,5 @@ public class AsyncEmailSender {
             template,
             "Статус заявки",
             root);
-        log.info("Decision application email sent to email={}", email);
     }
 }
