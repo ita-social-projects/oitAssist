@@ -48,12 +48,22 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
         int size) {
         validateRequest(taskAssignmentId, page, size);
 
-        Long participantId = questionAccessPolicy.requireTaskAssignmentForumAccess(taskAssignmentId);
-
         Pageable pageable = PageRequest.of(
-            page,
-            size,
-            FORUM_SORT);
+                page,
+                size,
+                FORUM_SORT);
+
+        if (questionAccessPolicy.isAdministrator()
+                || questionAccessPolicy.isOrganizationResponder(taskAssignmentId)) {
+
+            return questionThreadRepository
+                    .findAllQuestionsByTaskAssignmentId(
+                            taskAssignmentId,
+                            pageable)
+                    .map(questionThreadMapper::toSummaryResponse);
+        }
+
+        Long participantId = questionAccessPolicy.requireTaskAssignmentForumAccess(taskAssignmentId);
 
         return questionThreadRepository.findParticipantVisibleQuestions(
             taskAssignmentId,

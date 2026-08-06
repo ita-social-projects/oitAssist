@@ -22,6 +22,8 @@ import com.itasocialacademy.oitassist.chat.utils.event.QuestionUpsertPayload;
 import com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType;
 import com.itasocialacademy.oitassist.chat.utils.event.RealtimeForumEvent;
 import com.itasocialacademy.oitassist.chat.utils.event.RealtimePayload;
+
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
@@ -46,7 +48,13 @@ public class ParticipantRealtimeProjectionHandlerImpl
     private static final String QUESTION_THREAD_DESTINATION =
         "/topic/questions/%d";
 
+    private static final String ADMINISTRATOR_ALL_QUESTIONS_DESTINATION =
+            "/topic/admin/questions/all";
+
     private final SimpMessageSendingOperations messagingOperations;
+
+    private final OrganizationRealtimeRecipientResolver
+            organizationRecipientResolver;
 
     @Override
     public void handle(
@@ -147,6 +155,8 @@ public class ParticipantRealtimeProjectionHandlerImpl
 
         sendQuestionUpsertToAuthor(
             event);
+
+        sendQuestionUpsertToPrivilegedReaders(event);
     }
 
     private void projectVisibilityChanged(
@@ -175,6 +185,9 @@ public class ParticipantRealtimeProjectionHandlerImpl
 
             sendQuestionUpsertToAuthor(
                 event);
+
+            sendQuestionUpsertToPrivilegedReaders(
+                    event);
 
             return;
         }
@@ -228,6 +241,9 @@ public class ParticipantRealtimeProjectionHandlerImpl
 
         sendQuestionUpsertToAuthor(
             event);
+
+        sendQuestionUpsertToPrivilegedReaders(
+                event);
     }
 
     private void sendQuestionUpsertToForum(
@@ -290,6 +306,35 @@ public class ParticipantRealtimeProjectionHandlerImpl
                 MESSAGE_CREATED,
                 new MessageCreatedPayload(
                     message)));
+    }
+
+    private void sendQuestionUpsertToPrivilegedReaders(
+            ForumDomainEvent event) {
+        messagingOperations.convertAndSend(
+                ADMINISTRATOR_ALL_QUESTIONS_DESTINATION,
+                createRealtimeEvent(
+                        event,
+                        QUESTION_UPSERTED,
+                        new QuestionUpsertPayload(
+                                event.question())));
+
+        organizationRecipientResolver
+                .resolveInboxRecipients(
+                        event.taskAssignmentId())
+                .stream()
+                .filter(responderId ->
+                        !Objects.equals(
+                                responderId,
+                                event.question().authorId()))
+                .forEach(responderId ->
+                        messagingOperations.convertAndSendToUser(
+                                responderId.toString(),
+                                PERSONAL_QUESTIONS_QUEUE,
+                                createRealtimeEvent(
+                                        event,
+                                        QUESTION_UPSERTED,
+                                        new QuestionUpsertPayload(
+                                                event.question()))));
     }
 
     private void sendQuestionRemovalToForum(

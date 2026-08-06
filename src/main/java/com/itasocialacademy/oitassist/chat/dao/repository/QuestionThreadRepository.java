@@ -39,6 +39,15 @@ public interface QuestionThreadRepository
 
         Pageable pageable);
 
+    @Query("""
+        SELECT question
+        FROM QuestionThread question
+        WHERE question.taskAssignmentId = :taskAssignmentId
+        """)
+    Page<QuestionThread> findAllQuestionsByTaskAssignmentId(
+            @Param("taskAssignmentId") Long taskAssignmentId,
+            Pageable pageable);
+
     Page<QuestionThread> findAllByStateAndStatusAndAssignedReviewerIdIsNull(
         QuestionState state,
         QuestionStatus status,

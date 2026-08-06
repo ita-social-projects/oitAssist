@@ -84,6 +84,9 @@ public class StompAuthorizationChannelInterceptor
                 case ADMINISTRATOR_INBOX ->
                     requireAdministrator();
 
+                case ADMINISTRATOR_ALL_QUESTIONS ->
+                        requireAdministrator();
+
                 case PERSONAL_REVIEWS ->
                     requirePersonalReviewAccess(
                         authentication);

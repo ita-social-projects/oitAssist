@@ -26,7 +26,8 @@ public record RealtimeSubscriptionDestination(Type type, Long resourceId) {
         PUBLIC_QUESTION_THREAD(true),
         ADMINISTRATOR_INBOX(false),
         PARTICIPANT_QUESTIONS(false),
-        PERSONAL_REVIEWS(false);
+        PERSONAL_REVIEWS(false),
+        ADMINISTRATOR_ALL_QUESTIONS(false);
 
         private final boolean resourceScoped;
 

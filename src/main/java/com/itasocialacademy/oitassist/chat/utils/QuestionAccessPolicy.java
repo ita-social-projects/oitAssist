@@ -59,6 +59,16 @@ public class QuestionAccessPolicy {
         return securityFacade.hasRole(ADMIN_ROLE);
     }
 
+    public boolean isOrganizationResponder() {
+        return securityFacade.hasRole(ORG_ROLE);
+    }
+
+    public boolean isOrganizationResponder(Long taskAssignmentId) {
+        return securityFacade.hasRole(ORG_ROLE)
+                && forumResponderService.isResponder(taskAssignmentId,
+                securityFacade.getCurrentUserId().orElse(null));
+    }
+
     /**
      * Validates that the authenticated user may view the forum belonging to the
      * specified task assignment.

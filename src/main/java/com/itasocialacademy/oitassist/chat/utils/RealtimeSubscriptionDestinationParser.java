@@ -11,6 +11,9 @@ public class RealtimeSubscriptionDestinationParser {
     private static final String ADMINISTRATOR_INBOX_DESTINATION =
         "/topic/admin/questions/inbox";
 
+    private static final String ADMINISTRATOR_ALL_QUESTIONS_DESTINATION =
+            "/topic/admin/questions/all";
+
     private static final String PARTICIPANT_QUESTIONS_DESTINATION =
         "/user/queue/questions";
 
