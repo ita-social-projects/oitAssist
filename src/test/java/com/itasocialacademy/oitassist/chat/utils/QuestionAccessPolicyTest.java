@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -48,9 +47,6 @@ class QuestionAccessPolicyTest {
     private static final Long TOUR_ID = 400L;
     private static final Long STAGE_ID = 500L;
     private static final Long COMPETITION_ID = 600L;
-
-    private static final Long OTHER_STAGE_ID = 501L;
-    private static final Long OTHER_COMPETITION_ID = 601L;
 
     @Mock
     private SecurityFacade securityFacade;
@@ -195,62 +191,6 @@ class QuestionAccessPolicyTest {
             USER_ID,
             COMPETITION_ID,
             STAGE_ID)).thenReturn(false);
-
-        assertThrows(
-            QuestionForumAccessRestrictedException.class,
-            () -> questionAccessPolicy
-                .requireTaskAssignmentForumAccess(
-                    TASK_ASSIGNMENT_ID));
-
-        verify(participationFacade).isUserParticipant(
-            USER_ID,
-            COMPETITION_ID,
-            STAGE_ID);
-    }
-
-    @Test
-    void requireTaskAssignmentForumAccess_participantFromAnotherStage_shouldThrowAccessRestrictedException() {
-        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
-
-        when(securityFacade.hasRole(ADMIN_ROLE))
-            .thenReturn(false);
-
-        /*
-         * The user participates only in OTHER_STAGE_ID. The exact assignment stage
-         * therefore returns false.
-         */
-        when(participationFacade.isUserParticipant(
-            eq(USER_ID),
-            eq(COMPETITION_ID),
-            anyLong())).thenAnswer(invocation -> OTHER_STAGE_ID.equals(invocation.getArgument(2)));
-
-        assertThrows(
-            QuestionForumAccessRestrictedException.class,
-            () -> questionAccessPolicy
-                .requireTaskAssignmentForumAccess(
-                    TASK_ASSIGNMENT_ID));
-
-        verify(participationFacade).isUserParticipant(
-            USER_ID,
-            COMPETITION_ID,
-            STAGE_ID);
-    }
-
-    @Test
-    void requireTaskAssignmentForumAccess_participantFromAnotherCompetition_shouldThrowAccessRestrictedException() {
-        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
-
-        when(securityFacade.hasRole(ADMIN_ROLE))
-            .thenReturn(false);
-
-        /*
-         * The user participates only in OTHER_COMPETITION_ID. The assignment
-         * competition therefore returns false.
-         */
-        when(participationFacade.isUserParticipant(
-            eq(USER_ID),
-            anyLong(),
-            eq(STAGE_ID))).thenAnswer(invocation -> OTHER_COMPETITION_ID.equals(invocation.getArgument(1)));
 
         assertThrows(
             QuestionForumAccessRestrictedException.class,

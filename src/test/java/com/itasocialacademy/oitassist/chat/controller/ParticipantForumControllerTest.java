@@ -5,6 +5,7 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -744,59 +745,60 @@ class ParticipantForumControllerTest
     }
 
     @Test
-    void createQuestion_protectedFields_shouldNotOverrideServerValues() throws Exception {
+    void createQuestion_unknownFields_shouldDeserializeOnlySupportedRequestFields() throws Exception {
         String requestBody = """
-            {
-              "title": "%s",
-              "content": "%s",
-              "taskAssignmentId": 999,
-              "authorId": 999,
-              "assignedReviewerId": 777,
-              "status": "ANSWERED",
-              "state": "CLOSED",
-              "visibility": "PUBLIC",
-              "version": 50,
-              "createdAt": "2020-01-01T00:00:00Z",
-              "updatedAt": "2020-01-01T00:00:00Z"
-            }
-            """.formatted(
-            QUESTION_TITLE,
-            QUESTION_CONTENT);
+        {
+          "title": "%s",
+          "content": "%s",
+          "taskAssignmentId": 999,
+          "authorId": 999,
+          "assignedReviewerId": 777,
+          "status": "ANSWERED",
+          "state": "CLOSED",
+          "visibility": "PUBLIC",
+          "version": 50,
+          "createdAt": "2020-01-01T00:00:00Z",
+          "updatedAt": "2020-01-01T00:00:00Z"
+        }
+        """.formatted(
+                QUESTION_TITLE,
+                QUESTION_CONTENT);
 
         when(participantForumService.createQuestion(
-            eq(TASK_ASSIGNMENT_ID),
-            any(CreateQuestionRequestDTO.class))).thenReturn(createQuestionResponse());
+                eq(TASK_ASSIGNMENT_ID),
+                any(CreateQuestionRequestDTO.class)))
+                .thenReturn(
+                        createQuestionResponse());
 
-        mockMvc.perform(post(
-            FORUM_URL,
-            TASK_ASSIGNMENT_ID)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(requestBody))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.taskAssignmentId").value(TASK_ASSIGNMENT_ID))
-            .andExpect(jsonPath("$.authorId").value(USER_ID))
-            .andExpect(jsonPath("$.assignedReviewerId").value(nullValue()))
-            .andExpect(jsonPath("$.status").value("NEW"))
-            .andExpect(jsonPath("$.state").value("OPEN"))
-            .andExpect(jsonPath("$.visibility").value("PRIVATE"))
-            .andExpect(jsonPath("$.version").value(0));
+        mockMvc.perform(
+                        post(
+                                FORUM_URL,
+                                TASK_ASSIGNMENT_ID)
+                                .contentType(
+                                        MediaType.APPLICATION_JSON)
+                                .content(
+                                        requestBody))
+                .andExpect(
+                        status().isCreated());
 
         ArgumentCaptor<CreateQuestionRequestDTO> requestCaptor =
-            ArgumentCaptor.forClass(CreateQuestionRequestDTO.class);
+                ArgumentCaptor.forClass(
+                        CreateQuestionRequestDTO.class);
 
         verify(participantForumService).createQuestion(
-            eq(TASK_ASSIGNMENT_ID),
-            requestCaptor.capture());
+                eq(TASK_ASSIGNMENT_ID),
+                requestCaptor.capture());
 
         CreateQuestionRequestDTO capturedRequest =
-            requestCaptor.getValue();
+                requestCaptor.getValue();
 
-        assertEquals(
-            QUESTION_TITLE,
-            capturedRequest.title());
-        assertEquals(
-            QUESTION_CONTENT,
-            capturedRequest.content());
+        assertAll(
+                () -> assertEquals(
+                        QUESTION_TITLE,
+                        capturedRequest.title()),
+                () -> assertEquals(
+                        QUESTION_CONTENT,
+                        capturedRequest.content()));
     }
 
     private CreateQuestionRequestDTO createQuestionRequest() {

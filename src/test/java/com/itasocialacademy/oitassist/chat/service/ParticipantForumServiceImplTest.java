@@ -13,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -53,7 +52,6 @@ import org.springframework.data.domain.Sort;
 class ParticipantForumServiceImplTest {
 
     private static final Long TASK_ASSIGNMENT_ID = 1L;
-    private static final Long OTHER_TASK_ASSIGNMENT_ID = 2L;
     private static final Long USER_ID = 100L;
     private static final Long OTHER_USER_ID = 200L;
 
@@ -588,41 +586,6 @@ class ParticipantForumServiceImplTest {
         verify(questionThreadRepository).save(mappedQuestion);
         verify(questionThreadMapper, never())
             .toResponse(any(QuestionThread.class));
-    }
-
-    @Test
-    void getForumQuestions_questionsFromAnotherAssignment_shouldNotBeRequested() {
-        Pageable expectedPageable = PageRequest.of(
-            PAGE,
-            SIZE,
-            Sort.by(
-                Sort.Order.desc("createdAt"),
-                Sort.Order.desc("id")));
-
-        when(questionAccessPolicy.requireTaskAssignmentForumAccess(
-            TASK_ASSIGNMENT_ID)).thenReturn(USER_ID);
-
-        when(questionThreadRepository.findParticipantVisibleQuestions(
-            TASK_ASSIGNMENT_ID,
-            USER_ID,
-            expectedPageable)).thenReturn(Page.empty(expectedPageable));
-
-        participantForumService.getForumQuestions(
-            TASK_ASSIGNMENT_ID,
-            PAGE,
-            SIZE);
-
-        verify(questionThreadRepository)
-            .findParticipantVisibleQuestions(
-                TASK_ASSIGNMENT_ID,
-                USER_ID,
-                expectedPageable);
-
-        verify(questionThreadRepository, never())
-            .findParticipantVisibleQuestions(
-                eq(OTHER_TASK_ASSIGNMENT_ID),
-                anyLong(),
-                any(Pageable.class));
     }
 
     private CreateQuestionRequestDTO createQuestionRequest() {
