@@ -10,7 +10,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFound
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
-import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationAcceptedEvent;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
@@ -25,6 +25,7 @@ import com.itasocialacademy.oitassist.participation.exceptions.UserApplicationRe
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
+import com.itasocialacademy.oitassist.participation.scheduler.AfterCommitScheduler;
 import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -36,8 +37,6 @@ import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Slf4j
 @Service
@@ -52,6 +51,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final CompetitionFacade competitionFacade;
     private final AsyncEmailSender emailSender;
     private final UserFacade userFacade;
+    private final AfterCommitScheduler scheduler;
 
     @Override
     @Transactional
@@ -75,7 +75,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         ProcessApplicationResponse response = processApplicationMapper.toResponse(
             applicationRepository.saveAndFlush(application));
 
-        scheduleDecisionEmailAfterCommit(
+        scheduleAcceptedEmail(
             application.getCompetitionId(),
             application.getStageId(),
             application.getIssuedBy());
@@ -92,7 +92,16 @@ public class ApplicationServiceImpl implements ApplicationService {
         application.setRejectionReason(request.rejectionReason());
         application.setProcessedBy(userId);
         application.setProcessedAt(Instant.now());
-        return processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
+        ProcessApplicationResponse response =
+            processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
+
+        scheduleRejectedEmail(
+            application.getCompetitionId(),
+            application.getStageId(),
+            application.getIssuedBy(),
+            application.getRejectionReason());
+
+        return response;
     }
 
     @Override
@@ -171,24 +180,15 @@ public class ApplicationServiceImpl implements ApplicationService {
                 ErrorCode.ACCESS_DENIED));
     }
 
-    private void scheduleDecisionEmailAfterCommit(Long competitionId, Long stageId, Long userId) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            return;
-        }
-
+    private void scheduleDecisionEmailAfterCommit(
+        Long competitionId, Long stageId, Long userId, String rejectionReason, RequestStatus status) {
         String competitionTitle = getCompetitionInfoOrThrow(competitionId).title();
         String stageTitle = getStageInfoOrThrow(stageId).title();
         UserProfileDetails user = getUserOrThrow(userId);
-        String email = user.email();
-        String firstName = user.firstName();
 
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                emailSender.sendDecisionEmail(
-                    new ApplicationAcceptedEvent(competitionTitle, stageTitle, firstName, email));
-            }
-        });
+        ApplicationDecisionEvent event = new ApplicationDecisionEvent(
+            competitionTitle, stageTitle, user.firstName(), user.email(), rejectionReason, status);
+        scheduler.runAfterCommit(() -> emailSender.sendDecisionEmail(event));
     }
 
     private CompetitionDetail getCompetitionInfoOrThrow(Long competitionId) {
@@ -204,5 +204,13 @@ public class ApplicationServiceImpl implements ApplicationService {
     private UserProfileDetails getUserOrThrow(Long userId) {
         return userFacade.findProfileById(userId)
             .orElseThrow(UserNotFoundException::new);
+    }
+
+    private void scheduleAcceptedEmail(Long competitionId, Long stageId, Long userId) {
+        scheduleDecisionEmailAfterCommit(competitionId, stageId, userId, null, RequestStatus.ACCEPTED);
+    }
+
+    private void scheduleRejectedEmail(Long competitionId, Long stageId, Long userId, String rejectionReason) {
+        scheduleDecisionEmailAfterCommit(competitionId, stageId, userId, rejectionReason, RequestStatus.REJECTED);
     }
 }

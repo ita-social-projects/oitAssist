@@ -55,14 +55,17 @@
 </head>
 <body>
 <div class="container">
-    <h1>Привіт, ${userName}!</h1>
+    <h1>Привіт, ${firstName}!</h1>
     <p>Ваша заявка на участь в олімпіаді "${competitionTitle}", етапі "${stageTitle}" була відхилена❌</p>
     <#if rejectionReason??>
         <p>Причина: ${rejectionReason}</p>
     </#if>
 
     <p>Ви можете переглянути деталі олімпіади натиснувши кнопку нижче:</p>
-    <a href="${link}" class="button">Переглянути деталі ↗</a>
+    <a href="${competitionLink}" class="button">Переглянути деталі ↗</a>
+
+    <p>Або перейти в особистий кабінет:</p>
+    <a href="${profileLink}" class="button">Особистий кабінет ↗</a>
 
     <p>Якщо вам цей лист було надіслано помилково — проігноруйте його.</p>
 
