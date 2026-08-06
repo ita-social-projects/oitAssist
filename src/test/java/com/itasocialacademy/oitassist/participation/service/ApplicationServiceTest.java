@@ -9,6 +9,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarch
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
@@ -24,13 +25,18 @@ import com.itasocialacademy.oitassist.participation.exceptions.UserApplicationRe
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
+import com.itasocialacademy.oitassist.participation.scheduler.AfterCommitScheduler;
+import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.ApplicationServiceImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.Instant;
 import java.util.Optional;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
+import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -55,6 +61,12 @@ class ApplicationServiceTest {
     private ProcessApplicationMapper processApplicationMapper;
     @Mock
     private CompetitionFacade competitionFacade;
+    @Mock
+    private AsyncEmailSender emailSender;
+    @Mock
+    private AfterCommitScheduler scheduler;
+    @Mock
+    private UserFacade userFacade;
 
     @InjectMocks
     private ApplicationServiceImpl applicationService;
@@ -88,6 +100,11 @@ class ApplicationServiceTest {
             .competitionId(2L)
             .scope(StageScope.DISTRICT)
             .build();
+
+        lenient().when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        lenient().when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+        lenient().when(userFacade.findProfileById(4L)).thenReturn(Optional.of(
+            new UserProfileDetails(4L, "Test", "test@mail.com")));
     }
 
     // ---- userApply ----
@@ -428,5 +445,50 @@ class ApplicationServiceTest {
             .issuedBy(4L)
             .status(status)
             .build();
+    }
+
+    // ---- emailSending part ----
+
+    @Test
+    void acceptRequest_pendingApplication_shouldScheduleAcceptedEmailAfterCommit() {
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(10L));
+        when(applicationRepository.findById(1L)).thenReturn(Optional.of(application));
+
+        applicationService.acceptRequest(1L);
+
+        ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runAfterCommit(runnableCaptor.capture());
+
+        runnableCaptor.getValue().run();
+
+        ArgumentCaptor<ApplicationDecisionEvent> eventCaptor = ArgumentCaptor.forClass(ApplicationDecisionEvent.class);
+        verify(emailSender).sendDecisionEmail(eventCaptor.capture());
+
+        ApplicationDecisionEvent event = eventCaptor.getValue();
+        assertEquals(RequestStatus.ACCEPTED, event.status());
+        assertEquals("test@mail.com", event.email());
+        assertNull(event.rejectionReason());
+    }
+
+    @Test
+    void rejectRequest_pendingApplication_shouldScheduleRejectedEmailAfterCommit() {
+        RejectEnrollmentRequest request = new RejectEnrollmentRequest("Incomplete profile");
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(10L));
+        when(applicationRepository.findById(1L)).thenReturn(Optional.of(application));
+
+        applicationService.rejectRequest(1L, request);
+
+        ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
+        verify(scheduler).runAfterCommit(runnableCaptor.capture());
+        runnableCaptor.getValue().run();
+
+        ArgumentCaptor<ApplicationDecisionEvent> eventCaptor = ArgumentCaptor.forClass(ApplicationDecisionEvent.class);
+        verify(emailSender).sendDecisionEmail(eventCaptor.capture());
+
+        ApplicationDecisionEvent event = eventCaptor.getValue();
+        assertEquals(RequestStatus.REJECTED, event.status());
+        assertEquals("Incomplete profile", event.rejectionReason());
+        assertEquals("test@mail.com", event.email());
     }
 }
