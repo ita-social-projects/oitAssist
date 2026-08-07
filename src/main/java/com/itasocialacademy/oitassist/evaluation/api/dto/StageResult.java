@@ -1,9 +1,9 @@
-package com.itasocialacademy.oitassist.export.dao.dto;
+package com.itasocialacademy.oitassist.evaluation.api.dto;
 
 import java.util.List;
 
 public record StageResult(
     String stageTitle,
-    int stageScore,
+    Integer stageScore,
     List<TourResult> tours) {
 }
