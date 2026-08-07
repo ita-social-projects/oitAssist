@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class ExcelExporter implements Exporter {
     private static final String NO_SCORE = "-";
+    private static final String PARTICIPANT_COLUMN = "Учасник";
 
     @Override
     public byte[] export(ExportData data) {
@@ -45,7 +46,7 @@ public class ExcelExporter implements Exporter {
     }
 
     private void createToursSheet(Workbook workbook, ExportData data) {
-        Sheet sheet = createSheetWithHeader(workbook, "Тури", "Учасник", "Етап", "Тур", "Бал");
+        Sheet sheet = createSheetWithHeader(workbook, "Тури", PARTICIPANT_COLUMN, "Етап", "Тур", "Бал");
 
         int rowIndex = 1;
         for (ParticipantResult participant : data.participants()) {
@@ -64,11 +65,11 @@ public class ExcelExporter implements Exporter {
             }
         }
 
-        applyAutoFilter(sheet, rowIndex);
+        applyAutoFilter(sheet, rowIndex - 1);
     }
 
     private void createStagesSheet(Workbook workbook, ExportData data) {
-        Sheet sheet = createSheetWithHeader(workbook, "Етапи", "Учасник", "Етап", "Бал за етап");
+        Sheet sheet = createSheetWithHeader(workbook, "Етапи", PARTICIPANT_COLUMN, "Етап", "Бал за етап");
 
         int rowIndex = 1;
         for (ParticipantResult participant : data.participants()) {
@@ -84,11 +85,11 @@ public class ExcelExporter implements Exporter {
             }
         }
 
-        applyAutoFilter(sheet, rowIndex);
+        applyAutoFilter(sheet, rowIndex - 1);
     }
 
     private void createTotalSheet(Workbook workbook, ExportData data) {
-        Sheet sheet = createSheetWithHeader(workbook, "Спільне", "Учасник", "Загальний бал");
+        Sheet sheet = createSheetWithHeader(workbook, "Спільне", PARTICIPANT_COLUMN, "Загальний бал");
 
         int rowIndex = 1;
         for (ParticipantResult participant : data.participants()) {
@@ -101,7 +102,7 @@ public class ExcelExporter implements Exporter {
             }
         }
 
-        applyAutoFilter(sheet, rowIndex);
+        applyAutoFilter(sheet, rowIndex - 1);
     }
 
     private Sheet createSheetWithHeader(Workbook workbook, String sheetName, String... columnTitles) {

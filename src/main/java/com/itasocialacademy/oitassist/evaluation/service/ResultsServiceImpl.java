@@ -109,10 +109,11 @@ public class ResultsServiceImpl implements ResultsService {
         String search, Pageable pageable) {
         List<ParticipantResult> filtered = getResults(competitionId, stageIds, tourIds, search).participants();
 
-        int from = (int) pageable.getOffset();
-        if (from >= filtered.size()) {
+        long offset = pageable.getOffset();
+        if (offset >= filtered.size()) {
             return new PageImpl<>(List.of(), pageable, filtered.size());
         }
+        int from = (int) offset;
         int to = Math.min(from + pageable.getPageSize(), filtered.size());
 
         return new PageImpl<>(filtered.subList(from, to), pageable, filtered.size());
