@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-task-owners-table" author="Vladyslav Murashko">
+
+        <createTable tableName="task_owners">
+            <column name="task_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_task_owners_task"
+                             referencedTableName="task_bodies"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+
+            <column name="owner_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_task_owners_user"
+                             referencedTableName="users"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+
+            <column name="assigned_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_task_owners_task"
+                     tableName="task_owners">
+            <column name="task_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_task_owners_owner"
+                     tableName="task_owners">
+            <column name="owner_id"/>
+        </createIndex>
+
+        <addPrimaryKey
+                tableName="task_owners"
+                columnNames="task_id, owner_id"
+                constraintName="pk_task_owners"/>
+
+        <sql>
+            INSERT INTO task_owners (task_id, owner_id, assigned_at)
+            SELECT id, owner_id, created_at
+            FROM task_bodies;
+        </sql>
+
+        <dropColumn
+                tableName="task_bodies"
+                columnName="owner_id"/>
+
+    </changeSet>
+
+</databaseChangeLog>

@@ -4,6 +4,7 @@ import static org.springframework.data.domain.Sort.Direction.DESC;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserRoleRequest;
+import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserStatusRequest;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -131,5 +132,48 @@ public class UserController {
             description = "Optional search query for filtering users by name or email",
             example = "ivan") @RequestParam(required = false) String search) {
         return ResponseEntity.ok(PageResponse.from(service.getUsers(pageable, search)));
+    }
+
+    @PatchMapping("/{id}/status")
+    @Operation(
+        summary = "Change user status",
+        description = "Allows admin to change status of an existing user")
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User status updated successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ResponseUserDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid status or request payload",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized - token is missing or invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - insufficient permissions or attempt to modify restricted user",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "User not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ResponseUserDTO> changeUserStatus(
+        @PathVariable Long id,
+        @RequestBody @Valid ChangeUserStatusRequest request) {
+        return ResponseEntity.ok(service.changeUserStatus(id, request.getStatus()));
     }
 }

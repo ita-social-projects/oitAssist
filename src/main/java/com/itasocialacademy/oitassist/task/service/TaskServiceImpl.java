@@ -3,14 +3,23 @@ package com.itasocialacademy.oitassist.task.service;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
+import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
+import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
+import com.itasocialacademy.oitassist.task.api.events.TaskDeletionRequestEvent;
 import com.itasocialacademy.oitassist.task.dao.model.TaskBody;
+import com.itasocialacademy.oitassist.task.dao.model.TaskOwner;
+import com.itasocialacademy.oitassist.task.dao.model.TaskTitleView;
+import com.itasocialacademy.oitassist.task.dao.model.id.TaskOwnerId;
 import com.itasocialacademy.oitassist.task.dao.repository.TaskBodyRepository;
-import com.itasocialacademy.oitassist.task.dto.request.ChangeOwnerRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.AddOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.RemoveOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.exceptions.TaskAccessRestrictedException;
@@ -21,7 +30,8 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -39,6 +49,8 @@ public class TaskServiceImpl implements TaskService {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final SecurityFacade securityFacade;
     private final UserFacade userFacade;
+    private final FileManagerFacade fileManagerFacade;
+    private static final String ADMIN_ROLE = "ADMIN";
 
     @Override
     @Transactional
@@ -48,14 +60,19 @@ public class TaskServiceImpl implements TaskService {
                 ErrorCode.ACCESS_DENIED));
 
         TaskBody task = taskBodyMapper.toEntity(requestDTO);
-        task.setOwnerId(currentUserId);
 
         TaskBody createdTask = taskBodyRepository.save(task);
+
+        TaskOwner owner = TaskOwner.builder()
+            .id(new TaskOwnerId(createdTask.getId(), currentUserId))
+            .build();
+
+        createdTask.addOwner(owner);
 
         log.debug("Created Task: Id {}; Title - {}", createdTask.getId(), createdTask.getTitle());
         publishAttachEvent(createdTask.getId(), requestDTO.fileIds(), createdTask.getCreatedBy());
 
-        return taskBodyMapper.toResponse(createdTask);
+        return taskBodyMapper.toResponse(createdTask, getTaskFiles(task.getId()));
     }
 
     @Override
@@ -66,7 +83,7 @@ public class TaskServiceImpl implements TaskService {
                 () -> new TaskNotFoundException(id));
 
         log.debug("Get Task: Id {}", taskBody.getId());
-        return taskBodyMapper.toResponse(taskBody);
+        return taskBodyMapper.toResponse(taskBody, getTaskFiles(taskBody.getId()));
     }
 
     @Override
@@ -75,7 +92,9 @@ public class TaskServiceImpl implements TaskService {
         log.debug("getAllTasks: page={}, size={}, sort={}",
             pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
-        return taskBodyRepository.findAll(pageable).map(taskBodyMapper::toResponse);
+        Page<TaskBody> tasksPage = taskBodyRepository.findAll(pageable);
+
+        return getTaskResponseBulkDTO(tasksPage);
     }
 
     @Override
@@ -87,7 +106,9 @@ public class TaskServiceImpl implements TaskService {
         log.debug("getAllMyTasks: userId={}, page={}, size={}, sort={}",
             currentUserId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
-        return taskBodyRepository.findAllByOwnerId(currentUserId, pageable);
+        Page<TaskBody> myTasksPage = taskBodyRepository.findAllByOwnerId(currentUserId, pageable);
+
+        return getTaskResponseBulkDTO(myTasksPage);
     }
 
     @Override
@@ -96,9 +117,9 @@ public class TaskServiceImpl implements TaskService {
         TaskBody existingTask = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        if (!isOwnerOrAdmin(existingTask.getOwnerId())) {
-            throw new TaskAccessRestrictedException(taskId);
-        }
+        checkOwnerOrAdmin(existingTask.getOwners().stream()
+            .map(o -> o.getId().getOwnerId()).collect(Collectors.toSet()),
+            existingTask.getId());
 
         existingTask.setTitle(requestDTO.title());
         existingTask.setDescription(requestDTO.description());
@@ -113,34 +134,103 @@ public class TaskServiceImpl implements TaskService {
         publishAttachEvent(updatedTask.getId(), requestDTO.fileIds(), currentUserId);
         publishDetachEvent(updatedTask.getId(), requestDTO.removedFileIds(), currentUserId);
 
-        return taskBodyMapper.toResponse(updatedTask);
+        return taskBodyMapper.toResponse(updatedTask, getTaskFiles(updatedTask.getId()));
     }
 
     @Override
     @Transactional
-    public TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO changeOwnerRequest) {
-        if (!securityFacade.hasRole("ADMIN")) {
+    public TaskResponseDTO addTaskOwner(Long taskId, AddOwnerRequestDTO addOwnerRequest) {
+        if (!securityFacade.hasRole(ADMIN_ROLE)) {
             throw new TaskAccessRestrictedException(taskId);
         }
 
         TaskBody task = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
-        UserAuthDetails userDetails = userFacade.findByEmail(changeOwnerRequest.newOwnerEmail())
+        UserAuthDetails userDetails = userFacade.findByEmail(addOwnerRequest.newOwnerEmail())
             .orElseThrow(UserNotFoundException::new);
 
         if (!isOrgOrAdmin(userDetails)) {
             throw new ValidationException("Provided user is not ADMIN nor ORG", ErrorCode.COMMON_VALIDATION_FAILED);
         }
 
-        if (task.getOwnerId().equals(userDetails.id())) {
-            return taskBodyMapper.toResponse(task);
+        if (task.getOwners().stream()
+            .anyMatch(owner -> owner.getId().getOwnerId().equals(userDetails.id()))) {
+            return taskBodyMapper.toResponse(task, getTaskFiles(task.getId()));
         }
 
-        task.setOwnerId(userDetails.id());
-        log.debug("Task {} owner changed to user {}", task.getId(), userDetails.id());
+        TaskOwner owner = TaskOwner.builder()
+            .id(new TaskOwnerId(task.getId(), userDetails.id()))
+            .build();
 
-        return taskBodyMapper.toResponse(taskBodyRepository.save(task));
+        task.addOwner(owner);
+
+        log.debug("User {} added to task`s {} owners", userDetails.id(), task.getId());
+
+        return taskBodyMapper.toResponse(task, getTaskFiles(task.getId()));
+    }
+
+    @Override
+    @Transactional
+    public TaskResponseDTO removeTaskOwner(Long taskId, RemoveOwnerRequestDTO removeOwnerRequest) {
+        if (!securityFacade.hasRole(ADMIN_ROLE)) {
+            throw new TaskAccessRestrictedException(taskId);
+        }
+
+        TaskBody task = taskBodyRepository.findById(taskId)
+            .orElseThrow(() -> new TaskNotFoundException(taskId));
+
+        UserAuthDetails userDetails = userFacade.findByEmail(removeOwnerRequest.ownerEmail())
+            .orElseThrow(UserNotFoundException::new);
+
+        Optional<TaskOwner> toRemove = task.getOwners().stream()
+            .filter(o -> o.getId().getOwnerId().equals(userDetails.id())).findFirst();
+
+        if (toRemove.isPresent()) {
+            task.removeOwner(toRemove.get());
+        } else {
+            return taskBodyMapper.toResponse(task, getTaskFiles(task.getId()));
+        }
+
+        log.debug("User {} removed from task`s {} owners", userDetails.id(), task.getId());
+
+        return taskBodyMapper.toResponse(task, getTaskFiles(task.getId()));
+    }
+
+    @Override
+    @Transactional
+    public void deleteTask(Long taskId) {
+        TaskBody taskToDelete = taskBodyRepository.findById(taskId)
+            .orElseThrow(() -> new TaskNotFoundException(taskId));
+
+        checkOwnerOrAdmin(taskToDelete.getOwners().stream()
+            .map(o -> o.getId().getOwnerId()).collect(Collectors.toSet()),
+            taskToDelete.getId());
+
+        checkForAssignments(taskId);
+
+        taskBodyRepository.delete(taskToDelete);
+        log.debug("Task {} with title {} deleted", taskId, taskToDelete.getTitle());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<TaskBodyDetail> getTaskBodyDetailById(Long taskId) {
+        return taskBodyRepository.findById(taskId)
+            .map(taskBodyMapper::toTaskBodyDetail);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, String> getTaskTitlesByIds(List<Long> taskIds) {
+        if (taskIds == null || taskIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return taskBodyRepository.findTitlesByIds(taskIds).stream()
+            .collect(Collectors.toMap(
+                TaskTitleView::getId,
+                TaskTitleView::getTitle));
     }
 
     // helpers
@@ -162,14 +252,45 @@ public class TaskServiceImpl implements TaskService {
             new FilesDetachRequestedEvent(RelatedEntityType.TASK, taskBodyId, removedFileIds, authorId));
     }
 
-    private boolean isOwnerOrAdmin(Long taskBodyOwnerId) {
-        if (securityFacade.hasRole("ADMIN")) {
-            return true;
+    private void checkOwnerOrAdmin(Set<Long> taskBodyOwnerIds, Long taskId) {
+        Optional<Long> currentUserId = securityFacade.getCurrentUserId();
+        if (currentUserId.isEmpty() || (!securityFacade.hasRole(ADMIN_ROLE)
+            && !taskBodyOwnerIds.contains(currentUserId.get()))) {
+            throw new TaskAccessRestrictedException(taskId);
         }
-        return securityFacade.isOwner(taskBodyOwnerId);
     }
 
     private boolean isOrgOrAdmin(UserAuthDetails userDetails) {
         return userDetails.role().equals(Role.ADMIN) || userDetails.role().equals(Role.ORG);
+    }
+
+    private void checkForAssignments(Long taskBodyId) {
+        applicationEventPublisher.publishEvent(new TaskDeletionRequestEvent(taskBodyId));
+    }
+
+    private List<FileDetailsDTO> getTaskFiles(Long taskBodyId) {
+        Set<FileRole> allowedFileRoles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE, FileRole.SOLUTION);
+        return fileManagerFacade.getFilesByEntity(RelatedEntityType.TASK, taskBodyId, allowedFileRoles);
+    }
+
+    private Map<Long, List<FileDetailsDTO>> getTaskFilesBulk(List<Long> taskIds) {
+        if (taskIds == null || taskIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return fileManagerFacade.getFilesByEntities(
+            RelatedEntityType.TASK,
+            taskIds,
+            Set.of(FileRole.PROBLEM, FileRole.REFERENCE, FileRole.SOLUTION));
+    }
+
+    private Page<TaskResponseDTO> getTaskResponseBulkDTO(Page<TaskBody> myTasksPage) {
+        List<Long> taskIds = myTasksPage.getContent().stream()
+            .map(TaskBody::getId)
+            .toList();
+
+        Map<Long, List<FileDetailsDTO>> files = getTaskFilesBulk(taskIds);
+
+        return myTasksPage
+            .map(e -> taskBodyMapper.toResponse(e, files.getOrDefault(e.getId(), Collections.emptyList())));
     }
 }

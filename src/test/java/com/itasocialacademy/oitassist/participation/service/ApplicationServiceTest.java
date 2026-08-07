@@ -10,7 +10,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFound
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
@@ -24,6 +24,7 @@ import com.itasocialacademy.oitassist.participation.exceptions.UserApplicationRe
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
+import com.itasocialacademy.oitassist.participation.service.ApplicationServiceImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.Instant;
 import java.util.Optional;
@@ -103,7 +104,7 @@ class ApplicationServiceTest {
         when(applicationRepository.save(application)).thenReturn(application);
         when(applicationMapper.toResponse(application)).thenReturn(getCreateApplicationResponse());
 
-        CreateApplicationResponse response = applicationService.userApply(createApplicationRequest);
+        CreateApplicationResponse response = applicationService.sendEnrollmentRequest(createApplicationRequest);
 
         assertNotNull(response);
         assertEquals(RequestStatus.PENDING, application.getStatus());
@@ -115,7 +116,7 @@ class ApplicationServiceTest {
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
 
         assertThrows(AuthorizationException.class,
-            () -> applicationService.userApply(createApplicationRequest));
+            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
 
         verify(applicationRepository, never()).save(any());
     }
@@ -127,7 +128,7 @@ class ApplicationServiceTest {
             4L, 2L, 3L, RequestStatus.PENDING)).thenReturn(true);
 
         UserApplicationRequestException exception = assertThrows(UserApplicationRequestException.class,
-            () -> applicationService.userApply(createApplicationRequest));
+            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
 
         assertTrue(exception.getMessage().contains("already has a pending request"));
         verify(applicationRepository, never()).save(any());
@@ -141,7 +142,7 @@ class ApplicationServiceTest {
         when(participationRepository.existsByUserIdAndCompetitionIdAndStageId(4L, 2L, 3L)).thenReturn(true);
 
         UserApplicationRequestException exception = assertThrows(UserApplicationRequestException.class,
-            () -> applicationService.userApply(createApplicationRequest));
+            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
 
         assertTrue(exception.getMessage().contains("already a participant"));
         verify(applicationRepository, never()).save(any());
@@ -156,7 +157,7 @@ class ApplicationServiceTest {
         when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.empty());
 
         assertThrows(CompetitionNotFoundException.class,
-            () -> applicationService.userApply(createApplicationRequest));
+            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
 
         verify(applicationRepository, never()).save(any());
     }
@@ -171,7 +172,7 @@ class ApplicationServiceTest {
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.empty());
 
         assertThrows(StageNotFoundException.class,
-            () -> applicationService.userApply(createApplicationRequest));
+            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
 
         verify(applicationRepository, never()).save(any());
     }
@@ -191,7 +192,7 @@ class ApplicationServiceTest {
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
 
         UserApplicationRequestException exception = assertThrows(UserApplicationRequestException.class,
-            () -> applicationService.userApply(createApplicationRequest));
+            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
 
         assertTrue(exception.getMessage().contains("cannot be enrolled"));
         verify(applicationRepository, never()).save(any());
@@ -213,7 +214,7 @@ class ApplicationServiceTest {
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(regionalStage));
 
         UserApplicationRequestException exception = assertThrows(UserApplicationRequestException.class,
-            () -> applicationService.userApply(createApplicationRequest));
+            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
 
         assertTrue(exception.getMessage().contains("cannot be enrolled"));
         verify(applicationRepository, never()).save(any());
@@ -236,7 +237,7 @@ class ApplicationServiceTest {
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
-            () -> applicationService.userApply(createApplicationRequest));
+            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
 
         assertTrue(exception.getMessage().contains("does not belong to this competition"));
         verify(applicationRepository, never()).save(any());
@@ -260,7 +261,7 @@ class ApplicationServiceTest {
             RequestStatus.ACCEPTED));
 
         Instant beforeMethod = Instant.now().minusSeconds(1);
-        ProcessApplicationResponse response = applicationService.acceptUserApplication(1L);
+        ProcessApplicationResponse response = applicationService.acceptRequest(1L);
 
         assertNotNull(response);
         assertEquals(RequestStatus.ACCEPTED, application.getStatus());
@@ -279,7 +280,7 @@ class ApplicationServiceTest {
         when(applicationRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(ApplicationNotFoundException.class,
-            () -> applicationService.acceptUserApplication(1L));
+            () -> applicationService.acceptRequest(1L));
 
         verify(participationRepository, never()).save(any());
     }
@@ -290,7 +291,7 @@ class ApplicationServiceTest {
         when(applicationRepository.findById(1L)).thenReturn(Optional.of(application));
 
         assertThrows(UnableToProcessApplicationException.class,
-            () -> applicationService.acceptUserApplication(1L));
+            () -> applicationService.acceptRequest(1L));
 
         verify(participationRepository, never()).save(any());
     }
@@ -299,7 +300,7 @@ class ApplicationServiceTest {
 
     @Test
     void rejectUserApplication_pendingApplication_shouldSetRejectedAndReason() {
-        RejectApplicationRequest request = new RejectApplicationRequest("Invalid profile information");
+        RejectEnrollmentRequest request = new RejectEnrollmentRequest("Invalid profile information");
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(10L));
         when(applicationRepository.findById(1L)).thenReturn(Optional.of(application));
@@ -308,7 +309,7 @@ class ApplicationServiceTest {
             RequestStatus.REJECTED));
 
         Instant beforeMethod = Instant.now().minusSeconds(1);
-        ProcessApplicationResponse response = applicationService.rejectUserApplication(1L, request);
+        ProcessApplicationResponse response = applicationService.rejectRequest(1L, request);
 
         assertNotNull(response);
         assertEquals(RequestStatus.REJECTED, application.getStatus());
@@ -324,23 +325,23 @@ class ApplicationServiceTest {
 
     @Test
     void rejectUserApplication_applicationNotFound_shouldThrowApplicationNotFoundException() {
-        RejectApplicationRequest request = new RejectApplicationRequest("Invalid profile information");
+        RejectEnrollmentRequest request = new RejectEnrollmentRequest("Invalid profile information");
         when(applicationRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(ApplicationNotFoundException.class,
-            () -> applicationService.rejectUserApplication(1L, request));
+            () -> applicationService.rejectRequest(1L, request));
 
         verify(applicationRepository, never()).saveAndFlush(any());
     }
 
     @Test
     void rejectUserApplication_applicationNotPending_shouldThrowUnableToProcessApplicationException() {
-        RejectApplicationRequest request = new RejectApplicationRequest("Invalid profile information");
+        RejectEnrollmentRequest request = new RejectEnrollmentRequest("Invalid profile information");
         application.setStatus(RequestStatus.CANCELLED);
         when(applicationRepository.findById(1L)).thenReturn(Optional.of(application));
 
         assertThrows(UnableToProcessApplicationException.class,
-            () -> applicationService.rejectUserApplication(1L, request));
+            () -> applicationService.rejectRequest(1L, request));
 
         verify(applicationRepository, never()).saveAndFlush(any());
     }
@@ -355,7 +356,7 @@ class ApplicationServiceTest {
         when(processApplicationMapper.toResponse(application)).thenReturn(getProcessApplicationResponse(
             RequestStatus.CANCELLED));
 
-        ProcessApplicationResponse response = applicationService.cancelUserApplication(1L);
+        ProcessApplicationResponse response = applicationService.cancelRequest(1L);
 
         assertNotNull(response);
         assertEquals(RequestStatus.CANCELLED, application.getStatus());
@@ -367,7 +368,7 @@ class ApplicationServiceTest {
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
 
         assertThrows(AuthorizationException.class,
-            () -> applicationService.cancelUserApplication(1L));
+            () -> applicationService.cancelRequest(1L));
 
         verify(applicationRepository, never()).saveAndFlush(any());
     }
@@ -378,7 +379,7 @@ class ApplicationServiceTest {
         when(applicationRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(ApplicationNotFoundException.class,
-            () -> applicationService.cancelUserApplication(1L));
+            () -> applicationService.cancelRequest(1L));
 
         verify(applicationRepository, never()).saveAndFlush(any());
     }
@@ -390,7 +391,7 @@ class ApplicationServiceTest {
         when(applicationRepository.findById(1L)).thenReturn(Optional.of(application));
 
         assertThrows(UnableToProcessApplicationException.class,
-            () -> applicationService.cancelUserApplication(1L));
+            () -> applicationService.cancelRequest(1L));
 
         verify(applicationRepository, never()).saveAndFlush(any());
     }
@@ -401,7 +402,7 @@ class ApplicationServiceTest {
         when(applicationRepository.findById(1L)).thenReturn(Optional.of(application));
 
         UnableToProcessApplicationException exception = assertThrows(UnableToProcessApplicationException.class,
-            () -> applicationService.cancelUserApplication(1L));
+            () -> applicationService.cancelRequest(1L));
 
         assertTrue(exception.getMessage().contains("does not belong to the current user"));
         verify(applicationRepository, never()).saveAndFlush(any());

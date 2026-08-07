@@ -14,10 +14,7 @@ import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.SignatureException;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -43,6 +40,10 @@ public class TokenServiceImpl implements TokenService {
             throw new AuthenticationException("Bad credentials", ErrorCode.BAD_CREDENTIAL);
         } catch (DisabledException e) {
             throw new AuthenticationException("Account is not activated", ErrorCode.USER_NOT_ACTIVATED);
+        } catch (LockedException e) {
+            throw new AuthenticationException("Account is blocked", ErrorCode.USER_BLOCKED);
+        } catch (AccountExpiredException e) {
+            throw new AuthenticationException("Account not found", ErrorCode.USER_NOT_FOUND);
         }
 
         return jwtTokenIssuer.issueFor(Objects.requireNonNull(userDetails));

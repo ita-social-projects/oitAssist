@@ -2,8 +2,10 @@ package com.itasocialacademy.oitassist.task.service.interfaces;
 
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
-import com.itasocialacademy.oitassist.task.dto.request.ChangeOwnerRequestDTO;
+import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
+import com.itasocialacademy.oitassist.task.dto.request.AddOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
+import com.itasocialacademy.oitassist.task.dto.request.RemoveOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.exceptions.TaskAccessRestrictedException;
@@ -11,6 +13,9 @@ import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public interface TaskService {
     /**
@@ -64,17 +69,65 @@ public interface TaskService {
     TaskResponseDTO updateTask(Long taskId, UpdateTaskRequestDTO requestDTO);
 
     /**
-     * Changes the owner of a task to a new user. The new owner must have ADMIN or
-     * ORG role. Only users with ADMIN role can perform this operation.
+     * Adds the owner to an existing task. The new owner must have ADMIN or ORG
+     * role. Only users with ADMIN role can perform this operation.
      *
-     * @param taskId             the ID of the task to reassign
-     * @param changeOwnerRequest the request containing the new owner's email
-     *                           address
+     * @param taskId          the ID of the task to reassign
+     * @param addOwnerRequest the request containing the new owner's email address
      * @return the updated task with the new owner
      * @throws TaskNotFoundException if the task does not exist
      * @throws UserNotFoundException if the new owner user does not exist
      * @throws ValidationException   if the new owner does not have ADMIN or ORG
      *                               role
      */
-    TaskResponseDTO changeTaskOwner(Long taskId, ChangeOwnerRequestDTO changeOwnerRequest);
+    TaskResponseDTO addTaskOwner(Long taskId, AddOwnerRequestDTO addOwnerRequest);
+
+    /**
+     * Removes the owner from an existing task. Only users with ADMIN role can
+     * perform this operation.
+     *
+     * @param taskId             the ID of the task to reassign
+     * @param removeOwnerRequest the request containing the new owner's email
+     *                           address
+     * @return the updated task with given owner removed
+     * @throws TaskNotFoundException if the task does not exist
+     * @throws UserNotFoundException if the new owner user does not exist
+     */
+    TaskResponseDTO removeTaskOwner(Long taskId, RemoveOwnerRequestDTO removeOwnerRequest);
+
+    /**
+     * Deletes a task by its id. Only the task owner or users with ADMIN role can
+     * delete a task.
+     *
+     * @param taskId the ID of the task to delete
+     * @throws TaskNotFoundException         if the task does not exist
+     * @throws TaskAccessRestrictedException if the user is neither the task owner
+     *                                       nor an ADMIN
+     */
+    void deleteTask(Long taskId);
+
+    /**
+     * Retrieves the body information of a task by its id.
+     *
+     * @param taskId the unique identifier of the task to retrieve
+     * @return an {@link Optional} containing the {@link TaskBodyDetail} if the task
+     *         exists, or an empty {@code Optional} if no task is found for the
+     *         given id
+     */
+    Optional<TaskBodyDetail> getTaskBodyDetailById(Long taskId);
+
+    /**
+     * Retrieves a mapping of task IDs to their corresponding titles.
+     *
+     * <p>
+     * If the provided list of IDs is {@code null} or empty, this method immediately
+     * returns an empty map without querying the database.
+     * </p>
+     *
+     * @param taskIds a list of task ids whose titles are to be fetched
+     * @return a {@link Map} containing the task ids as keys and their titles as
+     *         values. Tasks from the list that are not found in the database will
+     *         simply not be included in the map.
+     */
+    Map<Long, String> getTaskTitlesByIds(List<Long> taskIds);
 }

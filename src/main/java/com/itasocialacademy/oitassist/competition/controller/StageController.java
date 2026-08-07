@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.controller;
 
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeStageStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateStageRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.UpdateStageRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.StageResponse;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -60,7 +62,13 @@ public class StageController {
 
     @Operation(summary = "Get all stages for a competition")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "List of stages retrieved successfully")
+        @ApiResponse(responseCode = "200", description = "List of stages retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Validation failed",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Stage not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/competitions/{competitionId}/stages")
     @PreAuthorize("isAuthenticated()")
@@ -73,8 +81,10 @@ public class StageController {
         @ApiResponse(responseCode = "200", description = "Stage updated successfully"),
         @ApiResponse(responseCode = "400", description = "Validation failed (e.g., date overlap or locked competition)",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "403", description = "Access denied"),
-        @ApiResponse(responseCode = "404", description = "Stage not found")
+        @ApiResponse(responseCode = "403", description = "Access denied",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Stage not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PutMapping("/competitions/{competitionId}/stages/{stageId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
@@ -85,13 +95,36 @@ public class StageController {
         return ResponseEntity.ok(stageService.update(competitionId, stageId, request));
     }
 
+    @Operation(
+        summary = "Change stage status manually",
+        description = "Transitions the stage to a new status. Cannot start if the previous stage is not FINISHED.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Stage status updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Validation failed",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Stage not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
+    @PatchMapping("/competitions/{competitionId}/stages/{stageId}/status")
+    public ResponseEntity<StageResponse> changeStatus(
+        @PathVariable Long competitionId,
+        @PathVariable Long stageId,
+        @Valid @RequestBody ChangeStageStatusRequest request) {
+        return ResponseEntity.ok(stageService.changeStatus(competitionId, stageId, request));
+    }
+
     @Operation(summary = "Delete a stage")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Stage deleted successfully"),
         @ApiResponse(responseCode = "400", description = "Cannot delete (competition is locked)",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "403", description = "Access denied"),
-        @ApiResponse(responseCode = "404", description = "Stage not found")
+        @ApiResponse(responseCode = "403", description = "Access denied",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Stage not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @DeleteMapping("/competitions/{competitionId}/stages/{stageId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
@@ -105,6 +138,10 @@ public class StageController {
     @Operation(summary = "Get a specific stage by ID")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Stage retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Cannot delete (competition is locked)",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Stage not found",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })

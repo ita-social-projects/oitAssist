@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.user.mapper;
 
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.model.User;
 import org.mapstruct.Mapper;
@@ -36,6 +37,19 @@ public interface UserMapper {
      * </p>
      */
     UserAuthDetails toUserAuthDetails(User entity);
+
+    /**
+     * Maps a {@link User} entity to the cross-module display-projection
+     * {@link UserProfileDetails}.
+     *
+     * <p>
+     * Called by
+     * {@link com.itasocialacademy.oitassist.user.service.interfaces.UserService#findProfileDetailsById}
+     * which is in turn called by
+     * {@link com.itasocialacademy.oitassist.user.api.facade.UserFacadeImpl#findProfileById}.
+     * </p>
+     */
+    UserProfileDetails toUserProfileDetails(User entity);
 
     default List<SimpleGrantedAuthority> mapAuthorities(User entity) {
         return List.of(new SimpleGrantedAuthority("ROLE_" + entity.getRole().name()));
