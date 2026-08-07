@@ -25,14 +25,15 @@ public class AsyncEmailSender {
 
     /**
      * Handles asynchronously an {@link ApplicationDecisionEvent} after the
-     * publishing transaction has committed. Builds the activation URL from the
-     * event token and sends the email.
+     * publishing transaction has committed. Builds an URL (or URLs) and sends an
+     * application status email.
      *
      * <p>
-     * Based on the request status the corresponding template is sent. In case of
-     * ACCEPTED event the email contains only the link for {@code competition}. In
-     * case of REJECTED one the email has links for {@code competition} and
-     * {@code profile}.
+     * According to the request status the corresponding template is sent. In case
+     * of the ACCEPTED status the email contains only the link for specific
+     * {@code competition} and the application-accepted template is sent. In case of
+     * the REJECTED one the email has links both for the {@code competition} and
+     * student's {@code profile} and the application-rejected template is sent.
      * </p>
      *
      * @param event the event carrying the titles of competition and stage, the
