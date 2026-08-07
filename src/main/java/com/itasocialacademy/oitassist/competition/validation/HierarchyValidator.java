@@ -187,6 +187,9 @@ public class HierarchyValidator {
 
     @Transactional(readOnly = true)
     public void validateToursNotStartedByStageId(Long stageId) {
+        if (!stageRepository.existsById(stageId)) {
+            throw new StageNotFoundException(stageId);
+        }
         List<Tour> tours = tourRepository.findAllByStageIdOrderBySortPositionAsc(stageId);
 
         boolean anyStarted = tours.stream()
