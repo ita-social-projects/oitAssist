@@ -607,6 +607,7 @@ class HierarchyValidatorTest {
         Tour t1 = Tour.builder().id(1L).executionStatus(ExecutionStatus.SCHEDULED).build();
         Tour t2 = Tour.builder().id(2L).executionStatus(ExecutionStatus.SCHEDULED).build();
 
+        when(stageRepository.existsById(anyLong())).thenReturn(true);
         when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(t1, t2));
 
         assertDoesNotThrow(() -> validator.validateToursNotStartedByStageId(10L));
@@ -617,6 +618,7 @@ class HierarchyValidatorTest {
         Tour t1 = Tour.builder().id(1L).executionStatus(ExecutionStatus.SCHEDULED).build();
         Tour t2 = Tour.builder().id(2L).executionStatus(ExecutionStatus.IN_PROGRESS).build();
 
+        when(stageRepository.existsById(anyLong())).thenReturn(true);
         when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(t1, t2));
 
         CompetitionHierarchyValidationException exception = assertThrows(
@@ -631,6 +633,7 @@ class HierarchyValidatorTest {
         Tour t1 = Tour.builder().id(1L).executionStatus(ExecutionStatus.SCHEDULED).build();
         Tour t2 = Tour.builder().id(2L).executionStatus(ExecutionStatus.FINISHED).build();
 
+        when(stageRepository.existsById(anyLong())).thenReturn(true);
         when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(t1, t2));
 
         assertThrows(CompetitionHierarchyValidationException.class,
@@ -642,6 +645,7 @@ class HierarchyValidatorTest {
         Tour t1 = Tour.builder().id(1L).executionStatus(ExecutionStatus.SCHEDULED).build();
         Tour t2 = Tour.builder().id(2L).executionStatus(ExecutionStatus.CANCELLED).build();
 
+        when(stageRepository.existsById(anyLong())).thenReturn(true);
         when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(t1, t2));
 
         assertThrows(CompetitionHierarchyValidationException.class,
@@ -650,8 +654,16 @@ class HierarchyValidatorTest {
 
     @Test
     void validateToursNotStartedByStageId_noTours_shouldPass() {
+        when(stageRepository.existsById(anyLong())).thenReturn(true);
         when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of());
 
         assertDoesNotThrow(() -> validator.validateToursNotStartedByStageId(10L));
+    }
+
+    @Test
+    void validateToursNotStartedByStageId_noStage_shouldThrow() {
+        when(stageRepository.existsById(anyLong())).thenReturn(false);
+
+        assertThrows(StageNotFoundException.class, () -> validator.validateToursNotStartedByStageId(10L));
     }
 }
