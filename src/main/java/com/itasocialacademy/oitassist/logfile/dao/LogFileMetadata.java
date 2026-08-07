@@ -4,18 +4,18 @@ import java.time.Instant;
 import java.util.Objects;
 
 public record LogFileMetadata(
-    String filename,
+    String fileName,
     long size,
     Instant lastModified) {
     public LogFileMetadata {
         Objects.requireNonNull(
-            filename,
+            fileName,
             "filename must not be null");
         Objects.requireNonNull(
             lastModified,
             "lastModified must not be null");
 
-        if (filename.isBlank()) {
+        if (fileName.isBlank()) {
             throw new IllegalArgumentException("filename must not be blank");
         }
         if (size < 0) {

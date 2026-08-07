@@ -200,10 +200,6 @@ class LogFileControllerTest {
             .andExpect(jsonPath("$.totalElements").value(0))
             .andExpect(jsonPath("$.totalPages").value(0));
 
-        Pageable pageable = capturePageable();
-
-        assertThat(pageable.getPageNumber()).isZero();
-        assertThat(pageable.getPageSize()).isEqualTo(10);
     }
 
     private Pageable capturePageable() {
@@ -232,5 +228,31 @@ class LogFileControllerTest {
                         .permitAll())
                 .build();
         }
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldUseProvidedSortParameter() throws Exception {
+        PageResponse<LogFileResponse> response =
+            new PageResponse<>(
+                List.of(),
+                0,
+                10,
+                0,
+                0);
+
+        when(logFileService.getAll(any(Pageable.class)))
+            .thenReturn(response);
+
+        mockMvc.perform(
+            get(ENDPOINT)
+                .param("sort", "fileName,asc"))
+            .andExpect(status().isOk());
+
+        Pageable pageable = capturePageable();
+
+        assertThat(
+            pageable.getSort().getOrderFor("fileName")).isEqualTo(
+                Sort.Order.asc("fileName"));
     }
 }

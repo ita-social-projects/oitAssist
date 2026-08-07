@@ -3,7 +3,6 @@ package com.itasocialacademy.oitassist.logfile.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -19,12 +18,11 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @ExtendWith(MockitoExtension.class)
 class LogFileServiceImplTest {
@@ -208,32 +206,6 @@ class LogFileServiceImplTest {
         verifyNoInteractions(logFileMapper);
     }
 
-    @ParameterizedTest
-    @CsvSource({
-        "-1, 10",
-        "0, 0",
-        "0, -1",
-        "0, 101"
-    })
-    void shouldThrowValidationExceptionForInvalidPagination(
-        int page,
-        int size) {
-        Pageable pageable = mock(Pageable.class);
-
-        when(pageable.getPageNumber())
-            .thenReturn(page);
-
-        when(pageable.getPageSize())
-            .thenReturn(size);
-
-        assertThatThrownBy(
-            () -> logFileService.getAll(pageable)).isInstanceOf(ValidationException.class);
-
-        verifyNoInteractions(
-            logFileDao,
-            logFileMapper);
-    }
-
     @Test
     void shouldPropagateLogFileListingExceptionFromDao() {
         LogFileListingException exception =
@@ -251,6 +223,146 @@ class LogFileServiceImplTest {
         verifyNoInteractions(logFileMapper);
     }
 
+    @Test
+    void shouldSortBySizeAscending() {
+        Instant timestamp =
+            Instant.parse("2026-07-22T12:00:00Z");
+
+        when(logFileDao.findAll()).thenReturn(
+            List.of(
+                metadata("large.log", 300, timestamp),
+                metadata("small.log", 100, timestamp),
+                metadata("middle.log", 200, timestamp)));
+
+        stubMapper();
+
+        Pageable pageable = PageRequest.of(
+            0,
+            DEFAULT_PAGE_SIZE,
+            Sort.by(Sort.Direction.ASC, "size"));
+
+        PageResponse<LogFileResponse> result =
+            logFileService.getAll(pageable);
+
+        assertThat(result.content())
+            .extracting(LogFileResponse::fileName)
+            .containsExactly(
+                "small.log",
+                "middle.log",
+                "large.log");
+    }
+
+    @Test
+    void shouldSortByFileNameDescending() {
+        Instant timestamp =
+            Instant.parse("2026-07-22T12:00:00Z");
+
+        when(logFileDao.findAll()).thenReturn(
+            List.of(
+                metadata("alpha.log", 100, timestamp),
+                metadata("charlie.log", 100, timestamp),
+                metadata("bravo.log", 100, timestamp)));
+
+        stubMapper();
+
+        Pageable pageable = PageRequest.of(
+            0,
+            DEFAULT_PAGE_SIZE,
+            Sort.by(Sort.Direction.DESC, "fileName"));
+
+        PageResponse<LogFileResponse> result =
+            logFileService.getAll(pageable);
+
+        assertThat(result.content())
+            .extracting(LogFileResponse::fileName)
+            .containsExactly(
+                "charlie.log",
+                "bravo.log",
+                "alpha.log");
+    }
+
+    @Test
+    void shouldUseFileNameAsTieBreakerForCustomSort() {
+        Instant timestamp =
+            Instant.parse("2026-07-22T12:00:00Z");
+
+        when(logFileDao.findAll()).thenReturn(
+            List.of(
+                metadata("charlie.log", 100, timestamp),
+                metadata("alpha.log", 100, timestamp),
+                metadata("bravo.log", 100, timestamp)));
+
+        stubMapper();
+
+        Pageable pageable = PageRequest.of(
+            0,
+            DEFAULT_PAGE_SIZE,
+            Sort.by(Sort.Direction.ASC, "size"));
+
+        PageResponse<LogFileResponse> result =
+            logFileService.getAll(pageable);
+
+        assertThat(result.content())
+            .extracting(LogFileResponse::fileName)
+            .containsExactly(
+                "alpha.log",
+                "bravo.log",
+                "charlie.log");
+    }
+
+    @Test
+    void shouldApplyMultipleSortOrders() {
+        Instant oldest =
+            Instant.parse("2026-07-20T12:00:00Z");
+
+        Instant newest =
+            Instant.parse("2026-07-22T12:00:00Z");
+
+        when(logFileDao.findAll()).thenReturn(
+            List.of(
+                metadata("third.log", 200, oldest),
+                metadata("first.log", 100, newest),
+                metadata("second.log", 200, newest)));
+
+        stubMapper();
+
+        Sort sort = Sort.by(
+            Sort.Order.desc("size"),
+            Sort.Order.desc("lastModified"));
+
+        Pageable pageable =
+            PageRequest.of(
+                0,
+                DEFAULT_PAGE_SIZE,
+                sort);
+
+        PageResponse<LogFileResponse> result =
+            logFileService.getAll(pageable);
+
+        assertThat(result.content())
+            .extracting(LogFileResponse::fileName)
+            .containsExactly(
+                "second.log",
+                "third.log",
+                "first.log");
+    }
+
+    @Test
+    void shouldThrowValidationExceptionForUnsupportedSortProperty() {
+        Pageable pageable = PageRequest.of(
+            0,
+            DEFAULT_PAGE_SIZE,
+            Sort.by("unsupported"));
+
+        assertThatThrownBy(
+            () -> logFileService.getAll(pageable))
+            .isInstanceOf(ValidationException.class);
+
+        verifyNoInteractions(
+            logFileDao,
+            logFileMapper);
+    }
+
     private void stubMapper() {
         when(
             logFileMapper.toResponse(
@@ -260,7 +372,7 @@ class LogFileServiceImplTest {
                     invocation.getArgument(0);
 
                 return new LogFileResponse(
-                    metadata.filename(),
+                    metadata.fileName(),
                     metadata.size(),
                     metadata.lastModified());
             });

@@ -7,6 +7,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class LogFileMapper {
     public LogFileResponse toResponse(LogFileMetadata metadata) {
-        return new LogFileResponse(metadata.filename(), metadata.size(), metadata.lastModified());
+        return new LogFileResponse(metadata.fileName(), metadata.size(), metadata.lastModified());
     }
 }

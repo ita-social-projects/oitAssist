@@ -66,7 +66,7 @@ class FileSystemLogFileDaoTest {
         LogFileMetadata activeMetadata =
             findByFileName(result, "app.log");
 
-        assertThat(activeMetadata.filename())
+        assertThat(activeMetadata.fileName())
             .isEqualTo("app.log");
 
         assertThat(activeMetadata.size())
@@ -83,7 +83,7 @@ class FileSystemLogFileDaoTest {
                 result,
                 "app.log.2026-07-20.log.gz");
 
-        assertThat(archivedMetadata.filename())
+        assertThat(archivedMetadata.fileName())
             .isEqualTo(
                 "app.log.2026-07-20.log.gz");
 
@@ -110,7 +110,7 @@ class FileSystemLogFileDaoTest {
             logFileDao.findAll();
 
         assertThat(result)
-            .extracting(LogFileMetadata::filename)
+            .extracting(LogFileMetadata::fileName)
             .containsExactly("app.log")
             .doesNotContain("archive");
     }
@@ -154,7 +154,7 @@ class FileSystemLogFileDaoTest {
         String fileName) {
         return files.stream()
             .filter(
-                file -> file.filename().equals(fileName))
+                file -> file.fileName().equals(fileName))
             .findFirst()
             .orElseThrow();
     }

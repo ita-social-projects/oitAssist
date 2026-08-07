@@ -59,7 +59,8 @@ public enum ErrorCode {
 
     // Log files
     INVALID_LOG_FILE_PAGINATION(ErrorCategory.VALIDATION),
-    LOG_FILE_LISTING_FAILED(ErrorCategory.TECHNICAL);
+    LOG_FILE_LISTING_FAILED(ErrorCategory.TECHNICAL),
+    INVALID_LOG_FILE_SORT(ErrorCategory.VALIDATION),;
 
     private final ErrorCategory category;
 }

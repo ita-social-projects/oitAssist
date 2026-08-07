@@ -13,18 +13,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 public class LogFileServiceImpl implements LogFileService {
-    private static final int MAX_PAGE_SIZE = 100;
+    private static final Comparator<LogFileMetadata> FILE_NAME_SORT_ORDER =
+        Comparator.comparing(LogFileMetadata::fileName,
+            String.CASE_INSENSITIVE_ORDER);
 
     private static final Comparator<LogFileMetadata> DEFAULT_SORT_ORDER =
         Comparator.comparing(LogFileMetadata::lastModified)
             .reversed()
-            .thenComparing(LogFileMetadata::filename,
-                String.CASE_INSENSITIVE_ORDER);
+            .thenComparing(FILE_NAME_SORT_ORDER);
 
     private final LogFileDao logFileDao;
     private final LogFileMapper logFileMapper;
@@ -36,14 +38,16 @@ public class LogFileServiceImpl implements LogFileService {
 
     @Override
     public PageResponse<LogFileResponse> getAll(Pageable pageable) {
-        int size = pageable.getPageSize();
-        int page = pageable.getPageNumber();
-        validatePagination(page, size);
+        log.debug("Fetching log files with pagination: page={}, size={}, sort{}",
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            pageable.getSort());
 
-        log.debug("Fetching log files with pagination: page={}, size={}", page, size);
+        Comparator<LogFileMetadata> sortOrder =
+            resolveSortOrder(pageable.getSort());
 
         List<LogFileMetadata> sortedFiles = logFileDao.findAll().stream()
-            .sorted(DEFAULT_SORT_ORDER)
+            .sorted(sortOrder)
             .toList();
 
         List<LogFileMetadata> pageContent = sortedFiles.stream()
@@ -69,23 +73,41 @@ public class LogFileServiceImpl implements LogFileService {
             responsePage.getTotalPages());
     }
 
-    private void validatePagination(int page, int size) {
-        if (page < 0) {
-            throw new ValidationException(
-                "Page number must be greater than or equal to 0",
-                ErrorCode.INVALID_LOG_FILE_PAGINATION);
+    private Comparator<LogFileMetadata> resolveSortOrder(Sort sort) {
+        Comparator<LogFileMetadata> result = null;
+
+        for (Sort.Order order : sort) {
+            Comparator<LogFileMetadata> comparator =
+                comparatorFor(order.getProperty());
+
+            if (order.isDescending()) {
+                comparator = comparator.reversed();
+            }
+
+            result = result == null
+                ? comparator
+                : result.thenComparing(comparator);
         }
 
-        if (size < 1) {
-            throw new ValidationException(
-                "Page size must be greater than 0",
-                ErrorCode.INVALID_LOG_FILE_PAGINATION);
+        if (result == null) {
+            return DEFAULT_SORT_ORDER;
         }
 
-        if (size > MAX_PAGE_SIZE) {
-            throw new ValidationException(
-                "Size must not exceed " + MAX_PAGE_SIZE,
-                ErrorCode.INVALID_LOG_FILE_PAGINATION);
+        if (sort.getOrderFor("fileName") == null) {
+            result = result.thenComparing(FILE_NAME_SORT_ORDER);
         }
+
+        return result;
+    }
+
+    private Comparator<LogFileMetadata> comparatorFor(String property) {
+        return switch (property) {
+            case "fileName" -> FILE_NAME_SORT_ORDER;
+            case "size" -> Comparator.comparingLong(LogFileMetadata::size);
+            case "lastModified" -> Comparator.comparing(LogFileMetadata::lastModified);
+            default -> throw new ValidationException(
+                "Unsupported sort property: " + property,
+                ErrorCode.INVALID_LOG_FILE_SORT);
+        };
     }
 }
