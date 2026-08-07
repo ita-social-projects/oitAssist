@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title>Сповіщення про підтверджену заявку</title>
-    <link rel="stylesheet" href="styles/application-status.css">
+    <style>
+        <#include "fragments/application-status-style.ftl">
+    </style>
 </head>
 <body>
 <div class="container">
     <h1>Привіт, ${firstName}!</h1>
-    <p>Ваша заявка на участь в олімпіаді "${competitionTitle}", етапі "${stageTitle}" була прийнята!🥳<br>
+    <p>Ваша заявка на участь в олімпіаді <strong>"${competitionTitle}"</strong>,
+        етапі <strong>"${stageTitle}"</strong> була прийнята!🥳<br>
         Ви можете переглянути деталі олімпіади натиснувши кнопку нижче:</p>
     <a href="${competitionLink}" class="button">Переглянути деталі ↗</a>
     <h3>Бажаємо успіхів!</h3>

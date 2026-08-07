@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title>Сповіщення про відхилену заявку</title>
-    <link rel="stylesheet" href="styles/application-status.css">
+    <style>
+        <#include "fragments/application-status-style.ftl">
+    </style>
 </head>
 <body>
 <div class="container">
     <h1>Привіт, ${firstName}!</h1>
-    <p>Ваша заявка на участь в олімпіаді "${competitionTitle}", етапі "${stageTitle}" була відхилена❌</p>
+    <p>Ваша заявка на участь в олімпіаді <strong>"${competitionTitle}"</strong>,
+        етапі <strong>"${stageTitle}"</strong> була відхилена❌</p>
     <#if rejectionReason??>
         <h3>Причина: ${rejectionReason}</h3>
     </#if>
