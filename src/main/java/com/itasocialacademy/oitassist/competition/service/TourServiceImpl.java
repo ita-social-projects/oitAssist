@@ -142,7 +142,6 @@ public class TourServiceImpl implements TourService {
     @Override
     @Transactional
     public List<TourResponse> reorder(Long stageId, ReorderToursRequest request) {
-        // validator.validateImmutabilityByStageId(stageId);
         validator.validateToursNotStartedByStageId(stageId);
 
         List<Tour> existingTours = tourRepository.findAllByStageIdOrderBySortPositionAsc(stageId);
