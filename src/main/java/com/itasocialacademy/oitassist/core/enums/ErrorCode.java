@@ -66,6 +66,12 @@ public enum ErrorCode {
 
     USER_PARTICIPATION_REQUEST_RESTRICTED(ErrorCategory.VALIDATION),
     REQUEST_CANNOT_BE_PROCESSED(ErrorCategory.VALIDATION),
+
+    // Log files
+    INVALID_LOG_FILE_PAGINATION(ErrorCategory.VALIDATION),
+    LOG_FILE_LISTING_FAILED(ErrorCategory.TECHNICAL),
+    INVALID_LOG_FILE_SORT(ErrorCategory.VALIDATION),
+
     DATA_ACCESS_ERROR(ErrorCategory.TECHNICAL);
 
     private final ErrorCategory category;
