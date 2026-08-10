@@ -114,8 +114,9 @@ public class NewsServiceImpl implements NewsService {
     }
 
     @Override
-    public Page<ResponseNewsAdminListItemDto> getAllNewsForAdmin(Pageable pageable, String search) {
-        Specification<News> spec = NewsSpecification.withAllStatuses(search);
+    public Page<ResponseNewsAdminListItemDto> getAllNewsForAdmin(Pageable pageable, String search,
+        List<NewsStatus> statuses, LocalDate dateFrom, LocalDate dateTo) {
+        Specification<News> spec = NewsSpecification.withAdminFilters(search, statuses, dateFrom, dateTo);
         return repository.findAll(spec, pageable).map(mapper::toAdminListItemDto);
     }
 

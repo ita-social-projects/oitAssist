@@ -7,6 +7,7 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -33,11 +34,27 @@ public class NewsSpecification {
         };
     }
 
-    public static Specification<News> withAllStatuses(String search) {
+    public static Specification<News> withAdminFilters(String search, List<NewsStatus> statuses, LocalDate dateFrom,
+        LocalDate dateTo) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             addSearchPredicate(predicates, root, cb, search);
+
+            if (statuses != null && !statuses.isEmpty()) {
+                predicates.add(root.get("status").in(statuses));
+            }
+
+            if (dateFrom != null) {
+                OffsetDateTime startOfDay = dateFrom.atStartOfDay().atZone(java.time.ZoneOffset.UTC).toOffsetDateTime();
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startOfDay));
+            }
+
+            if (dateTo != null) {
+                OffsetDateTime endOfDay =
+                    dateTo.plusDays(1).atStartOfDay().atZone(java.time.ZoneOffset.UTC).toOffsetDateTime();
+                predicates.add(cb.lessThan(root.get("createdAt"), endOfDay));
+            }
 
             if (predicates.isEmpty()) {
                 return cb.conjunction();
