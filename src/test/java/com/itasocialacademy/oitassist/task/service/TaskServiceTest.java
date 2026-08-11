@@ -24,6 +24,7 @@ import com.itasocialacademy.oitassist.task.exceptions.TaskAccessRestrictedExcept
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.task.mapper.TaskBodyMapper;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
@@ -92,9 +93,16 @@ class TaskServiceTest {
             .title("Test Task")
             .description("Test Description")
             .createdBy(100L)
+            .createdByEmail("creator@mail.com")
             .ownerIds(new HashSet<>(Set.of(100L)))
             .files(testFiles)
             .build();
+
+        lenient().when(userFacade.findProfileById(100L))
+            .thenReturn(Optional.of(new UserProfileDetails(100L, "Creator", "creator@mail.com")));
+
+        lenient().when(userFacade.findByIds(List.of(100L)))
+            .thenReturn(List.of(new UserAuthDetails(100L, "creator@mail.com", "pass", Role.ADMIN)));
     }
 
     // ---- createTask ----
@@ -107,6 +115,7 @@ class TaskServiceTest {
             .id(1L)
             .title("Test Task")
             .description("Test Description")
+            .createdBy(100L)
             .owners(new HashSet<>())
             .build();
 
@@ -114,7 +123,7 @@ class TaskServiceTest {
         when(taskBodyMapper.toEntity(request)).thenReturn(taskWithoutOwners);
         when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskWithoutOwners);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskWithoutOwners, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskWithoutOwners, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
         TaskResponseDTO result = taskService.createTask(request);
 
@@ -139,7 +148,7 @@ class TaskServiceTest {
         when(taskBodyMapper.toEntity(request)).thenReturn(taskBody);
         when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
         taskService.createTask(request);
 
@@ -159,7 +168,7 @@ class TaskServiceTest {
         when(taskBodyMapper.toEntity(request)).thenReturn(taskBody);
         when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
         taskService.createTask(request);
 
@@ -186,6 +195,7 @@ class TaskServiceTest {
         TaskBody freshEntity = new TaskBody();
         freshEntity.setId(1L);
         freshEntity.setTitle("Test Task");
+        freshEntity.setCreatedBy(100L);
         freshEntity.setOwners(new HashSet<>(Set.of(
             TaskOwner.builder()
                 .id(new TaskOwnerId(1L, 100L))
@@ -195,7 +205,7 @@ class TaskServiceTest {
         when(taskBodyMapper.toEntity(request)).thenReturn(freshEntity);
         when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(freshEntity);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(freshEntity, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(freshEntity, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
         taskService.createTask(request);
 
@@ -203,7 +213,6 @@ class TaskServiceTest {
         verify(taskBodyRepository).save(captor.capture());
         TaskBody saved = captor.getValue();
 
-        assertNull(saved.getCreatedBy());
         assertNull(saved.getUpdatedBy());
         assertNull(saved.getCreatedAt());
         assertNull(saved.getUpdatedAt());
@@ -214,8 +223,9 @@ class TaskServiceTest {
     @Test
     void getTaskById_existingId_shouldReturnResponse() {
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
         TaskResponseDTO result = taskService.getTaskById(1L);
 
@@ -240,7 +250,7 @@ class TaskServiceTest {
 
         when(taskBodyRepository.findAll(pageable)).thenReturn(page);
         when(fileManagerFacade.getFilesByEntities(any(), eq(List.of(1L)), any())).thenReturn(Map.of(1L, testFiles));
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
         Page<TaskResponseDTO> result = taskService.getAllTasks(pageable);
 
@@ -249,7 +259,7 @@ class TaskServiceTest {
         assertEquals(taskResponse, result.getContent().getFirst());
 
         verify(taskBodyRepository).findAll(pageable);
-        verify(taskBodyMapper).toResponse(taskBody, testFiles);
+        verify(taskBodyMapper).toResponse(taskBody, testFiles, "creator@mail.com");
     }
 
     @Test
@@ -263,7 +273,7 @@ class TaskServiceTest {
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
-        verify(taskBodyMapper, never()).toResponse(any(), any());
+        verify(taskBodyMapper, never()).toResponse(any(), any(), anyString());
     }
 
     // ---- getAllMyTasks ----
@@ -276,7 +286,7 @@ class TaskServiceTest {
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
         when(taskBodyRepository.findAllByOwnerId(100L, pageable)).thenReturn(expectedRepositoryPage);
         when(fileManagerFacade.getFilesByEntities(any(), eq(List.of(1L)), any())).thenReturn(Map.of(1L, testFiles));
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
         Page<TaskResponseDTO> result = taskService.getAllMyTasks(pageable);
 
@@ -284,7 +294,7 @@ class TaskServiceTest {
         assertEquals(1, result.getTotalElements());
         verify(securityFacade).getCurrentUserId();
         verify(taskBodyRepository).findAllByOwnerId(100L, pageable);
-        verify(taskBodyMapper).toResponse(eq(taskBody), any());
+        verify(taskBodyMapper).toResponse(eq(taskBody), any(), anyString());
     }
 
     @Test
@@ -317,7 +327,7 @@ class TaskServiceTest {
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
         when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(updatedResponse);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(updatedResponse);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
 
         TaskResponseDTO result = taskService.updateTask(1L, request);
@@ -345,7 +355,7 @@ class TaskServiceTest {
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
 
         taskService.updateTask(1L, request);
@@ -364,7 +374,7 @@ class TaskServiceTest {
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
 
         taskService.updateTask(1L, request);
@@ -412,7 +422,7 @@ class TaskServiceTest {
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("newowner@mail.com")).thenReturn(Optional.of(newOwner));
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(any(TaskBody.class), any())).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(any(TaskBody.class), any(), anyString())).thenReturn(taskResponse);
 
         TaskResponseDTO result = taskService.addTaskOwner(1L, request);
 
@@ -421,7 +431,7 @@ class TaskServiceTest {
         assertTrue(taskBody.getOwners().stream()
             .anyMatch(owner -> owner.getId().getOwnerId().equals(200L)));
 
-        verify(taskBodyMapper).toResponse(taskBody, testFiles);
+        verify(taskBodyMapper).toResponse(taskBody, testFiles, "creator@mail.com");
     }
 
     @Test
@@ -489,7 +499,7 @@ class TaskServiceTest {
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("currentowner@mail.com")).thenReturn(Optional.of(owner));
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
         int ownersCount = taskBody.getOwners().size();
 
@@ -498,7 +508,7 @@ class TaskServiceTest {
         assertNotNull(result);
         assertEquals(ownersCount, taskBody.getOwners().size());
 
-        verify(taskBodyMapper).toResponse(taskBody, testFiles);
+        verify(taskBodyMapper).toResponse(taskBody, testFiles, "creator@mail.com");
     }
 
     // ---- removeTaskOwner ----
@@ -514,7 +524,7 @@ class TaskServiceTest {
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("currentowner@mail.com")).thenReturn(Optional.of(owner));
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
         TaskResponseDTO result = taskService.removeTaskOwner(1L, request);
 
@@ -523,7 +533,7 @@ class TaskServiceTest {
         assertFalse(taskBody.getOwners().stream()
             .anyMatch(o -> o.getId().getOwnerId().equals(100L)));
 
-        verify(taskBodyMapper).toResponse(taskBody, testFiles);
+        verify(taskBodyMapper).toResponse(taskBody, testFiles, "creator@mail.com");
     }
 
     @Test
@@ -575,7 +585,7 @@ class TaskServiceTest {
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("unknown@mail.com")).thenReturn(Optional.of(user));
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(taskBody, testFiles)).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
         int ownersCount = taskBody.getOwners().size();
 
@@ -584,7 +594,7 @@ class TaskServiceTest {
         assertNotNull(result);
         assertEquals(ownersCount, taskBody.getOwners().size());
 
-        verify(taskBodyMapper).toResponse(taskBody, testFiles);
+        verify(taskBodyMapper).toResponse(taskBody, testFiles, "creator@mail.com");
     }
 
     // ---- deleteTask ----
