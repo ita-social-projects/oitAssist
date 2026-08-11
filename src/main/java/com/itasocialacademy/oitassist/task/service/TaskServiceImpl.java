@@ -82,7 +82,7 @@ public class TaskServiceImpl implements TaskService {
             .orElseThrow(() -> new TaskNotFoundException(id));
 
         checkOwnerOrAdmin(taskBody.getOwners().stream()
-                .map(o -> o.getId().getOwnerId()).collect(Collectors.toSet()),
+            .map(o -> o.getId().getOwnerId()).collect(Collectors.toSet()),
             taskBody.getId());
 
         log.debug("Get Task: Id {}", taskBody.getId());
