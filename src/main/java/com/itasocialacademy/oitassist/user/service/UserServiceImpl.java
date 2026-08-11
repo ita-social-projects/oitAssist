@@ -105,20 +105,31 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public @NonNull Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search) {
+    public @NonNull Page<ResponseUserDTO> getUsers(
+        @NonNull Pageable pageable,
+        String search,
+        List<Role> roles) {
         if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
             throw new InsufficientPermissionsException();
         }
-        if (search != null && !search.isBlank()) {
-            String normalizedSearch = search.trim()
+
+        String normalizedSearch = search == null || search.isBlank()
+            ? null
+            : search.trim()
                 .replaceAll("\\s+", " ")
                 .replace("\\", "\\\\")
                 .replace("%", "\\%")
                 .replace("_", "\\_");
-            return repository.findAllBySearch(normalizedSearch, pageable).map(mapper::toResponseUserDTO);
-        } else {
-            return repository.findAll(pageable).map(mapper::toResponseUserDTO);
-        }
+
+        List<Role> normalizedRoles = roles == null || roles.isEmpty()
+            ? null
+            : roles;
+
+        return repository.findAllBySearchAndRoles(
+            normalizedSearch,
+            normalizedRoles,
+            pageable)
+            .map(mapper::toResponseUserDTO);
     }
 
     @Override
