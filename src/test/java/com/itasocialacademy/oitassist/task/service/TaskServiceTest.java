@@ -235,6 +235,30 @@ class TaskServiceTest {
     }
 
     @Test
+    void getTaskById_asAdmin_shouldReturnResponse() {
+        when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(50L));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
+        when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
+
+        TaskResponseDTO result = taskService.getTaskById(1L);
+
+        assertNotNull(result);
+        assertEquals(1L, result.id());
+        verify(taskBodyRepository).findById(1L);
+    }
+
+    @Test
+    void getTaskById_notOwnerNotAdmin_shouldThrowTaskAccessRestrictedException() {
+        when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(50L));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+
+        assertThrows(TaskAccessRestrictedException.class, () -> taskService.getTaskById(1L));
+    }
+
+    @Test
     void getTaskById_nonExistingId_shouldThrowTaskNotFoundException() {
         when(taskBodyRepository.findById(99L)).thenReturn(Optional.empty());
 
@@ -294,7 +318,7 @@ class TaskServiceTest {
         assertEquals(1, result.getTotalElements());
         verify(securityFacade).getCurrentUserId();
         verify(taskBodyRepository).findAllByOwnerId(100L, pageable);
-        verify(taskBodyMapper).toResponse(eq(taskBody), any(), anyString());
+        verify(taskBodyMapper).toResponse(taskBody, testFiles, "creator@mail.com");
     }
 
     @Test
@@ -320,6 +344,7 @@ class TaskServiceTest {
             .title("Updated Title")
             .description("Updated Description")
             .createdBy(100L)
+            .createdByEmail("creator@mail.com")
             .ownerIds(new HashSet<>(Set.of(100L)))
             .build();
 
@@ -335,6 +360,7 @@ class TaskServiceTest {
         assertNotNull(result);
         assertEquals("Updated Title", result.title());
         assertEquals("Updated Description", result.description());
+        assertEquals("creator@mail.com", result.createdByEmail());
 
         ArgumentCaptor<TaskBody> captor = ArgumentCaptor.forClass(TaskBody.class);
         verify(taskBodyRepository).save(captor.capture());
@@ -422,7 +448,7 @@ class TaskServiceTest {
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("newowner@mail.com")).thenReturn(Optional.of(newOwner));
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
-        when(taskBodyMapper.toResponse(any(TaskBody.class), any(), anyString())).thenReturn(taskResponse);
+        when(taskBodyMapper.toResponse(any(TaskBody.class), any(), eq("creator@mail.com"))).thenReturn(taskResponse);
 
         TaskResponseDTO result = taskService.addTaskOwner(1L, request);
 
