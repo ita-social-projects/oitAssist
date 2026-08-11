@@ -19,7 +19,7 @@ public interface TaskBodyMapper {
     TaskBody toEntity(CreateTaskRequestDTO taskBody);
 
     @Mapping(target = "ownerIds", source = "taskBody.owners")
-    TaskResponseDTO toResponse(TaskBody taskBody, List<FileDetailsDTO> files);
+    TaskResponseDTO toResponse(TaskBody taskBody, List<FileDetailsDTO> files, String createdByEmail);
 
     @Mapping(target = "ownerIds", source = "owners")
     TaskBodyDetail toTaskBodyDetail(TaskBody taskBody);
