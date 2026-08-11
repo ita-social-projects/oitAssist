@@ -79,8 +79,11 @@ public class TaskServiceImpl implements TaskService {
     @Transactional(readOnly = true)
     public TaskResponseDTO getTaskById(Long id) {
         TaskBody taskBody = taskBodyRepository.findById(id)
-            .orElseThrow(
-                () -> new TaskNotFoundException(id));
+            .orElseThrow(() -> new TaskNotFoundException(id));
+
+        checkOwnerOrAdmin(taskBody.getOwners().stream()
+                .map(o -> o.getId().getOwnerId()).collect(Collectors.toSet()),
+            taskBody.getId());
 
         log.debug("Get Task: Id {}", taskBody.getId());
         return getResponse(taskBody);
