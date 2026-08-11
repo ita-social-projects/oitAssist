@@ -1,9 +1,9 @@
 package com.itasocialacademy.oitassist.export.service;
 
 import com.itasocialacademy.oitassist.export.dao.dto.ExportData;
-import com.itasocialacademy.oitassist.export.dao.dto.ParticipantResult;
-import com.itasocialacademy.oitassist.export.dao.dto.StageResult;
-import com.itasocialacademy.oitassist.export.dao.dto.TourResult;
+import com.itasocialacademy.oitassist.evaluation.api.dto.ParticipantResult;
+import com.itasocialacademy.oitassist.evaluation.api.dto.StageResult;
+import com.itasocialacademy.oitassist.evaluation.api.dto.TourResult;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
@@ -13,9 +13,9 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
-import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class ExcelExporterTest {
     private final ExcelExporter exporter = new ExcelExporter();
@@ -132,6 +132,22 @@ public class ExcelExporterTest {
             Row dataRow = sheet.getRow(1);
             assertEquals("Ігор", dataRow.getCell(0).getStringCellValue());
             assertEquals(55, dataRow.getCell(1).getNumericCellValue());
+        }
+    }
+
+    @Test
+    void export_ShouldWriteDashInToursSheet_WhenTourScoreIsNull() throws IOException {
+        ExportData data = new ExportData("Олімпіада", List.of(
+            new ParticipantResult("Каріна", 0, List.of(
+                new StageResult("Етап 1", 0, List.of(
+                    new TourResult("Тур 2", null)))))));
+
+        byte[] result = exporter.export(data);
+
+        try (Workbook workbook = openWorkbook(result)) {
+            Row dataRow = workbook.getSheet("Тури").getRow(1);
+            assertEquals("Каріна", dataRow.getCell(0).getStringCellValue());
+            assertEquals("-", dataRow.getCell(3).getStringCellValue());
         }
     }
 
