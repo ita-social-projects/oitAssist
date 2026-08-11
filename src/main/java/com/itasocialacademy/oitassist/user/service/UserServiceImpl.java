@@ -1,37 +1,32 @@
 package com.itasocialacademy.oitassist.user.service;
 
-import com.itasocialacademy.oitassist.core.enums.ErrorCode;
-import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
-import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
-import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
-import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
+import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import com.itasocialacademy.oitassist.user.dao.model.User;
-import com.itasocialacademy.oitassist.user.exceptions.AdminRoleModificationException;
-import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
-import com.itasocialacademy.oitassist.user.exceptions.UserRoleSelfChangeException;
+import com.itasocialacademy.oitassist.user.exceptions.*;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import java.util.List;
 import java.util.Optional;
 
+@RequiredArgsConstructor
 @Service
-public class UserServiceImpl
-    extends AbstractServiceImpl<Long, User, CreateUserDTO, UpdateUserDTO, ResponseUserDTO, UserRepository, UserMapper>
-    implements UserService {
+public class UserServiceImpl implements UserService {
     private final SecurityFacade securityFacade;
-
-    protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade) {
-        super(repository, mapper);
-        this.securityFacade = securityFacade;
-    }
+    private final UserRepository repository;
+    private final UserMapper mapper;
 
     /**
      * {@inheritDoc}
@@ -46,6 +41,24 @@ public class UserServiceImpl
     public Optional<UserAuthDetails> findAuthDetailsByEmail(String email) {
         return repository.findUserByEmail(email)
             .map(mapper::toUserAuthDetails);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<UserAuthDetails> findAuthDetailsByIds(List<Long> userIds) {
+        return repository.findAllById(userIds)
+            .stream().map(mapper::toUserAuthDetails).toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<UserProfileDetails> findProfileDetailsById(Long userId) {
+        return repository.findById(userId)
+            .map(mapper::toUserProfileDetails);
     }
 
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {
@@ -66,7 +79,7 @@ public class UserServiceImpl
     @NonNull
     public ResponseUserDTO getCurrentUserProfile() {
         String email = securityFacade.getCurrentUserEmail()
-            .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
+            .orElseThrow(UserAuthorizationException::new);
 
         return loadUserByEmail(email);
     }
@@ -75,7 +88,7 @@ public class UserServiceImpl
     @NonNull
     public ResponseUserDTO changeUserRole(@NonNull Long userId, @NonNull Role newRole) {
         if (securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED))
+            .orElseThrow(UserAuthorizationException::new)
             .equals(userId)) {
             throw new UserRoleSelfChangeException();
         }
@@ -88,6 +101,42 @@ public class UserServiceImpl
             throw new AdminRoleModificationException();
         }
         user.setRole(newRole);
+        return mapper.toResponseUserDTO(repository.save(user));
+    }
+
+    @Override
+    public @NonNull Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search) {
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
+        }
+        if (search != null && !search.isBlank()) {
+            String normalizedSearch = search.trim()
+                .replaceAll("\\s+", " ")
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+            return repository.findAllBySearch(normalizedSearch, pageable).map(mapper::toResponseUserDTO);
+        } else {
+            return repository.findAll(pageable).map(mapper::toResponseUserDTO);
+        }
+    }
+
+    @Override
+    public @NonNull ResponseUserDTO changeUserStatus(@NonNull Long userId, @NonNull UserStatus newStatus) {
+        if (securityFacade.getCurrentUserId()
+            .orElseThrow(UserAuthorizationException::new)
+            .equals(userId)) {
+            throw new UserStatusSelfChangeException();
+        }
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
+        }
+        User user = repository.findById(userId)
+            .orElseThrow(UserNotFoundException::new);
+        if (user.getRole().equals(Role.ADMIN)) {
+            throw new AdminStatusModificationException();
+        }
+        user.setUserStatus(newStatus);
         return mapper.toResponseUserDTO(repository.save(user));
     }
 }

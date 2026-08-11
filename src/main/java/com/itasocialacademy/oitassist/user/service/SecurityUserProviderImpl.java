@@ -59,7 +59,9 @@ public class SecurityUserProviderImpl implements SecurityUserProvider {
             .id(user.getId())
             .email(user.getEmail())
             .password(user.getPassword())
-            .enabled(user.getUserStatus() == UserStatus.ACTIVE)
+            .isEnabled(user.getUserStatus() != UserStatus.PENDING)
+            .isAccountNonLocked(user.getUserStatus() != UserStatus.BLOCKED)
+            .isAccountNonExpired(user.getUserStatus() != UserStatus.DELETED)
             .authorities(List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
             .build();
     }

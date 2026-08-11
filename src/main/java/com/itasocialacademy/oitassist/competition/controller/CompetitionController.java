@@ -1,9 +1,10 @@
 package com.itasocialacademy.oitassist.competition.controller;
 
-import com.itasocialacademy.oitassist.competition.dto.request.ChangeStatusRequest;
-import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
+import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
+import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -57,15 +59,19 @@ public class CompetitionController {
     @Operation(
         summary = "Get all visible competitions",
         description = "Retrieves a paginated list of competitions. "
-            + "Visibility depends on user role (e.g., USER sees only PUBLISHED/ARCHIVED, ORG sees their DRAFTs).")
+            + "Visibility depends on user role (e.g., USER sees only ENROLLMENT, PUBLISHED, FINISHED;"
+            + " ORG additionally sees DRAFT competitions, including those from other organizations).")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Competitions retrieved successfully")
+        @ApiResponse(responseCode = "200", description = "Competitions retrieved successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<CompetitionResponse>> getAllVisible(
-        @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
-        return ResponseEntity.ok(PageResponse.from(competitionService.getAllVisible(pageable)));
+        @Valid @ParameterObject CompetitionSearchFilter filter,
+        @ParameterObject @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        return ResponseEntity.ok(PageResponse.from(competitionService.getAllVisible(filter, pageable)));
     }
 
     @Operation(
@@ -78,8 +84,9 @@ public class CompetitionController {
     @GetMapping("/archived")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PageResponse<CompetitionResponse>> getArchived(
-        @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
-        return ResponseEntity.ok(PageResponse.from(competitionService.getArchived(pageable)));
+        @Valid @ParameterObject CompetitionSearchFilter filter,
+        @ParameterObject @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        return ResponseEntity.ok(PageResponse.from(competitionService.getArchived(filter, pageable)));
     }
 
     @Operation(
@@ -142,7 +149,7 @@ public class CompetitionController {
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<CompetitionResponse> changeStatus(
         @PathVariable Long competitionId,
-        @Valid @RequestBody ChangeStatusRequest request) {
-        return ResponseEntity.ok(competitionService.changeStatus(competitionId, request.newStatus()));
+        @Valid @RequestBody ChangeCompetitionStatusRequest request) {
+        return ResponseEntity.ok(competitionService.changeStatus(competitionId, request.status()));
     }
 }

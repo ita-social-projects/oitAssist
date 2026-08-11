@@ -2,6 +2,8 @@ package com.itasocialacademy.oitassist.task.dao.model;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.*;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -43,4 +45,21 @@ public class TaskBody {
     @LastModifiedDate
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @OneToMany(
+        mappedBy = "task",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true)
+    @Builder.Default
+    private Set<TaskOwner> owners = new HashSet<>();
+
+    public void addOwner(TaskOwner owner) {
+        owners.add(owner);
+        owner.setTask(this);
+    }
+
+    public void removeOwner(TaskOwner owner) {
+        owners.remove(owner);
+        owner.setTask(null);
+    }
 }

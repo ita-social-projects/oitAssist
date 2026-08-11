@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.news.dao.repository;
 
-import com.itasocialacademy.oitassist.core.rest.repository.EntityRepository;
 import com.itasocialacademy.oitassist.news.dao.model.News;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -14,7 +13,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface NewsRepository
-    extends JpaRepository<News, Long>, EntityRepository<News, Long>, JpaSpecificationExecutor<News> {
+    extends JpaRepository<News, Long>, JpaSpecificationExecutor<News> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
                         UPDATE news

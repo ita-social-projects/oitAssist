@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.service.interfaces;
 
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeStageStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateStageRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.UpdateStageRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.StageResponse;
@@ -65,6 +66,8 @@ public interface StageService {
      * @return the updated stage response DTO
      */
     StageResponse update(Long compId, Long stageId, UpdateStageRequest request);
+
+    StageResponse changeStatus(Long compId, Long stageId, ChangeStageStatusRequest request);
 
     /**
      * Deletes a specific Stage.

@@ -1,5 +1,7 @@
 package com.itasocialacademy.oitassist.competition.service.interfaces;
 
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeTourStatusRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.ReorderToursRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.UpdateTourRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateTourRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
@@ -34,6 +36,10 @@ public interface TourService {
      * @return the updated tour response DTO
      */
     TourResponse update(Long pathStageId, Long tourId, UpdateTourRequest request);
+
+    TourResponse changeStatus(Long stageId, Long tourId, ChangeTourStatusRequest request);
+
+    List<TourResponse> reorder(Long stageId, ReorderToursRequest request);
 
     /**
      * Deletes a specific Tour.

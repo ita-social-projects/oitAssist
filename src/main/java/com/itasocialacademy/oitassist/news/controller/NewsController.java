@@ -1,26 +1,28 @@
 package com.itasocialacademy.oitassist.news.controller;
 
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
-import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ArchivedNewsByYearDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsAdminListItemDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
+import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsArchivingService;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -29,14 +31,10 @@ import static org.springframework.data.domain.Sort.Direction.DESC;
 @Tag(name = "News v1", description = "Operations related to news")
 @RestController
 @RequestMapping("/api/v1/news")
-public class NewsController
-    extends AbstractRestControllerImpl<Long, CreateNewsDTO, UpdateNewsDto, ResponseNewsDto, NewsService> {
+@RequiredArgsConstructor
+public class NewsController {
     private final NewsArchivingService newsArchivingService;
-
-    protected NewsController(NewsService service, NewsArchivingService newsArchivingService) {
-        super(service);
-        this.newsArchivingService = newsArchivingService;
-    }
+    private final NewsService service;
 
     @Operation(summary = "Create news", description = "Creates a new news item")
     @ApiResponses(value = {
@@ -46,11 +44,9 @@ public class NewsController
     })
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
-
-    @Override
     public ResponseEntity<ResponseNewsDto> save(
         @Valid @RequestBody CreateNewsDTO dto) {
-        return super.save(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.save(dto));
     }
 
     @Operation(summary = "Update news", description = "Updates existing news")
@@ -62,10 +58,9 @@ public class NewsController
     })
     @PutMapping
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
-    @Override
     public ResponseEntity<ResponseNewsDto> update(
         @Valid @RequestBody UpdateNewsDto dto) {
-        return super.update(dto);
+        return ResponseEntity.ok().body(service.update(dto));
     }
 
     @Operation(summary = "Get news by id", description = "Returns news by its identifier")
@@ -74,10 +69,9 @@ public class NewsController
         @ApiResponse(responseCode = "404", description = "News not found")
     })
     @GetMapping("/{id}")
-    @Override
     public ResponseEntity<ResponseNewsDto> getById(
         @PathVariable Long id) {
-        return super.getById(id);
+        return ResponseEntity.ok().body(service.getById(id));
     }
 
     @Operation(summary = "Delete news", description = "Deletes news by id")
@@ -88,10 +82,10 @@ public class NewsController
     })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
-    @Override
     public ResponseEntity<Void> delete(
         @PathVariable Long id) {
-        return super.delete(id);
+        service.delete(id);
+        return ResponseEntity.ok().build();
     }
 
     @Operation(
@@ -100,17 +94,9 @@ public class NewsController
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Published news retrieved successfully")
     })
-    @Parameters({
-        @Parameter(name = "page", description = "Zero-based page index", example = "0"),
-        @Parameter(name = "size", description = "Page size", example = "5"),
-        @Parameter(name = "sort", description = "Sorting criteria", example = "publishedAt,desc")
-    })
     @GetMapping
     public ResponseEntity<PageResponse<ResponseNewsListItemDto>> getPublishedNews(
-        @Parameter(hidden = true) @PageableDefault(
-            size = 5,
-            sort = "publishedAt",
-            direction = DESC) Pageable pageable,
+        @ParameterObject @PageableDefault(size = 5, sort = "publishedAt", direction = DESC) Pageable pageable,
         @RequestParam(required = false) String search,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(PageResponse.from(service.getPublishedNews(pageable, search, date)));
@@ -126,5 +112,24 @@ public class NewsController
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
     public ResponseEntity<List<ArchivedNewsByYearDto>> getArchivedNews() {
         return ResponseEntity.ok(newsArchivingService.getArchivedNewsGroupedByYearAndMonth());
+    }
+
+    @Operation(
+        summary = "Get all news",
+        description = "Returns paginated list of all news (with all statuses) for admin panel")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "News retrieved successfully"),
+        @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    @GetMapping("/admin")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
+    public ResponseEntity<PageResponse<ResponseNewsAdminListItemDto>> getAllNewsForAdmin(
+        @ParameterObject @PageableDefault(size = 15, sort = "createdAt", direction = DESC) Pageable pageable,
+        @RequestParam(required = false) String search,
+        @RequestParam(required = false) List<NewsStatus> statuses,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        return ResponseEntity
+            .ok(PageResponse.from(service.getAllNewsForAdmin(pageable, search, statuses, dateFrom, dateTo)));
     }
 }

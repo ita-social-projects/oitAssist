@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.user.dao.dto.request;
 
-import com.itasocialacademy.oitassist.core.rest.dto.CreateEntityDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
@@ -13,7 +12,7 @@ import lombok.*;
 @ToString
 @EqualsAndHashCode
 @Schema(description = "Create User request DTO")
-public class CreateUserDTO implements CreateEntityDTO<Long> {
+public class CreateUserDTO {
     @NotBlank
     @Schema(description = "User Email", example = "mail@gmail.com")
     private String email;

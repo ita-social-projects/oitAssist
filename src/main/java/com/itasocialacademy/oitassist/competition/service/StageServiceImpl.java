@@ -1,7 +1,9 @@
 package com.itasocialacademy.oitassist.competition.service;
 
+import com.itasocialacademy.oitassist.competition.dao.enums.StageStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeStageStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateStageRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.UpdateStageRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.StageResponse;
@@ -31,10 +33,13 @@ public class StageServiceImpl implements StageService {
         Stage stage = mapper.toEntity(request);
         stage.setCompetitionId(competitionId);
 
-        // TODO: validation by title must be more flexible (e.g. if exists "Lviv 1" ->
-        // can't create "Lviv 2")
         if (stageRepository.existsByCompetitionIdAndTitle(competitionId, stage.getTitle())) {
             throw new CompetitionHierarchyValidationException("Stage title already exists in this competition.");
+        }
+
+        if (stageRepository.existsByCompetitionIdAndScope(competitionId, stage.getScope())) {
+            throw new CompetitionHierarchyValidationException(
+                "A stage with scope %s already exists in this competition.".formatted(stage.getScope()));
         }
 
         if (stage.getSortPosition() != null) {
@@ -45,7 +50,8 @@ public class StageServiceImpl implements StageService {
                     "Sort position " + stage.getSortPosition() + " is already taken in this competition.");
             }
         } else {
-            Stage lastStage = stageRepository.findTopByCompetitionIdOrderBySortPositionDesc(competitionId);
+            Stage lastStage = stageRepository.findTopByCompetitionIdOrderBySortPositionDesc(competitionId)
+                .orElse(null);
             stage.setSortPosition(lastStage != null ? (short) (lastStage.getSortPosition() + 1) : 1);
         }
         return mapper.toResponse(stageRepository.save(stage));
@@ -100,11 +106,36 @@ public class StageServiceImpl implements StageService {
                     throw new CompetitionHierarchyValidationException(
                         "Stage title already exists in this competition.");
                 }
+                if (existing.getScope() == request.scope()) {
+                    throw new CompetitionHierarchyValidationException(
+                        "A stage with scope %s already exists in this competition.".formatted(request.scope()));
+                }
                 if (existing.getSortPosition().equals(stage.getSortPosition())) {
                     throw new CompetitionHierarchyValidationException(
-                        "Sort position " + stage.getSortPosition() + " is already taken.");
+                        "Sort position %s is already taken.".formatted(stage.getSortPosition()));
                 }
             });
+
+        return mapper.toResponse(stageRepository.save(stage));
+    }
+
+    @Override
+    @Transactional
+    public StageResponse changeStatus(Long compId, Long stageId, ChangeStageStatusRequest request) {
+        Stage stage = stageRepository.findById(stageId)
+            .orElseThrow(() -> new StageNotFoundException(stageId));
+
+        validator.validateStageEligibility(compId, stage.getCompetitionId());
+        validator.checkIfCompetitionPublishedByCompetitionId(compId);
+        validator.validateStageStatusTransition(stage.getStatus(), request.status());
+
+        if (request.status() == StageStatus.IN_PROGRESS) {
+            validator.validateStageEligibilityToStart(stage);
+        } else if (request.status() == StageStatus.FINISHED) {
+            validator.validateAllToursCompletedForStage(stageId);
+        }
+
+        stage.setStatus(request.status());
 
         return mapper.toResponse(stageRepository.save(stage));
     }

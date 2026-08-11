@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.news.dao.dto.request;
 
-import com.itasocialacademy.oitassist.core.rest.dto.UpdateEntityDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,7 +15,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Schema(description = "DTO for updating existing news")
-public class UpdateNewsDto implements UpdateEntityDTO<Long> {
+public class UpdateNewsDto {
     @Schema(
         description = "Unique identifier of the news",
         example = "1",

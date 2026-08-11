@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.news.dao.dto.response;
 
-import com.itasocialacademy.oitassist.core.rest.dto.EntityDTO;
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -17,7 +16,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Schema(description = "DTO representing news response")
-public class ResponseNewsDto implements EntityDTO<Long> {
+public class ResponseNewsDto {
     @Schema(
         description = "Unique identifier of the news",
         example = "1")

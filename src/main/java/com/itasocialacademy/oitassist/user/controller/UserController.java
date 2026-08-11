@@ -1,18 +1,24 @@
 package com.itasocialacademy.oitassist.user.controller;
 
-import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
+import static org.springframework.data.domain.Sort.Direction.DESC;
+import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
+import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserRoleRequest;
-import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
-import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
+import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserStatusRequest;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,11 +26,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @Tag(name = "Users v1", description = "Operations related to users")
 @RequestMapping("/api/v1/users")
-public class UserController
-    extends AbstractRestControllerImpl<Long, CreateUserDTO, UpdateUserDTO, ResponseUserDTO, UserService> {
-    protected UserController(UserService service) {
-        super(service);
-    }
+@RequiredArgsConstructor
+public class UserController {
+    private final UserService service;
 
     @GetMapping("/profile")
     @Operation(
@@ -42,11 +46,7 @@ public class UserController
             description = "Unauthorized - token is missing or invalid",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "Full authentication is required to access this resource"
-                        }
-                    """)))
+                schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<ResponseUserDTO> getProfile() {
         return ResponseEntity.ok(service.getCurrentUserProfile());
@@ -68,46 +68,112 @@ public class UserController
             description = "Invalid role or request payload",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "Invalid role provided"
-                        }
-                    """))),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "401",
             description = "Unauthorized - token is missing or invalid",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "Full authentication is required to access this resource"
-                        }
-                    """))),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "403",
             description = "Forbidden - insufficient permissions or attempt to modify restricted user",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "Access denied"
-                        }
-                    """))),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "404",
             description = "User not found",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(example = """
-                        {
-                            "message": "User not found"
-                        }
-                    """)))
+                schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ResponseUserDTO> changeUserRole(
         @PathVariable Long id,
         @RequestBody @Valid ChangeUserRoleRequest request) {
         return ResponseEntity.ok(service.changeUserRole(id, request.getRole()));
+    }
+
+    @Operation(
+        summary = "Get paginated list of users",
+        description = "Returns a paginated list of users for the admin dashboard with optional search by name or email")
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Users retrieved successfully"),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized - token is missing or invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - insufficient permissions",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Parameters({
+        @Parameter(name = "page", description = "Zero-based page index", example = "0"),
+        @Parameter(name = "size", description = "Page size", example = "5"),
+        @Parameter(name = "sort", description = "Sorting criteria", example = "firstName,desc")
+    })
+    public ResponseEntity<PageResponse<ResponseUserDTO>> getUsers(
+        @Parameter(hidden = true) @PageableDefault(
+            size = 5,
+            sort = "id",
+            direction = DESC) Pageable pageable,
+
+        @Parameter(
+            description = "Optional search query for filtering users by name or email",
+            example = "ivan") @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(PageResponse.from(service.getUsers(pageable, search)));
+    }
+
+    @PatchMapping("/{id}/status")
+    @Operation(
+        summary = "Change user status",
+        description = "Allows admin to change status of an existing user")
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User status updated successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ResponseUserDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid status or request payload",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized - token is missing or invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - insufficient permissions or attempt to modify restricted user",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "User not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ResponseUserDTO> changeUserStatus(
+        @PathVariable Long id,
+        @RequestBody @Valid ChangeUserStatusRequest request) {
+        return ResponseEntity.ok(service.changeUserStatus(id, request.getStatus()));
     }
 }
