@@ -83,7 +83,8 @@ public class SecurityConfig {
                 .permitAll()
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/news/**",
-                    "/api/v1/user-activation/verify")
+                    "/api/v1/user-activation/verify",
+                    "/ui/**")
                 .permitAll()
                 .requestMatchers(
                     "/oauth2/**",
