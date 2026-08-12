@@ -66,9 +66,6 @@ public class SecurityConfig {
         return source;
     }
 
-    // todo: consider adding or changing permit for ui. See
-    // core/controller/SpaController
-
     @Bean
     public SecurityFilterChain configure(HttpSecurity http) {
         return http
@@ -84,9 +81,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/news/**",
                     "/api/v1/user-activation/verify",
+                    "/ui",
                     "/ui/**")
                 .permitAll()
                 .requestMatchers(
+                    "/index.html",
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/oauth-test.html",
