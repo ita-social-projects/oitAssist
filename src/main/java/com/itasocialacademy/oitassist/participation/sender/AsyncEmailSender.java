@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.participation.sender;
 import com.itasocialacademy.oitassist.core.properties.WebClientProperties;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.InvitationRequestEvent;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -80,6 +81,37 @@ public class AsyncEmailSender {
             email,
             template,
             "Статус заявки",
+            root);
+    }
+
+    @Async
+    public void sendInvitationEmail(InvitationRequestEvent event) {
+        String email = event.email();
+        log.info("Handling InvitationRequestEvent for email={}", email);
+
+        String competitionLink = UriComponentsBuilder
+            .fromUriString(webClientProperties.origin())
+            .path(COMPETITION_PATH)
+            .build()
+            .toUriString();
+        String profileLink = UriComponentsBuilder
+            .fromUriString(webClientProperties.origin())
+            .path(PROFILE_PATH)
+            .build()
+            .toUriString();
+
+        Map<String, String> root = Map.of(
+            "firstName", event.firstName(),
+            "competitionTitle", event.competitionTitle(),
+            "stageTitle", event.stageTitle(),
+            "competitionLink", competitionLink,
+            "profileLink", profileLink
+        );
+
+        emailService.sendTemplateEmail(
+            email,
+            "invitation-created.html",
+            "Запрошення до олімпіади",
             root);
     }
 }
