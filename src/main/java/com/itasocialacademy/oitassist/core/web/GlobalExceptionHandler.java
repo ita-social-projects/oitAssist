@@ -16,6 +16,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import java.time.Instant;
@@ -244,5 +245,31 @@ public class GlobalExceptionHandler {
             .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED,
                 "Required request part '" + ex.getRequestPartName() + "' is not present",
                 HttpStatus.BAD_REQUEST.value(), null));
+    }
+
+    /**
+     * Handles {@link MissingServletRequestParameterException} by generating an
+     * appropriate error response. This exception is thrown when a required request
+     * parameter is missing.
+     *
+     * @param ex      the exception object containing details of the missing request
+     *                parameter
+     * @param request the HTTP request that triggered the exception
+     * @return a {@link ResponseEntity} containing an {@link ErrorResponse} with
+     *         error details, including the name of the missing parameter
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingServletRequestParameter(
+        MissingServletRequestParameterException ex, HttpServletRequest request) {
+        log.warn("Missing request parameter: traceId={}, parameter={}",
+            MDC.get(TRACE_ID_MDC), ex.getParameterName());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(buildResponse(
+                request,
+                ErrorCode.COMMON_VALIDATION_FAILED,
+                "Required request parameter '" + ex.getParameterName() + "' is not present",
+                HttpStatus.BAD_REQUEST.value(),
+                null));
     }
 }

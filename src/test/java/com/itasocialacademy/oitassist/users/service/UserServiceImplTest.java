@@ -490,4 +490,110 @@ class UserServiceImplTest {
         verify(securityFacade).getCurrentUserId();
         verifyNoInteractions(repository, mapper);
     }
+
+    @Test
+    @DisplayName("getUsersByIds should return paged users when current user is admin")
+    void getUsersByIds_ShouldReturnPagedUsers_WhenCurrentUserIsAdmin() {
+        Pageable pageable = PageRequest.of(0, 10);
+        List<Long> ids = List.of(1L, 2L);
+
+        User firstUser = User.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .surname("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.USER)
+            .userStatus(UserStatus.ACTIVE)
+            .build();
+
+        User secondUser = User.builder()
+            .id(2L)
+            .email("anna@example.com")
+            .firstName("Anna")
+            .surname("Kovalenko")
+            .middleName("Ivanivna")
+            .role(Role.ORG)
+            .userStatus(UserStatus.ACTIVE)
+            .build();
+
+        ResponseUserDTO firstResponse = ResponseUserDTO.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .lastName("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.USER)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        ResponseUserDTO secondResponse = ResponseUserDTO.builder()
+            .id(2L)
+            .email("anna@example.com")
+            .firstName("Anna")
+            .lastName("Kovalenko")
+            .middleName("Ivanivna")
+            .role(Role.ORG)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        Page<User> userPage = new PageImpl<>(
+            List.of(firstUser, secondUser),
+            pageable,
+            2);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(repository.findAllByIdIn(ids, pageable)).thenReturn(userPage);
+        when(mapper.toResponseUserDTO(firstUser)).thenReturn(firstResponse);
+        when(mapper.toResponseUserDTO(secondUser)).thenReturn(secondResponse);
+
+        Page<ResponseUserDTO> result = userService.getUsersByIds(pageable, ids);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
+        assertThat(result.getContent().get(1).getId()).isEqualTo(2L);
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(repository).findAllByIdIn(ids, pageable);
+        verify(mapper).toResponseUserDTO(firstUser);
+        verify(mapper).toResponseUserDTO(secondUser);
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should throw InsufficientPermissionsException when current user is not admin")
+    void getUsersByIds_ShouldThrowInsufficientPermissionsException_WhenCurrentUserIsNotAdmin() {
+        Pageable pageable = PageRequest.of(0, 10);
+        List<Long> ids = List.of(1L, 2L);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(false);
+
+        assertThatThrownBy(() -> userService.getUsersByIds(pageable, ids))
+            .isInstanceOf(InsufficientPermissionsException.class)
+            .hasMessage("You do not have enough permissions to perform this action");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should return empty page when no users match provided ids")
+    void getUsersByIds_ShouldReturnEmptyPage_WhenNoUsersMatchProvidedIds() {
+        Pageable pageable = PageRequest.of(0, 10);
+        List<Long> ids = List.of(100L, 200L);
+
+        Page<User> emptyPage = Page.empty(pageable);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(repository.findAllByIdIn(ids, pageable)).thenReturn(emptyPage);
+
+        Page<ResponseUserDTO> result = userService.getUsersByIds(pageable, ids);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEmpty();
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(repository).findAllByIdIn(ids, pageable);
+        verifyNoInteractions(mapper);
+    }
 }

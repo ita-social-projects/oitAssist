@@ -213,4 +213,114 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
 
         verifyNoInteractions(userService);
     }
+
+    @Test
+    @DisplayName("getUsersByIds should return paged users when request is valid")
+    void getUsersByIds_ShouldReturnPagedUsers_WhenRequestIsValid() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        ResponseUserDTO firstUser = ResponseUserDTO.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .lastName("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.USER)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        ResponseUserDTO secondUser = ResponseUserDTO.builder()
+            .id(2L)
+            .email("anna@example.com")
+            .firstName("Anna")
+            .lastName("Kovalenko")
+            .middleName("Ivanivna")
+            .role(Role.ORG)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        Page<ResponseUserDTO> page = new PageImpl<>(
+            List.of(firstUser, secondUser),
+            pageable,
+            2);
+
+        List<Long> ids = List.of(1L, 2L);
+
+        when(userService.getUsersByIds(any(Pageable.class), eq(ids)))
+            .thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/users/by-ids")
+            .param("page", "0")
+            .param("size", "10")
+            .param("ids", "1", "2"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.content[0].id").value(1L))
+            .andExpect(jsonPath("$.content[0].email").value("ivan@example.com"))
+            .andExpect(jsonPath("$.content[0].role").value("USER"))
+            .andExpect(jsonPath("$.content[1].id").value(2L))
+            .andExpect(jsonPath("$.content[1].email").value("anna@example.com"))
+            .andExpect(jsonPath("$.content[1].role").value("ORG"))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.pageSize").value(10))
+            .andExpect(jsonPath("$.totalPages").value(1))
+            .andExpect(jsonPath("$.totalElements").value(2));
+
+        verify(userService).getUsersByIds(
+            any(Pageable.class),
+            eq(ids));
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should accept a single user id")
+    void getUsersByIds_ShouldAcceptSingleUserId() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Page<ResponseUserDTO> page = new PageImpl<>(
+            List.of(ResponseUserDTO.builder()
+                .id(1L)
+                .email("ivan@example.com")
+                .firstName("Ivan")
+                .lastName("Petrenko")
+                .role(Role.USER)
+                .status(UserStatus.ACTIVE)
+                .build()),
+            pageable,
+            1);
+
+        when(userService.getUsersByIds(
+            any(Pageable.class),
+            eq(List.of(1L)))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/users/by-ids")
+            .param("ids", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(1));
+
+        verify(userService).getUsersByIds(
+            any(Pageable.class),
+            eq(List.of(1L)));
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should return 400 when ids parameter is not provided")
+    void getUsersByIds_ShouldReturn400_WhenIdsAreNotProvided() throws Exception {
+        mockMvc.perform(get("/api/v1/users/by-ids")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should return 400 when ids contain invalid value")
+    void getUsersByIds_ShouldReturn400_WhenIdsContainInvalidValue() throws Exception {
+        mockMvc.perform(get("/api/v1/users/by-ids")
+            .param("ids", "1", "invalid", "3"))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userService);
+    }
 }

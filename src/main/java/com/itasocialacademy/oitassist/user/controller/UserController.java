@@ -149,7 +149,7 @@ public class UserController {
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @GetMapping
+    @GetMapping("/by-ids")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PageResponse<ResponseUserDTO>> getUsersByIds(
         @ParameterObject @PageableDefault(
@@ -159,7 +159,7 @@ public class UserController {
         @Parameter(
             description = "Ids of users to search for",
             example = "[1,2,3]") @RequestParam List<Long> ids) {
-        return ResponseEntity.ok(PageResponse.from(service.getUsersByIds(pageable,ids)));
+        return ResponseEntity.ok(PageResponse.from(service.getUsersByIds(pageable, ids)));
     }
 
     @PatchMapping("/{id}/status")
