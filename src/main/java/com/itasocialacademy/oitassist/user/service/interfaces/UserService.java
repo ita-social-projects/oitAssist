@@ -40,6 +40,13 @@ public interface UserService {
     Optional<UserProfileDetails> findProfileDetailsById(Long userId);
 
     /**
+     * Bulk variant of {@link #findProfileDetailsById} — returns the display-side
+     * projections for all matching users. IDs with no matching user are simply
+     * omitted from the result, consistent with {@link #findAuthDetailsByIds}.
+     */
+    List<UserProfileDetails> findProfilesDetailsByIds(List<Long> userIds);
+
+    /**
      * Searches for the list of users by their IDs and returns the list of auth-side
      * projections required by {@code UserFacade.findByIds}. Returns empty if no
      * users were found.
