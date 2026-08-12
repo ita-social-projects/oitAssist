@@ -100,6 +100,17 @@ public interface UserService {
     Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search);
 
     /**
+     * Returns a paginated list of users with given ids. Available only for admins
+     *
+     * @param pageable pagination parameters
+     * @param ids      ids to search users by
+     * @return paginated list of users
+     * @throws InsufficientPermissionsException if user does not have admin role
+     */
+    @NonNull
+    Page<ResponseUserDTO> getUsersByIds(@NonNull Pageable pageable, List<Long> ids);
+
+    /**
      * Changes the status of an existing user.
      *
      * @param userId    target user identifier

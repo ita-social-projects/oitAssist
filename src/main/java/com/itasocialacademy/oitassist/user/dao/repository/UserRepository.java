@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.user.dao.repository;
 
 import com.itasocialacademy.oitassist.user.dao.model.User;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,4 +31,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
                        ESCAPE '\\'
         """)
     Page<User> findAllBySearch(String search, Pageable pageable);
+
+    Page<User> findAllByIdIn(List<Long> ids, Pageable pageable);
 }

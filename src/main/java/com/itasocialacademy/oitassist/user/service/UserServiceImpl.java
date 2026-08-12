@@ -122,6 +122,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public @NonNull Page<ResponseUserDTO> getUsersByIds(@NonNull Pageable pageable, List<Long> ids) {
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
+        }
+        return repository.findAllByIdIn(ids, pageable).map(mapper::toResponseUserDTO);
+    }
+
+    @Override
     public @NonNull ResponseUserDTO changeUserStatus(@NonNull Long userId, @NonNull UserStatus newStatus) {
         if (securityFacade.getCurrentUserId()
             .orElseThrow(UserAuthorizationException::new)
