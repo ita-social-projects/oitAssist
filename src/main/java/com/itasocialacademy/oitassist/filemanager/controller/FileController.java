@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.filemanager.controller;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
@@ -202,5 +203,44 @@ public class FileController {
         @RequestParam RelatedEntityType entityType,
         @RequestParam Long entityId) {
         return ResponseEntity.ok(fileService.getFilesByEntity(entityType, entityId));
+    }
+
+    /**
+     * Updates the role of an attached file.
+     *
+     * @param id         the ID of the file to update
+     * @param requestDto the DTO containing the new role
+     * @return HTTP 200 with the updated file record
+     */
+    @Operation(
+        summary = "Update file role",
+        description = "Updates the role of a file that is in ATTACHED state. "
+            + "Accessible only by the file uploader or admin.")
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "File role updated successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = FileResponseDto.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request or file is not in ATTACHED state",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Access denied"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "File not found in the DB")
+    })
+    @PatchMapping("/{id}/role")
+    @PreAuthorize("hasAnyRole('ADMIN','ORG')")
+    public ResponseEntity<FileResponseDto> updateRole(
+        @PathVariable Long id,
+        @RequestBody @Valid UpdateFileRoleRequestDto requestDto) {
+        return ResponseEntity.ok(fileService.updateRole(id, requestDto));
     }
 }
