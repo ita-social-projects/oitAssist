@@ -1,19 +1,19 @@
 package com.itasocialacademy.oitassist.filemanager.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
@@ -25,6 +25,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithMockUser;
 
 class FileControllerTest extends ControllerUnitTest<FileController> {
 
@@ -232,5 +233,28 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
 
         mockMvc.perform(delete(FILES_CLEANUP_URL))
             .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateRole_ShouldReturn200_WhenValidRequest() throws Exception {
+        Long fileId = 1L;
+        FileResponseDto responseDto = FileResponseDto.builder().id(fileId).build();
+
+        when(fileService.updateRole(eq(fileId), any(UpdateFileRoleRequestDto.class))).thenReturn(responseDto);
+
+        mockMvc.perform(patch("/api/v1/files/{id}/role", fileId)
+            .param("newRole", "PROBLEM"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(fileId));
+    }
+
+    @Test
+    void updateRole_ShouldReturn400_WhenRoleIsNull() throws Exception {
+        Long fileId = 1L;
+
+        mockMvc.perform(patch("/api/v1/files/{id}/role", fileId))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(fileService);
     }
 }
