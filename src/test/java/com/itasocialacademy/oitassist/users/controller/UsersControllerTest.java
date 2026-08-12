@@ -307,9 +307,12 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
     @DisplayName("getUsersByIds should return 400 when ids parameter is not provided")
     void getUsersByIds_ShouldReturn400_WhenIdsAreNotProvided() throws Exception {
         mockMvc.perform(get("/api/v1/users/by-ids")
-            .param("page", "0")
-            .param("size", "10"))
-            .andExpect(status().isBadRequest());
+                .param("page", "0")
+                .param("size", "10"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("COMMON_VALIDATION_FAILED"))
+            .andExpect(jsonPath("$.message")
+                .value(org.hamcrest.Matchers.containsString("'ids'")));
 
         verifyNoInteractions(userService);
     }

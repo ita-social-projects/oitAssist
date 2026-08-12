@@ -136,6 +136,10 @@ public class UserController {
         @ApiResponse(
             responseCode = "200",
             description = "Users retrieved successfully"),
+        @ApiResponse(responseCode = "400",
+            description = "Required user IDs are missing or invalid",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "401",
             description = "Unauthorized - token is missing or invalid",
