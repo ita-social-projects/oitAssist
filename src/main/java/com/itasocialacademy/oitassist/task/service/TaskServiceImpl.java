@@ -91,11 +91,19 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<TaskResponseDTO> getAllTasks(Pageable pageable) {
-        log.debug("getAllTasks: page={}, size={}, sort={}",
-            pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+    public Page<TaskResponseDTO> getAllTasks(Pageable pageable, String search) {
+        log.debug("getAllTasks: page={}, size={}, sort={} search={}",
+            pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort(), search);
 
-        Page<TaskBody> tasksPage = taskBodyRepository.findAll(pageable);
+        String normalizedSearch = search == null || search.isBlank()
+            ? ""
+            : search.trim()
+                .replaceAll("\\s+", " ")
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+
+        Page<TaskBody> tasksPage = taskBodyRepository.findAllByTitleLike(normalizedSearch, pageable);
 
         return getResponseBulk(tasksPage);
     }

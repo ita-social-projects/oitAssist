@@ -271,18 +271,20 @@ class TaskServiceTest {
     void getAllTasks_shouldReturnMappedPage() {
         Pageable pageable = PageRequest.of(0, 15);
         Page<TaskBody> page = new PageImpl<>(List.of(taskBody), pageable, 1);
+        String search = " scratch   ";
+        String normalizedSearch = "scratch";
 
-        when(taskBodyRepository.findAll(pageable)).thenReturn(page);
+        when(taskBodyRepository.findAllByTitleLike(normalizedSearch, pageable)).thenReturn(page);
         when(fileManagerFacade.getFilesByEntities(any(), eq(List.of(1L)), any())).thenReturn(Map.of(1L, testFiles));
         when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
-        Page<TaskResponseDTO> result = taskService.getAllTasks(pageable);
+        Page<TaskResponseDTO> result = taskService.getAllTasks(pageable, search);
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
         assertEquals(taskResponse, result.getContent().getFirst());
 
-        verify(taskBodyRepository).findAll(pageable);
+        verify(taskBodyRepository).findAllByTitleLike(normalizedSearch, pageable);
         verify(taskBodyMapper).toResponse(taskBody, testFiles, "creator@mail.com");
     }
 
@@ -291,9 +293,9 @@ class TaskServiceTest {
         Pageable pageable = PageRequest.of(0, 15);
         Page<TaskBody> emptyPage = Page.empty(pageable);
 
-        when(taskBodyRepository.findAll(pageable)).thenReturn(emptyPage);
+        when(taskBodyRepository.findAllByTitleLike("", pageable)).thenReturn(emptyPage);
 
-        Page<TaskResponseDTO> result = taskService.getAllTasks(pageable);
+        Page<TaskResponseDTO> result = taskService.getAllTasks(pageable, null);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
