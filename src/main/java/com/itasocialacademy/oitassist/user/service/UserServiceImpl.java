@@ -61,6 +61,15 @@ public class UserServiceImpl implements UserService {
             .map(mapper::toUserProfileDetails);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<UserProfileDetails> findProfilesDetailsByIds(List<Long> userIds) {
+        return repository.findAllById(userIds)
+            .stream().map(mapper::toUserProfileDetails).toList();
+    }
+
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {
         Optional<User> user = repository.findUserByEmail(username);
         return user.map(mapper::toUserDetails).orElse(null);
