@@ -12,6 +12,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.dao.specification.FileAssetSpecification;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
@@ -300,6 +301,38 @@ public class FileServiceImpl implements FileService {
         }
 
         return resultMap;
+    }
+
+    @Override
+    @Transactional
+    public FileResponseDto updateRole(Long fileId, UpdateFileRoleRequestDto request) {
+        Long currentUserId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException("Not authenticated", ErrorCode.ACCESS_DENIED));
+
+        FileAsset file = repository.findById(fileId)
+            .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
+
+        checkOwnerOrAdmin(currentUserId, file.getUserId());
+
+        if (!file.getStatus().equals(FileStatus.ATTACHED)) {
+            throw new ValidationException(
+                "File must be in ATTACHED state to update its role",
+                ErrorCode.FILE_VALIDATION_FAILED);
+        }
+
+        // Validate if the combination of entity type and new role is allowed
+        // This will throw ValidationException if the policy is not configured for the
+        // pair
+        filePolicyResolver.resolve(file.getRelatedEntityType(), request.getNewRole());
+
+        file.setFileRole(request.getNewRole());
+        FileAsset saved = repository.save(file);
+
+        FileResponseDto dto = fileMapper.toDto(saved);
+        StorageProvider provider = providerResolver.resolve(saved.getStorageProvider());
+        dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+
+        return dto;
     }
 
     /**
