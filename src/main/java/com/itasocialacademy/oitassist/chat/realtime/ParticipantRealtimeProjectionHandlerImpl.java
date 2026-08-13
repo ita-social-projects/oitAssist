@@ -155,6 +155,10 @@ public class ParticipantRealtimeProjectionHandlerImpl
             event,
             event.message());
 
+        sendMessageToPrivilegedReaders(
+                event,
+                event.message());
+
         sendQuestionUpsertToAuthor(
             event);
 
