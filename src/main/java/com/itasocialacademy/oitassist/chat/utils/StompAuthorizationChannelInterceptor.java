@@ -85,7 +85,7 @@ public class StompAuthorizationChannelInterceptor
                     requireAdministrator();
 
                 case ADMINISTRATOR_ALL_QUESTIONS ->
-                        requireAdministrator();
+                    requireAdministrator();
 
                 case PERSONAL_REVIEWS ->
                     requirePersonalReviewAccess(

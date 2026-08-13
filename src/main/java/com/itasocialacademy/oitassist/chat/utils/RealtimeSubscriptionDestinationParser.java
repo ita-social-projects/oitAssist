@@ -43,6 +43,12 @@ public class RealtimeSubscriptionDestinationParser {
                 null);
         }
 
+        if (ADMINISTRATOR_ALL_QUESTIONS_DESTINATION.equals(destination)) {
+            return new RealtimeSubscriptionDestination(
+                    ADMINISTRATOR_ALL_QUESTIONS,
+                    null);
+        }
+
         if (PARTICIPANT_QUESTIONS_DESTINATION.equals(destination)) {
             return new RealtimeSubscriptionDestination(
                 PARTICIPANT_QUESTIONS,

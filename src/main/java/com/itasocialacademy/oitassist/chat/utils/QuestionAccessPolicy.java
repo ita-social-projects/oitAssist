@@ -157,11 +157,15 @@ public class QuestionAccessPolicy {
          * Ownership alone is insufficient: the matching responder grant for the
          * question's exact TaskAssignment is also required.
          */
-        if (isAssignedOrganizationResponder(
-            question,
-            context.userId())) {
+        if (isOrganizationResponder(question.getTaskAssignmentId())) {
             return context;
         }
+
+//        if (isAssignedOrganizationResponder(
+//            question,
+//            context.userId())) {
+//            return context;
+//        }
 
         boolean author =
             Objects.equals(
@@ -219,6 +223,10 @@ public class QuestionAccessPolicy {
          * only after the complete hierarchy has been validated.
          */
         if (isAdministrator()) {
+            return context;
+        }
+
+        if (isOrganizationResponder(taskAssignmentId)) {
             return context;
         }
 

@@ -121,6 +121,8 @@ public class ParticipantRealtimeProjectionHandlerImpl
         sendMessageToAuthor(
             event,
             event.message());
+
+        sendMessageToPrivilegedReaders(event, event.message());
     }
 
     private void projectOfficialAnswerPublished(
@@ -335,6 +337,29 @@ public class ParticipantRealtimeProjectionHandlerImpl
                                         QUESTION_UPSERTED,
                                         new QuestionUpsertPayload(
                                                 event.question()))));
+    }
+
+    private void sendMessageToPrivilegedReaders(
+            ForumDomainEvent event,
+            QuestionMessageResponseDTO message) {
+        messagingOperations.convertAndSend(
+                ADMINISTRATOR_ALL_QUESTIONS_DESTINATION,
+                createRealtimeEvent(
+                        event,
+                        MESSAGE_CREATED,
+                        new MessageCreatedPayload(message)));
+
+        organizationRecipientResolver
+                .resolveInboxRecipients(
+                        event.taskAssignmentId())
+                .forEach(responderId ->
+                        messagingOperations.convertAndSendToUser(
+                                responderId.toString(),
+                                PERSONAL_QUESTIONS_QUEUE,
+                                createRealtimeEvent(
+                                        event,
+                                        MESSAGE_CREATED,
+                                        new MessageCreatedPayload(message))));
     }
 
     private void sendQuestionRemovalToForum(
