@@ -259,9 +259,9 @@ public interface QuestionThreadRepository
             question.version = question.version + 1
         WHERE question.id = :questionId
           AND question.taskAssignmentId = :taskAssignmentId
-          AND question.assignedReviewerId = :responderUserId
           AND question.version = :expectedVersion
         """)
+    //           AND question.assignedReviewerId = :responderUserId
     int updateVisibilityAsResponderIfVersionMatches(
         @Param("questionId") Long questionId,
 
@@ -285,9 +285,9 @@ public interface QuestionThreadRepository
             question.version = question.version + 1
         WHERE question.id = :questionId
           AND question.taskAssignmentId = :taskAssignmentId
-          AND question.assignedReviewerId = :responderUserId
           AND question.version = :expectedVersion
         """)
+    //           AND question.assignedReviewerId = :responderUserId
     int updateStatusAsResponderIfVersionMatches(
         @Param("questionId") Long questionId,
 
@@ -311,9 +311,9 @@ public interface QuestionThreadRepository
             question.version = question.version + 1
         WHERE question.id = :questionId
           AND question.taskAssignmentId = :taskAssignmentId
-          AND question.assignedReviewerId = :responderUserId
           AND question.version = :expectedVersion
         """)
+        //           AND question.assignedReviewerId = :responderUserId
     int updateStateAsResponderIfVersionMatches(
         @Param("questionId") Long questionId,
 

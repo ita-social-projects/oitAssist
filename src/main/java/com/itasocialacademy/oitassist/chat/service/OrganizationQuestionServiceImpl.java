@@ -293,9 +293,9 @@ public class OrganizationQuestionServiceImpl
             loadQuestion(
                 questionId);
 
-        requireAssignedReviewerOwnership(
-            currentQuestion,
-            responderUserId);
+//        requireAssignedReviewerOwnership(
+//            currentQuestion,
+//            responderUserId);
 
         QuestionVisibility previousVisibility =
             currentQuestion.getVisibility();
@@ -349,9 +349,9 @@ public class OrganizationQuestionServiceImpl
             loadQuestion(
                 questionId);
 
-        requireAssignedReviewerOwnership(
-            currentQuestion,
-            responderUserId);
+//        requireAssignedReviewerOwnership(
+//            currentQuestion,
+//            responderUserId);
 
         QuestionStatus previousStatus =
             currentQuestion.getStatus();
@@ -405,9 +405,9 @@ public class OrganizationQuestionServiceImpl
             loadQuestion(
                 questionId);
 
-        requireAssignedReviewerOwnership(
-            currentQuestion,
-            responderUserId);
+//        requireAssignedReviewerOwnership(
+//            currentQuestion,
+//            responderUserId);
 
         QuestionState previousState =
             currentQuestion.getState();
@@ -461,9 +461,9 @@ public class OrganizationQuestionServiceImpl
     private void requireAssignedResponderAccess(
         QuestionThread question,
         Long responderUserId) {
-        requireAssignedReviewerOwnership(
-            question,
-            responderUserId);
+//        requireAssignedReviewerOwnership(
+//            question,
+//            responderUserId);
 
         if (!taskAssignmentForumResponderService
             .isResponder(
