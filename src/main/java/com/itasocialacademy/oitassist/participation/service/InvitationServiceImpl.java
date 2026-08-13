@@ -25,7 +25,6 @@ import com.itasocialacademy.oitassist.participation.dao.repository.Participation
 import com.itasocialacademy.oitassist.participation.exceptions.*;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessInvitationMapper;
-import com.itasocialacademy.oitassist.participation.scheduler.AfterCommitScheduler;
 import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.interfaces.InvitationService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -57,7 +56,6 @@ public class InvitationServiceImpl implements InvitationService {
     private final ProcessInvitationMapper processInvitationMapper;
     private final CompetitionFacade competitionFacade;
     private final AsyncEmailSender sender;
-    private final AfterCommitScheduler scheduler;
 
     @Override
     public CreateInvitationResponse sendEnrollmentRequest(CreateInvitationRequest request) {
