@@ -49,7 +49,7 @@ public class ParticipantRealtimeProjectionHandlerImpl
         "/topic/questions/%d";
 
     private static final String ADMINISTRATOR_ALL_QUESTIONS_DESTINATION =
-            "/topic/admin/questions/all";
+        "/topic/admin/questions/all";
 
     private final SimpMessageSendingOperations messagingOperations;
 

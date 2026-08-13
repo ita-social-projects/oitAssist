@@ -230,11 +230,8 @@ public class ParticipantQuestionController {
             required = true,
             content = @Content(mediaType = "application/json", schema = @Schema(
                 implementation = CreateCommentRequestDTO.class))) @Valid @RequestBody CreateCommentRequestDTO request) {
-        QuestionMessageResponseDTO response = participantQuestionService.addComment(
-            questionId,
-            request);
-        return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(response);
+        QuestionMessageResponseDTO response = participantQuestionService.addComment(questionId, request);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

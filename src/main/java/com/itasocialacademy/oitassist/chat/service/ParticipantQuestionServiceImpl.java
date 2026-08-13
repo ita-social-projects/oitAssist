@@ -105,46 +105,36 @@ public class ParticipantQuestionServiceImpl
 
     @Override
     @Transactional
-    public QuestionMessageResponseDTO addComment(
-        Long questionId,
-        CreateCommentRequestDTO request) {
+    public QuestionMessageResponseDTO addComment(Long questionId, CreateCommentRequestDTO request) {
         log.debug(
             "Creating participant comment: questionId={}",
             questionId);
 
         validateQuestionId(questionId);
 
-        QuestionThread question =
-            loadQuestion(questionId);
+        QuestionThread question = questionThreadRepository.findById(questionId)
+                .orElseThrow(() -> new QuestionNotFoundException(questionId));
 
         /*
          * Access is checked before state validation and persistence so that protected
          * question information is not exposed to unauthorized users.
          */
-        Long authorId =
-            questionAccessPolicy
-                .requireQuestionCommentAccess(question);
+        Long authorId = questionAccessPolicy.requireQuestionCommentAccess(question);
 
         validateQuestionAcceptsComments(question);
 
-        QuestionMessage comment =
-            questionMessageMapper.toEntity(request);
+        QuestionMessage comment = questionMessageMapper.toEntity(request);
 
-        /*
-         * All fields except content are controlled by the backend.
-         */
         comment.setId(null);
         comment.setAuthorId(authorId);
         comment.setQuestionThreadId(questionId);
         comment.setType(COMMENT);
         comment.setCreatedAt(null);
 
-        QuestionMessage savedComment =
-            questionMessageRepository.save(comment);
+        QuestionMessage savedComment = questionMessageRepository.save(comment);
 
         log.info(
-            "Participant comment created: "
-                + "messageId={}, questionId={}, authorId={}",
+            "Participant comment created: messageId={}, questionId={}, authorId={}",
             savedComment.getId(),
             questionId,
             authorId);
