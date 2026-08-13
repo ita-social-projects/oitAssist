@@ -1,9 +1,13 @@
-package com.itasocialacademy.oitassist.chat.utils;
+package com.itasocialacademy.oitassist.chat.config;
 
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
 import java.security.Principal;
+
+import com.itasocialacademy.oitassist.chat.utils.QuestionAccessPolicy;
+import com.itasocialacademy.oitassist.chat.utils.RealtimeSubscriptionDestination;
+import com.itasocialacademy.oitassist.chat.utils.RealtimeSubscriptionDestinationParser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;

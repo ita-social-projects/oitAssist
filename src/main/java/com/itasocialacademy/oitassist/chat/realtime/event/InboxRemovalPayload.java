@@ -1,18 +1,18 @@
-package com.itasocialacademy.oitassist.chat.utils.event;
+package com.itasocialacademy.oitassist.chat.realtime.event;
 
 /**
- * Contains identifiers required to remove a question from a participant
- * projection.
+ * Contains identifiers required to remove a question from the administrator
+ * inbox.
  *
  * <p>
- * This payload intentionally contains no question content or author data.
+ * This payload intentionally contains no question content.
  * </p>
  */
-public record QuestionRemovalPayload(
+public record InboxRemovalPayload(
     Long taskAssignmentId,
     Long questionId)
     implements RealtimePayload {
-    public QuestionRemovalPayload {
+    public InboxRemovalPayload {
         requirePositive(
             taskAssignmentId,
             "Task assignment id");

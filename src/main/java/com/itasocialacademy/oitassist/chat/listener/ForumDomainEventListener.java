@@ -1,10 +1,10 @@
 package com.itasocialacademy.oitassist.chat.listener;
 
 import com.itasocialacademy.oitassist.chat.event.ForumDomainEvent;
-import com.itasocialacademy.oitassist.chat.realtime.AdministratorRealtimeProjectionHandler;
-import com.itasocialacademy.oitassist.chat.realtime.ForumRealtimeProjectionHandler;
-import com.itasocialacademy.oitassist.chat.realtime.OrganizationRealtimeProjectionHandler;
-import com.itasocialacademy.oitassist.chat.realtime.ParticipantRealtimeProjectionHandler;
+import com.itasocialacademy.oitassist.chat.realtime.handlers.AdministratorRealtimeProjectionHandler;
+import com.itasocialacademy.oitassist.chat.realtime.handlers.ForumRealtimeProjectionHandler;
+import com.itasocialacademy.oitassist.chat.realtime.handlers.OrganizationRealtimeProjectionHandler;
+import com.itasocialacademy.oitassist.chat.realtime.handlers.ParticipantRealtimeProjectionHandler;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.chat.utils;
+package com.itasocialacademy.oitassist.chat.config;
 
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import java.util.List;

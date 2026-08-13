@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.itasocialacademy.oitassist.chat.config.StompAuthorizationChannelInterceptor;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;

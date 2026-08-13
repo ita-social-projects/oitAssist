@@ -4,7 +4,7 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionMessageType.
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
-import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.*;
+import static com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType.*;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -17,6 +17,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
+
+import com.itasocialacademy.oitassist.chat.realtime.event.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;

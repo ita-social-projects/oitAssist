@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.chat.utils.event;
+package com.itasocialacademy.oitassist.chat.realtime.event;
 
 /**
  * Instructs a client to discard cached question content after access has been

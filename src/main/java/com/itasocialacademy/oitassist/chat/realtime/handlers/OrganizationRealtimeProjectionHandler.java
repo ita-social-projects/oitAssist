@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.chat.realtime;
+package com.itasocialacademy.oitassist.chat.realtime.handlers;
 
 /**
  * Projects committed forum domain events to personal organizing committee

@@ -1,13 +1,13 @@
-package com.itasocialacademy.oitassist.chat.realtime;
+package com.itasocialacademy.oitassist.chat.realtime.handlers;
 
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.OPEN;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.NEW;
-import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.INBOX_REMOVED;
-import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.INBOX_UPSERTED;
-import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.MESSAGE_CREATED;
-import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.REVIEW_UPDATED;
-import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
+import static com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType.INBOX_REMOVED;
+import static com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType.INBOX_UPSERTED;
+import static com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType.MESSAGE_CREATED;
+import static com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType.REVIEW_UPDATED;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.event.CommentCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.event.ForumDomainEvent;
@@ -17,14 +17,13 @@ import com.itasocialacademy.oitassist.chat.event.QuestionCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.event.QuestionStateChangedDomainEvent;
 import com.itasocialacademy.oitassist.chat.event.QuestionStatusChangedDomainEvent;
 import com.itasocialacademy.oitassist.chat.event.QuestionVisibilityChangedDomainEvent;
-import com.itasocialacademy.oitassist.chat.utils.event.InboxRemovalPayload;
-import com.itasocialacademy.oitassist.chat.utils.event.InboxUpsertPayload;
-import com.itasocialacademy.oitassist.chat.utils.event.MessageCreatedPayload;
-import com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType;
-import com.itasocialacademy.oitassist.chat.utils.event.RealtimeForumEvent;
-import com.itasocialacademy.oitassist.chat.utils.event.RealtimePayload;
-import com.itasocialacademy.oitassist.chat.utils.event.ReviewUpdatePayload;
-import java.util.List;
+import com.itasocialacademy.oitassist.chat.realtime.event.InboxRemovalPayload;
+import com.itasocialacademy.oitassist.chat.realtime.event.InboxUpsertPayload;
+import com.itasocialacademy.oitassist.chat.realtime.event.MessageCreatedPayload;
+import com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType;
+import com.itasocialacademy.oitassist.chat.realtime.event.RealtimeForumEvent;
+import com.itasocialacademy.oitassist.chat.realtime.event.RealtimePayload;
+import com.itasocialacademy.oitassist.chat.realtime.event.ReviewUpdatePayload;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
@@ -32,8 +31,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class OrganizationRealtimeProjectionHandlerImpl
-    implements OrganizationRealtimeProjectionHandler {
+public class AdministratorRealtimeProjectionHandlerImpl
+    implements AdministratorRealtimeProjectionHandler {
+    private static final String ADMINISTRATOR_INBOX_DESTINATION =
+        "/topic/admin/questions/inbox";
+
     /*
      * Clients subscribe to /user/queue/reviews.
      *
@@ -45,7 +47,7 @@ public class OrganizationRealtimeProjectionHandlerImpl
 
     private final SimpMessageSendingOperations messagingOperations;
 
-    private final OrganizationRealtimeRecipientResolver recipientResolver;
+    private final OrganizationRealtimeRecipientResolver organizationRecipientResolver;
 
     @Override
     public void handle(
@@ -77,12 +79,12 @@ public class OrganizationRealtimeProjectionHandlerImpl
     private void projectCommentCreated(
         CommentCreatedDomainEvent event) {
         /*
-         * Comments do not change inbox membership.
+         * A comment does not affect shared inbox eligibility.
          *
-         * Message content is delivered only when the assigned reviewer still has
-         * responder eligibility for the exact TaskAssignment.
+         * Message content is delivered only to the currently assigned administrator.
+         * Unrelated administrators receive nothing through their personal queues.
          */
-        sendMessageToAssignedResponder(
+        sendMessageToAssignedReviewer(
             event,
             event.message());
     }
@@ -90,76 +92,87 @@ public class OrganizationRealtimeProjectionHandlerImpl
     private void projectQuestionClaimed(
         QuestionClaimedDomainEvent event) {
         /*
-         * Claiming removes the question from every current responder's inbox, including
-         * the successful claimant.
+         * A claimed question is no longer eligible because it has an assigned reviewer
+         * and its status is normally IN_REVIEW.
          */
         synchronizeInbox(event);
 
-        /*
-         * Only an ORG responder claimant receives REVIEW_UPDATED.
-         *
-         * An administrator claim has no matching responder assignment and therefore
-         * produces no ORG assigned-review event.
-         */
-        sendReviewUpdateToAssignedResponder(
-            event);
+        sendReviewUpdateToReviewer(
+            event,
+            event.currentReviewerId());
     }
 
     private void projectOfficialAnswerPublished(
         OfficialAnswerPublishedDomainEvent event) {
         /*
-         * The final ANSWERED status removes the question from every responder inbox.
+         * Publishing an official answer changes the status to ANSWERED, so the question
+         * must be removed from the unclaimed inbox.
          */
         synchronizeInbox(event);
 
-        Long responderId =
-            resolveAssignedResponder(
-                event);
+        Long reviewerId =
+            event.question().assignedReviewerId();
 
-        if (responderId == null) {
+        if (reviewerId == null) {
             return;
         }
 
-        sendMessageToResponder(
+        /*
+         * The assigned administrator receives both:
+         *
+         * - MESSAGE_CREATED to append the official answer; - REVIEW_UPDATED to
+         * synchronize status, version and metadata.
+         */
+        sendMessageToReviewer(
             event,
-            responderId,
+            reviewerId,
             event.message());
 
-        sendReviewUpdateToResponder(
+        sendReviewUpdateToReviewer(
             event,
-            responderId);
+            reviewerId);
     }
 
     private void projectVisibilityChanged(
         QuestionVisibilityChangedDomainEvent event) {
         /*
-         * Visibility does not affect ORG inbox eligibility. An eligible item receives a
-         * new summary to synchronize visibility/version.
+         * Visibility does not affect inbox eligibility.
+         *
+         * Eligible items receive a fresh INBOX_UPSERTED projection so the visibility
+         * field in the administrator list remains synchronized.
          */
-        if (isInboxEligible(
-            event.question())) {
-            sendInboxUpsert(
-                event);
-
+        if (isInboxEligible(event.question())) {
+            sendInboxUpsert(event);
             return;
         }
 
-        sendReviewUpdateToAssignedResponder(
+        /*
+         * An assigned question is not part of the shared inbox, but its assigned
+         * administrator still needs the current visibility and version.
+         */
+        sendReviewUpdateToAssignedReviewer(
             event);
     }
 
     private void projectMembershipAndAssignedReview(
         ForumDomainEvent event) {
+        /*
+         * Status and lifecycle state can add or remove a question from the shared
+         * unclaimed inbox.
+         */
         synchronizeInbox(event);
 
-        sendReviewUpdateToAssignedResponder(
+        /*
+         * When the question is assigned, synchronize only that administrator's personal
+         * review projection.
+         */
+        sendReviewUpdateToAssignedReviewer(
             event);
     }
 
     private void synchronizeInbox(
         ForumDomainEvent event) {
-        if (isInboxEligible(
-            event.question())) {
+        if (isInboxEligible(event.question())) {
             sendInboxUpsert(event);
         } else {
             sendInboxRemoval(event);
@@ -175,93 +188,95 @@ public class OrganizationRealtimeProjectionHandlerImpl
 
     private void sendInboxUpsert(
         ForumDomainEvent event) {
-        QuestionReviewInboxItemResponseDTO summary =
-            toReviewSummary(
-                event.question());
-
-        List<Long> responderIds =
-            recipientResolver.resolveInboxRecipients(
-                event.taskAssignmentId());
-
-        responderIds.forEach(responderId -> messagingOperations.convertAndSendToUser(
-            principalName(responderId),
-            PERSONAL_REVIEWS_QUEUE,
+        messagingOperations.convertAndSend(
+            ADMINISTRATOR_INBOX_DESTINATION,
             createRealtimeEvent(
                 event,
                 INBOX_UPSERTED,
                 new InboxUpsertPayload(
-                    summary))));
+                    toAdministratorSummary(
+                        event.question()))));
     }
 
     private void sendInboxRemoval(
         ForumDomainEvent event) {
-        List<Long> responderIds =
-            recipientResolver.resolveInboxRecipients(
-                event.taskAssignmentId());
-
-        responderIds.forEach(responderId -> messagingOperations.convertAndSendToUser(
-            principalName(responderId),
-            PERSONAL_REVIEWS_QUEUE,
+        /*
+         * Shared removals intentionally contain identifiers only.
+         */
+        messagingOperations.convertAndSend(
+            ADMINISTRATOR_INBOX_DESTINATION,
             createRealtimeEvent(
                 event,
                 INBOX_REMOVED,
                 new InboxRemovalPayload(
                     event.taskAssignmentId(),
-                    event.questionId()))));
+                    event.questionId())));
     }
 
-    private void sendReviewUpdateToAssignedResponder(
+    private void sendReviewUpdateToAssignedReviewer(
         ForumDomainEvent event) {
-        Long responderId =
-            resolveAssignedResponder(
-                event);
+        Long reviewerId =
+            event.question().assignedReviewerId();
 
-        if (responderId == null) {
+        if (reviewerId == null) {
             return;
         }
 
-        sendReviewUpdateToResponder(
+        sendReviewUpdateToReviewer(
             event,
-            responderId);
+            reviewerId);
     }
 
-    private void sendReviewUpdateToResponder(
+    private void sendReviewUpdateToReviewer(
         ForumDomainEvent event,
-        Long responderId) {
+        Long reviewerId) {
+        if (isOrganizationResponder(
+            event,
+            reviewerId)) {
+            return;
+        }
+
         messagingOperations.convertAndSendToUser(
-            principalName(responderId),
+            reviewerPrincipalName(
+                reviewerId),
             PERSONAL_REVIEWS_QUEUE,
             createRealtimeEvent(
                 event,
                 REVIEW_UPDATED,
                 new ReviewUpdatePayload(
-                    toReviewSummary(
+                    toAdministratorSummary(
                         event.question()))));
     }
 
-    private void sendMessageToAssignedResponder(
+    private void sendMessageToAssignedReviewer(
         ForumDomainEvent event,
         QuestionMessageResponseDTO message) {
-        Long responderId =
-            resolveAssignedResponder(
-                event);
+        Long reviewerId =
+            event.question().assignedReviewerId();
 
-        if (responderId == null) {
+        if (reviewerId == null) {
             return;
         }
 
-        sendMessageToResponder(
+        sendMessageToReviewer(
             event,
-            responderId,
+            reviewerId,
             message);
     }
 
-    private void sendMessageToResponder(
+    private void sendMessageToReviewer(
         ForumDomainEvent event,
-        Long responderId,
+        Long reviewerId,
         QuestionMessageResponseDTO message) {
+        if (isOrganizationResponder(
+            event,
+            reviewerId)) {
+            return;
+        }
+
         messagingOperations.convertAndSendToUser(
-            principalName(responderId),
+            reviewerPrincipalName(
+                reviewerId),
             PERSONAL_REVIEWS_QUEUE,
             createRealtimeEvent(
                 event,
@@ -270,27 +285,13 @@ public class OrganizationRealtimeProjectionHandlerImpl
                     message)));
     }
 
-    private Long resolveAssignedResponder(
-        ForumDomainEvent event) {
-        Long reviewerId =
-            event.question()
-                .assignedReviewerId();
-
-        if (!recipientResolver
-            .isOrganizationResponder(
-                event.taskAssignmentId(),
-                reviewerId)) {
-            return null;
-        }
-
-        return reviewerId;
-    }
-
-    private QuestionReviewInboxItemResponseDTO toReviewSummary(
+    private QuestionReviewInboxItemResponseDTO toAdministratorSummary(
         QuestionThreadResponseDTO question) {
         /*
-         * Full question content is intentionally not copied into inbox or
-         * assigned-review summary projections.
+         * The shared inbox and personal review queues reuse the existing administrator
+         * summary contract.
+         *
+         * Full question content is deliberately not copied.
          */
         return new QuestionReviewInboxItemResponseDTO(
             question.id(),
@@ -310,6 +311,10 @@ public class OrganizationRealtimeProjectionHandlerImpl
         ForumDomainEvent domainEvent,
         RealtimeEventType type,
         RealtimePayload payload) {
+        /*
+         * Each destination projection gets its own delivery ID. occurredAt remains the
+         * time of the committed domain event.
+         */
         return new RealtimeForumEvent(
             UUID.randomUUID(),
             type,
@@ -319,14 +324,23 @@ public class OrganizationRealtimeProjectionHandlerImpl
             payload);
     }
 
-    private String principalName(
-        Long responderId) {
-        if (responderId == null
-            || responderId <= 0) {
+    private String reviewerPrincipalName(
+        Long reviewerId) {
+        if (reviewerId == null || reviewerId <= 0) {
             throw new IllegalArgumentException(
-                "Responder id must be positive");
+                "Assigned reviewer id must be positive");
         }
 
-        return responderId.toString();
+        return reviewerId.toString();
+    }
+
+    private boolean isOrganizationResponder(
+        ForumDomainEvent event,
+        Long reviewerId) {
+        return reviewerId != null
+            && organizationRecipientResolver
+                .isOrganizationResponder(
+                    event.taskAssignmentId(),
+                    reviewerId);
     }
 }

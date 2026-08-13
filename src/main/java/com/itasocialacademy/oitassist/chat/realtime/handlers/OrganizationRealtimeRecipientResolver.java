@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.chat.realtime;
+package com.itasocialacademy.oitassist.chat.realtime.handlers;
 
 import com.itasocialacademy.oitassist.chat.dao.repository.TaskAssignmentForumResponderRepository;
 import java.util.List;

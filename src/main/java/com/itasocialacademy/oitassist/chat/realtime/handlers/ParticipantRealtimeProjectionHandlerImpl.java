@@ -1,11 +1,11 @@
-package com.itasocialacademy.oitassist.chat.realtime;
+package com.itasocialacademy.oitassist.chat.realtime.handlers;
 
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PUBLIC;
-import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.ACCESS_REVOKED;
-import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.MESSAGE_CREATED;
-import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.QUESTION_REMOVED;
-import static com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType.QUESTION_UPSERTED;
+import static com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType.ACCESS_REVOKED;
+import static com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType.MESSAGE_CREATED;
+import static com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType.QUESTION_REMOVED;
+import static com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType.QUESTION_UPSERTED;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.event.CommentCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.event.ForumDomainEvent;
@@ -15,13 +15,13 @@ import com.itasocialacademy.oitassist.chat.event.QuestionCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.event.QuestionStateChangedDomainEvent;
 import com.itasocialacademy.oitassist.chat.event.QuestionStatusChangedDomainEvent;
 import com.itasocialacademy.oitassist.chat.event.QuestionVisibilityChangedDomainEvent;
-import com.itasocialacademy.oitassist.chat.utils.event.AccessRevokedPayload;
-import com.itasocialacademy.oitassist.chat.utils.event.MessageCreatedPayload;
-import com.itasocialacademy.oitassist.chat.utils.event.QuestionRemovalPayload;
-import com.itasocialacademy.oitassist.chat.utils.event.QuestionUpsertPayload;
-import com.itasocialacademy.oitassist.chat.utils.event.RealtimeEventType;
-import com.itasocialacademy.oitassist.chat.utils.event.RealtimeForumEvent;
-import com.itasocialacademy.oitassist.chat.utils.event.RealtimePayload;
+import com.itasocialacademy.oitassist.chat.realtime.event.AccessRevokedPayload;
+import com.itasocialacademy.oitassist.chat.realtime.event.MessageCreatedPayload;
+import com.itasocialacademy.oitassist.chat.realtime.event.QuestionRemovalPayload;
+import com.itasocialacademy.oitassist.chat.realtime.event.QuestionUpsertPayload;
+import com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType;
+import com.itasocialacademy.oitassist.chat.realtime.event.RealtimeForumEvent;
+import com.itasocialacademy.oitassist.chat.realtime.event.RealtimePayload;
 
 import java.util.Objects;
 import java.util.UUID;

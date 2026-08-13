@@ -1,7 +1,5 @@
 package com.itasocialacademy.oitassist.chat.config;
 
-import com.itasocialacademy.oitassist.chat.utils.StompAuthenticationChannelInterceptor;
-import com.itasocialacademy.oitassist.chat.utils.StompAuthorizationChannelInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
