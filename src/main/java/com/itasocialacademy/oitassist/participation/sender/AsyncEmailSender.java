@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.InvitationRequestEvent;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -45,6 +46,8 @@ public class AsyncEmailSender {
     public void sendDecisionEmail(ApplicationDecisionEvent event) {
         String email = event.email();
         RequestStatus status = event.status();
+        String competitionLink = buildLink(COMPETITION_PATH);
+        String profileLink = buildLink(PROFILE_PATH);
         log.info("Handling ApplicationDecisionEvent for email={}, status={}", email, status);
 
         String template = switch (status) {
@@ -57,19 +60,8 @@ public class AsyncEmailSender {
             if (event.rejectionReason() != null && !event.rejectionReason().isBlank()) {
                 extraParams.put("rejectionReason", event.rejectionReason());
             }
-            String profileLink = UriComponentsBuilder
-                .fromUriString(webClientProperties.origin())
-                .path(PROFILE_PATH)
-                .build()
-                .toUriString();
             extraParams.put("profileLink", profileLink);
         }
-
-        String competitionLink = UriComponentsBuilder
-            .fromUriString(webClientProperties.origin())
-            .path(COMPETITION_PATH)
-            .build()
-            .toUriString();
         Map<String, String> root = new HashMap<>(Map.of(
             "firstName", event.firstName(),
             "competitionTitle", event.competitionTitle(),
@@ -84,34 +76,40 @@ public class AsyncEmailSender {
             root);
     }
 
+    /**
+     * Handles asynchronously an {@link InvitationRequestEvent} after the publishing
+     * transaction has committed. Builds the URLs and sends an invitation email for
+     * each student.
+     *
+     * @param event the event carrying the titles of competition and stage, the list
+     *              of recipients with emails and first names
+     */
     @Async
     public void sendInvitationEmail(InvitationRequestEvent event) {
-        String email = event.email();
-        log.info("Handling InvitationRequestEvent for email={}", email);
+        log.info("Handling InvitationRequestEvent for {} users", event.users().size());
 
-        String competitionLink = UriComponentsBuilder
+        String competitionLink = buildLink(COMPETITION_PATH);
+        String profileLink = buildLink(PROFILE_PATH);
+        for (UserProfileDetails user : event.users()) {
+            Map<String, String> root = Map.of(
+                "firstName", user.firstName(),
+                "competitionTitle", event.competitionTitle(),
+                "stageTitle", event.stageTitle(),
+                "competitionLink", competitionLink,
+                "profileLink", profileLink);
+            emailService.sendTemplateEmail(
+                user.email(),
+                "invitation-request.html",
+                "Запрошення на олімпіаду",
+                root);
+        }
+    }
+
+    private String buildLink(String link) {
+        return UriComponentsBuilder
             .fromUriString(webClientProperties.origin())
-            .path(COMPETITION_PATH)
+            .path(link)
             .build()
             .toUriString();
-        String profileLink = UriComponentsBuilder
-            .fromUriString(webClientProperties.origin())
-            .path(PROFILE_PATH)
-            .build()
-            .toUriString();
-
-        Map<String, String> root = Map.of(
-            "firstName", event.firstName(),
-            "competitionTitle", event.competitionTitle(),
-            "stageTitle", event.stageTitle(),
-            "competitionLink", competitionLink,
-            "profileLink", profileLink
-        );
-
-        emailService.sendTemplateEmail(
-            email,
-            "invitation-created.html",
-            "Запрошення до олімпіади",
-            root);
     }
 }

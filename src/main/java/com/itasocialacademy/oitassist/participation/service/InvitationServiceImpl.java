@@ -33,7 +33,6 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
-import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
@@ -62,7 +61,9 @@ public class InvitationServiceImpl implements InvitationService {
 
     @Override
     public CreateInvitationResponse sendEnrollmentRequest(CreateInvitationRequest request) {
-        validateCompetitionAndStageInfo(request.getCompetitionId(), request.getStageId());
+        Long competitionId = request.getCompetitionId();
+        Long stageId = request.getStageId();
+        validateCompetitionAndStageInfo(competitionId, stageId);
         List<Long> studentIds = validateNoDuplicatesOrThrow(request.getStudentIds());
 
         List<UserAuthDetails> foundUsers = userFacade.findByIds(studentIds);
@@ -97,8 +98,8 @@ public class InvitationServiceImpl implements InvitationService {
             }
         }
         CreateInvitationResponse response = CreateInvitationResponse.builder()
-            .competitionId(request.getCompetitionId())
-            .stageId(request.getStageId())
+            .competitionId(competitionId)
+            .stageId(stageId)
             .succeeded(succeeded)
             .failed(failed)
             .issuedBy(getCurrentUserIdOrThrow())
@@ -106,7 +107,7 @@ public class InvitationServiceImpl implements InvitationService {
             .build();
 
         if (!succeeded.isEmpty()) {
-            scheduleInvitationEmailAfterCommit();
+            scheduleInvitationEmail(competitionId, stageId, succeeded);
         }
 
         return response;
@@ -237,16 +238,14 @@ public class InvitationServiceImpl implements InvitationService {
         return false;
     }
 
-    private void scheduleInvitationEmailAfterCommit(Long competitionId, Long stageId, List<Long> userIds) {
+    private void scheduleInvitationEmail(
+        Long competitionId, Long stageId, List<SucceededInvitationResponse> succeeded) {
         String competitionTitle = getCompetitionInfoOrThrow(competitionId).title();
         String stageTitle = getStageInfoOrThrow(stageId).title();
-        for (Long userId : userIds) {
-            UserProfileDetails user = getUserProfileOrThrow(userId);
-            InvitationRequestEvent event = new InvitationRequestEvent(
-                competitionTitle, stageTitle, user.firstName(), user.email()
-            );
-            sender.sendInvitationEmail(event);
-        }
+        List<UserProfileDetails> users = getUserProfiles(succeeded);
+        InvitationRequestEvent event = new InvitationRequestEvent(
+            competitionTitle, stageTitle, users);
+        sender.sendInvitationEmail(event);
     }
 
     private CompetitionDetail getCompetitionInfoOrThrow(Long competitionId) {
@@ -259,8 +258,9 @@ public class InvitationServiceImpl implements InvitationService {
             .orElseThrow(() -> new StageNotFoundException(stageId));
     }
 
-    private UserProfileDetails getUserProfileOrThrow(Long userId) {
-        return userFacade.findProfileById(userId)
-            .orElseThrow(UserNotFoundException::new);
+    private List<UserProfileDetails> getUserProfiles(List<SucceededInvitationResponse> succeeded) {
+        List<Long> userIds = succeeded.stream()
+            .map(SucceededInvitationResponse::studentId).toList();
+        return userFacade.findProfilesByIds(userIds);
     }
 }
