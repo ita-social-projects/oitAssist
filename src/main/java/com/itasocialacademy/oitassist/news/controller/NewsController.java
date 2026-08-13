@@ -124,7 +124,7 @@ public class NewsController {
     @GetMapping("/admin")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<PageResponse<ResponseNewsAdminListItemDto>> getAllNewsForAdmin(
-        @ParameterObject @PageableDefault(size = 15, sort = "createdAt", direction = DESC) Pageable pageable,
+        @ParameterObject @PageableDefault(size = 15, sort = "updatedAt", direction = DESC) Pageable pageable,
         @RequestParam(required = false) String search,
         @RequestParam(required = false) List<NewsStatus> statuses,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,

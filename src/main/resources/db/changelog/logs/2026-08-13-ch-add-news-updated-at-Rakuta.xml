@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="add-news-updated-at" author="AnastasiaRakuta">
+        <addColumn tableName="news">
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <update tableName="news">
+            <column name="updated_at" valueComputed="created_at"/>
+            <where>updated_at IS NULL</where>
+        </update>
+
+        <addNotNullConstraint tableName="news"
+                              columnName="updated_at"
+                              columnDataType="TIMESTAMP WITH TIME ZONE"/>
+
+        <rollback>
+            <dropColumn tableName="news" columnName="updated_at"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
