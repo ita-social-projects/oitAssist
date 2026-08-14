@@ -111,8 +111,8 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
     }
 
     @Test
-    @DisplayName("getUsers should return paged users when request is valid")
-    void getUsers_ShouldReturnPagedUsers_WhenRequestIsValid() throws Exception {
+    @DisplayName("getUsers should return paged users when only search is provided")
+    void getUsers_ShouldReturnPagedUsers_WhenOnlySearchIsProvided() throws Exception {
         Pageable pageable = PageRequest.of(0, 10);
 
         ResponseUserDTO user = ResponseUserDTO.builder()
@@ -127,7 +127,7 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
 
         Page<ResponseUserDTO> page = new PageImpl<>(List.of(user), pageable, 1);
 
-        when(userService.getUsers(any(Pageable.class), eq("ivan"))).thenReturn(page);
+        when(userService.getUsers(any(Pageable.class), eq("ivan"), isNull())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/users")
             .param("page", "0")
@@ -148,16 +148,16 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
             .andExpect(jsonPath("$.first").value(true))
             .andExpect(jsonPath("$.last").value(true));
 
-        verify(userService).getUsers(any(Pageable.class), eq("ivan"));
+        verify(userService).getUsers(any(Pageable.class), eq("ivan"), isNull());
     }
 
     @Test
-    @DisplayName("getUsers should return paged users when search parameter is not provided")
-    void getUsers_ShouldReturnPagedUsers_WhenSearchParameterIsNotProvided() throws Exception {
+    @DisplayName("getUsers should return paged users when search parameter and roles are not provided")
+    void getUsers_ShouldReturnPagedUsers_WhenSearchParameterAndRolesAreNotProvided() throws Exception {
         Pageable pageable = PageRequest.of(0, 10);
         Page<ResponseUserDTO> emptyPage = Page.empty(pageable);
 
-        when(userService.getUsers(any(Pageable.class), isNull())).thenReturn(emptyPage);
+        when(userService.getUsers(any(Pageable.class), isNull(), isNull())).thenReturn(emptyPage);
 
         mockMvc.perform(get("/api/v1/users")
             .param("page", "0")
@@ -172,7 +172,85 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
             .andExpect(jsonPath("$.first").value(true))
             .andExpect(jsonPath("$.last").value(true));
 
-        verify(userService).getUsers(any(Pageable.class), isNull());
+        verify(userService).getUsers(any(Pageable.class), isNull(), isNull());
+    }
+
+    @Test
+    @DisplayName("getUsers should return paged users filtered by roles when search is not provided")
+    void getUsers_ShouldReturnPagedUsersFilteredByRoles_WhenSearchIsNotProvided() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        ResponseUserDTO user = ResponseUserDTO.builder()
+            .id(1L)
+            .email("admin@example.com")
+            .firstName("Admin")
+            .lastName("User")
+            .role(Role.ADMIN)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        Page<ResponseUserDTO> page = new PageImpl<>(List.of(user), pageable, 1);
+
+        List<Role> roles = List.of(Role.ADMIN, Role.ORG);
+
+        when(userService.getUsers(any(Pageable.class), isNull(), eq(roles)))
+            .thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/users")
+            .param("page", "0")
+            .param("size", "10")
+            .param("roles", "ADMIN", "ORG"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(1))
+            .andExpect(jsonPath("$.content[0].role").value("ADMIN"))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(userService).getUsers(
+            any(Pageable.class),
+            isNull(),
+            eq(roles));
+    }
+
+    @Test
+    @DisplayName("getUsers should return paged users when search and roles are provided")
+    void getUsers_ShouldReturnPagedUsers_WhenSearchAndRolesAreProvided() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        ResponseUserDTO user = ResponseUserDTO.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .lastName("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.ORG)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        Page<ResponseUserDTO> page = new PageImpl<>(List.of(user), pageable, 1);
+
+        List<Role> roles = List.of(Role.ADMIN, Role.ORG);
+
+        when(userService.getUsers(any(Pageable.class), eq("ivan"), eq(roles)))
+            .thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/users")
+            .param("page", "0")
+            .param("size", "10")
+            .param("search", "ivan")
+            .param("roles", "ADMIN", "ORG"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(1))
+            .andExpect(jsonPath("$.content[0].email").value("ivan@example.com"))
+            .andExpect(jsonPath("$.content[0].role").value("ORG"))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.pageSize").value(10))
+            .andExpect(jsonPath("$.totalPages").value(1))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(userService).getUsers(
+            any(Pageable.class),
+            eq("ivan"),
+            eq(roles));
     }
 
     @Test
