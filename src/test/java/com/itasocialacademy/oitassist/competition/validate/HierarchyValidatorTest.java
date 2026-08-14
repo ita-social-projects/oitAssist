@@ -566,6 +566,32 @@ class HierarchyValidatorTest {
     }
 
     @Test
+    void validateAllStagesCompletedForCompetition_allTerminal_shouldNotThrow() {
+        Stage finishedStage = Stage.builder().id(1L).title("Stage 1").status(StageStatus.FINISHED).build();
+        Stage cancelledStage = Stage.builder().id(2L).title("Stage 2").status(StageStatus.CANCELLED).build();
+
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L))
+            .thenReturn(List.of(finishedStage, cancelledStage));
+
+        assertDoesNotThrow(() -> validator.validateAllStagesCompletedForCompetition(1L));
+    }
+
+    @Test
+    void validateAllStagesCompletedForCompetition_someScheduled_shouldThrow() {
+        Stage finishedStage = Stage.builder().id(1L).title("Stage 1").status(StageStatus.FINISHED).build();
+        Stage scheduledStage = Stage.builder().id(2L).title("Stage 2").status(StageStatus.SCHEDULED).build();
+
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L))
+            .thenReturn(List.of(finishedStage, scheduledStage));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateAllStagesCompletedForCompetition(1L));
+
+        assertTrue(exception.getMessage().contains("Stage 2"));
+    }
+
+    @Test
     void validateAllToursCompletedForStage_allFinishedOrCancelled_shouldPass() {
         Tour t1 = Tour.builder().executionStatus(ExecutionStatus.FINISHED).build();
         Tour t2 = Tour.builder().executionStatus(ExecutionStatus.CANCELLED).build();

@@ -197,6 +197,38 @@ class CompetitionServiceTest {
         verify(competitionRepository, never()).save(any());
     }
 
+    @Test
+    void changeStatus_publishedToFinished_withAllStagesCompleted_shouldSucceed() {
+        competition.setCompetitionStatus(CompetitionStatus.PUBLISHED);
+        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(competitionRepository.save(any(Competition.class))).thenReturn(competition);
+        when(mapper.toResponse(any(Competition.class))).thenReturn(getCompetitionResponse());
+
+        competitionService.changeStatus(1L, CompetitionStatus.FINISHED);
+
+        assertEquals(CompetitionStatus.FINISHED, competition.getCompetitionStatus());
+        verify(validator).validateAllStagesCompletedForCompetition(1L);
+        verify(competitionRepository).save(competition);
+    }
+
+    @Test
+    void changeStatus_publishedToFinished_withIncompleteStage_shouldThrowException() {
+        competition.setCompetitionStatus(CompetitionStatus.PUBLISHED);
+        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+
+        doThrow(new CompetitionHierarchyValidationException(
+            "Cannot finish competition: Not all stages are completed. "
+                + "Incomplete stages: 'Stage 1' (Status: SCHEDULED)"))
+            .when(validator).validateAllStagesCompletedForCompetition(1L);
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> competitionService.changeStatus(1L, CompetitionStatus.FINISHED));
+
+        assertTrue(exception.getMessage().contains("Not all stages are completed"));
+        verify(competitionRepository, never()).save(any());
+    }
+
     // ---- create ----
 
     @Test
