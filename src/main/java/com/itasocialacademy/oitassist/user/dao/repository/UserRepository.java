@@ -41,4 +41,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
         @Param("search") String search,
         @Param("roles") List<Role> roles,
         Pageable pageable);
+
+    Page<User> findAllByIdIn(List<Long> ids, Pageable pageable);
 }
