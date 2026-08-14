@@ -96,15 +96,16 @@ public interface UserService {
 
     /**
      * Returns a paginated list of users for the admin dashboard. Supports optional
-     * search by name or email.
+     * search by name or email and filter by roles.
      *
      * @param pageable pagination parameters
      * @param search   optional search query
+     * @param roles    optional roles filter
      * @return paginated list of users
      * @throws InsufficientPermissionsException if user does not have admin role
      */
     @NonNull
-    Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search);
+    Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search, List<Role> roles);
 
     /**
      * Changes the status of an existing user.

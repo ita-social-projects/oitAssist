@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserRoleRequest;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserStatusRequest;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
+import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -16,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -130,8 +132,11 @@ public class UserController {
 
         @Parameter(
             description = "Optional search query for filtering users by name or email",
-            example = "ivan") @RequestParam(required = false) String search) {
-        return ResponseEntity.ok(PageResponse.from(service.getUsers(pageable, search)));
+            example = "ivan") @RequestParam(required = false) String search,
+        @Parameter(
+            description = "Optional parameter for filtering users by roles",
+            example = "[\"ADMIN\", \"ORG\"]") @RequestParam(required = false) List<Role> roles) {
+        return ResponseEntity.ok(PageResponse.from(service.getUsers(pageable, search, roles)));
     }
 
     @PatchMapping("/{id}/status")
