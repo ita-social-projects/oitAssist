@@ -9,6 +9,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFound
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.CompetitionValidatedDataEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.InvitationRequestEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.FailedInvitationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.SucceededInvitationResponse;
@@ -61,7 +62,7 @@ public class InvitationServiceImpl implements InvitationService {
     public CreateInvitationResponse sendEnrollmentRequest(CreateInvitationRequest request) {
         Long competitionId = request.getCompetitionId();
         Long stageId = request.getStageId();
-        validateCompetitionAndStageInfo(competitionId, stageId);
+        CompetitionValidatedDataEvent competitionData = validateCompetitionAndStageInfo(competitionId, stageId);
         List<Long> studentIds = validateNoDuplicatesOrThrow(request.getStudentIds());
 
         List<UserAuthDetails> foundUsers = userFacade.findByIds(studentIds);
@@ -105,7 +106,7 @@ public class InvitationServiceImpl implements InvitationService {
             .build();
 
         if (!succeeded.isEmpty()) {
-            scheduleInvitationEmail(competitionId, stageId, succeeded);
+            scheduleInvitationEmail(competitionData, succeeded);
         }
 
         return response;
@@ -174,7 +175,7 @@ public class InvitationServiceImpl implements InvitationService {
         return rawIds;
     }
 
-    private void validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
+    private CompetitionValidatedDataEvent validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
         CompetitionDetail competitionDetail = getCompetitionInfoOrThrow(competitionId);
         StageDetail stageDetail = getStageInfoOrThrow(stageId);
         if (competitionDetail.competitionStatus() != CompetitionStatus.ENROLLMENT) {
@@ -183,6 +184,10 @@ public class InvitationServiceImpl implements InvitationService {
         if (!stageDetail.competitionId().equals(competitionId)) {
             throw new CompetitionHierarchyValidationException("Specified stage does not belong to this competition");
         }
+        return CompetitionValidatedDataEvent.builder()
+            .competitionTitle(competitionDetail.title())
+            .stageTitle(stageDetail.title())
+            .build();
     }
 
     private Invitation getPendingInvitationOrThrow(Long applicationId) {
@@ -237,12 +242,11 @@ public class InvitationServiceImpl implements InvitationService {
     }
 
     private void scheduleInvitationEmail(
-        Long competitionId, Long stageId, List<SucceededInvitationResponse> succeeded) {
-        String competitionTitle = getCompetitionInfoOrThrow(competitionId).title();
-        String stageTitle = getStageInfoOrThrow(stageId).title();
+        CompetitionValidatedDataEvent competitionData,
+        List<SucceededInvitationResponse> succeeded) {
         List<UserProfileDetails> users = getUserProfiles(succeeded);
         InvitationRequestEvent event = new InvitationRequestEvent(
-            competitionTitle, stageTitle, users);
+            competitionData.competitionTitle(), competitionData.stageTitle(), users);
         sender.sendInvitationEmail(event);
     }
 
