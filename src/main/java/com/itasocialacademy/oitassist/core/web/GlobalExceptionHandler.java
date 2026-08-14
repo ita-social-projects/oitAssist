@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -223,6 +224,16 @@ public class GlobalExceptionHandler {
                 "Access denied",
                 status.value(),
                 null));
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailure(
+        OptimisticLockingFailureException ex, HttpServletRequest request) {
+        log.warn("Optimistic locking conflict: traceId={}", MDC.get(TRACE_ID_MDC));
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(buildResponse(request, ErrorCode.COMMON_CONFLICT,
+                "This resource was modified by someone else. Please refresh and try again.",
+                HttpStatus.CONFLICT.value(), null));
     }
 
     /**
