@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+
+  <changeSet id="add-version-to-competitions" author="Anton Pampukha">
+    <addColumn tableName="competitions">
+      <column name="version" type="BIGINT" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="add-version-to-stages" author="Anton Pampukha">
+    <addColumn tableName="stages">
+      <column name="version" type="BIGINT" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+  </changeSet>
+
+  <changeSet id="add-version-to-tours" author="Anton Pampukha">
+    <addColumn tableName="tours">
+      <column name="version" type="BIGINT" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+  </changeSet>
+</databaseChangeLog>
