@@ -46,7 +46,33 @@ public class LogFileServiceImpl implements LogFileService {
         Comparator<LogFileMetadata> sortOrder =
             resolveSortOrder(pageable.getSort());
 
-        List<LogFileMetadata> sortedFiles = logFileDao.findAll().stream()
+        return createPageResponse(logFileDao.findAll(), pageable, sortOrder);
+    }
+
+    @Override
+    public PageResponse<LogFileResponse> searchByName(String name, Pageable pageable) {
+        if (name == null || name.isBlank()) {
+            throw new ValidationException(
+                "Log file name must not be blank",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+        String searchName = name.trim();
+
+        log.debug(
+            "Searching log files by name: '{}', page={}, size={}, sort={}",
+            searchName,
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            pageable.getSort());
+        Comparator<LogFileMetadata> sortOrder =
+            resolveSortOrder(pageable.getSort());
+
+        return createPageResponse(logFileDao.findByNameContainingIgnoreCase(searchName), pageable, sortOrder);
+    }
+
+    private PageResponse<LogFileResponse> createPageResponse(List<LogFileMetadata> files,
+        Pageable pageable, Comparator<LogFileMetadata> sortOrder) {
+        List<LogFileMetadata> sortedFiles = files.stream()
             .sorted(sortOrder)
             .toList();
 
@@ -56,7 +82,6 @@ public class LogFileServiceImpl implements LogFileService {
             .toList();
 
         Page<LogFileMetadata> metadataPage = new PageImpl<>(pageContent, pageable, sortedFiles.size());
-
         Page<LogFileResponse> responsePage = metadataPage.map(logFileMapper::toResponse);
 
         log.debug(

@@ -3,10 +3,16 @@ package com.itasocialacademy.oitassist.logfile.dao;
 import com.itasocialacademy.oitassist.logfile.exceptions.LogFileListingException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,10 +31,24 @@ public class FileSystemLogFileDao implements LogFileDao {
 
     @Override
     public List<LogFileMetadata> findAll() {
+        return findFiles(path -> true);
+    }
+
+    @Override
+    public List<LogFileMetadata> findByNameContainingIgnoreCase(String name) {
+        String normalizedName = name.toLowerCase(Locale.ROOT);
+        return findFiles(path -> path.getFileName()
+            .toString()
+            .toLowerCase(Locale.ROOT)
+            .contains(normalizedName));
+    }
+
+    private List<LogFileMetadata> findFiles(Predicate<Path> filter) {
         validateLogDirectory();
 
         try (Stream<Path> paths = Files.list(logDirectory)) {
             return paths
+                .filter(filter)
                 .map(this::readMetadata)
                 .flatMap(Optional::stream)
                 .toList();
@@ -37,6 +57,7 @@ public class FileSystemLogFileDao implements LogFileDao {
                 "Failed to read metadata from log directory: {}",
                 logDirectory,
                 exception.getCause());
+
             throw new LogFileListingException();
         } catch (IOException | SecurityException exception) {
             log.error("Failed to access log directory: {}", logDirectory, exception);

@@ -3,8 +3,7 @@ package com.itasocialacademy.oitassist.logfile.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.logfile.api.LogFileResponse;
@@ -357,6 +356,114 @@ class LogFileServiceImplTest {
         assertThatThrownBy(
             () -> logFileService.getAll(pageable))
             .isInstanceOf(ValidationException.class);
+
+        verifyNoInteractions(
+            logFileDao,
+            logFileMapper);
+    }
+
+    @Test
+    void shouldSearchLogFilesByName() {
+        Instant newest =
+            Instant.parse("2026-07-22T12:00:00Z");
+
+        Instant oldest =
+            Instant.parse("2026-07-20T12:00:00Z");
+
+        when(logFileDao.findByNameContainingIgnoreCase("app"))
+            .thenReturn(
+                List.of(
+                    metadata(
+                        "app-old.log",
+                        100,
+                        oldest),
+                    metadata(
+                        "app-new.log",
+                        200,
+                        newest)));
+
+        stubMapper();
+
+        Pageable pageable =
+            PageRequest.of(0, DEFAULT_PAGE_SIZE);
+
+        PageResponse<LogFileResponse> result =
+            logFileService.searchByName(
+                "  app  ",
+                pageable);
+
+        assertThat(result.content())
+            .extracting(LogFileResponse::fileName)
+            .containsExactly(
+                "app-new.log",
+                "app-old.log");
+
+        assertThat(result.page()).isZero();
+        assertThat(result.size())
+            .isEqualTo(DEFAULT_PAGE_SIZE);
+        assertThat(result.totalElements()).isEqualTo(2);
+        assertThat(result.totalPages()).isEqualTo(1);
+
+        verify(logFileDao)
+            .findByNameContainingIgnoreCase("app");
+    }
+
+    @Test
+    void shouldReturnEmptyPageWhenNoLogFilesMatchName() {
+        when(logFileDao.findByNameContainingIgnoreCase("unknown"))
+            .thenReturn(List.of());
+
+        Pageable pageable =
+            PageRequest.of(0, DEFAULT_PAGE_SIZE);
+
+        PageResponse<LogFileResponse> result =
+            logFileService.searchByName(
+                "unknown",
+                pageable);
+
+        assertThat(result.content()).isEmpty();
+        assertThat(result.page()).isZero();
+        assertThat(result.size())
+            .isEqualTo(DEFAULT_PAGE_SIZE);
+        assertThat(result.totalElements()).isZero();
+        assertThat(result.totalPages()).isZero();
+
+        verify(logFileDao)
+            .findByNameContainingIgnoreCase("unknown");
+
+        verifyNoInteractions(logFileMapper);
+    }
+
+    @Test
+    void shouldThrowValidationExceptionWhenSearchNameIsBlank() {
+        Pageable pageable =
+            PageRequest.of(0, DEFAULT_PAGE_SIZE);
+
+        assertThatThrownBy(
+            () -> logFileService.searchByName(
+                "   ",
+                pageable))
+            .isInstanceOf(ValidationException.class)
+            .hasMessageContaining(
+                "Log file name must not be blank");
+
+        verifyNoInteractions(
+            logFileDao,
+            logFileMapper);
+    }
+
+    @Test
+    void shouldThrowValidationExceptionWhenSearchNameIsNull() {
+        Pageable pageable =
+            PageRequest.of(0, DEFAULT_PAGE_SIZE);
+
+        assertThatThrownBy(
+            () -> logFileService.searchByName(
+                null,
+                pageable))
+            .isInstanceOf(ValidationException.class)
+            .hasMessageContaining(
+                "Log file name must not be blank");
 
         verifyNoInteractions(
             logFileDao,

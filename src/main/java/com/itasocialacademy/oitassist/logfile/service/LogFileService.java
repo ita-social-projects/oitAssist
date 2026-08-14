@@ -6,4 +6,6 @@ import org.springframework.data.domain.Pageable;
 
 public interface LogFileService {
     PageResponse<LogFileResponse> getAll(Pageable pageable);
+
+    PageResponse<LogFileResponse> searchByName(String name, Pageable pageable);
 }
