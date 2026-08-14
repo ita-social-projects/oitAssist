@@ -301,6 +301,10 @@ public class HierarchyValidator {
     public void validateAllStagesCompletedForCompetition(Long competitionId) {
         List<Stage> stages = stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(competitionId);
 
+        if (stages.isEmpty()) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot finish competition: Competition must have at least one stage.");
+        }
         List<String> incompleteStages = stages.stream()
             .filter(stage -> stage.getStatus() != StageStatus.FINISHED
                 && stage.getStatus() != StageStatus.CANCELLED)

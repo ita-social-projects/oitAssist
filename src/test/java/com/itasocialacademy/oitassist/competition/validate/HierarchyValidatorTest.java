@@ -592,6 +592,18 @@ class HierarchyValidatorTest {
     }
 
     @Test
+    void validateAllStagesCompletedForCompetition_noStages_shouldThrow() {
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L))
+            .thenReturn(List.of());
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateAllStagesCompletedForCompetition(1L));
+
+        assertTrue(exception.getMessage().contains("must have at least one stage"));
+    }
+
+    @Test
     void validateAllToursCompletedForStage_allFinishedOrCancelled_shouldPass() {
         Tour t1 = Tour.builder().executionStatus(ExecutionStatus.FINISHED).build();
         Tour t2 = Tour.builder().executionStatus(ExecutionStatus.CANCELLED).build();
