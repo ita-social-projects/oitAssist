@@ -25,6 +25,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Centralized exception handler for the entire application.
@@ -199,6 +201,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, "Request body is missing or malformed",
                 HttpStatus.BAD_REQUEST.value(), null));
+    }
+
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(Exception ex,
+        HttpServletRequest request) {
+        log.warn("Resource not found: traceId={}, path={}", MDC.get(TRACE_ID_MDC), request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(buildResponse(request, ErrorCode.ENTITY_NOT_FOUND, "Resource not found",
+                HttpStatus.NOT_FOUND.value(), null));
     }
 
     @ExceptionHandler(Exception.class)

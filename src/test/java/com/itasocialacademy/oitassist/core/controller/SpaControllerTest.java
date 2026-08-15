@@ -1,83 +1,74 @@
 package com.itasocialacademy.oitassist.core.controller;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
+import com.itasocialacademy.oitassist.ControllerUnitTest;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.itasocialacademy.oitassist.core.web.AppExceptionHttpStatusMapper;
-import com.itasocialacademy.oitassist.security.config.SecurityConfig;
-import com.itasocialacademy.oitassist.security.jwt.JwtFilter;
-import com.itasocialacademy.oitassist.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
-import com.itasocialacademy.oitassist.security.oauth2.OAuth2FailureHandler;
-import com.itasocialacademy.oitassist.security.oauth2.OAuth2SuccessHandler;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.security.web.AuthenticationEntryPoint;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+class SpaControllerTest extends ControllerUnitTest<SpaController> {
 
-@WebMvcTest(SpaController.class)
-@Import(SecurityConfig.class)
-class SpaControllerTest {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockitoBean
-    private AppExceptionHttpStatusMapper appExceptionHttpStatusMapper;
-
-    @MockitoBean
-    private JwtFilter jwtFilter;
-
-    @MockitoBean
-    private AuthenticationEntryPoint entryPoint;
-
-    @MockitoBean
-    private OAuth2SuccessHandler successHandler;
-
-    @MockitoBean
-    private OAuth2FailureHandler failureHandler;
-
-    @MockitoBean
-    private HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        doAnswer(invocation -> {
-            ServletRequest request = invocation.getArgument(0);
-            ServletResponse response = invocation.getArgument(1);
-            FilterChain chain = invocation.getArgument(2);
-            chain.doFilter(request, response);
-            return null;
-        }).when(jwtFilter).doFilter(any(), any(), any());
+    @Override
+    protected SpaController getController() {
+        return new SpaController();
     }
 
     @Test
-    void shouldForwardUnauthenticatedUiRequestToindexHtml() throws Exception {
-        mockMvc.perform(get("/ui"))
+    void forwardRoot_shouldForwardToIndexHtml() throws Exception {
+        mockMvc.perform(get("/"))
             .andExpect(status().isOk())
             .andExpect(forwardedUrl("/index.html"));
     }
 
     @Test
-    void shouldForwardUnauthenticatedNestedUiRequestToindexHtml() throws Exception {
-        mockMvc.perform(get("/ui/nested/dashboard"))
+    void forwardSingleSegmentPath_shouldForwardToIndexHtml() throws Exception {
+        mockMvc.perform(get("/login"))
+            .andExpect(status().isOk())
+            .andExpect(forwardedUrl("/index.html"));
+
+        mockMvc.perform(get("/competitions"))
             .andExpect(status().isOk())
             .andExpect(forwardedUrl("/index.html"));
     }
 
     @Test
-    void shouldForwardUnauthenticatedTrailingSlashUiRequestToindexHtml() throws Exception {
-        mockMvc.perform(get("/ui/"))
+    void forwardMultiSegmentPath_shouldForwardToIndexHtml() throws Exception {
+        mockMvc.perform(get("/competitions/1"))
             .andExpect(status().isOk())
             .andExpect(forwardedUrl("/index.html"));
+
+        mockMvc.perform(get("/competitions/1/stages"))
+            .andExpect(status().isOk())
+            .andExpect(forwardedUrl("/index.html"));
+
+        mockMvc.perform(get("/competitions/1/stages/2/tasks"))
+            .andExpect(status().isOk())
+            .andExpect(forwardedUrl("/index.html"));
+    }
+
+    @Test
+    void apiPaths_shouldNotBeForwarded() throws Exception {
+        mockMvc.perform(get("/api/v1/users"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void staticFilesWithExtensions_shouldNotBeForwarded() throws Exception {
+        mockMvc.perform(get("/vite.svg"))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/assets/index-DtHrNYtg.js"))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/assets/index-DA9piY5s.css"))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/favicon.ico"))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/i18n/en/common.json"))
+            .andExpect(status().isNotFound());
     }
 }

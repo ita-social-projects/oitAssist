@@ -96,8 +96,35 @@ public class SecurityConfig {
                     "/docs/**",
                     "/docs")
                 .permitAll()
+                .requestMatchers(
+                    "/",
+                    "/index.html",
+                    "/favicon.ico",
+                    "/vite.svg",
+                    "/assets/**",
+                    "/i18n/**",
+                    "/uploads/**",
+                    "/*.ico",
+                    "/*.svg",
+                    "/*.png",
+                    "/*.jpg",
+                    "/*.jpeg",
+                    "/*.webp",
+                    "/*.json",
+                    "/*.js",
+                    "/*.css",
+                    "/*.txt",
+                    "/*.map",
+                    "/*.woff",
+                    "/*.woff2",
+                    "/*.ttf")
+                .permitAll()
+                .requestMatchers("/api/**")
+                .authenticated()
+                .requestMatchers("/actuator/**")
+                .authenticated()
                 .anyRequest()
-                .authenticated())
+                .permitAll())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(entryPoint))
