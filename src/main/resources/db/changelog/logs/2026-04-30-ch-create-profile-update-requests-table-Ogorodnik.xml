@@ -60,8 +60,7 @@
         </sql>
         <sql>
             CREATE UNIQUE INDEX uq_profile_update_requests_per_day
-                ON profile_update_requests (user_id, DATE(requested_at));
-        </sql>
+                ON profile_update_requests (user_id, DATE(requested_at AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Kiev'));        </sql>
     </changeSet>
 
 </databaseChangeLog>
