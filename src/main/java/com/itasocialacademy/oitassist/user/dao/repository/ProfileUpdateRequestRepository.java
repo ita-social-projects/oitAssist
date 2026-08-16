@@ -1,13 +1,12 @@
 package com.itasocialacademy.oitassist.user.dao.repository;
 
-import com.itasocialacademy.oitassist.core.rest.repository.EntityRepository;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
 import com.itasocialacademy.oitassist.user.dao.model.ProfileUpdateRequest;
 import org.springframework.stereotype.Repository;
 import java.time.Instant;
 
 @Repository
-public interface ProfileUpdateRequestRepository extends EntityRepository<ProfileUpdateRequest, Long> {
+public interface ProfileUpdateRequestRepository {
     /** Check if entity with user id and status exists. */
     boolean existsByUserIdAndStatus(Long userId, UpdateRequestStatus status);
 
@@ -16,4 +15,7 @@ public interface ProfileUpdateRequestRepository extends EntityRepository<Profile
      * specified time range.
      */
     boolean existsByUserIdAndRequestedAtBetween(Long userId, Instant start, Instant end);
+
+    /** Persists the given profile update request. */
+    ProfileUpdateRequest save(ProfileUpdateRequest request);
 }

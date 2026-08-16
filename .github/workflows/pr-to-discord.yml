@@ -2,36 +2,71 @@ name: PR to Discord
 
 on:
   pull_request:
-    types: [opened, closed]
+    types: [ opened, reopened, closed, synchronize ]
     branches: [ dev ]
 
 permissions:
   pull-requests: write
+  issues: write
   contents: read
+
+concurrency:
+  group: pr-discord-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
 
 jobs:
   manage_discord:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      # --- STEP 1: OPENED ---
+      # --- STEP 1: OPENED, REOPENED OR SYNCHRONIZE ---
       - name: Notify and Label
-        if: github.event.action == 'opened'
+        if: github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'synchronize'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISCORD_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          ACTION: ${{ github.event.action }}
         run: |
+          # Check current labels to prevent duplicate notifications on regular pushes
+          LABELS=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json labels -q '.labels[].name')
+          
+          if [[ "$ACTION" == "synchronize" ]] && echo "$LABELS" | grep -q "discord-"; then
+            echo "Discord label already exists. Skipping for synchronize event."
+            exit 0
+          fi
+          
+          # Check historical labels (Anti-Spam Guard in case the label was manually deleted)
+          if [[ "$ACTION" == "synchronize" ]]; then
+            WAS_LABELED=$(gh api --paginate repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/events -q '.[].label.name' | grep "discord-" || true)
+          
+            if [[ -n "$WAS_LABELED" ]]; then
+              echo "Label was previously created but manually deleted. Preventing duplicate Discord spam."
+              exit 0
+            fi
+          fi
+
+          # Create payload if it's a new PR, a reopened PR, or a synchronize event without prior labels
+          PAYLOAD=$(jq -n \
+            --arg number "$PR_NUMBER" \
+            --arg title "$PR_TITLE" \
+            --arg author "$PR_AUTHOR" \
+            --arg url "$PR_URL" \
+            '{
+              content:
+                ("🚀 **New PR #" + $number + "**\n" +
+                 "👀**Title:** " + $title + "\n" +
+                 "👤**Author:** " + $author + "\n" +
+                 "🔗**Link:** " + $url)
+            }')
+          
           RESPONSE=$(curl -s -X POST "${DISCORD_URL}?wait=true" \
             -H "Content-Type: application/json" \
-            -d @- <<EOF
-          {
-            "content": "🚀 **New PR #${{ github.event.pull_request.number }}**\n👀**Title:** ${{ github.event.pull_request.title }}\n👤**Author:** ${{ github.event.pull_request.user.login }}\n🔗**Link:** ${{ github.event.pull_request.html_url }}"
-          }
-          EOF
-          )
+            -d "$PAYLOAD")
           
-          MSG_ID=$(echo $RESPONSE | jq -r '.id')
+          MSG_ID=$(echo "$RESPONSE" | jq -r '.id')
           
           if [ "$MSG_ID" == "null" ] || [ -z "$MSG_ID" ]; then
             echo "Error: Discord did not return a Message ID. Response was: $RESPONSE"
@@ -40,25 +75,26 @@ jobs:
 
           LABEL_NAME="discord-$MSG_ID"
           
-          gh label create "$LABEL_NAME" --color "7289da" --repo ${{ github.repository }} || echo "Label exists"
-          gh pr edit ${{ github.event.pull_request.number }} --add-label "$LABEL_NAME" --repo ${{ github.repository }}
+          gh label create "$LABEL_NAME" --color "7289da" --repo "$GITHUB_REPOSITORY" || echo "Label exists"
+          gh pr edit "$PR_NUMBER" --add-label "$LABEL_NAME" --repo "$GITHUB_REPOSITORY"
 
       # --- STEP 2: CLOSED ---
       - name: Delete Discord Message
-        if: github.event.action == 'closed' || github.event.action == 'merged'
+        if: github.event.action == 'closed'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DISCORD_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          LABELS=$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json labels -q '.labels[].name')
-          
+          LABELS=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json labels -q '.labels[].name')
+
           MSG_ID=$(echo "$LABELS" | grep -oP '(?<=discord-)\d+' || echo "")
           
           if [ ! -z "$MSG_ID" ]; then
             echo "Deleting message $MSG_ID..."
             curl -s -X DELETE "${DISCORD_URL}/messages/$MSG_ID"
           
-            gh label delete "discord-$MSG_ID" --repo ${{ github.repository }} --yes
+            gh label delete "discord-$MSG_ID" --repo "$GITHUB_REPOSITORY" --yes || echo "Label already deleted"
           else
             echo "No valid Discord ID label found (found: $LABELS)"
           fi

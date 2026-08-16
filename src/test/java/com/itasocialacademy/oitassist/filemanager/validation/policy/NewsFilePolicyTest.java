@@ -1,16 +1,33 @@
 package com.itasocialacademy.oitassist.filemanager.validation.policy;
 
+import static org.junit.jupiter.api.Assertions.*;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.validation.enums.AllowedExtension;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.util.unit.DataSize;
 
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 class NewsFilePolicyTest {
+    private final NewsFilePolicy policy = new NewsFilePolicy();
 
-    private final NewsFilePolicy policy = NewsFilePolicy.INSTANCE;
+    @Test
+    void supports_ShouldReturnTrue_ForNewsWithGenericRole() {
+        assertTrue(policy.supports(RelatedEntityType.NEWS, FileRole.GENERIC));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = FileRole.class, names = "GENERIC", mode = EnumSource.Mode.EXCLUDE)
+    void supports_ShouldReturnFalse_ForNewsWithNonGenericRole(FileRole role) {
+        assertFalse(policy.supports(RelatedEntityType.NEWS, role));
+    }
+
+    @Test
+    void supports_ShouldReturnFalse_ForNonNewsEntity() {
+        assertFalse(policy.supports(RelatedEntityType.TASK, FileRole.GENERIC));
+    }
 
     @Test
     void getAllowedExtensions_ShouldReturnExpectedExtensions_WhenCalled() {

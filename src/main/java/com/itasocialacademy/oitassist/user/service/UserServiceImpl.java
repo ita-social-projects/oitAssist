@@ -3,27 +3,34 @@ package com.itasocialacademy.oitassist.user.service;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
-import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
+import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
 import com.itasocialacademy.oitassist.user.dao.model.ProfileUpdateRequest;
+import com.itasocialacademy.oitassist.user.dao.enums.Role;
+import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import com.itasocialacademy.oitassist.user.dao.model.User;
 import com.itasocialacademy.oitassist.user.dao.repository.ProfileUpdateRequestRepository;
 import com.itasocialacademy.oitassist.user.exceptions.ProfileUpdateRequestException;
+import com.itasocialacademy.oitassist.user.exceptions.*;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import com.itasocialacademy.oitassist.usercompetition.api.interfaces.UserCompetitionFacade;
 import jakarta.persistence.EntityNotFoundException;
 import org.jetbrains.annotations.NotNull;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
@@ -31,23 +38,18 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.List;
 import java.util.Optional;
 
+@RequiredArgsConstructor
 @Service
-public class UserServiceImpl
-    extends AbstractServiceImpl<Long, User, CreateUserDTO, UpdateUserDTO, ResponseUserDTO, UserRepository, UserMapper>
-    implements UserService {
+public class UserServiceImpl implements UserService {
     private final SecurityFacade securityFacade;
+    private final UserRepository repository;
+    private final UserMapper mapper;
+
     private final ProfileUpdateRequestRepository profileUpdateRequestRepository;
     private final UserCompetitionFacade userCompetitionFacade;
-
-    protected UserServiceImpl(UserRepository repository, UserMapper mapper, SecurityFacade securityFacade,
-        ProfileUpdateRequestRepository profileUpdateRequestRepository, UserCompetitionFacade userCompetitionFacade) {
-        super(repository, mapper);
-        this.securityFacade = securityFacade;
-        this.profileUpdateRequestRepository = profileUpdateRequestRepository;
-        this.userCompetitionFacade = userCompetitionFacade;
-    }
 
     /**
      * {@inheritDoc}
@@ -64,6 +66,33 @@ public class UserServiceImpl
             .map(mapper::toUserAuthDetails);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<UserAuthDetails> findAuthDetailsByIds(List<Long> userIds) {
+        return repository.findAllById(userIds)
+            .stream().map(mapper::toUserAuthDetails).toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<UserProfileDetails> findProfileDetailsById(Long userId) {
+        return repository.findById(userId)
+            .map(mapper::toUserProfileDetails);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<UserProfileDetails> findProfilesDetailsByIds(List<Long> userIds) {
+        return repository.findAllById(userIds)
+            .stream().map(mapper::toUserProfileDetails).toList();
+    }
+
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {
         Optional<User> user = repository.findUserByEmail(username);
         return user.map(mapper::toUserDetails).orElse(null);
@@ -78,7 +107,7 @@ public class UserServiceImpl
         Optional<User> user = repository.findUserByEmail(email);
 
         return user.map(mapper::toResponseUserDTO)
-            .orElseThrow(() -> new EntityNotFoundException("User not found: " + email));
+            .orElseThrow(UserNotFoundException::new);
     }
 
     /**
@@ -88,7 +117,7 @@ public class UserServiceImpl
     @NonNull
     public ResponseUserDTO getCurrentUserProfile() {
         String email = securityFacade.getCurrentUserEmail()
-            .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
+            .orElseThrow(UserAuthorizationException::new);
 
         return loadUserByEmail(email);
     }
@@ -149,7 +178,7 @@ public class UserServiceImpl
         }
 
         boolean hasAnyCompetitions = userCompetitionFacade.hasActiveCompetitions(currentUserId,
-            List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS));
+                List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT));
 
         UpdateRequestStatus status = hasAnyCompetitions ? UpdateRequestStatus.PENDING : UpdateRequestStatus.APPROVED;
 
@@ -188,5 +217,80 @@ public class UserServiceImpl
         if (status == UpdateRequestStatus.APPROVED) {
             applyProfileUpdate(user, request);
         }
+    }
+
+    @Override
+    @NonNull
+    public ResponseUserDTO changeUserRole(@NonNull Long userId, @NonNull Role newRole) {
+        if (securityFacade.getCurrentUserId()
+            .orElseThrow(UserAuthorizationException::new)
+            .equals(userId)) {
+            throw new UserRoleSelfChangeException();
+        }
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
+        }
+        User user = repository.findById(userId)
+            .orElseThrow(UserNotFoundException::new);
+        if (user.getRole().equals(Role.ADMIN)) {
+            throw new AdminRoleModificationException();
+        }
+        user.setRole(newRole);
+        return mapper.toResponseUserDTO(repository.save(user));
+    }
+
+    @Override
+    public @NonNull Page<ResponseUserDTO> getUsers(
+        @NonNull Pageable pageable,
+        String search,
+        List<Role> roles) {
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
+        }
+
+        String normalizedSearch = search == null || search.isBlank()
+            ? null
+            : search.trim()
+                .replaceAll("\\s+", " ")
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+
+        List<Role> normalizedRoles = roles == null || roles.isEmpty()
+            ? null
+            : roles;
+
+        return repository.findAllBySearchAndRoles(
+            normalizedSearch,
+            normalizedRoles,
+            pageable)
+            .map(mapper::toResponseUserDTO);
+    }
+
+    @Override
+    public @NonNull Page<ResponseUserDTO> getUsersByIds(@NonNull Pageable pageable, List<Long> ids) {
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
+        }
+        return repository.findAllByIdIn(ids, pageable).map(mapper::toResponseUserDTO);
+    }
+
+    @Override
+    public @NonNull ResponseUserDTO changeUserStatus(@NonNull Long userId, @NonNull UserStatus newStatus) {
+        if (securityFacade.getCurrentUserId()
+            .orElseThrow(UserAuthorizationException::new)
+            .equals(userId)) {
+            throw new UserStatusSelfChangeException();
+        }
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
+        }
+        User user = repository.findById(userId)
+            .orElseThrow(UserNotFoundException::new);
+        if (user.getRole().equals(Role.ADMIN)) {
+            throw new AdminStatusModificationException();
+        }
+        user.setUserStatus(newStatus);
+        return mapper.toResponseUserDTO(repository.save(user));
     }
 }

@@ -1,22 +1,6 @@
 @ApplicationModule(
     displayName = "User",
-    allowedDependencies = {
-        "core",
-        "core::RestController",
-        "core::AbstractRestControllerImpl",
-        "core::BaseService",
-        "core::AbstractServiceImpl",
-        "core::GeneralMapper",
-        "core::EntityDTO",
-        "core::CreateEntityDTO",
-        "core::UpdateEntityDTO",
-        "core::LongEntity",
-        "core::EntityRepository",
-        "security::UserDetailsImpl",
-        "security::SecurityUserProvider",
-        "security::SecurityFacade",
-        "usercompetition::UserCompetitionFacade",
-        "competition::CompetitionStatus",})
+    allowedDependencies = {"core", "security::UserDetailsImpl", "security::SecurityUserProvider", "security::SecurityFacade", "security::OAuthUserProvisioningPort", "security::SecurityFacade", "usercompetition::UserCompetitionFacade", "competition :: enums"})
 package com.itasocialacademy.oitassist.user;
 
 import org.springframework.modulith.ApplicationModule;

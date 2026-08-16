@@ -172,7 +172,7 @@
         <setting id="org.eclipse.jdt.core.formatter.insert_space_before_bitwise_operator" value="insert"/>
         <setting id="org.eclipse.jdt.core.formatter.put_empty_statement_on_new_line" value="true"/>
         <setting id="org.eclipse.jdt.core.formatter.alignment_for_parameters_in_constructor_declaration" value="16"/>
-        <setting id="org.eclipse.jdt.core.formatter.alignment_for_type_parameters" value="0"/>
+        <setting id="org.eclipse.jdt.core.formatter.alignment_for_type_parameters" value="16"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_after_comma_in_method_invocation_arguments"
                  value="insert"/>
         <setting id="org.eclipse.jdt.core.formatter.alignment_for_arguments_in_method_invocation" value="16"/>

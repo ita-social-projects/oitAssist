@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.core.config;
 
+import freemarker.core.HTMLOutputFormat;
 import freemarker.template.Configuration;
 import freemarker.template.TemplateExceptionHandler;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +20,8 @@ public class FreeMarkerConfig {
         cfg.setWrapUncheckedExceptions(true);
         cfg.setFallbackOnNullLoopVariable(false);
         cfg.setSQLDateAndTimeTimeZone(TimeZone.getDefault());
+        cfg.setOutputFormat(HTMLOutputFormat.INSTANCE);
+        cfg.setRecognizeStandardFileExtensions(true);
         return cfg;
     }
 }

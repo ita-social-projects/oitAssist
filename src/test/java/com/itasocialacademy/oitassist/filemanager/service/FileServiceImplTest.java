@@ -1,7 +1,9 @@
 package com.itasocialacademy.oitassist.filemanager.service;
 
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
@@ -15,7 +17,9 @@ import com.itasocialacademy.oitassist.filemanager.exceptions.UnsupportedStorageE
 import com.itasocialacademy.oitassist.filemanager.mapper.FileMapper;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
-import com.itasocialacademy.oitassist.filemanager.validation.FileValidationStrategyResolver;
+import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FilePolicy;
+import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FilePolicyResolver;
+import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileValidationStrategyResolver;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -31,6 +35,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+
+import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import org.springframework.data.jpa.domain.Specification;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -62,6 +70,12 @@ class FileServiceImplTest {
     @InjectMocks
     private FileServiceImpl fileService;
 
+    @Mock
+    private FilePolicyResolver filePolicyResolver;
+
+    @Mock
+    private FilePolicy filePolicy;
+
     private Long fileId;
     private Long nonExistentId;
     private Long userId;
@@ -86,8 +100,9 @@ class FileServiceImplTest {
     void upload_ShouldReturnEmptyList_WhenNoFilesProvided() {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
 
         List<FileResponseDto> result = fileService.upload(List.of(), request);
 
@@ -102,8 +117,9 @@ class FileServiceImplTest {
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored");
         when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
@@ -125,8 +141,9 @@ class FileServiceImplTest {
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored");
         when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
@@ -148,8 +165,9 @@ class FileServiceImplTest {
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored.gz");
         when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
@@ -171,8 +189,9 @@ class FileServiceImplTest {
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored.");
         when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
@@ -193,8 +212,9 @@ class FileServiceImplTest {
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored.");
         when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
@@ -216,8 +236,9 @@ class FileServiceImplTest {
         FileResponseDto expectedDto = FileResponseDto.builder().id(10L).build();
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(RelatedEntityType.NEWS)).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored.jpg");
         when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
@@ -227,7 +248,8 @@ class FileServiceImplTest {
         List<FileResponseDto> result = fileService.upload(List.of(file), request);
 
         assertEquals(List.of(expectedDto), result);
-        verify(validationStrategyResolver).resolve(RelatedEntityType.NEWS);
+        verify(validationStrategyResolver).resolve(RelatedEntityType.NEWS, FileRole.GENERIC);
+        verify(filePolicyResolver).resolve(RelatedEntityType.NEWS, FileRole.GENERIC);
         verify(providerResolver).resolveDefault();
         verify(fileRepository).save(any());
         verify(fileMapper).toDto(savedAsset);
@@ -240,8 +262,9 @@ class FileServiceImplTest {
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored.jpg");
         when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
@@ -270,8 +293,9 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.TASK, 1L);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("task/stored.jpg");
         when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
@@ -290,8 +314,9 @@ class FileServiceImplTest {
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored.jpg");
         when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
@@ -311,8 +336,9 @@ class FileServiceImplTest {
         ArgumentCaptor<FileAsset> captor = ArgumentCaptor.forClass(FileAsset.class);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored.jpg");
         when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
@@ -331,8 +357,9 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(
             ValidationResult.fail("File size exceeded"));
 
         List<MultipartFile> files = List.of(file);
@@ -352,8 +379,9 @@ class FileServiceImplTest {
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(file.getOriginalFilename()).thenReturn("photo.jpg");
         when(file.getInputStream()).thenThrow(new IOException("disk error"));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
 
         List<MultipartFile> files = List.of(file);
@@ -371,8 +399,9 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString()))
             .thenReturn("news/a.jpg")
@@ -397,11 +426,14 @@ class FileServiceImplTest {
         FileUploadRequestDto request = uploadRequest(RelatedEntityType.NEWS, 1L);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
-        when(validationStrategyResolver.resolve(any())).thenReturn(validationStrategy);
-        when(validationStrategy.validate(any(), any())).thenReturn(ValidationResult.ok());
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
         when(providerResolver.resolveDefault()).thenReturn(storageProvider);
         when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("path/key");
+        when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
         when(fileRepository.save(any())).thenReturn(existingFile);
+        when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
 
         assertDoesNotThrow(() -> fileService.upload(List.of(file), request));
         verify(securityFacade).getCurrentUserId();
@@ -419,14 +451,82 @@ class FileServiceImplTest {
         verifyNoInteractions(fileRepository, storageProvider);
     }
 
+    @Test
+    void upload_ShouldDefaultToGenericRole_WhenFileRoleIsNotProvided() {
+        MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", new byte[512]);
+        FileUploadRequestDto request = FileUploadRequestDto.builder()
+            .relatedEntityType(RelatedEntityType.NEWS)
+            .relatedEntityId(1L)
+            .build();
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any())).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+        when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("news/stored.jpg");
+        when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
+        when(fileRepository.save(any())).thenReturn(new FileAsset());
+        when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
+
+        fileService.upload(List.of(file), request);
+
+        verify(validationStrategyResolver).resolve(RelatedEntityType.NEWS, FileRole.GENERIC);
+        verify(filePolicyResolver).resolve(RelatedEntityType.NEWS, FileRole.GENERIC);
+    }
+
+    @Test
+    void upload_ShouldResolveStrategyAndPolicyByRole_WhenTaskRoleProvided() {
+        MultipartFile file = new MockMultipartFile("file", "doc.docx", "application/vnd.openxmlformats", new byte[10]);
+        FileRole role = FileRole.REFERENCE;
+        FileUploadRequestDto request = uploadRequest(RelatedEntityType.TASK, 1L, role);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(RelatedEntityType.TASK, role)).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(RelatedEntityType.TASK, role)).thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any())).thenReturn(ValidationResult.ok());
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+        when(storageProvider.upload(any(), anyString(), anyString())).thenReturn("task/stored.docx");
+        when(storageProvider.getType()).thenReturn(StorageProviderType.LOCAL);
+        when(fileRepository.save(any())).thenReturn(new FileAsset());
+        when(fileMapper.toDto(any())).thenReturn(new FileResponseDto());
+
+        fileService.upload(List.of(file), request);
+
+        verify(validationStrategyResolver).resolve(RelatedEntityType.TASK, role);
+        verify(filePolicyResolver).resolve(RelatedEntityType.TASK, role);
+        verify(validationStrategy).validate(any(), eq(request), eq(filePolicy));
+    }
+
+    @Test
+    void upload_ShouldThrowValidationException_WhenNoPolicyRegisteredForCombination() {
+        MultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", new byte[512]);
+        FileUploadRequestDto request = uploadRequest(RelatedEntityType.TASK, 1L, FileRole.PROBLEM);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any())).thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any()))
+            .thenThrow(new ValidationException("No file policy registered for: TASK/PROBLEM",
+                ErrorCode.FILE_VALIDATION_FAILED));
+
+        List<MultipartFile> files = List.of(file);
+        assertThrows(ValidationException.class, () -> fileService.upload(files, request));
+
+        verifyNoInteractions(providerResolver);
+        verify(fileRepository, never()).save(any());
+    }
+
     // --- Soft Delete Tests ---
 
     @Test
     void deleteSoft_ShouldUpdateStatusAndTimestamp_WhenFileExists() {
         String originalKey = "news/photo.jpg";
         existingFile.setStorageKey(originalKey);
+        existingFile.setUserId(userId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityFacade.isOwner(userId)).thenReturn(true);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
 
         fileService.deleteSoft(fileId);
 
@@ -441,6 +541,7 @@ class FileServiceImplTest {
 
     @Test
     void deleteSoft_ShouldThrowException_WhenFileNotFound() {
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(fileRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
         assertThrows(FileAssetNotFoundException.class, () -> fileService.deleteSoft(nonExistentId));
@@ -449,8 +550,11 @@ class FileServiceImplTest {
 
     @Test
     void deleteSoft_ShouldSucceed_WhenUserIsOwner() {
+        existingFile.setUserId(userId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityFacade.isOwner(userId)).thenReturn(true);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
 
         fileService.deleteSoft(fileId);
 
@@ -460,8 +564,11 @@ class FileServiceImplTest {
 
     @Test
     void deleteSoft_ShouldSucceed_WhenUserIsNotOwnerButIsAdmin() {
+        Long otherUserId = 99L;
+        existingFile.setUserId(otherUserId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityFacade.isOwner(userId)).thenReturn(false);
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
 
         fileService.deleteSoft(fileId);
@@ -472,8 +579,11 @@ class FileServiceImplTest {
 
     @Test
     void deleteSoft_ShouldThrowAuthorizationException_WhenUserIsNeitherOwnerNorAdmin() {
+        Long otherUserId = 99L;
+        existingFile.setUserId(otherUserId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
-        when(securityFacade.isOwner(userId)).thenReturn(false);
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
 
         assertThrows(AuthorizationException.class, () -> fileService.deleteSoft(fileId));
@@ -572,12 +682,121 @@ class FileServiceImplTest {
         verifyNoInteractions(providerResolver, storageProvider);
     }
 
+    // --- getFilesByEntity(entityType, entityId, roles) Tests ---
+
+    @Test
+    void getFilesByEntity_withRoles_ShouldReturnFilteredFilesWithUrls() {
+        FileAsset problemFile = new FileAsset();
+        problemFile.setId(1L);
+        problemFile.setStorageProvider(StorageProviderType.LOCAL);
+        problemFile.setStorageKey("task/problem.pdf");
+        problemFile.setOriginalFilename("problem.pdf");
+        problemFile.setMimeType("application/pdf");
+        problemFile.setSize(2048L);
+        problemFile.setFileRole(FileRole.PROBLEM);
+
+        Set<FileRole> roles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
+        FileDetailsDTO expectedDto = new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
+            "/uploads/task/problem.pdf");
+
+        when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(problemFile));
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.getFileUrl("task/problem.pdf")).thenReturn("/uploads/task/problem.pdf");
+        when(fileMapper.toDetails(problemFile, "/uploads/task/problem.pdf")).thenReturn(expectedDto);
+
+        List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
+
+        assertEquals(1, result.size());
+        assertEquals(expectedDto, result.getFirst());
+        verify(fileRepository).findAll(any(Specification.class));
+        verify(fileMapper).toDetails(problemFile, "/uploads/task/problem.pdf");
+    }
+
+    @Test
+    void getFilesByEntity_withRoles_ShouldReturnEmptyList_WhenNoFilesMatch() {
+        Set<FileRole> roles = Set.of(FileRole.SOLUTION);
+
+        when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of());
+
+        List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
+
+        assertTrue(result.isEmpty());
+        verify(fileRepository).findAll(any(Specification.class));
+        verifyNoInteractions(providerResolver, fileMapper);
+    }
+
+    @Test
+    void getFilesByEntity_withRoles_ShouldReturnMultipleFiles_WhenMultipleRolesMatch() {
+        FileAsset problemFile = new FileAsset();
+        problemFile.setId(1L);
+        problemFile.setStorageProvider(StorageProviderType.LOCAL);
+        problemFile.setStorageKey("task/problem.pdf");
+        problemFile.setFileRole(FileRole.PROBLEM);
+
+        FileAsset referenceFile = new FileAsset();
+        referenceFile.setId(2L);
+        referenceFile.setStorageProvider(StorageProviderType.LOCAL);
+        referenceFile.setStorageKey("task/reference.docx");
+        referenceFile.setFileRole(FileRole.REFERENCE);
+
+        Set<FileRole> roles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
+        FileDetailsDTO problemDto = new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 1024L, "PROBLEM",
+            "/uploads/task/problem.pdf");
+        FileDetailsDTO referenceDto = new FileDetailsDTO(2L, "reference.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 2048L, "REFERENCE",
+            "/uploads/task/reference.docx");
+
+        when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(problemFile, referenceFile));
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.getFileUrl("task/problem.pdf")).thenReturn("/uploads/task/problem.pdf");
+        when(storageProvider.getFileUrl("task/reference.docx")).thenReturn("/uploads/task/reference.docx");
+        when(fileMapper.toDetails(problemFile, "/uploads/task/problem.pdf")).thenReturn(problemDto);
+        when(fileMapper.toDetails(referenceFile, "/uploads/task/reference.docx")).thenReturn(referenceDto);
+
+        List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
+
+        assertEquals(2, result.size());
+        assertEquals(problemDto, result.get(0));
+        assertEquals(referenceDto, result.get(1));
+        verify(providerResolver, times(2)).resolve(StorageProviderType.LOCAL);
+        verify(fileMapper, times(2)).toDetails(any(), anyString());
+    }
+
+    @Test
+    void getFilesByEntity_withRoles_ShouldFilterBySingleRole() {
+        FileAsset solutionFile = new FileAsset();
+        solutionFile.setId(3L);
+        solutionFile.setStorageProvider(StorageProviderType.LOCAL);
+        solutionFile.setStorageKey("task/solution.zip");
+        solutionFile.setFileRole(FileRole.SOLUTION);
+
+        Set<FileRole> roles = Set.of(FileRole.SOLUTION);
+        FileDetailsDTO solutionDto = new FileDetailsDTO(3L, "solution.zip", "application/zip", 4096L, "SOLUTION",
+            "/uploads/task/solution.zip");
+
+        when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(solutionFile));
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.getFileUrl("task/solution.zip")).thenReturn("/uploads/task/solution.zip");
+        when(fileMapper.toDetails(solutionFile, "/uploads/task/solution.zip")).thenReturn(solutionDto);
+
+        List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
+
+        assertEquals(1, result.size());
+        assertEquals("SOLUTION", result.getFirst().fileRole());
+        verify(fileRepository).findAll(any(Specification.class));
+    }
+
     // --- Helpers ---
 
     private static FileUploadRequestDto uploadRequest(RelatedEntityType type, Long relatedEntityId) {
+        return uploadRequest(type, relatedEntityId, FileRole.GENERIC);
+    }
+
+    private static FileUploadRequestDto uploadRequest(RelatedEntityType type, Long relatedEntityId, FileRole role) {
         return FileUploadRequestDto.builder()
             .relatedEntityType(type)
             .relatedEntityId(relatedEntityId)
+            .fileRole(role)
             .build();
     }
 }

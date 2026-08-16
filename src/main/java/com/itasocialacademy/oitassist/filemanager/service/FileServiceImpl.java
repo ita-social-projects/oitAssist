@@ -3,10 +3,14 @@ package com.itasocialacademy.oitassist.filemanager.service;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
+import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
 import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
+import com.itasocialacademy.oitassist.filemanager.dao.specification.FileAssetSpecification;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
@@ -15,16 +19,18 @@ import com.itasocialacademy.oitassist.filemanager.mapper.FileMapper;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
-import com.itasocialacademy.oitassist.filemanager.validation.FileValidationStrategyResolver;
+import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FilePolicy;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
+import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FilePolicyResolver;
+import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileValidationStrategyResolver;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.io.IOException;
 import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +45,13 @@ public class FileServiceImpl implements FileService {
     private final FileRepository repository;
     private final FileMapper fileMapper;
     private final SecurityFacade securityFacade;
+    private final FilePolicyResolver filePolicyResolver;
+
+    /**
+     * Role identifier for administrative users. Used for role-based access control
+     * checks throughout this service.
+     */
+    private static final String ROLE_ADMIN = "ADMIN";
 
     /**
      * {@inheritDoc}
@@ -53,11 +66,15 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto) {
         Long currentUserId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User must be authenticated to upload files.",
-                ErrorCode.ACCESS_DENIED));
+            .orElseThrow(() -> new AuthorizationException(
+                "Not authenticated", ErrorCode.ACCESS_DENIED));
 
-        FileValidationStrategy strategy = validationStrategyResolver.resolve(requestDto.getRelatedEntityType());
-        ValidationResult result = strategy.validate(files, requestDto);
+        RelatedEntityType entityType = requestDto.getRelatedEntityType();
+        FileRole role = requestDto.getFileRole();
+
+        FileValidationStrategy strategy = validationStrategyResolver.resolve(entityType, role);
+        FilePolicy policy = filePolicyResolver.resolve(entityType, role);
+        ValidationResult result = strategy.validate(files, requestDto, policy);
 
         if (!result.valid()) {
             throw new ValidationException(
@@ -80,10 +97,14 @@ public class FileServiceImpl implements FileService {
     @Override
     @Transactional
     public void deleteSoft(Long fileId) {
+        Long currentUserId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException(
+                "Not authenticated", ErrorCode.ACCESS_DENIED));
+
         FileAsset file = repository.findById(fileId)
             .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
 
-        validateOwnerOrAdmin(file.getUserId());
+        checkOwnerOrAdmin(file.getUserId(), currentUserId);
 
         file.setStatus(FileStatus.SOFT_DELETED);
         file.setDeletedAt(OffsetDateTime.now());
@@ -118,6 +139,167 @@ public class FileServiceImpl implements FileService {
         }
 
         repository.save(file);
+    }
+
+    /**
+     * Transitions a batch of {@link FileStatus#TEMPORARY} files to
+     * {@link FileStatus#ATTACHED} and establishes their relationship with the
+     * specified entity.
+     *
+     * @param entityId   the ID of the entity to link files to
+     * @param entityType the type of the related entity
+     * @param fileIds    the IDs of the files to attach; no-op if {@code null} or
+     *                   empty
+     * @param userId     the ID of the user performing the file linking operation;
+     *                   must own all files or possess the ADMIN role
+     */
+    @Override
+    @Transactional
+    public void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds, Long userId) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            log.debug("No files to link to entity {} with id={}", entityType, entityId);
+            return;
+        }
+
+        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
+        List<FileAsset> files = repository.findAllById(fileIds);
+
+        for (FileAsset file : files) {
+            checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
+            if (file.getStatus() == FileStatus.TEMPORARY) {
+                file.setStatus(FileStatus.ATTACHED);
+                file.setRelatedEntityId(entityId);
+                file.setRelatedEntityType(entityType);
+                log.debug("Linked file id={} to {} with id={}", file.getId(), entityType, entityId);
+            } else {
+                log.warn("Skipped file id={} with status={} (expected TEMPORARY)", file.getId(), file.getStatus());
+            }
+        }
+        repository.saveAll(files);
+    }
+
+    /**
+     * Marks a batch of files as {@link FileStatus#SOFT_DELETED}. Called via event
+     * after a news update removes files from content. Validates ownership for each
+     * file using the explicitly provided userId.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity to detach files to
+     * @param fileIds    the IDs of files to soft-delete
+     * @param userId     the ID of the user who triggered detach (from the event)
+     */
+    @Override
+    @Transactional
+    public void detachFiles(RelatedEntityType entityType, Long entityId, List<Long> fileIds, Long userId) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return;
+        }
+
+        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
+        List<FileAsset> files = repository.findAllById(fileIds);
+
+        for (FileAsset file : files) {
+            if (!entityType.equals(file.getRelatedEntityType())
+                || !entityId.equals(file.getRelatedEntityId())) {
+                throw new ValidationException(
+                    "File id=" + file.getId() + " does not belong to " + entityType + " id=" + entityId,
+                    ErrorCode.FILE_VALIDATION_FAILED);
+            }
+            checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
+            file.setStatus(FileStatus.SOFT_DELETED);
+            file.setDeletedAt(OffsetDateTime.now());
+        }
+        repository.saveAll(files);
+    }
+
+    /**
+     * Returns all {@link FileStatus#ATTACHED} files for the given entity, enriched
+     * with their publicly accessible URLs resolved from the storage provider.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the related entity
+     * @return list of file DTOs with resolved URLs
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<FileResponseDto> getFilesByEntity(RelatedEntityType entityType, Long entityId) {
+        List<FileAsset> files = repository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                entityType, entityId, FileStatus.ATTACHED);
+
+        return files.stream()
+            .map(file -> {
+                FileResponseDto dto = fileMapper.toDto(file);
+                StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+                dto.setUrl(provider.getFileUrl(file.getStorageKey()));
+                return dto;
+            })
+            .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Uses JPA Specifications to filter by entity type, entity ID, ATTACHED status,
+     * and the provided set of file roles. Maps results directly to
+     * {@link FileDetailsDTO} via the file mapper.
+     * </p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<FileDetailsDTO> getFilesByEntity(RelatedEntityType entityType, Long entityId, Set<FileRole> roles) {
+        Specification<FileAsset> spec = Specification
+            .where(FileAssetSpecification.hasEntityType(entityType))
+            .and(FileAssetSpecification.hasEntityId(entityId))
+            .and(FileAssetSpecification.hasStatus(FileStatus.ATTACHED))
+            .and(FileAssetSpecification.hasFileRoleIn(roles));
+
+        return repository.findAll(spec).stream()
+            .map(file -> {
+                StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+                return fileMapper.toDetails(file, provider.getFileUrl(file.getStorageKey()));
+            })
+            .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Uses JPA Specifications to filter by entity type, entity IDs, ATTACHED
+     * status, and the provided set of file roles. Maps results directly to
+     * {@link FileDetailsDTO} via the file mapper and groups them by entity ID.
+     * </p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<FileDetailsDTO>> getFilesByEntities(RelatedEntityType entityType, List<Long> entityIds,
+        Set<FileRole> roles) {
+        if (entityIds == null || entityIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Specification<FileAsset> spec = Specification
+            .where(FileAssetSpecification.hasEntityType(entityType))
+            .and(FileAssetSpecification.hasEntityIdIn(entityIds))
+            .and(FileAssetSpecification.hasStatus(FileStatus.ATTACHED))
+            .and(FileAssetSpecification.hasFileRoleIn(roles));
+
+        List<FileAsset> files = repository.findAll(spec);
+
+        Map<Long, List<FileDetailsDTO>> resultMap = new HashMap<>();
+        for (Long id : entityIds) {
+            resultMap.put(id, new ArrayList<>());
+        }
+
+        for (FileAsset file : files) {
+            StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+            FileDetailsDTO dto = fileMapper.toDetails(file, provider.getFileUrl(file.getStorageKey()));
+            resultMap.computeIfAbsent(file.getRelatedEntityId(), k -> new ArrayList<>()).add(dto);
+        }
+
+        return resultMap;
     }
 
     /**
@@ -156,7 +338,9 @@ public class FileServiceImpl implements FileService {
             provider.getType());
 
         FileAsset saved = repository.save(fileAsset);
-        return fileMapper.toDto(saved);
+        FileResponseDto dto = fileMapper.toDto(saved);
+        dto.setUrl(provider.getFileUrl(storageKey));
+        return dto;
     }
 
     /**
@@ -224,6 +408,7 @@ public class FileServiceImpl implements FileService {
             .storageKey(storageKey)
             .mimeType(file.getContentType())
             .size(file.getSize())
+            .fileRole(requestDto.getFileRole())
             .build();
     }
 
@@ -242,48 +427,52 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Validates that the current user has the authority to modify or delete a
-     * specific file.
+     * Core authorization check — verifies that the given user is either the file
+     * owner or an administrator. Used in batch operations where {@code isAdmin} is
+     * resolved once outside the loop to avoid redundant Security Context calls.
      *
-     * <p>
-     * Access is granted if the authenticated user is either the owner of the file
-     * or possesses the {@code ADMIN} role. If neither condition is met, a warning
-     * is logged and an authorization exception is thrown.
-     * </p>
-     *
-     * @param fileOwnerId the unique identifier of the user who owns the target file
-     *                    asset.
-     * @throws AuthorizationException if the user is neither the owner nor an
-     *                                administrator.
+     * @param fileOwnerId   the ID of the user who owns the file
+     * @param currentUserId the ID of the user performing the operation
+     * @param isAdmin       whether the current user has the ADMIN role
+     * @throws AuthorizationException if the user is neither owner nor admin
      */
-    private void validateOwnerOrAdmin(Long fileOwnerId) {
-        boolean isOwner = securityFacade.isOwner(fileOwnerId);
-        boolean isAdmin = securityFacade.hasRole("ADMIN");
-
+    private void checkOwnerOrAdmin(Long fileOwnerId, Long currentUserId, boolean isAdmin) {
+        boolean isOwner = fileOwnerId.equals(currentUserId);
         if (!isOwner && !isAdmin) {
-            log.warn("Security Breach: User attempted to access file owned by ID {}", fileOwnerId);
-            throw new AuthorizationException("You do not have permission to modify this file.",
+            log.warn("Security Breach: User {} attempted to access file owned by {}",
+                currentUserId, fileOwnerId);
+            throw new AuthorizationException(
+                "You do not have permission to modify this file.",
                 ErrorCode.ACCESS_DENIED);
         }
     }
 
     /**
-     * Restricts the subsequent operation to users with administrative privileges
-     * only.
+     * Convenience overload for single-file operations where {@code isAdmin} is
+     * resolved internally. Used in {@link #deleteSoft} where only one file is
+     * processed and a single Security Context call is acceptable.
      *
-     * <p>
-     * This method performs a strict role check. Unlike
-     * {@link #validateOwnerOrAdmin(Long)}, regular users—even if they own the
-     * resource—will be denied access if they do not have the {@code ADMIN} role.
-     * </p>
+     * @param fileOwnerId   the ID of the user who owns the file
+     * @param currentUserId the ID of the user performing the operation
+     * @throws AuthorizationException if the user is neither owner nor admin
+     */
+    private void checkOwnerOrAdmin(Long fileOwnerId, Long currentUserId) {
+        checkOwnerOrAdmin(fileOwnerId, currentUserId, securityFacade.hasRole(ROLE_ADMIN));
+    }
+
+    /**
+     * Restricts the operation to administrators only. Used exclusively by
+     * {@link #deleteHard} which requires elevated privileges regardless of
+     * ownership.
      *
      * @throws AuthorizationException if the authenticated user does not have the
-     *                                {@code ADMIN} role.
+     *                                ADMIN role
      */
     private void validateAdmin() {
-        if (!securityFacade.hasRole("ADMIN")) {
+        if (!securityFacade.hasRole(ROLE_ADMIN)) {
             log.warn("Security Breach: User attempted to access file with insufficient authorities");
-            throw new AuthorizationException("You do not have permission to modify this file.",
+            throw new AuthorizationException(
+                "You do not have permission to modify this file.",
                 ErrorCode.ACCESS_DENIED);
         }
     }
