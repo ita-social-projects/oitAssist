@@ -2,7 +2,9 @@ package com.itasocialacademy.oitassist.user.api.interfaces;
 
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import org.springframework.modulith.NamedInterface;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -105,4 +107,32 @@ public interface UserFacade {
      *         email
      */
     Optional<UserAuthDetails> findByEmail(String email);
+
+    /**
+     * Searches for the list of users by their IDs and returns the list of auth-side
+     * projections required by {@code UserFacade.findByIds}. Returns empty if no
+     * users were found.
+     *
+     * @param userIds the users' IDs
+     * @return the users' auth details DTOs
+     */
+    List<UserAuthDetails> findByIds(List<Long> userIds);
+
+    /**
+     * Looks up a user by their ID and returns the display-side projection needed by
+     * {@code participation}. Called by {@code participation.ApplicationServiceImpl}
+     * during the email-sending process.
+     *
+     * @param userId the user's ID
+     * @return the display-side projection, or empty if no user exists with the
+     *         given ID
+     */
+    Optional<UserProfileDetails> findProfileById(Long userId);
+
+    /**
+     * Bulk variant of {@link #findProfileById} — returns the display-side
+     * projections for all matching users. IDs with no matching user are simply
+     * omitted from the result, consistent with {@link #findByIds}.
+     */
+    List<UserProfileDetails> findProfilesByIds(List<Long> userIds);
 }

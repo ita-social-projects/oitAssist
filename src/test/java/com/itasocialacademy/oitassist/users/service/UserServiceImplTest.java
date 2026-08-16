@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.users.service;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
+import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ReviewRequestDTO;
@@ -17,11 +18,14 @@ import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.exceptions.InvalidSortFieldException;
 import com.itasocialacademy.oitassist.user.exceptions.ProfileUpdateRequestException;
 import com.itasocialacademy.oitassist.user.mapper.ProfileUpdateRequestMapper;
+import com.itasocialacademy.oitassist.user.exceptions.*;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.service.UserServiceImpl;
 import com.itasocialacademy.oitassist.usercompetition.api.interfaces.UserCompetitionFacade;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +39,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -66,11 +74,6 @@ class UserServiceImplTest {
     @InjectMocks
     private UserServiceImpl userService;
 
-    @BeforeEach
-    void setUp() {
-        ReflectionTestUtils.setField(userService, "timezone", "Europe/Kiev");
-    }
-
     @Test
     @DisplayName("loadUserByEmail should return DTO when user exists")
     void loadUserByEmail_ShouldReturnResponseUserDto_IfUserExists() {
@@ -98,14 +101,14 @@ class UserServiceImplTest {
 
     @Test
     @DisplayName("loadUserByEmail should throw EntityNotFoundException when user not found")
-    void loadUserByEmail_ShouldThrowEntityNotFoundException_WhenUserNotFound() {
+    void loadUserByEmail_ShouldThrowUserNotFoundException_WhenUserNotFound() {
         String email = "test@email.com";
 
         when(repository.findUserByEmail(email)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.loadUserByEmail(email))
-            .isInstanceOf(EntityNotFoundException.class)
-            .hasMessageContaining("User not found: " + email);
+            .isInstanceOf(UserNotFoundException.class)
+            .hasMessageContaining("User not found");
 
         verify(repository, times(1)).findUserByEmail(email);
         verifyNoInteractions(mapper);
@@ -149,12 +152,12 @@ class UserServiceImplTest {
     }
 
     @Test
-    @DisplayName("getCurrentUserProfile should throw AuthorizationException when user is not authenticated")
-    void getCurrentUserProfile_ShouldThrowAuthorizationException_WhenUserIsNotAuthenticated() {
+    @DisplayName("getCurrentUserProfile should throw UserAuthorizationException when user is not authenticated")
+    void getCurrentUserProfile_ShouldThrowUserAuthorizationException_WhenUserIsNotAuthenticated() {
         when(securityFacade.getCurrentUserEmail()).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.getCurrentUserProfile())
-            .isInstanceOf(AuthorizationException.class)
+            .isInstanceOf(UserAuthorizationException.class)
             .hasMessage("User is not authenticated");
 
         verify(securityFacade, times(1)).getCurrentUserEmail();
@@ -186,7 +189,7 @@ class UserServiceImplTest {
         when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any()))
             .thenReturn(false);
         when(userCompetitionFacade.hasActiveCompetitions(user.getId(),
-            List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS))).thenReturn(true);
+            List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT))).thenReturn(true);
 
         // when
         userService.createProfileUpdateRequest(request);
@@ -222,7 +225,7 @@ class UserServiceImplTest {
         when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any()))
             .thenReturn(false);
         when(userCompetitionFacade.hasActiveCompetitions(user.getId(),
-            List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS))).thenReturn(false);
+            List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT))).thenReturn(false);
 
         // when
         userService.createProfileUpdateRequest(request);
@@ -505,5 +508,470 @@ class UserServiceImplTest {
         assertThatThrownBy(() -> userService.reviewProfileUpdateRequests(id, body))
             .isInstanceOf(EntityNotFoundException.class)
             .hasMessageContaining("User not found");
+    }
+
+    @Test
+    @DisplayName("changeUserRole should update user role when user is admin and request is valid")
+    void changeUserRole_ShouldUpdatedUserRole_WhenUserIsAdminAndRequestIsValid() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        User user = User.builder()
+            .id(targetUserId)
+            .role(Role.USER)
+            .build();
+
+        ResponseUserDTO expected = ResponseUserDTO.builder()
+            .id(targetUserId)
+            .role(Role.ORG)
+            .build();
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+        when(repository.findById(targetUserId)).thenReturn(Optional.of(user));
+        when(repository.save(user)).thenReturn(user);
+        when(mapper.toResponseUserDTO(user)).thenReturn(expected);
+
+        ResponseUserDTO result = userService.changeUserRole(targetUserId, Role.ORG);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getRole()).isEqualTo(Role.ORG);
+        assertThat(user.getRole()).isEqualTo(Role.ORG);
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verify(repository).findById(targetUserId);
+        verify(repository).save(user);
+        verify(mapper).toResponseUserDTO(user);
+    }
+
+    @Test
+    @DisplayName("changeUserRole should throw UserRoleSelfChangeException when user tries to change own role")
+    void changeUserRole_ShouldThrowUserRoleSelfChangeException_WhenChangingOwnRole() {
+        Long currentUserId = 1L;
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+
+        assertThatThrownBy(() -> userService.changeUserRole(currentUserId, Role.USER))
+            .isInstanceOf(UserRoleSelfChangeException.class)
+            .hasMessage("User cannot change their own role");
+
+        verify(securityFacade).getCurrentUserId();
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserRole should throw UserNotFoundException when target user does not exist")
+    void changeUserRole_ShouldThrowUserNotFoundException_WhenUserNotFound() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+        when(repository.findById(targetUserId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.changeUserRole(targetUserId, Role.ORG))
+            .isInstanceOf(UserNotFoundException.class)
+            .hasMessage("User not found");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verify(repository).findById(targetUserId);
+        verifyNoMoreInteractions(repository);
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserRole should throw AdminRoleModificationException when target user is admin")
+    void changeUserRole_ShouldThrowAdminRoleModificationException_WhenTargetUserIsAdmin() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        User admin = User.builder()
+            .id(targetUserId)
+            .role(Role.ADMIN)
+            .build();
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+        when(repository.findById(targetUserId)).thenReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> userService.changeUserRole(targetUserId, Role.USER))
+            .isInstanceOf(AdminRoleModificationException.class)
+            .hasMessage("Cannot modify role of another administrator");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verify(repository).findById(targetUserId);
+        verify(repository, never()).save(any());
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserRole should throw UserAuthorizationException when user is not authenticated")
+    void changeUserRole_ShouldThrowUserAuthorizationException_WhenUserIsNotAuthenticated() {
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.changeUserRole(1L, Role.USER))
+            .isInstanceOf(UserAuthorizationException.class)
+            .hasMessage("User is not authenticated");
+
+        verify(securityFacade).getCurrentUserId();
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserRole should throw InsufficientPermissionsException when user is not admin")
+    void changeUserRole_ShouldThrowInsufficientPermissionsException_WhenUserIsNotAdmin() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+
+        assertThatThrownBy(() -> userService.changeUserRole(targetUserId, Role.ORG))
+            .isInstanceOf(InsufficientPermissionsException.class)
+            .hasMessage("You do not have enough permissions to perform this action");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("getUsers should return paged users when current user is admin")
+    void getUsers_ShouldReturnPagedUsers_WhenCurrentUserIsAdmin() {
+        Pageable pageable = PageRequest.of(0, 10);
+        String search = "ivan";
+
+        User user = User.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .surname("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.USER)
+            .userStatus(UserStatus.ACTIVE)
+            .build();
+
+        ResponseUserDTO responseUserDTO = ResponseUserDTO.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .lastName("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.USER)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        Page<User> userPage = new PageImpl<>(List.of(user), pageable, 1);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(repository.findAllBySearchAndRoles("ivan", null, pageable)).thenReturn(userPage);
+        when(mapper.toResponseUserDTO(user)).thenReturn(responseUserDTO);
+
+        Page<ResponseUserDTO> result = userService.getUsers(pageable, search, null);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().getFirst().getId()).isEqualTo(1L);
+        assertThat(result.getContent().getFirst().getEmail()).isEqualTo("ivan@example.com");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(repository).findAllBySearchAndRoles("ivan", null, pageable);
+        verify(mapper).toResponseUserDTO(user);
+    }
+
+    @Test
+    @DisplayName("getUsers should throw InsufficientPermissionsException when current user is not admin")
+    void getUsers_ShouldThrowInsufficientPermissionsException_WhenCurrentUserIsNotAdmin() {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(false);
+
+        assertThatThrownBy(() -> userService.getUsers(pageable, "ivan", List.of(Role.ADMIN)))
+            .isInstanceOf(InsufficientPermissionsException.class)
+            .hasMessage("You do not have enough permissions to perform this action");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("getUsers should normalize query parameters before repository call when search contains extra spaces or roles are empty")
+    void getUsers_ShouldNormalizeQueryParameters_WhenSearchContainsExtraSpacesOrRolesAreEmpty() {
+        Pageable pageable = PageRequest.of(0, 10);
+        String search = "  Ivan   Petrenko%  ";
+        String normalizedSearch = "Ivan Petrenko\\%";
+
+        List<Role> roles = new ArrayList<>();
+
+        Page<User> emptyPage = Page.empty(pageable);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(repository.findAllBySearchAndRoles(normalizedSearch, null, pageable)).thenReturn(emptyPage);
+
+        Page<ResponseUserDTO> result = userService.getUsers(pageable, search, roles);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEmpty();
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(repository).findAllBySearchAndRoles(normalizedSearch, null, pageable);
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("getUsers should return all users when search and roles are not provided")
+    void getUsers_ShouldReturnAllUsers_WhenSearchAndRolesAreNotProvided() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<User> emptyPage = Page.empty(pageable);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(repository.findAllBySearchAndRoles(null, null, pageable)).thenReturn(emptyPage);
+
+        Page<ResponseUserDTO> result = userService.getUsers(pageable, null, null);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEmpty();
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(repository).findAllBySearchAndRoles(null, null, pageable);
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should update user status when user is admin and request is valid")
+    void changeUserStatus_ShouldUpdatedUserStatus_WhenUserIsAdminAndRequestIsValid() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        User user = User.builder()
+            .id(targetUserId)
+            .userStatus(UserStatus.INACTIVE)
+            .role(Role.USER)
+            .build();
+
+        ResponseUserDTO expected = ResponseUserDTO.builder()
+            .id(targetUserId)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+        when(repository.findById(targetUserId)).thenReturn(Optional.of(user));
+        when(repository.save(user)).thenReturn(user);
+        when(mapper.toResponseUserDTO(user)).thenReturn(expected);
+
+        ResponseUserDTO result = userService.changeUserStatus(targetUserId, UserStatus.ACTIVE);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(user.getUserStatus()).isEqualTo(UserStatus.ACTIVE);
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verify(repository).findById(targetUserId);
+        verify(repository).save(user);
+        verify(mapper).toResponseUserDTO(user);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should throw UserStatusSelfChangeException when user tries to change own status")
+    void changeUserStatus_ShouldThrowUserStatusSelfChangeException_WhenChangingOwnStatus() {
+        Long currentUserId = 1L;
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+
+        assertThatThrownBy(() -> userService.changeUserStatus(currentUserId, UserStatus.ACTIVE))
+            .isInstanceOf(UserStatusSelfChangeException.class)
+            .hasMessage("User cannot change their own status");
+
+        verify(securityFacade).getCurrentUserId();
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should throw UserNotFoundException when target user does not exist")
+    void changeUserStatus_ShouldThrowUserNotFoundException_WhenUserNotFound() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+        when(repository.findById(targetUserId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.changeUserStatus(targetUserId, UserStatus.ACTIVE))
+            .isInstanceOf(UserNotFoundException.class)
+            .hasMessage("User not found");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verify(repository).findById(targetUserId);
+        verifyNoMoreInteractions(repository);
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should throw AdminStatusModificationException when target user is admin")
+    void changeUserStatus_ShouldThrowAdminStatusModificationException_WhenTargetUserIsAdmin() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        User admin = User.builder()
+            .id(targetUserId)
+            .role(Role.ADMIN)
+            .build();
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+        when(repository.findById(targetUserId)).thenReturn(Optional.of(admin));
+
+        assertThatThrownBy(() -> userService.changeUserStatus(targetUserId, UserStatus.BLOCKED))
+            .isInstanceOf(AdminStatusModificationException.class)
+            .hasMessage("Cannot modify status of another administrator");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verify(repository).findById(targetUserId);
+        verify(repository, never()).save(any());
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should throw UserAuthorizationException when user is not authenticated")
+    void changeUserStatus_ShouldThrowUserAuthorizationException_WhenUserIsNotAuthenticated() {
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.changeUserStatus(1L, UserStatus.ACTIVE))
+            .isInstanceOf(UserAuthorizationException.class)
+            .hasMessage("User is not authenticated");
+
+        verify(securityFacade).getCurrentUserId();
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should throw InsufficientPermissionsException when user is not admin")
+    void changeUserStatus_ShouldThrowInsufficientPermissionsException_WhenUserIsNotAdmin() {
+        Long currentUserId = 1L;
+        Long targetUserId = 2L;
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(currentUserId));
+
+        assertThatThrownBy(() -> userService.changeUserStatus(targetUserId, UserStatus.ACTIVE))
+            .isInstanceOf(InsufficientPermissionsException.class)
+            .hasMessage("You do not have enough permissions to perform this action");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(securityFacade).getCurrentUserId();
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should return paged users when current user is admin")
+    void getUsersByIds_ShouldReturnPagedUsers_WhenCurrentUserIsAdmin() {
+        Pageable pageable = PageRequest.of(0, 10);
+        List<Long> ids = List.of(1L, 2L);
+
+        User firstUser = User.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .surname("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.USER)
+            .userStatus(UserStatus.ACTIVE)
+            .build();
+
+        User secondUser = User.builder()
+            .id(2L)
+            .email("anna@example.com")
+            .firstName("Anna")
+            .surname("Kovalenko")
+            .middleName("Ivanivna")
+            .role(Role.ORG)
+            .userStatus(UserStatus.ACTIVE)
+            .build();
+
+        ResponseUserDTO firstResponse = ResponseUserDTO.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .lastName("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.USER)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        ResponseUserDTO secondResponse = ResponseUserDTO.builder()
+            .id(2L)
+            .email("anna@example.com")
+            .firstName("Anna")
+            .lastName("Kovalenko")
+            .middleName("Ivanivna")
+            .role(Role.ORG)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        Page<User> userPage = new PageImpl<>(
+            List.of(firstUser, secondUser),
+            pageable,
+            2);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(repository.findAllByIdIn(ids, pageable)).thenReturn(userPage);
+        when(mapper.toResponseUserDTO(firstUser)).thenReturn(firstResponse);
+        when(mapper.toResponseUserDTO(secondUser)).thenReturn(secondResponse);
+
+        Page<ResponseUserDTO> result = userService.getUsersByIds(pageable, ids);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
+        assertThat(result.getContent().get(1).getId()).isEqualTo(2L);
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(repository).findAllByIdIn(ids, pageable);
+        verify(mapper).toResponseUserDTO(firstUser);
+        verify(mapper).toResponseUserDTO(secondUser);
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should throw InsufficientPermissionsException when current user is not admin")
+    void getUsersByIds_ShouldThrowInsufficientPermissionsException_WhenCurrentUserIsNotAdmin() {
+        Pageable pageable = PageRequest.of(0, 10);
+        List<Long> ids = List.of(1L, 2L);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(false);
+
+        assertThatThrownBy(() -> userService.getUsersByIds(pageable, ids))
+            .isInstanceOf(InsufficientPermissionsException.class)
+            .hasMessage("You do not have enough permissions to perform this action");
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verifyNoInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should return empty page when no users match provided ids")
+    void getUsersByIds_ShouldReturnEmptyPage_WhenNoUsersMatchProvidedIds() {
+        Pageable pageable = PageRequest.of(0, 10);
+        List<Long> ids = List.of(100L, 200L);
+
+        Page<User> emptyPage = Page.empty(pageable);
+
+        when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(true);
+        when(repository.findAllByIdIn(ids, pageable)).thenReturn(emptyPage);
+
+        Page<ResponseUserDTO> result = userService.getUsersByIds(pageable, ids);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEmpty();
+
+        verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
+        verify(repository).findAllByIdIn(ids, pageable);
+        verifyNoInteractions(mapper);
     }
 }

@@ -1,7 +1,6 @@
 package com.itasocialacademy.oitassist.news.dao.model;
 
 import jakarta.persistence.*;
-import com.itasocialacademy.oitassist.core.rest.entity.LongEntity;
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import java.time.OffsetDateTime;
 import lombok.EqualsAndHashCode;
@@ -17,7 +16,7 @@ import org.hibernate.annotations.CreationTimestamp;
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 
-public class News implements LongEntity {
+public class News {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @EqualsAndHashCode.Include

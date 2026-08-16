@@ -17,6 +17,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import java.time.Instant;
@@ -185,16 +186,23 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex,
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(
+        MethodArgumentTypeMismatchException ex,
         HttpServletRequest request) {
         log.warn("Method argument type mismatch: traceId={}, param={}, value={}",
             MDC.get(TRACE_ID_MDC), ex.getName(), ex.getValue());
 
-        String message = String.format("Invalid value '%s' for parameter '%s'", ex.getValue(), ex.getName());
+        String message = "Invalid value '%s' for parameter '%s'".formatted(ex.getValue(), ex.getName());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, message,
-                HttpStatus.BAD_REQUEST.value(), null));
+            .body(buildResponse(
+                request,
+                ErrorCode.COMMON_VALIDATION_FAILED,
+                message,
+                HttpStatus.BAD_REQUEST.value(),
+                Map.of(
+                    "parameter", ex.getName(),
+                    "value", String.valueOf(ex.getValue()))));
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
@@ -251,5 +259,31 @@ public class GlobalExceptionHandler {
             .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED,
                 "Required request part '" + ex.getRequestPartName() + "' is not present",
                 HttpStatus.BAD_REQUEST.value(), null));
+    }
+
+    /**
+     * Handles {@link MissingServletRequestParameterException} by generating an
+     * appropriate error response. This exception is thrown when a required request
+     * parameter is missing.
+     *
+     * @param ex      the exception object containing details of the missing request
+     *                parameter
+     * @param request the HTTP request that triggered the exception
+     * @return a {@link ResponseEntity} containing an {@link ErrorResponse} with
+     *         error details, including the name of the missing parameter
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingServletRequestParameter(
+        MissingServletRequestParameterException ex, HttpServletRequest request) {
+        log.warn("Missing request parameter: traceId={}, parameter={}",
+            MDC.get(TRACE_ID_MDC), ex.getParameterName());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(buildResponse(
+                request,
+                ErrorCode.COMMON_VALIDATION_FAILED,
+                "Required request parameter '" + ex.getParameterName() + "' is not present",
+                HttpStatus.BAD_REQUEST.value(),
+                null));
     }
 }

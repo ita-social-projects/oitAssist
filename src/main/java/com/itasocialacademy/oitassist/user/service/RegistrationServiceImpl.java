@@ -1,11 +1,13 @@
 package com.itasocialacademy.oitassist.user.service;
 
+import com.itasocialacademy.oitassist.user.api.dto.OAuthProvisionCommand;
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import com.itasocialacademy.oitassist.user.dao.model.User;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.exceptions.UserAlreadyExistsException;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotActivatedException;
+import com.itasocialacademy.oitassist.user.mapper.OAuthProvisionCommandMapper;
 import com.itasocialacademy.oitassist.user.mapper.RegisterCommandMapper;
 import com.itasocialacademy.oitassist.user.service.interfaces.RegistrationService;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserActivationService;
@@ -24,6 +26,8 @@ public class RegistrationServiceImpl implements RegistrationService {
     private final RegisterCommandMapper registerCommandMapper;
     private final PasswordEncoder passwordEncoder;
     private final UserActivationService userActivationService;
+    private final OAuthProvisionCommandMapper oauthProvisionCommandMapper;
+    private final RandomPasswordGenerator randomPasswordGenerator;
 
     /**
      * {@inheritDoc}
@@ -44,7 +48,7 @@ public class RegistrationServiceImpl implements RegistrationService {
     @Override
     @Transactional
     public void register(RegisterCommand command) {
-        log.info("Registration attempt for email={}", command.email());
+        log.info("Registration attempt initiated");
 
         try {
             userRepository.findUserByEmail(command.email())
@@ -52,15 +56,59 @@ public class RegistrationServiceImpl implements RegistrationService {
 
             User user = registerCommandMapper.toEntity(command);
             user.setPassword(passwordEncoder.encode(command.password()));
-
             userRepository.save(user);
 
             userActivationService.initializeActivation(command.email(), command.firstName());
-            log.info("User successfully created with email={}", command.email());
+            log.info("User successfully created id={}", user.getId());
         } catch (DataIntegrityViolationException e) {
-            log.warn("Registration failed due to data integrity violation for email={}",
-                command.email(), e);
+            log.warn("Registration failed due to data integrity violation", e);
             throw new UserAlreadyExistsException();
+        }
+    }
+
+    @Override
+    @Transactional
+    public User provisionOAuthUser(OAuthProvisionCommand command) {
+        log.info("OAuth2 provisioning attempt initiated");
+
+        return userRepository.findUserByEmail(command.email())
+            .map(this::resolveExistingUser)
+            .orElseGet(() -> createNewOAuthUser(command));
+    }
+
+    private User resolveExistingUser(User user) {
+        return switch (user.getUserStatus()) {
+            case ACTIVE -> {
+                log.debug("OAuth2 login matched existing active user id={}", user.getId());
+                yield user;
+            }
+            case PENDING -> {
+                log.info("Auto-activating pending user via OAuth2 id={}", user.getId());
+                user.setUserStatus(UserStatus.ACTIVE);
+                user.setUserActivationToken(null);
+                yield userRepository.save(user);
+            }
+            default -> {
+                log.warn("OAuth2 login rejected — user id={} status={}",
+                    user.getId(), user.getUserStatus());
+                throw new UserNotActivatedException();
+            }
+        };
+    }
+
+    private User createNewOAuthUser(OAuthProvisionCommand command) {
+        try {
+            User user = oauthProvisionCommandMapper.toEntity(command);
+            user.setPassword(passwordEncoder.encode(randomPasswordGenerator.generate()));
+            User saved = userRepository.save(user);
+            log.info("OAuth2 user provisioned id={}", saved.getId());
+            return saved;
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Concurrent OAuth2 provisioning detected; resolving by re-read", e);
+            return userRepository.findUserByEmail(command.email())
+                .map(this::resolveExistingUser)
+                .orElseThrow(() -> new IllegalStateException(
+                    "Unique constraint violated but no row found", e));
         }
     }
 
@@ -75,11 +123,10 @@ public class RegistrationServiceImpl implements RegistrationService {
      */
     private void rejectIfUserExists(User user) {
         if (user.getUserStatus() == UserStatus.PENDING) {
-            log.warn("Registration rejected — account exists but not activated for email={}",
-                user.getEmail());
+            log.warn("Registration rejected — account not activated id={}", user.getId());
             throw new UserNotActivatedException();
         }
-        log.warn("Registration rejected — account already exists for email={}", user.getEmail());
+        log.warn("Registration rejected — account already exists id={}", user.getId());
         throw new UserAlreadyExistsException();
     }
 }

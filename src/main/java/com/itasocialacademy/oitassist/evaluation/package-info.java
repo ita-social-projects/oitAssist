@@ -1,4 +1,8 @@
 @ApplicationModule(allowedDependencies = {
+    "core",
+    "competition::api",
+    "competition::dto",
+    "competition::exceptions"
 })
 package com.itasocialacademy.oitassist.evaluation;
 

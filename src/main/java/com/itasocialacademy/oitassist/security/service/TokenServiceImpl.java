@@ -3,53 +3,53 @@ package com.itasocialacademy.oitassist.security.service;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
-import com.itasocialacademy.oitassist.security.jwt.JwtHelper;
-import com.itasocialacademy.oitassist.security.service.interfaces.TokenService;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TokenRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
+import com.itasocialacademy.oitassist.security.jwt.JwtHelper;
+import com.itasocialacademy.oitassist.security.jwt.JwtTokenIssuer;
+import com.itasocialacademy.oitassist.security.service.interfaces.TokenService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.SignatureException;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
+import java.util.Objects;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
 
 @Service
+@RequiredArgsConstructor
 public class TokenServiceImpl implements TokenService {
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
 
     private final JwtHelper jwtHelper;
+    private final JwtTokenIssuer jwtTokenIssuer;
 
-    public TokenServiceImpl(AuthenticationManager authenticationManager, UserDetailsService userDetailsService,
-        JwtHelper jwtHelper) {
-        this.authenticationManager = authenticationManager;
-        this.userDetailsService = userDetailsService;
-        this.jwtHelper = jwtHelper;
-    }
-
+    @Override
     public TokenResponse generateToken(TokenRequest tokenRequest) {
         UserDetailsImpl userDetails;
         try {
-            userDetails = (UserDetailsImpl) this.authenticationManager.authenticate(
+            userDetails = (UserDetailsImpl) authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                     tokenRequest.getUsername(), tokenRequest.getPassword()))
                 .getPrincipal();
         } catch (BadCredentialsException e) {
             throw new AuthenticationException("Bad credentials", ErrorCode.BAD_CREDENTIAL);
+        } catch (DisabledException e) {
+            throw new AuthenticationException("Account is not activated", ErrorCode.USER_NOT_ACTIVATED);
+        } catch (LockedException e) {
+            throw new AuthenticationException("Account is blocked", ErrorCode.USER_BLOCKED);
+        } catch (AccountExpiredException e) {
+            throw new AuthenticationException("Account not found", ErrorCode.USER_NOT_FOUND);
         }
 
-        return getTokenResponse(Objects.requireNonNull(userDetails));
+        return jwtTokenIssuer.issueFor(Objects.requireNonNull(userDetails));
     }
 
+    @Override
     public TokenResponse refreshToken(String token) {
         String username;
         try {
@@ -71,32 +71,6 @@ public class TokenServiceImpl implements TokenService {
 
         UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserByUsername(username);
 
-        return getTokenResponse(userDetails);
-    }
-
-    private TokenResponse getTokenResponse(UserDetailsImpl userDetails) {
-        Map<String, Object> accessTokenClaims = new HashMap<>();
-        accessTokenClaims.put("id", userDetails.getId());
-
-        String role = userDetails.getAuthorities().stream()
-            .map(GrantedAuthority::getAuthority)
-            .filter(Objects::nonNull)
-            .filter(a -> a.startsWith("ROLE_"))
-            .map(a -> a.substring(5))
-            .findFirst()
-            .orElse("");
-        accessTokenClaims.put("role", role);
-
-        accessTokenClaims.put("token_type", JwtHelper.ACCESS_TOKEN);
-        String accessToken = jwtHelper.createToken(accessTokenClaims, userDetails.getUsername());
-
-        Map<String, Object> refreshTokenClaims = new HashMap<>();
-        refreshTokenClaims.put("token_type", JwtHelper.REFRESH_TOKEN);
-        String refreshToken = jwtHelper.createRefreshToken(refreshTokenClaims, userDetails.getUsername());
-
-        return TokenResponse.builder()
-            .token(accessToken)
-            .refreshToken(refreshToken)
-            .build();
+        return jwtTokenIssuer.issueFor(userDetails);
     }
 }

@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.user.dao.dto.request;
 
-import com.itasocialacademy.oitassist.core.rest.dto.CreateEntityDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -14,7 +13,7 @@ import lombok.*;
 @NoArgsConstructor
 @EqualsAndHashCode
 @Schema(description = "Profile change request DTO")
-public class ProfileUpdateRequestDTO implements CreateEntityDTO<Long> {
+public class ProfileUpdateRequestDTO {
     @NotBlank(message = "First name is required")
     @Size(max = 50, message = "First name must be between 1 and 50 characters")
     @Schema(description = "User First name", example = "Bob")

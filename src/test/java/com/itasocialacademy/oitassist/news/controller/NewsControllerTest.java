@@ -3,9 +3,12 @@ package com.itasocialacademy.oitassist.news.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itasocialacademy.oitassist.news.dao.dto.request.CreateNewsDTO;
 import com.itasocialacademy.oitassist.news.dao.dto.request.UpdateNewsDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ArchivedNewsByYearDto;
+import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsAdminListItemDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
 import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
+import com.itasocialacademy.oitassist.news.service.interfaces.NewsArchivingService;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -37,6 +40,9 @@ class NewsControllerTest {
     @Mock
     private NewsService newsService;
 
+    @Mock
+    private NewsArchivingService newsArchivingService;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -51,7 +57,7 @@ class NewsControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void testCreateNews() throws Exception {
-        CreateNewsDTO dto = new CreateNewsDTO("Title", "Content", false);
+        CreateNewsDTO dto = new CreateNewsDTO("Title", "Content", false, List.of(1L, 2L));
 
         ResponseNewsDto response = new ResponseNewsDto(
             1L,
@@ -130,7 +136,7 @@ class NewsControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void testCreateNewsValidationError() throws Exception {
-        CreateNewsDTO createNewsDTO = new CreateNewsDTO("", "", false);
+        CreateNewsDTO createNewsDTO = new CreateNewsDTO("", "", false, null);
 
         mockMvc.perform(post("/api/v1/news")
             .contentType(MediaType.APPLICATION_JSON)
@@ -144,7 +150,8 @@ class NewsControllerTest {
             1L,
             "Published news title",
             "Short preview text...",
-            OffsetDateTime.parse("2026-03-12T13:44:56Z"));
+            OffsetDateTime.parse("2026-03-12T13:44:56Z"),
+            null);
 
         Page<ResponseNewsListItemDto> page = new PageImpl<>(
             List.of(newsItem),
@@ -158,6 +165,7 @@ class NewsControllerTest {
             .andExpect(jsonPath("$.content[0].id").value(1))
             .andExpect(jsonPath("$.content[0].title").value("Published news title"))
             .andExpect(jsonPath("$.content[0].contentPreview").value("Short preview text..."))
+            .andExpect(jsonPath("$.content[0].archivedAt").isEmpty())
             .andExpect(jsonPath("$.pageNumber").value(0))
             .andExpect(jsonPath("$.pageSize").value(5))
             .andExpect(jsonPath("$.totalPages").value(1))
@@ -196,7 +204,8 @@ class NewsControllerTest {
             10L,
             "Tech News",
             "Latest on technology...",
-            OffsetDateTime.parse("2026-03-20T15:30:00Z"));
+            OffsetDateTime.parse("2026-03-20T15:30:00Z"),
+            null);
 
         Page<ResponseNewsListItemDto> page = new PageImpl<>(
             List.of(item),
@@ -210,6 +219,7 @@ class NewsControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content[0].id").value(10))
             .andExpect(jsonPath("$.content[0].title").value("Tech News"))
+            .andExpect(jsonPath("$.content[0].archivedAt").isEmpty())
             .andExpect(jsonPath("$.totalElements").value(1));
 
         verify(newsService).getPublishedNews(any(), eq(search), eq(null));
@@ -233,5 +243,83 @@ class NewsControllerTest {
             .andExpect(jsonPath("$.totalElements").value(0));
 
         verify(newsService).getPublishedNews(any(), eq(search), eq(null));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testGetArchivedNews_shouldReturnArchivedNewsByYearAndMonth() throws Exception {
+        ArchivedNewsByYearDto archivedNews = new ArchivedNewsByYearDto(2026, List.of());
+        List<ArchivedNewsByYearDto> archivedNewsList = List.of(archivedNews);
+
+        when(newsArchivingService.getArchivedNewsGroupedByYearAndMonth()).thenReturn(archivedNewsList);
+
+        mockMvc.perform(get("/api/v1/news/archive"))
+            .andExpect(status().isOk());
+
+        verify(newsArchivingService).getArchivedNewsGroupedByYearAndMonth();
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testGetAllNewsForAdmin_shouldReturnPagedResponse() throws Exception {
+        ResponseNewsAdminListItemDto newsItem = new ResponseNewsAdminListItemDto(
+            1L,
+            "Admin news title",
+            "Short preview...",
+            NewsStatus.PUBLISHED,
+            OffsetDateTime.parse("2026-03-14T08:00:00Z"),
+            OffsetDateTime.parse("2026-03-15T10:30:00Z"),
+            null);
+
+        Page<ResponseNewsAdminListItemDto> page = new PageImpl<>(
+            List.of(newsItem),
+            PageRequest.of(0, 15),
+            1);
+
+        when(newsService.getAllNewsForAdmin(any(), eq(null), eq(null), eq(null), eq(null)))
+            .thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/news/admin"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(1))
+            .andExpect(jsonPath("$.content[0].title").value("Admin news title"))
+            .andExpect(jsonPath("$.content[0].status").value("PUBLISHED"))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.pageSize").value(15))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(newsService).getAllNewsForAdmin(any(), eq(null), eq(null), eq(null), eq(null));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testGetAllNewsForAdmin_withSearchParam_returnsMatchingResults() throws Exception {
+        String search = "draft";
+        ResponseNewsAdminListItemDto newsItem = new ResponseNewsAdminListItemDto(
+            2L,
+            "Draft news title",
+            "Draft preview text...",
+            NewsStatus.DRAFT,
+            OffsetDateTime.parse("2026-03-10T12:00:00Z"),
+            OffsetDateTime.parse("2026-03-10T14:20:00Z"),
+            null);
+
+        Page<ResponseNewsAdminListItemDto> page = new PageImpl<>(
+            List.of(newsItem),
+            PageRequest.of(0, 15),
+            1);
+
+        when(newsService.getAllNewsForAdmin(any(), eq(search), eq(null), eq(null), eq(null)))
+            .thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/news/admin")
+            .param("search", search))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(2))
+            .andExpect(jsonPath("$.content[0].title").value("Draft news title"))
+            .andExpect(jsonPath("$.content[0].status").value("DRAFT"))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(newsService).getAllNewsForAdmin(any(), eq(search), eq(null), eq(null), eq(null));
     }
 }

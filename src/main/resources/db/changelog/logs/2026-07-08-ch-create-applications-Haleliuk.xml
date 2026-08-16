@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-applications-table" author="Serhiy Haleliuk">
+        <createTable tableName="applications">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="competition_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_applications_competition"
+                             referencedTableName="competitions"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+            <column name="stage_id" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_applications_stage"
+                             referencedTableName="stages"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+            <column name="issued_by" type="BIGINT">
+                <constraints nullable="false"
+                             foreignKeyName="fk_applications_issued_by_user"
+                             referencedTableName="users"
+                             referencedColumnNames="id"
+                             deleteCascade="true"/>
+            </column>
+            <column name="issued_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+            <column name="processed_by" type="BIGINT">
+                <constraints foreignKeyName="fk_applications_processed_by_user"
+                         referencedTableName="users"
+                         referencedColumnNames="id"/>
+            </column>
+            <column name="processed_at" type="TIMESTAMPTZ"/>
+            <column name="status" type="VARCHAR(50)">
+                    <constraints nullable="false"/>
+            </column>
+            <column name="rejection_reason" type="TEXT"/>
+        </createTable>
+
+    </changeSet>
+
+</databaseChangeLog>

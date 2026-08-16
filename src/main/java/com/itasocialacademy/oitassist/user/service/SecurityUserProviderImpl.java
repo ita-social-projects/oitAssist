@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.user.service;
 
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityUserProvider;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
+import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import com.itasocialacademy.oitassist.user.dao.model.User;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +59,9 @@ public class SecurityUserProviderImpl implements SecurityUserProvider {
             .id(user.getId())
             .email(user.getEmail())
             .password(user.getPassword())
+            .isEnabled(user.getUserStatus() != UserStatus.PENDING)
+            .isAccountNonLocked(user.getUserStatus() != UserStatus.BLOCKED)
+            .isAccountNonExpired(user.getUserStatus() != UserStatus.DELETED)
             .authorities(List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
             .build();
     }

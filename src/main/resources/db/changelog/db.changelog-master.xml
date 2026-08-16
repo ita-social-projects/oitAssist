@@ -9,4 +9,23 @@
     <include file="/db/changelog/logs/2026-01-23-ch-insert-sample-data-Shumeyko.xml"/>
     <include file="/db/changelog/logs/2026-03-27-ch-create-file-assets-table-Huz.xml"/>
     <include file="/db/changelog/logs/2026-04-30-ch-create-profile-update-requests-table-Ogorodnik.xml"/>
+    <include file="/db/changelog/logs/2026-06-15-ch-refactor-competitions-Pampukha.xml"/>
+    <include file="/db/changelog/logs/2026-06-15-ch-create-stages-Pampukha.xml"/>
+    <include file="/db/changelog/logs/2026-06-15-ch-create-tours-Pampukha.xml"/>
+    <include file="/db/changelog/logs/2026-06-28-ch-add-file-role-to-file-assets-Selianyk.xml"/>
+    <include file="/db/changelog/logs/2026-07-04-ch-drop-tasks-create-task-bodies-Selianyk.xml"/>
+    <include file="/db/changelog/logs/2026-07-06-ch-update-enums-for-competitions-and-stages-Pampukha.xml"/>
+    <include file="/db/changelog/logs/2026-07-08-ch-create-applications-Haleliuk.xml"/>
+    <include file="/db/changelog/logs/2026-07-08-ch-create-participants-Haleliuk.xml"/>
+    <include file="/db/changelog/logs/2026-07-08-ch-alter-users-middle-name-Huz.xml"/>
+    <include file="/db/changelog/logs/2026-07-10-ch-update-applications-Haleliuk.xml"/>
+    <include file="/db/changelog/logs/2026-07-09-ch-add-ownerId-to-task-bodies-Selianyk.xml"/>
+    <include file="/db/changelog/logs/2026-07-15-ch-create-question-threads-Shankin.xml"/>
+    <include file="/db/changelog/logs/2026-07-15-ch-create-question-messages-Shankin.xml"/>
+    <include file="/db/changelog/logs/2026-07-14-ch-add-enum-status-to-stages-and-tours-Pampukha.xml"/>
+    <include file="/db/changelog/logs/2026-07-17-ch-create-task-assignments-Selianyk.xml"/>
+    <include file="/db/changelog/logs/2026-07-24-ch-add-fk-task-assignment-to-task-bodies-Selianyk.xml"/>
+    <include file="/db/changelog/logs/2026-07-27-ch-create-invitations-Haleliuk.xml"/>
+    <include file="/db/changelog/logs/2026-07-27-ch-alter-invitations-Haleliuk.xml"/>
+    <include file="/db/changelog/logs/2026-08-04-ch-create-task-owners-table-Murashko.xml"/>
 </databaseChangeLog>

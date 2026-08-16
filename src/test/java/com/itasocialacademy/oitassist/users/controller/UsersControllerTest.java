@@ -6,6 +6,8 @@ import com.itasocialacademy.oitassist.user.controller.UserController;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ReviewRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseProfileUpdateRequestDTO;
+import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserRoleRequest;
+import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserStatusRequest;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
@@ -14,12 +16,17 @@ import com.itasocialacademy.oitassist.user.exceptions.InvalidSortFieldException;
 import com.itasocialacademy.oitassist.user.exceptions.ProfileUpdateRequestException;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.data.domain.*;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 
 import java.time.Instant;
@@ -29,6 +36,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -370,4 +378,337 @@ class UsersControllerTest extends ControllerUnitTest<UserController> {
         verifyNoInteractions(userService);
     }
 
+    @Test
+    @DisplayName("changeUserRole should return updated user when request is valid")
+    void changeUserRole_ShouldReturnUpdatedUser_WhenRequestIsValid() throws Exception {
+        Long userId = 1L;
+
+        ChangeUserRoleRequest request = ChangeUserRoleRequest.builder()
+            .role(Role.ORG)
+            .build();
+
+        ResponseUserDTO response = ResponseUserDTO.builder()
+            .id(userId)
+            .role(Role.ORG)
+            .build();
+
+        when(userService.changeUserRole(userId, Role.ORG))
+            .thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/users/{id}/role", userId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(userId))
+            .andExpect(jsonPath("$.role").value("ORG"));
+
+        verify(userService).changeUserRole(userId, Role.ORG);
+    }
+
+    @Test
+    @DisplayName("changeUserRole should return bad request when request body is invalid")
+    void changeUserRole_ShouldReturnBadRequest_WhenRequestIsInvalid() throws Exception {
+
+        mockMvc.perform(patch("/api/v1/users/{id}/role", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("getUsers should return paged users when only search is provided")
+    void getUsers_ShouldReturnPagedUsers_WhenOnlySearchIsProvided() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        ResponseUserDTO user = ResponseUserDTO.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .lastName("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.USER)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        Page<ResponseUserDTO> page = new PageImpl<>(List.of(user), pageable, 1);
+
+        when(userService.getUsers(any(Pageable.class), eq("ivan"), isNull())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/users")
+            .param("page", "0")
+            .param("size", "10")
+            .param("search", "ivan"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(1))
+            .andExpect(jsonPath("$.content[0].email").value("ivan@example.com"))
+            .andExpect(jsonPath("$.content[0].firstName").value("Ivan"))
+            .andExpect(jsonPath("$.content[0].lastName").value("Petrenko"))
+            .andExpect(jsonPath("$.content[0].middleName").value("Ivanovych"))
+            .andExpect(jsonPath("$.content[0].role").value("USER"))
+            .andExpect(jsonPath("$.content[0].status").value("ACTIVE"))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.pageSize").value(10))
+            .andExpect(jsonPath("$.totalPages").value(1))
+            .andExpect(jsonPath("$.totalElements").value(1))
+            .andExpect(jsonPath("$.first").value(true))
+            .andExpect(jsonPath("$.last").value(true));
+
+        verify(userService).getUsers(any(Pageable.class), eq("ivan"), isNull());
+    }
+
+    @Test
+    @DisplayName("getUsers should return paged users when search parameter and roles are not provided")
+    void getUsers_ShouldReturnPagedUsers_WhenSearchParameterAndRolesAreNotProvided() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<ResponseUserDTO> emptyPage = Page.empty(pageable);
+
+        when(userService.getUsers(any(Pageable.class), isNull(), isNull())).thenReturn(emptyPage);
+
+        mockMvc.perform(get("/api/v1/users")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content").isEmpty())
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.pageSize").value(10))
+            .andExpect(jsonPath("$.totalPages").value(0))
+            .andExpect(jsonPath("$.totalElements").value(0))
+            .andExpect(jsonPath("$.first").value(true))
+            .andExpect(jsonPath("$.last").value(true));
+
+        verify(userService).getUsers(any(Pageable.class), isNull(), isNull());
+    }
+
+    @Test
+    @DisplayName("getUsers should return paged users filtered by roles when search is not provided")
+    void getUsers_ShouldReturnPagedUsersFilteredByRoles_WhenSearchIsNotProvided() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        ResponseUserDTO user = ResponseUserDTO.builder()
+            .id(1L)
+            .email("admin@example.com")
+            .firstName("Admin")
+            .lastName("User")
+            .role(Role.ADMIN)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        Page<ResponseUserDTO> page = new PageImpl<>(List.of(user), pageable, 1);
+
+        List<Role> roles = List.of(Role.ADMIN, Role.ORG);
+
+        when(userService.getUsers(any(Pageable.class), isNull(), eq(roles)))
+            .thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/users")
+            .param("page", "0")
+            .param("size", "10")
+            .param("roles", "ADMIN", "ORG"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(1))
+            .andExpect(jsonPath("$.content[0].role").value("ADMIN"))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(userService).getUsers(
+            any(Pageable.class),
+            isNull(),
+            eq(roles));
+    }
+
+    @Test
+    @DisplayName("getUsers should return paged users when search and roles are provided")
+    void getUsers_ShouldReturnPagedUsers_WhenSearchAndRolesAreProvided() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        ResponseUserDTO user = ResponseUserDTO.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .lastName("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.ORG)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        Page<ResponseUserDTO> page = new PageImpl<>(List.of(user), pageable, 1);
+
+        List<Role> roles = List.of(Role.ADMIN, Role.ORG);
+
+        when(userService.getUsers(any(Pageable.class), eq("ivan"), eq(roles)))
+            .thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/users")
+            .param("page", "0")
+            .param("size", "10")
+            .param("search", "ivan")
+            .param("roles", "ADMIN", "ORG"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(1))
+            .andExpect(jsonPath("$.content[0].email").value("ivan@example.com"))
+            .andExpect(jsonPath("$.content[0].role").value("ORG"))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.pageSize").value(10))
+            .andExpect(jsonPath("$.totalPages").value(1))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(userService).getUsers(
+            any(Pageable.class),
+            eq("ivan"),
+            eq(roles));
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should return updated user when request is valid")
+    void changeUserStatus_ShouldReturnUpdatedUser_WhenRequestIsValid() throws Exception {
+        Long userId = 1L;
+
+        ChangeUserStatusRequest request = ChangeUserStatusRequest.builder()
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        ResponseUserDTO response = ResponseUserDTO.builder()
+            .id(userId)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        when(userService.changeUserStatus(userId, UserStatus.ACTIVE))
+            .thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/users/{id}/status", userId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(userId))
+            .andExpect(jsonPath("$.status").value("ACTIVE"));
+
+        verify(userService).changeUserStatus(userId, UserStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("changeUserStatus should return bad request when request body is invalid")
+    void changeUserStatus_ShouldReturnBadRequest_WhenRequestIsInvalid() throws Exception {
+
+        mockMvc.perform(patch("/api/v1/users/{id}/status", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should return paged users when request is valid")
+    void getUsersByIds_ShouldReturnPagedUsers_WhenRequestIsValid() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        ResponseUserDTO firstUser = ResponseUserDTO.builder()
+            .id(1L)
+            .email("ivan@example.com")
+            .firstName("Ivan")
+            .lastName("Petrenko")
+            .middleName("Ivanovych")
+            .role(Role.USER)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        ResponseUserDTO secondUser = ResponseUserDTO.builder()
+            .id(2L)
+            .email("anna@example.com")
+            .firstName("Anna")
+            .lastName("Kovalenko")
+            .middleName("Ivanivna")
+            .role(Role.ORG)
+            .status(UserStatus.ACTIVE)
+            .build();
+
+        Page<ResponseUserDTO> page = new PageImpl<>(
+            List.of(firstUser, secondUser),
+            pageable,
+            2);
+
+        List<Long> ids = List.of(1L, 2L);
+
+        when(userService.getUsersByIds(any(Pageable.class), eq(ids)))
+            .thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/users/by-ids")
+            .param("page", "0")
+            .param("size", "10")
+            .param("ids", "1", "2"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content.length()").value(2))
+            .andExpect(jsonPath("$.content[0].id").value(1L))
+            .andExpect(jsonPath("$.content[0].email").value("ivan@example.com"))
+            .andExpect(jsonPath("$.content[0].role").value("USER"))
+            .andExpect(jsonPath("$.content[1].id").value(2L))
+            .andExpect(jsonPath("$.content[1].email").value("anna@example.com"))
+            .andExpect(jsonPath("$.content[1].role").value("ORG"))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.pageSize").value(10))
+            .andExpect(jsonPath("$.totalPages").value(1))
+            .andExpect(jsonPath("$.totalElements").value(2));
+
+        verify(userService).getUsersByIds(
+            any(Pageable.class),
+            eq(ids));
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should accept a single user id")
+    void getUsersByIds_ShouldAcceptSingleUserId() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Page<ResponseUserDTO> page = new PageImpl<>(
+            List.of(ResponseUserDTO.builder()
+                .id(1L)
+                .email("ivan@example.com")
+                .firstName("Ivan")
+                .lastName("Petrenko")
+                .role(Role.USER)
+                .status(UserStatus.ACTIVE)
+                .build()),
+            pageable,
+            1);
+
+        when(userService.getUsersByIds(
+            any(Pageable.class),
+            eq(List.of(1L)))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/users/by-ids")
+            .param("ids", "1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].id").value(1));
+
+        verify(userService).getUsersByIds(
+            any(Pageable.class),
+            eq(List.of(1L)));
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should return 400 when ids parameter is not provided")
+    void getUsersByIds_ShouldReturn400_WhenIdsAreNotProvided() throws Exception {
+        mockMvc.perform(get("/api/v1/users/by-ids")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("COMMON_VALIDATION_FAILED"))
+            .andExpect(jsonPath("$.message")
+                .value(org.hamcrest.Matchers.containsString("'ids'")));
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    @DisplayName("getUsersByIds should return 400 when ids contain invalid value")
+    void getUsersByIds_ShouldReturn400_WhenIdsContainInvalidValue() throws Exception {
+        mockMvc.perform(get("/api/v1/users/by-ids")
+            .param("ids", "1", "invalid", "3"))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userService);
+    }
 }

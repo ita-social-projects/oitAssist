@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.user.dao.dto.response;
 
-import com.itasocialacademy.oitassist.core.rest.dto.EntityDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -15,7 +14,8 @@ import lombok.*;
 @NoArgsConstructor
 @ToString
 @Schema(description = "User Response DTO")
-public class ResponseUserDTO implements EntityDTO<Long> {
+public class ResponseUserDTO {
+    @Schema(description = "User ID", example = "1")
     private Long id;
     @NotBlank
     @Schema(description = "User Email", example = "mail@gmail.com")
