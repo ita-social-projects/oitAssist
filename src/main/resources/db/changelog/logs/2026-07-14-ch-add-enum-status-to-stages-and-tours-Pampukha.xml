@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+  <changeSet id="add-enum-status-to-stages" author="Anton Pampukha">
+    <addColumn tableName="stages">
+      <column type="varchar(20)" defaultValue="SCHEDULED"  name="status">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+    <sql>
+      ALTER TABLE stages
+          ADD CONSTRAINT chk_stages_status
+      CHECK (status in ('SCHEDULED', 'IN_PROGRESS', 'FINISHED', 'CANCELLED'))
+    </sql>
+  </changeSet>
+
+  <changeSet id="add-enum-execution_status-to-tours" author="Anton Pampukha">
+    <addColumn tableName="tours">
+      <column type="varchar(20)" defaultValue="SCHEDULED" name="execution_status">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+    <sql>
+      ALTER TABLE tours
+        ADD CONSTRAINT chk_tours_execution_status
+          CHECK (execution_status in ('SCHEDULED', 'IN_PROGRESS', 'CLOSED', 'FINISHED', 'CANCELLED'))
+    </sql>
+  </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,115 @@
+package com.itasocialacademy.oitassist.logfile.dao;
+
+import com.itasocialacademy.oitassist.logfile.exceptions.LogFileListingException;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Repository;
+
+@Slf4j
+@Repository
+public class FileSystemLogFileDao implements LogFileDao {
+    private final Path logDirectory;
+
+    public FileSystemLogFileDao(
+        @Value("${logging.file.name}") String configuredLogFile) {
+        this.logDirectory =
+            resolveLogDirectory(configuredLogFile);
+    }
+
+    @Override
+    public List<LogFileMetadata> findAll() {
+        validateLogDirectory();
+
+        try (Stream<Path> paths = Files.list(logDirectory)) {
+            return paths
+                .map(this::readMetadata)
+                .flatMap(Optional::stream)
+                .toList();
+        } catch (UncheckedIOException exception) {
+            log.error(
+                "Failed to read metadata from log directory: {}",
+                logDirectory,
+                exception.getCause());
+            throw new LogFileListingException();
+        } catch (IOException | SecurityException exception) {
+            log.error("Failed to access log directory: {}", logDirectory, exception);
+            throw new LogFileListingException();
+        }
+    }
+
+    private void validateLogDirectory() {
+        if (!Files.exists(
+            logDirectory,
+            LinkOption.NOFOLLOW_LINKS)) {
+            log.error(
+                "Configured log directory does not exist: {}",
+                logDirectory);
+            throw new LogFileListingException();
+        }
+
+        if (!Files.isDirectory(
+            logDirectory,
+            LinkOption.NOFOLLOW_LINKS)) {
+            log.error(
+                "Configured log path is not a directory: {}",
+                logDirectory);
+
+            throw new LogFileListingException();
+        }
+        if (!Files.isReadable(logDirectory)) {
+            log.error("Configured log directory is not readable: {}", logDirectory);
+            throw new LogFileListingException();
+        }
+    }
+
+    private static Path resolveLogDirectory(String configuredLogFile) {
+        if (configuredLogFile == null || configuredLogFile.isBlank()) {
+            throw new IllegalStateException("Property logging.file.name must be configured");
+        }
+        try {
+            Path logFilePath = Path.of(configuredLogFile)
+                .toAbsolutePath()
+                .normalize();
+
+            Path parentDirectory = logFilePath.getParent();
+            if (parentDirectory == null) {
+                throw new IllegalStateException("Unable to determine the log directory");
+            }
+            return parentDirectory;
+        } catch (InvalidPathException exception) {
+            throw new IllegalStateException("Property logging.file.name contains an invalid path", exception);
+        }
+    }
+
+    private Optional<LogFileMetadata> readMetadata(Path path) {
+        try {
+            BasicFileAttributes attributes = Files.readAttributes(
+                path,
+                BasicFileAttributes.class,
+                LinkOption.NOFOLLOW_LINKS);
+
+            if (!attributes.isRegularFile()) {
+                return Optional.empty();
+            }
+            return Optional.of(new LogFileMetadata(
+                path.getFileName().toString(),
+                attributes.size(),
+                attributes
+                    .lastModifiedTime()
+                    .toInstant()));
+        } catch (NoSuchFileException exception) {
+            log.debug("Log file disappeared during directory scan: {}", path.getFileName());
+            return Optional.empty();
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Failed to read log file attributes",
+                exception);
+        }
+    }
+}

@@ -27,7 +27,7 @@ public class UserCompetitionServiceImplTest {
     @DisplayName("Should return true when user has active competitions")
     void hasActiveCompetitions_ShouldReturnTrue_ifUserHasActiveCompetitions() {
         Long userId = 1L;
-        List<CompetitionStatus> statuses = List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS);
+        List<CompetitionStatus> statuses = List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT);
         List<String> statusStrings = statuses.stream().map(Enum::name).toList();
 
         when(userCompetitionRepository.existsByUserIdAndStatusIn(userId, statusStrings)).thenReturn(true);
@@ -41,7 +41,7 @@ public class UserCompetitionServiceImplTest {
     @DisplayName("Should return false when user has no active competitions")
     void hasActiveCompetitions_ShouldReturnFalse_WhenUserHasNoActiveCompetitions() {
         Long userId = 1L;
-        List<CompetitionStatus> statuses = List.of(CompetitionStatus.INCOMING, CompetitionStatus.INPROGRESS);
+        List<CompetitionStatus> statuses = List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT);
         List<String> statusStrings = statuses.stream().map(Enum::name).toList();
 
         when(userCompetitionRepository.existsByUserIdAndStatusIn(userId, statusStrings)).thenReturn(false);

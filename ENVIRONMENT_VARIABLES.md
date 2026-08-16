@@ -1,9 +1,12 @@
 # ENVIRONMENT VARIABLES
+
 Documentation of all environment variables used in the project
 
-This file describes every environment variable referenced in `application.yml` / `application.yaml` and Logback configuration.
+This file describes every environment variable referenced in `application.yml` / `application.yaml` and Logback
+configuration.
 
 **Important**
+
 - Never commit real secrets (passwords, keys, JWT secrets) to the repository
 - Use a secrets manager (Vault, AWS Secrets Manager, Doppler, 1Password, Kubernetes Secrets, etc.)
 
@@ -47,25 +50,35 @@ This file describes every environment variable referenced in `application.yml` /
 | `MAIL_SMTP_CONNECTIONTIMEOUT` | Max time in milliseconds to establish TCP connection                     | No       | `5000`                       | `5000`                                                         | Can configure in application.yml or env based on network conditions                       |
 | `MAIL_SMTP_TIMEOUT`           | Max time in milliseconds to wait for server response                     | No       | `5000`                       | `5000`                                                         | Configurable in application.yml or env                                                    |
 | `MAIL_SMTP_WRITETIMEOUT`      | Max time in milliseconds for writing data to server                      | No       | `5000`                       | `5000`                                                         | Configurable in application.yml or env                                                    |
+| `GOOGLE_CLIENT_ID`            | Google OAuth2 client ID for authentication                               | Yes      | — (fails if missing)         | `814775168061-xxxxxxxxxxxx.apps.googleusercontent.com`         | Google Cloud Console → APIs & Services → Credentials; store in secrets manager / `.env`   |
+| `GOOGLE_CLIENT_SECRET`        | Google OAuth2 client secret for authentication                           | Yes      | — (fails if missing)         | `GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxx`                              | Google Cloud Console → APIs & Services → Credentials; store in secrets manager            |
+| `MICROSOFT_CLIENT_ID`         | Microsoft OAuth2 client ID for authentication                            | Yes      | —                            | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxx`                             | Azure Portal → App registrations → store in secrets manager / `.env`                      |
+| `MICROSOFT_CLIENT_SECRET`     | Microsoft OAuth2 client secret for authentication                        | Yes      | —                            | `xxxxxxxxxxxxxxxxxxxxxxxxxxxx`                                 | Azure Portal → App registrations → store securely                                         |
 
 ## Notes on selected variables
 
 ### JWT_VALIDITY
+
 Usually in **milliseconds**. Common values:
-- 15 minutes  → `900000`
-- 1 hour      → `3600000`
-- 24 hours    → `86400000`
-- 7 days      → `604800000`
-- 30 days     → `2592000000`
+
+- 15 minutes → `900000`
+- 1 hour → `3600000`
+- 24 hours → `86400000`
+- 7 days → `604800000`
+- 30 days → `2592000000`
 
 ### JPA_HIBERNATE_DDL_AUTO
+
 Recommended values per environment:
-- local/dev     → `create-drop` or `update`
+
+- local/dev → `create-drop` or `update`
 - test (test DB) → `create-drop`
-- staging/prod  → **only** `validate` or `none`
+- staging/prod → **only** `validate` or `none`
 
 ### Logging-related variables
-These environment variables control logging behavior. Pay attention to them especially for production environments, free hosting, or limited disk/CPU resources.
+
+These environment variables control logging behavior. Pay attention to them especially for production environments, free
+hosting, or limited disk/CPU resources.
 
 - **LOG_LEVEL_ROOT** – sets the default logging level for all loggers.
     - Use `INFO` or `WARN` in prod to avoid excessive logs.
@@ -114,9 +127,10 @@ These environment variables control logging behavior. Pay attention to them espe
 1. On production / free hosting, avoid `TRACE` levels for Logbook and app logs; use `INFO` / `WARN`.
 2. Always ensure `LOG_FILE` points to a file (with `.log`) and not a folder.
 3. Async logging is recommended for web apps to prevent blocking requests during heavy I/O.
-4. Check that the working directory of your app matches the log path, or use an absolute path (especially in containers).
-5. `LOG_MAX_HISTORY` and `LOG_TOTAL_SIZE_CAP` prevent unbounded disk usage — especially critical on limited/free hosting (Heroku, Render, Railway, Fly.io etc.).
-
+4. Check that the working directory of your app matches the log path, or use an absolute path (especially in
+   containers).
+5. `LOG_MAX_HISTORY` and `LOG_TOTAL_SIZE_CAP` prevent unbounded disk usage — especially critical on limited/free
+   hosting (Heroku, Render, Railway, Fly.io etc.).
 
 ## Quick local testing example
 

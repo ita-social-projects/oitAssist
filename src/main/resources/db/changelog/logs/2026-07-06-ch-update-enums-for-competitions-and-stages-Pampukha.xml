@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+  <changeSet id="update-enums-for-competitions-and-stages" author="Anton Pampukha">
+
+    <sql>
+      ALTER TABLE competitions
+      DROP CONSTRAINT IF EXISTS chk_competitions_status;
+
+      ALTER TABLE competitions
+        ADD CONSTRAINT chk_competitions_status
+          CHECK (competition_status IN ('DRAFT', 'PUBLISHED', 'ENROLLMENT', 'FINISHED', 'ARCHIVED'));
+
+      ALTER TABLE stages
+      DROP CONSTRAINT IF EXISTS chk_stages_scope;
+
+      ALTER TABLE stages
+        ADD CONSTRAINT chk_stages_scope
+          CHECK (scope IN ('NATIONAL', 'REGIONAL', 'CITY', 'DISTRICT', 'FOREIGN', 'OPEN'));
+    </sql>
+
+  </changeSet>
+
+</databaseChangeLog>

@@ -1,6 +1,9 @@
 package com.itasocialacademy.oitassist.security.config;
 
 import com.itasocialacademy.oitassist.security.jwt.JwtFilter;
+import com.itasocialacademy.oitassist.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
+import com.itasocialacademy.oitassist.security.oauth2.OAuth2FailureHandler;
+import com.itasocialacademy.oitassist.security.oauth2.OAuth2SuccessHandler;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,16 +28,26 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
     private final JwtFilter jwtFilter;
     private final AuthenticationEntryPoint entryPoint;
+    private final OAuth2SuccessHandler successHandler;
+    private final OAuth2FailureHandler failureHandler;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
 
-    public SecurityConfig(JwtFilter jwtFilter,
-        AuthenticationEntryPoint entryPoint) {
+    public SecurityConfig(
+        JwtFilter jwtFilter,
+        AuthenticationEntryPoint entryPoint,
+        OAuth2SuccessHandler successHandler,
+        OAuth2FailureHandler failureHandler,
+        HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository) {
         this.jwtFilter = jwtFilter;
         this.entryPoint = entryPoint;
+        this.successHandler = successHandler;
+        this.failureHandler = failureHandler;
+        this.cookieAuthorizationRequestRepository = cookieAuthorizationRequestRepository;
     }
 
     @Bean
     public AuthenticationManager authenticationManager(
-        AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        AuthenticationConfiguration authenticationConfiguration) {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
@@ -44,7 +57,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of(
             "http://*:5173",
             "http://localhost:5173"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
@@ -52,9 +65,6 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-
-    // todo: consider adding or changing permit for ui. See
-    // core/controller/SpaController
 
     @Bean
     public SecurityFilterChain configure(HttpSecurity http) {
@@ -65,13 +75,20 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/registration/**",
                     "/api/v1/security/signIn",
-                    "/api/v1/security/refresh")
+                    "/api/v1/security/refresh",
+                    "/api/v1/user-activation/resend")
                 .permitAll()
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/news/**",
-                    "/api/v1/user-activation/verify")
+                    "/api/v1/user-activation/verify",
+                    "/ui",
+                    "/ui/**")
                 .permitAll()
                 .requestMatchers(
+                    "/index.html",
+                    "/oauth2/**",
+                    "/login/oauth2/**",
+                    "/oauth-test.html",
                     "/actuator/health/**",
                     "/actuator/info",
                     "/v3/api-docs/**",
@@ -84,6 +101,11 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(entryPoint))
+            .oauth2Login(oauth2 -> oauth2
+                .authorizationEndpoint(endpoint -> endpoint
+                    .authorizationRequestRepository(cookieAuthorizationRequestRepository))
+                .successHandler(successHandler)
+                .failureHandler(failureHandler))
             .addFilterBefore(jwtFilter,
                 UsernamePasswordAuthenticationFilter.class)
             .build();

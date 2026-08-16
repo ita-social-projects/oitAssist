@@ -44,7 +44,7 @@ public class UserActivationToken {
     @Column(name = "last_sent_at", nullable = false)
     private Instant lastSentAt;
 
-    @Column(name = "expires_at", nullable = false, updatable = false)
+    @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
     public boolean isExpired() {
@@ -67,5 +67,12 @@ public class UserActivationToken {
         return UserActivationToken.builder().createdAt(now)
             .expiresAt(now.plus(15, ChronoUnit.MINUTES)).token(UUID.randomUUID().toString())
             .lastSentAt(now).build();
+    }
+
+    public void regenerate() {
+        Instant now = Instant.now();
+        this.token = UUID.randomUUID().toString();
+        this.expiresAt = now.plus(15, ChronoUnit.MINUTES);
+        this.lastSentAt = now;
     }
 }
