@@ -17,6 +17,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @jakarta.persistence.Entity
 @Table(name = "user_competition")
 @Getter
@@ -42,4 +44,7 @@ public class UserCompetition implements Entity<UserCompetitionId> {
 
     @Column(name = "is_read", nullable = false, columnDefinition = "boolean default false")
     private boolean isRead;
+
+    @Column(name = "user_responded_at")
+    private Instant userRespondedAt;
 }

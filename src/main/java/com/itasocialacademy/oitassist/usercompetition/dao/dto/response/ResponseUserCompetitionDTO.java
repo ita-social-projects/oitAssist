@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.Instant;
+
 @Data
 @Builder
 @Schema(description = "UserCompetition response DTO")
@@ -23,4 +25,7 @@ public class ResponseUserCompetitionDTO implements EntityDTO<UserCompetitionId> 
 
     @Schema(description = "Whether the invitation has been read by the user", example = "false")
     private boolean isRead;
+
+    @Schema(description = "Timestamp of user acceptance/rejection of invitation", example = "2026-07-20T14:30:00Z")
+    private Instant userRespondedAt;
 }

@@ -27,4 +27,6 @@ public interface UserCompetitionService extends BaseService<UserCompetitionId, C
     void markAsRead(Long competitionId);
 
     Long countOfUnreadInvites();
+
+    ResponseUserCompetitionDTO updateUserCompetitionStatus(Long competitionId, UserCompetitionStatus status);
 }

@@ -28,4 +28,10 @@
                               columnDataType="VARCHAR(255)"/>
     </changeSet>
 
+    <changeSet id="1782982713585" author="adamogorodnik">
+        <addColumn tableName="user_competition">
+            <column name="user_responded_at" type="TIMESTAMPTZ"></column>
+        </addColumn>
+    </changeSet>
+
 </databaseChangeLog>

@@ -3,7 +3,9 @@ package com.itasocialacademy.oitassist.usercompetition.service;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.exceptions.BusinessException;
 import com.itasocialacademy.oitassist.core.exceptions.NotFoundException;
+import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.core.rest.service.AbstractServiceImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.CurrentUserDTO;
@@ -28,7 +30,10 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
 import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserCompetitionServiceImpl extends AbstractServiceImpl<UserCompetitionId, UserCompetition, CreateUserCompetitionDTO, UpdateUserCompetitionDTO, ResponseUserCompetitionDTO, UserCompetitionRepository, UserCompetitionMapper> implements UserCompetitionService {
@@ -79,5 +84,39 @@ public class UserCompetitionServiceImpl extends AbstractServiceImpl<UserCompetit
                 .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
 
         return repository.countByAuthorIdAndStatusAndIsReadFalse(authorId, UserCompetitionStatus.INVITED);
+    }
+
+    @Override
+    @Transactional
+    public ResponseUserCompetitionDTO updateUserCompetitionStatus(Long competitionId, UserCompetitionStatus status) {
+        validateResponseStatus(status);
+
+        Long authorId = securityFacade.getCurrentUserId()
+                .orElseThrow(() -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
+
+        UserCompetitionId userCompetitionId = new UserCompetitionId(authorId, competitionId);
+
+        UserCompetition userCompetition = repository.findById(userCompetitionId)
+                .orElseThrow(() -> new NotFoundException("Invitation not found", ErrorCode.ENTITY_NOT_FOUND));
+
+        validateInvitationIsPending(userCompetition);
+
+        userCompetition.setStatus(status);
+        userCompetition.setRead(true);
+        userCompetition.setUserRespondedAt(Instant.now());
+
+        return mapper.toDto(userCompetition);
+    }
+
+    private void validateResponseStatus(UserCompetitionStatus status) {
+        if (status != UserCompetitionStatus.ACCEPTED && status != UserCompetitionStatus.REJECTED) {
+            throw new ValidationException("Status must be ACCEPTED or REJECTED", ErrorCode.INVITATION_INVALID_RESPONSE_STATUS);
+        }
+    }
+
+    private void validateInvitationIsPending(UserCompetition userCompetition) {
+        if (userCompetition.getStatus() != UserCompetitionStatus.INVITED) {
+            throw new ValidationException("Invitation has already been responded to or expired", ErrorCode.INVITATION_ALREADY_RESPONDED);
+        }
     }
 }

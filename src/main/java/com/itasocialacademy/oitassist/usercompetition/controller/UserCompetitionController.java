@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.usercompetition.controller;
 
+import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.core.rest.controller.AbstractRestControllerImpl;
 import com.itasocialacademy.oitassist.usercompetition.dao.dto.request.CreateUserCompetitionDTO;
 import com.itasocialacademy.oitassist.usercompetition.dao.dto.request.UpdateUserCompetitionDTO;
@@ -32,17 +33,18 @@ public class UserCompetitionController extends AbstractRestControllerImpl<UserCo
         return ResponseEntity.ok(service.getAllCompetitionsByStatus(status, pageable));
     }
 
-    @PatchMapping("/{competitionId}/read")
-    public ResponseEntity<Void> markAsRead(@PathVariable Long competitionId) {
-        service.markAsRead(competitionId);
-
-        return ResponseEntity.noContent().build();
-    }
-
     @GetMapping("/unreadCount")
     public ResponseEntity<Long> countOfUnreadInvites() {
 
         return ResponseEntity.ok(service.countOfUnreadInvites());
+    }
+
+    @PatchMapping("/{competitionId}/userRespond")
+    public ResponseEntity<ResponseUserCompetitionDTO> userRespondToInvitation(
+            @PathVariable Long competitionId,
+            @RequestParam UserCompetitionStatus status
+    ) {
+        return ResponseEntity.ok(service.updateUserCompetitionStatus(competitionId, status));
     }
 
 
