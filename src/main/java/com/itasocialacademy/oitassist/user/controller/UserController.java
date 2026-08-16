@@ -2,7 +2,6 @@ package com.itasocialacademy.oitassist.user.controller;
 
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ReviewRequestDTO;
-import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseProfileUpdateRequestDTO;
 import static org.springframework.data.domain.Sort.Direction.DESC;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;

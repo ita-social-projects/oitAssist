@@ -175,23 +175,6 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(), Map.of("errors", fieldErrors)));
     }
 
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleTypeMismatch(
-        MethodArgumentTypeMismatchException ex,
-        HttpServletRequest request) {
-        String message = "Invalid value for parameter '%s'".formatted(ex.getName());
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(buildResponse(
-                request,
-                ErrorCode.COMMON_VALIDATION_FAILED,
-                message,
-                HttpStatus.BAD_REQUEST.value(),
-                Map.of(
-                    "parameter", ex.getName(),
-                    "value", String.valueOf(ex.getValue()))));
-    }
-
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
         HttpServletRequest request) {
@@ -203,16 +186,23 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex,
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(
+        MethodArgumentTypeMismatchException ex,
         HttpServletRequest request) {
         log.warn("Method argument type mismatch: traceId={}, param={}, value={}",
             MDC.get(TRACE_ID_MDC), ex.getName(), ex.getValue());
 
-        String message = String.format("Invalid value '%s' for parameter '%s'", ex.getValue(), ex.getName());
+        String message = "Invalid value '%s' for parameter '%s'".formatted(ex.getValue(), ex.getName());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(buildResponse(request, ErrorCode.COMMON_VALIDATION_FAILED, message,
-                HttpStatus.BAD_REQUEST.value(), null));
+            .body(buildResponse(
+                request,
+                ErrorCode.COMMON_VALIDATION_FAILED,
+                message,
+                HttpStatus.BAD_REQUEST.value(),
+                Map.of(
+                    "parameter", ex.getName(),
+                    "value", String.valueOf(ex.getValue()))));
     }
 
     @ExceptionHandler(EntityNotFoundException.class)

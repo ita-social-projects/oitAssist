@@ -34,7 +34,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -67,11 +66,6 @@ class UserServiceImplTest {
 
     @InjectMocks
     private UserServiceImpl userService;
-
-    @BeforeEach
-    void setUp() {
-        ReflectionTestUtils.setField(userService, "timezone", "Europe/Kiev");
-    }
 
     @Test
     @DisplayName("loadUserByEmail should return DTO when user exists")

@@ -7,7 +7,6 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ReviewRequestDTO;
-import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
@@ -25,8 +24,6 @@ import java.util.Optional;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 public interface UserService {
     /**
@@ -131,7 +128,7 @@ public interface UserService {
      * @param id   the unique identifier of the profile update request
      * @param body the review decision containing the new status and optional
      *             rejection reason
-     * @throws UserNotFoundException       if no request is found with the given
+     * @throws UserNotFoundException         if no request is found with the given
      *                                       ID, or if the associated user no longer
      *                                       exists
      * @throws ProfileUpdateRequestException if the request has already been
