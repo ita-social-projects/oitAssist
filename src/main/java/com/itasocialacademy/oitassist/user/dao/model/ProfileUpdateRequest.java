@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.user.dao.model;
 
-import com.itasocialacademy.oitassist.core.rest.entity.LongEntity;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -13,7 +12,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProfileUpdateRequest implements LongEntity {
+public class ProfileUpdateRequest {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -55,10 +54,6 @@ public class ProfileUpdateRequest implements LongEntity {
 
     @Column(name = "reviewed_at")
     private Instant reviewedAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewed_by")
-    private User reviewedBy;
 
     @Column(name = "reject_reason", length = 500)
     private String rejectReason;

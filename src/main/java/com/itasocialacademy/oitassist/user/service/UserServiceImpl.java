@@ -7,9 +7,7 @@ import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsExc
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
-import com.itasocialacademy.oitassist.user.dao.dto.request.CreateUserDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
-import com.itasocialacademy.oitassist.user.dao.dto.request.UpdateUserDTO;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.UpdateRequestStatus;
@@ -37,7 +35,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.List;
 import java.util.Optional;
 
@@ -178,7 +175,7 @@ public class UserServiceImpl implements UserService {
         }
 
         boolean hasAnyCompetitions = userCompetitionFacade.hasActiveCompetitions(currentUserId,
-                List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT));
+            List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT));
 
         UpdateRequestStatus status = hasAnyCompetitions ? UpdateRequestStatus.PENDING : UpdateRequestStatus.APPROVED;
 
@@ -208,7 +205,7 @@ public class UserServiceImpl implements UserService {
 
             if (message != null && message.contains("uq_profile_update_requests_pending")) {
                 throw new ProfileUpdateRequestException("User already have a pending update request",
-                        ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
+                    ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
             }
 
             throw e;
