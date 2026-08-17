@@ -9,6 +9,7 @@ import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.dao.specification.CompetitionSpecification;
 import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
@@ -94,19 +95,22 @@ public class CompetitionServiceImpl implements CompetitionService {
 
     @Override
     @Transactional
-    public CompetitionResponse changeStatus(Long competitionId, CompetitionStatus status) {
+    public CompetitionResponse changeStatus(Long competitionId, ChangeCompetitionStatusRequest request) {
         Competition competition = competitionRepository.findById(competitionId)
             .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
 
+        validator.validateEntityVersion(request.version(), competition.getVersion(), Competition.class, competitionId);
+
         CompetitionStatus currentStatus = competition.getCompetitionStatus();
 
-        validator.validateCompetitionStatusTransition(currentStatus, status);
+        validator.validateCompetitionStatusTransition(currentStatus, request.status());
 
-        if (status == CompetitionStatus.ENROLLMENT || status == CompetitionStatus.PUBLISHED) {
+        if (request.status() == CompetitionStatus.ENROLLMENT
+            || request.status() == CompetitionStatus.PUBLISHED) {
             validatePublishingRequirements(competitionId);
         }
 
-        competition.setCompetitionStatus(status);
+        competition.setCompetitionStatus(request.status());
         return mapper.toResponse(competitionRepository.save(competition));
     }
 
