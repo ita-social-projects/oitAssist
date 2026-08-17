@@ -56,14 +56,15 @@ public class FileServiceImpl implements FileService {
     private static final String ROLE_ADMIN = "ADMIN";
 
     /**
-     * Error message indicating that the user is not authenticated.
-     * Used when an operation requires authentication, but it is invalid.
+     * Error message indicating that the user is not authenticated. Used when an
+     * operation requires authentication, but it is invalid.
      */
     public static final String NOT_AUTHENTICATED = "Not authenticated";
 
     /**
-     * Error message prefix indicating that a requested file could not be found in the database.
-     * This message is typically appended with the file identifier to provide context.
+     * Error message prefix indicating that a requested file could not be found in
+     * the database. This message is typically appended with the file identifier to
+     * provide context.
      */
     public static final String FILE_NOT_FOUND_IN_THE_DATABASE = "File not found in the database: ";
 
