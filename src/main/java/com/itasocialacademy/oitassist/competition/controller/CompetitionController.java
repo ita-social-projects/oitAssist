@@ -150,6 +150,6 @@ public class CompetitionController {
     public ResponseEntity<CompetitionResponse> changeStatus(
         @PathVariable Long competitionId,
         @Valid @RequestBody ChangeCompetitionStatusRequest request) {
-        return ResponseEntity.ok(competitionService.changeStatus(competitionId, request.status()));
+        return ResponseEntity.ok(competitionService.changeStatus(competitionId, request));
     }
 }
