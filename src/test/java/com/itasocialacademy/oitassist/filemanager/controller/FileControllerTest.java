@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
@@ -238,7 +239,10 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
         Long fileId = 1L;
         FileResponseDto responseDto = FileResponseDto.builder().id(fileId).build();
 
-        when(fileService.updateRole(eq(fileId), any(UpdateFileRoleRequestDto.class))).thenReturn(responseDto);
+        when(fileService.updateRole(
+            eq(fileId),
+            argThat(request -> request.getNewRole() == FileRole.PROBLEM)))
+            .thenReturn(responseDto);
 
         mockMvc.perform(patch("/api/v1/files/{id}/role", fileId)
             .param("newRole", "PROBLEM"))
