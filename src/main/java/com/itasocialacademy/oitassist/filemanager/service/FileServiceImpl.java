@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.filemanager.service;
 
+import static com.itasocialacademy.oitassist.filemanager.validation.util.FileValidationUtils.*;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
@@ -320,10 +321,26 @@ public class FileServiceImpl implements FileService {
                 ErrorCode.FILE_VALIDATION_FAILED);
         }
 
-        // Validate if the combination of entity type and new role is allowed
-        // This will throw ValidationException if the policy is not configured for the
-        // pair
-        filePolicyResolver.resolve(file.getRelatedEntityType(), request.getNewRole());
+        StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+
+        if (file.getFileRole().equals(request.getNewRole())) {
+            FileAsset saved = repository.save(file);
+            FileResponseDto dto = fileMapper.toDto(saved);
+            dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+            return dto;
+        }
+
+        // Validate if new role is allowed for the file extension
+        FilePolicy newPolicy = filePolicyResolver.resolve(file.getRelatedEntityType(), request.getNewRole());
+        String extension = extractExtension(file.getOriginalFilename());
+
+        if (isExtensionNotAllowed(extension, newPolicy.getAllowedExtensions())) {
+            throw new ValidationException(
+                "File '%s' has extension '%s' which is not allowed for role %s. Allowed: %s.".formatted(
+                    file.getOriginalFilename(), extension, request.getNewRole(),
+                    formatAllowed(newPolicy.getAllowedExtensions())),
+                ErrorCode.FILE_VALIDATION_FAILED);
+        }
 
         file.setFileRole(request.getNewRole());
         FileAsset saved = repository.save(file);
@@ -331,7 +348,6 @@ public class FileServiceImpl implements FileService {
         log.debug("Updated file role for id={} to {}", saved.getId(), saved.getFileRole());
 
         FileResponseDto dto = fileMapper.toDto(saved);
-        StorageProvider provider = providerResolver.resolve(saved.getStorageProvider());
         dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
 
         return dto;
