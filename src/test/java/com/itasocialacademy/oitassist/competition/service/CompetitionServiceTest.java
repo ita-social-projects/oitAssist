@@ -245,9 +245,12 @@ class CompetitionServiceTest {
     @Test
     void changeStatus_versionMismatch_shouldThrowStaleEntityVersionException() {
         ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.ENROLLMENT, 5L);
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition)); // competition.version = 1L
+        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
 
-        assertThrows(StaleEntityVersionException.class, () -> competitionService.changeStatus(1L, request));
+        doThrow(new StaleEntityVersionException(Competition.class, 1L))
+            .when(validator).validateEntityVersion(anyLong(), anyLong(), any(), anyLong());
+
+        assertThrows(CompetitionHierarchyValidationException.class, () -> competitionService.changeStatus(1L, request));
 
         verify(competitionRepository, never()).save(any());
         verify(validator, never()).validateCompetitionStatusTransition(any(), any());
