@@ -231,9 +231,12 @@ public class GlobalExceptionHandler {
         OptimisticLockingFailureException ex, HttpServletRequest request) {
         log.warn("Optimistic locking conflict: traceId={}", MDC.get(TRACE_ID_MDC));
         return ResponseEntity.status(HttpStatus.CONFLICT)
-            .body(buildResponse(request, ErrorCode.COMMON_CONFLICT,
+            .body(buildResponse(
+                request,
+                ErrorCode.ENTITY_VERSION_CONFLICT,
                 "This resource was modified by someone else. Please refresh and try again.",
-                HttpStatus.CONFLICT.value(), null));
+                HttpStatus.CONFLICT.value(),
+                null));
     }
 
     /**

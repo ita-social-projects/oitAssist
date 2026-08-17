@@ -74,6 +74,7 @@ public enum ErrorCode {
 
     DATA_ACCESS_ERROR(ErrorCategory.TECHNICAL),
 
+    ENTITY_VERSION_CONFLICT(ErrorCategory.CONFLICT),
     COMMON_CONFLICT(ErrorCategory.CONFLICT);
 
     private final ErrorCategory category;
