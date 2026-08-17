@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.validation.enums.AllowedExtension;
 import org.springframework.data.jpa.domain.Specification;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -798,21 +799,24 @@ class FileServiceImplTest {
         file.setUserId(userId);
         file.setStatus(FileStatus.ATTACHED);
         file.setRelatedEntityType(RelatedEntityType.TASK);
-        file.setFileRole(FileRole.GENERIC);
+        file.setFileRole(FileRole.REFERENCE);
         file.setStorageProvider(StorageProviderType.LOCAL);
-        file.setStorageKey("task/test.txt");
+        file.setStorageKey("task/problem.docx");
+        file.setOriginalFilename("problem.docx");
 
         FileResponseDto expectedDto = FileResponseDto.builder().id(fileId).build();
+
+        FilePolicy newRolePolicy = mock(FilePolicy.class);
+        when(newRolePolicy.getAllowedExtensions()).thenReturn(Set.of(AllowedExtension.DOCX));
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
-        // We just need resolve to complete without throwing an exception
-        when(filePolicyResolver.resolve(RelatedEntityType.TASK, FileRole.PROBLEM)).thenReturn(mock(FilePolicy.class));
+        when(filePolicyResolver.resolve(RelatedEntityType.TASK, FileRole.PROBLEM)).thenReturn(newRolePolicy);
         when(fileRepository.save(any(FileAsset.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(fileMapper.toDto(any(FileAsset.class))).thenReturn(expectedDto);
         when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
-        when(storageProvider.getFileUrl("task/test.txt")).thenReturn("/uploads/task/test.txt");
+        when(storageProvider.getFileUrl("task/problem.docx")).thenReturn("/uploads/task/problem.docx");
 
         FileResponseDto result = fileService.updateRole(fileId, requestDto);
 
@@ -822,6 +826,7 @@ class FileServiceImplTest {
 
         verify(fileRepository).save(file);
         verify(filePolicyResolver).resolve(RelatedEntityType.TASK, FileRole.PROBLEM);
+        verify(newRolePolicy).getAllowedExtensions();
     }
 
     @Test
