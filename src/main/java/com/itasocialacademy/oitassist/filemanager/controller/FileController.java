@@ -238,7 +238,7 @@ public class FileController {
             description = "File not found in the DB")
     })
     @PatchMapping("/{id}/role")
-    @PreAuthorize("hasAnyRole('ADMIN','ORG')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FileResponseDto> updateRole(
         @PathVariable Long id,
         @Valid @QueryParam("newRole") UpdateFileRoleRequestDto requestDto) {
