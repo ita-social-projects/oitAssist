@@ -328,6 +328,8 @@ public class FileServiceImpl implements FileService {
         file.setFileRole(request.getNewRole());
         FileAsset saved = repository.save(file);
 
+        log.debug("Updated file role for id={} to {}", saved.getId(), saved.getFileRole());
+
         FileResponseDto dto = fileMapper.toDto(saved);
         StorageProvider provider = providerResolver.resolve(saved.getStorageProvider());
         dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
