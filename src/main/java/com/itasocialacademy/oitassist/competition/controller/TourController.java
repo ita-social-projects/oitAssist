@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.competition.controller;
 
 import com.itasocialacademy.oitassist.competition.dto.request.ChangeTourStatusRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.ReorderToursRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.UpdateTourRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateTourRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
@@ -106,6 +107,29 @@ public class TourController {
         @PathVariable Long tourId,
         @Valid @RequestBody ChangeTourStatusRequest request) {
         return ResponseEntity.ok(tourService.changeStatus(stageId, tourId, request));
+    }
+
+    @Operation(
+        summary = "Reorder tours within a stage",
+        description = "Reassigns tour sort positions according to the given order. The request must "
+            + "list exactly the IDs of all tours currently under the stage, with no duplicates or omissions. "
+            + "Not allowed once any tour in the stage has left SCHEDULED status.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Tours reordered successfully"),
+        @ApiResponse(responseCode = "400",
+            description = "Validation failed (tour set mismatch, tours already started, or hierarchy locked)",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Stage not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/stages/{stageId}/tours/order")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
+    public ResponseEntity<List<TourResponse>> reorderTours(
+        @PathVariable Long stageId,
+        @Valid @RequestBody ReorderToursRequest request) {
+        return ResponseEntity.ok(tourService.reorder(stageId, request));
     }
 
     @Operation(summary = "Delete a tour")

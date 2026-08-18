@@ -1,7 +1,9 @@
 @ApplicationModule(
     displayName = "Export",
     allowedDependencies = {
-        "core"
+        "core",
+        "evaluation::api",
+        "evaluation::dto"
     })
 package com.itasocialacademy.oitassist.export;
 

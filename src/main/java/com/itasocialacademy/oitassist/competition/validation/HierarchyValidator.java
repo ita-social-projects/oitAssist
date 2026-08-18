@@ -185,6 +185,22 @@ public class HierarchyValidator {
         }
     }
 
+    @Transactional(readOnly = true)
+    public void validateToursNotStartedByStageId(Long stageId) {
+        if (!stageRepository.existsById(stageId)) {
+            throw new StageNotFoundException(stageId);
+        }
+        List<Tour> tours = tourRepository.findAllByStageIdOrderBySortPositionAsc(stageId);
+
+        boolean anyStarted = tours.stream()
+            .anyMatch(tour -> tour.getExecutionStatus() != ExecutionStatus.SCHEDULED);
+
+        if (anyStarted) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot reorder tours: one or more tours have already started execution.");
+        }
+    }
+
     public void validateTourStatusTransition(ExecutionStatus current, ExecutionStatus target) {
         if (current == target) {
             return;
@@ -278,6 +294,27 @@ public class HierarchyValidator {
             throw new CompetitionHierarchyValidationException(
                 "Cannot start stage '%s'. The previous stage '%s' is not yet FINISHED (Current status: %s)."
                     .formatted(currentStage.getTitle(), previousStage.getTitle(), previousStage.getStatus()));
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void validateAllStagesCompletedForCompetition(Long competitionId) {
+        List<Stage> stages = stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(competitionId);
+
+        if (stages.isEmpty()) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot finish competition: Competition must have at least one stage.");
+        }
+        List<String> incompleteStages = stages.stream()
+            .filter(stage -> stage.getStatus() != StageStatus.FINISHED
+                && stage.getStatus() != StageStatus.CANCELLED)
+            .map(stage -> "'%s' (Status: %s)".formatted(stage.getTitle(), stage.getStatus()))
+            .toList();
+
+        if (!incompleteStages.isEmpty()) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot finish competition: Not all stages are completed. Incomplete stages: "
+                    + String.join(", ", incompleteStages));
         }
     }
 

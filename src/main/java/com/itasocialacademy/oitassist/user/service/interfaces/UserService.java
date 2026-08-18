@@ -40,6 +40,13 @@ public interface UserService {
     Optional<UserProfileDetails> findProfileDetailsById(Long userId);
 
     /**
+     * Bulk variant of {@link #findProfileDetailsById} — returns the display-side
+     * projections for all matching users. IDs with no matching user are simply
+     * omitted from the result, consistent with {@link #findAuthDetailsByIds}.
+     */
+    List<UserProfileDetails> findProfilesDetailsByIds(List<Long> userIds);
+
+    /**
      * Searches for the list of users by their IDs and returns the list of auth-side
      * projections required by {@code UserFacade.findByIds}. Returns empty if no
      * users were found.
@@ -89,15 +96,27 @@ public interface UserService {
 
     /**
      * Returns a paginated list of users for the admin dashboard. Supports optional
-     * search by name or email.
+     * search by name or email and filter by roles.
      *
      * @param pageable pagination parameters
      * @param search   optional search query
+     * @param roles    optional roles filter
      * @return paginated list of users
      * @throws InsufficientPermissionsException if user does not have admin role
      */
     @NonNull
-    Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search);
+    Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search, List<Role> roles);
+
+    /**
+     * Returns a paginated list of users with given ids. Available only for admins
+     *
+     * @param pageable pagination parameters
+     * @param ids      ids to search users by
+     * @return paginated list of users
+     * @throws InsufficientPermissionsException if user does not have admin role
+     */
+    @NonNull
+    Page<ResponseUserDTO> getUsersByIds(@NonNull Pageable pageable, List<Long> ids);
 
     /**
      * Changes the status of an existing user.

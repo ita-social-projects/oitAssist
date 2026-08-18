@@ -9,6 +9,7 @@ import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -69,7 +70,7 @@ public class TaskController {
 
     @Operation(
         summary = "Get all tasks",
-        description = "Retrieves all tasks with pagination support. Requires ADMIN role.")
+        description = "Retrieves all tasks with pagination support and optional search by title. Requires ADMIN role.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Tasks retrieved successfully",
             content = @Content(mediaType = "application/json",
@@ -80,8 +81,11 @@ public class TaskController {
     @GetMapping()
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PageResponse<TaskResponseDTO>> getAllTasks(
-        @ParameterObject @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
-        return ResponseEntity.ok(PageResponse.from(taskService.getAllTasks(pageable)));
+        @ParameterObject @PageableDefault(size = 15, sort = "createdAt") Pageable pageable,
+        @Parameter(
+            description = "Optional search query for filtering tasks by title",
+            example = "PowerPoint") @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(PageResponse.from(taskService.getAllTasks(pageable, search)));
     }
 
     @Operation(

@@ -1,9 +1,9 @@
 package com.itasocialacademy.oitassist.export.service;
 
+import com.itasocialacademy.oitassist.evaluation.api.dto.ParticipantResult;
+import com.itasocialacademy.oitassist.evaluation.api.dto.StageResult;
+import com.itasocialacademy.oitassist.evaluation.api.dto.TourResult;
 import com.itasocialacademy.oitassist.export.dao.dto.ExportData;
-import com.itasocialacademy.oitassist.export.dao.dto.ParticipantResult;
-import com.itasocialacademy.oitassist.export.dao.dto.StageResult;
-import com.itasocialacademy.oitassist.export.dao.dto.TourResult;
 import com.itasocialacademy.oitassist.export.dao.enums.ExportFormat;
 import com.itasocialacademy.oitassist.export.exceptions.ExcelExportException;
 import com.itasocialacademy.oitassist.export.service.interfaces.Exporter;
@@ -18,6 +18,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class ExcelExporter implements Exporter {
+    private static final String NO_SCORE = "-";
+    private static final String PARTICIPANT_COLUMN = "Учасник";
+
     @Override
     public byte[] export(ExportData data) {
         try (Workbook workbook = new XSSFWorkbook();
@@ -43,13 +46,7 @@ public class ExcelExporter implements Exporter {
     }
 
     private void createToursSheet(Workbook workbook, ExportData data) {
-        Sheet sheet = workbook.createSheet("Тури");
-
-        Row header = sheet.createRow(0);
-        header.createCell(0).setCellValue("Учасник");
-        header.createCell(1).setCellValue("Етап");
-        header.createCell(2).setCellValue("Тур");
-        header.createCell(3).setCellValue("Бал");
+        Sheet sheet = createSheetWithHeader(workbook, "Тури", PARTICIPANT_COLUMN, "Етап", "Тур", "Бал");
 
         int rowIndex = 1;
         for (ParticipantResult participant : data.participants()) {
@@ -59,21 +56,20 @@ public class ExcelExporter implements Exporter {
                     row.createCell(0).setCellValue(participant.participantName());
                     row.createCell(1).setCellValue(stage.stageTitle());
                     row.createCell(2).setCellValue(tour.tourTitle());
-                    row.createCell(3).setCellValue(tour.tourScore());
+                    if (tour.tourScore() == null) {
+                        row.createCell(3).setCellValue(NO_SCORE);
+                    } else {
+                        row.createCell(3).setCellValue(tour.tourScore());
+                    }
                 }
             }
         }
 
-        sheet.setAutoFilter(new CellRangeAddress(0, rowIndex - 1, 0, 3));
+        applyAutoFilter(sheet, rowIndex - 1);
     }
 
     private void createStagesSheet(Workbook workbook, ExportData data) {
-        Sheet sheet = workbook.createSheet("Етапи");
-
-        Row header = sheet.createRow(0);
-        header.createCell(0).setCellValue("Учасник");
-        header.createCell(1).setCellValue("Етап");
-        header.createCell(2).setCellValue("Бал за етап");
+        Sheet sheet = createSheetWithHeader(workbook, "Етапи", PARTICIPANT_COLUMN, "Етап", "Бал за етап");
 
         int rowIndex = 1;
         for (ParticipantResult participant : data.participants()) {
@@ -81,28 +77,46 @@ public class ExcelExporter implements Exporter {
                 Row row = sheet.createRow(rowIndex++);
                 row.createCell(0).setCellValue(participant.participantName());
                 row.createCell(1).setCellValue(stage.stageTitle());
-                row.createCell(2).setCellValue(stage.stageScore());
+                if (stage.stageScore() == null) {
+                    row.createCell(2).setCellValue(NO_SCORE);
+                } else {
+                    row.createCell(2).setCellValue(stage.stageScore());
+                }
             }
         }
 
-        sheet.setAutoFilter(new CellRangeAddress(0, rowIndex - 1, 0, 2));
+        applyAutoFilter(sheet, rowIndex - 1);
     }
 
     private void createTotalSheet(Workbook workbook, ExportData data) {
-        Sheet sheet = workbook.createSheet("Спільне");
-
-        Row header = sheet.createRow(0);
-        header.createCell(0).setCellValue("Учасник");
-        header.createCell(1).setCellValue("Загальний бал");
+        Sheet sheet = createSheetWithHeader(workbook, "Спільне", PARTICIPANT_COLUMN, "Загальний бал");
 
         int rowIndex = 1;
         for (ParticipantResult participant : data.participants()) {
             Row row = sheet.createRow(rowIndex++);
             row.createCell(0).setCellValue(participant.participantName());
-            row.createCell(1).setCellValue(participant.totalScore());
+            if (participant.totalScore() == null) {
+                row.createCell(1).setCellValue(NO_SCORE);
+            } else {
+                row.createCell(1).setCellValue(participant.totalScore());
+            }
         }
 
-        sheet.setAutoFilter(new CellRangeAddress(0, rowIndex - 1, 0, 1));
+        applyAutoFilter(sheet, rowIndex - 1);
+    }
+
+    private Sheet createSheetWithHeader(Workbook workbook, String sheetName, String... columnTitles) {
+        Sheet sheet = workbook.createSheet(sheetName);
+        Row header = sheet.createRow(0);
+        for (int i = 0; i < columnTitles.length; i++) {
+            header.createCell(i).setCellValue(columnTitles[i]);
+        }
+        return sheet;
+    }
+
+    private void applyAutoFilter(Sheet sheet, int lastRowIndex) {
+        int lastColumn = sheet.getRow(0).getLastCellNum() - 1;
+        sheet.setAutoFilter(new CellRangeAddress(0, lastRowIndex, 0, lastColumn));
     }
 
     private boolean hasStages(ExportData data) {

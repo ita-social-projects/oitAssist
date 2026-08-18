@@ -276,7 +276,8 @@ class NewsControllerTest {
             PageRequest.of(0, 15),
             1);
 
-        when(newsService.getAllNewsForAdmin(any(), eq(null))).thenReturn(page);
+        when(newsService.getAllNewsForAdmin(any(), eq(null), eq(null), eq(null), eq(null)))
+            .thenReturn(page);
 
         mockMvc.perform(get("/api/v1/news/admin"))
             .andExpect(status().isOk())
@@ -287,7 +288,7 @@ class NewsControllerTest {
             .andExpect(jsonPath("$.pageSize").value(15))
             .andExpect(jsonPath("$.totalElements").value(1));
 
-        verify(newsService).getAllNewsForAdmin(any(), eq(null));
+        verify(newsService).getAllNewsForAdmin(any(), eq(null), eq(null), eq(null), eq(null));
     }
 
     @Test
@@ -308,7 +309,8 @@ class NewsControllerTest {
             PageRequest.of(0, 15),
             1);
 
-        when(newsService.getAllNewsForAdmin(any(), eq(search))).thenReturn(page);
+        when(newsService.getAllNewsForAdmin(any(), eq(search), eq(null), eq(null), eq(null)))
+            .thenReturn(page);
 
         mockMvc.perform(get("/api/v1/news/admin")
             .param("search", search))
@@ -318,6 +320,6 @@ class NewsControllerTest {
             .andExpect(jsonPath("$.content[0].status").value("DRAFT"))
             .andExpect(jsonPath("$.totalElements").value(1));
 
-        verify(newsService).getAllNewsForAdmin(any(), eq(search));
+        verify(newsService).getAllNewsForAdmin(any(), eq(search), eq(null), eq(null), eq(null));
     }
 }

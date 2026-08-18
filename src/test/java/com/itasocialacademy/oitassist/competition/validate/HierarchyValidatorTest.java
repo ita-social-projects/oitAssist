@@ -566,6 +566,44 @@ class HierarchyValidatorTest {
     }
 
     @Test
+    void validateAllStagesCompletedForCompetition_allTerminal_shouldNotThrow() {
+        Stage finishedStage = Stage.builder().id(1L).title("Stage 1").status(StageStatus.FINISHED).build();
+        Stage cancelledStage = Stage.builder().id(2L).title("Stage 2").status(StageStatus.CANCELLED).build();
+
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L))
+            .thenReturn(List.of(finishedStage, cancelledStage));
+
+        assertDoesNotThrow(() -> validator.validateAllStagesCompletedForCompetition(1L));
+    }
+
+    @Test
+    void validateAllStagesCompletedForCompetition_someScheduled_shouldThrow() {
+        Stage finishedStage = Stage.builder().id(1L).title("Stage 1").status(StageStatus.FINISHED).build();
+        Stage scheduledStage = Stage.builder().id(2L).title("Stage 2").status(StageStatus.SCHEDULED).build();
+
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L))
+            .thenReturn(List.of(finishedStage, scheduledStage));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateAllStagesCompletedForCompetition(1L));
+
+        assertTrue(exception.getMessage().contains("Stage 2"));
+    }
+
+    @Test
+    void validateAllStagesCompletedForCompetition_noStages_shouldThrow() {
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L))
+            .thenReturn(List.of());
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateAllStagesCompletedForCompetition(1L));
+
+        assertTrue(exception.getMessage().contains("must have at least one stage"));
+    }
+
+    @Test
     void validateAllToursCompletedForStage_allFinishedOrCancelled_shouldPass() {
         Tour t1 = Tour.builder().executionStatus(ExecutionStatus.FINISHED).build();
         Tour t2 = Tour.builder().executionStatus(ExecutionStatus.CANCELLED).build();
@@ -598,5 +636,72 @@ class HierarchyValidatorTest {
             () -> validator.validateAllToursCompletedForStage(10L));
 
         assertTrue(exception.getMessage().contains("must contain at least one tour"));
+    }
+
+    // ---- validateToursNotStartedByStageId ----
+
+    @Test
+    void validateToursNotStartedByStageId_allScheduled_shouldPass() {
+        Tour t1 = Tour.builder().id(1L).executionStatus(ExecutionStatus.SCHEDULED).build();
+        Tour t2 = Tour.builder().id(2L).executionStatus(ExecutionStatus.SCHEDULED).build();
+
+        when(stageRepository.existsById(anyLong())).thenReturn(true);
+        when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(t1, t2));
+
+        assertDoesNotThrow(() -> validator.validateToursNotStartedByStageId(10L));
+    }
+
+    @Test
+    void validateToursNotStartedByStageId_oneInProgress_shouldThrow() {
+        Tour t1 = Tour.builder().id(1L).executionStatus(ExecutionStatus.SCHEDULED).build();
+        Tour t2 = Tour.builder().id(2L).executionStatus(ExecutionStatus.IN_PROGRESS).build();
+
+        when(stageRepository.existsById(anyLong())).thenReturn(true);
+        when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(t1, t2));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateToursNotStartedByStageId(10L));
+
+        assertTrue(exception.getMessage().contains("already started execution"));
+    }
+
+    @Test
+    void validateToursNotStartedByStageId_oneFinished_shouldThrow() {
+        Tour t1 = Tour.builder().id(1L).executionStatus(ExecutionStatus.SCHEDULED).build();
+        Tour t2 = Tour.builder().id(2L).executionStatus(ExecutionStatus.FINISHED).build();
+
+        when(stageRepository.existsById(anyLong())).thenReturn(true);
+        when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(t1, t2));
+
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> validator.validateToursNotStartedByStageId(10L));
+    }
+
+    @Test
+    void validateToursNotStartedByStageId_oneCancelled_shouldThrow() {
+        Tour t1 = Tour.builder().id(1L).executionStatus(ExecutionStatus.SCHEDULED).build();
+        Tour t2 = Tour.builder().id(2L).executionStatus(ExecutionStatus.CANCELLED).build();
+
+        when(stageRepository.existsById(anyLong())).thenReturn(true);
+        when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of(t1, t2));
+
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> validator.validateToursNotStartedByStageId(10L));
+    }
+
+    @Test
+    void validateToursNotStartedByStageId_noTours_shouldPass() {
+        when(stageRepository.existsById(anyLong())).thenReturn(true);
+        when(tourRepository.findAllByStageIdOrderBySortPositionAsc(10L)).thenReturn(List.of());
+
+        assertDoesNotThrow(() -> validator.validateToursNotStartedByStageId(10L));
+    }
+
+    @Test
+    void validateToursNotStartedByStageId_noStage_shouldThrow() {
+        when(stageRepository.existsById(anyLong())).thenReturn(false);
+
+        assertThrows(StageNotFoundException.class, () -> validator.validateToursNotStartedByStageId(10L));
     }
 }

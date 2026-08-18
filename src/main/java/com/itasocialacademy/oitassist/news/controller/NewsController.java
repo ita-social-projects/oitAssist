@@ -7,6 +7,7 @@ import com.itasocialacademy.oitassist.news.dao.dto.response.ArchivedNewsByYearDt
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsAdminListItemDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsDto;
 import com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto;
+import com.itasocialacademy.oitassist.news.dao.enums.NewsStatus;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsArchivingService;
 import com.itasocialacademy.oitassist.news.service.interfaces.NewsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -124,7 +125,11 @@ public class NewsController {
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<PageResponse<ResponseNewsAdminListItemDto>> getAllNewsForAdmin(
         @ParameterObject @PageableDefault(size = 15, sort = "createdAt", direction = DESC) Pageable pageable,
-        @RequestParam(required = false) String search) {
-        return ResponseEntity.ok(PageResponse.from(service.getAllNewsForAdmin(pageable, search)));
+        @RequestParam(required = false) String search,
+        @RequestParam(required = false) List<NewsStatus> statuses,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        return ResponseEntity
+            .ok(PageResponse.from(service.getAllNewsForAdmin(pageable, search, statuses, dateFrom, dateTo)));
     }
 }

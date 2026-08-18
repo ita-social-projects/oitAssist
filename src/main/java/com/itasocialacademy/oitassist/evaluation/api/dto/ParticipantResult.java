@@ -1,9 +1,9 @@
-package com.itasocialacademy.oitassist.export.dao.dto;
+package com.itasocialacademy.oitassist.evaluation.api.dto;
 
 import java.util.List;
 
 public record ParticipantResult(
     String participantName,
-    int totalScore,
+    Integer totalScore,
     List<StageResult> stages) {
 }

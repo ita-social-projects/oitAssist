@@ -10,6 +10,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFound
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
@@ -24,13 +25,20 @@ import com.itasocialacademy.oitassist.participation.exceptions.UserApplicationRe
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
+import com.itasocialacademy.oitassist.participation.scheduler.AfterCommitScheduler;
+import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
+import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
+import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ApplicationServiceImpl implements ApplicationService {
@@ -41,6 +49,9 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final ParticipationMapper participationMapper;
     private final ProcessApplicationMapper processApplicationMapper;
     private final CompetitionFacade competitionFacade;
+    private final AsyncEmailSender emailSender;
+    private final UserFacade userFacade;
+    private final AfterCommitScheduler scheduler;
 
     @Override
     @Transactional
@@ -61,7 +72,15 @@ public class ApplicationServiceImpl implements ApplicationService {
         application.setStatus(RequestStatus.ACCEPTED);
         application.setProcessedBy(userId);
         application.setProcessedAt(Instant.now());
-        return processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
+        ProcessApplicationResponse response = processApplicationMapper.toResponse(
+            applicationRepository.saveAndFlush(application));
+
+        scheduleAcceptedEmail(
+            application.getCompetitionId(),
+            application.getStageId(),
+            application.getIssuedBy());
+
+        return response;
     }
 
     @Override
@@ -73,7 +92,16 @@ public class ApplicationServiceImpl implements ApplicationService {
         application.setRejectionReason(request.rejectionReason());
         application.setProcessedBy(userId);
         application.setProcessedAt(Instant.now());
-        return processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
+        ProcessApplicationResponse response =
+            processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
+
+        scheduleRejectedEmail(
+            application.getCompetitionId(),
+            application.getStageId(),
+            application.getIssuedBy(),
+            application.getRejectionReason());
+
+        return response;
     }
 
     @Override
@@ -118,10 +146,8 @@ public class ApplicationServiceImpl implements ApplicationService {
     private void validateCompetitionAndStageInfo(CreateApplicationRequest createApplicationRequest) {
         Long competitionId = createApplicationRequest.getCompetitionId();
         Long stageId = createApplicationRequest.getStageId();
-        CompetitionDetail competitionDetail = competitionFacade.findCompetitionById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
-        StageDetail stageDetail = competitionFacade.findStageById(stageId)
-            .orElseThrow(() -> new StageNotFoundException(stageId));
+        CompetitionDetail competitionDetail = getCompetitionInfoOrThrow(competitionId);
+        StageDetail stageDetail = getStageInfoOrThrow(stageId);
         if (competitionDetail.competitionStatus() != CompetitionStatus.ENROLLMENT) {
             throw new UserApplicationRequestException("The competition cannot be enrolled");
         }
@@ -152,5 +178,39 @@ public class ApplicationServiceImpl implements ApplicationService {
         return securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User is not authenticated",
                 ErrorCode.ACCESS_DENIED));
+    }
+
+    private void scheduleDecisionEmailAfterCommit(
+        Long competitionId, Long stageId, Long userId, String rejectionReason, RequestStatus status) {
+        String competitionTitle = getCompetitionInfoOrThrow(competitionId).title();
+        String stageTitle = getStageInfoOrThrow(stageId).title();
+        UserProfileDetails user = getUserOrThrow(userId);
+
+        ApplicationDecisionEvent event = new ApplicationDecisionEvent(
+            competitionTitle, stageTitle, user.firstName(), user.email(), rejectionReason, status);
+        scheduler.runAfterCommit(() -> emailSender.sendDecisionEmail(event));
+    }
+
+    private CompetitionDetail getCompetitionInfoOrThrow(Long competitionId) {
+        return competitionFacade.findCompetitionById(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+    }
+
+    private StageDetail getStageInfoOrThrow(Long stageId) {
+        return competitionFacade.findStageById(stageId)
+            .orElseThrow(() -> new StageNotFoundException(stageId));
+    }
+
+    private UserProfileDetails getUserOrThrow(Long userId) {
+        return userFacade.findProfileById(userId)
+            .orElseThrow(UserNotFoundException::new);
+    }
+
+    private void scheduleAcceptedEmail(Long competitionId, Long stageId, Long userId) {
+        scheduleDecisionEmailAfterCommit(competitionId, stageId, userId, null, RequestStatus.ACCEPTED);
+    }
+
+    private void scheduleRejectedEmail(Long competitionId, Long stageId, Long userId, String rejectionReason) {
+        scheduleDecisionEmailAfterCommit(competitionId, stageId, userId, rejectionReason, RequestStatus.REJECTED);
     }
 }
