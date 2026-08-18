@@ -326,7 +326,7 @@ public class FileServiceImpl implements FileService {
         FileAsset file = repository.findById(fileId)
             .orElseThrow(() -> new FileAssetNotFoundException(FILE_NOT_FOUND_IN_THE_DATABASE + fileId));
 
-        checkOwnerOrAdmin(currentUserId, file.getUserId());
+        checkOwnerOrAdmin(file.getUserId(), currentUserId);
 
         if (!file.getStatus().equals(FileStatus.ATTACHED)) {
             throw new ValidationException(
