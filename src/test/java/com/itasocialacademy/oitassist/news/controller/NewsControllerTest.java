@@ -269,6 +269,7 @@ class NewsControllerTest {
             NewsStatus.PUBLISHED,
             OffsetDateTime.parse("2026-03-14T08:00:00Z"),
             OffsetDateTime.parse("2026-03-15T10:30:00Z"),
+            OffsetDateTime.parse("2026-03-15T10:30:00Z"),
             null);
 
         Page<ResponseNewsAdminListItemDto> page = new PageImpl<>(
@@ -301,6 +302,7 @@ class NewsControllerTest {
             "Draft preview text...",
             NewsStatus.DRAFT,
             OffsetDateTime.parse("2026-03-10T12:00:00Z"),
+            OffsetDateTime.parse("2026-03-10T14:20:00Z"),
             OffsetDateTime.parse("2026-03-10T14:20:00Z"),
             null);
 
