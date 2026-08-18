@@ -100,7 +100,6 @@ public class CompetitionServiceImpl implements CompetitionService {
             .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
 
         validator.validateEntityVersion(request.version(), competition.getVersion(), Competition.class, competitionId);
-
         CompetitionStatus currentStatus = competition.getCompetitionStatus();
 
         validator.validateCompetitionStatusTransition(currentStatus, request.status());
