@@ -3,16 +3,22 @@ package com.itasocialacademy.oitassist.logfile.dao;
 import com.itasocialacademy.oitassist.logfile.exceptions.LogFileListingException;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.MockedStatic;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+import static org.mockito.Mockito.mockStatic;
 
 class FileSystemLogFileDaoTest {
 
@@ -147,6 +153,240 @@ class FileSystemLogFileDaoTest {
                 IllegalStateException.class)
             .hasMessageContaining(
                 "logging.file.name must be configured");
+    }
+
+    @Test
+    void shouldFindLogFilesByPartialName() throws IOException {
+        Files.writeString(
+            tempDirectory.resolve("app.log"),
+            "active log");
+
+        Files.writeString(
+            tempDirectory.resolve("app.log.2026-07-20.gz"),
+            "archived log");
+
+        Files.writeString(
+            tempDirectory.resolve("server.log"),
+            "server log");
+
+        List<LogFileMetadata> result =
+            logFileDao.findByNameContainingIgnoreCase("app");
+
+        assertThat(result)
+            .extracting(LogFileMetadata::fileName)
+            .containsExactlyInAnyOrder(
+                "app.log",
+                "app.log.2026-07-20.gz")
+            .doesNotContain("server.log");
+    }
+
+    @Test
+    void shouldFindLogFilesIgnoringCase() throws IOException {
+        Files.writeString(
+            tempDirectory.resolve("Application.log"),
+            "log content");
+
+        List<LogFileMetadata> result =
+            logFileDao.findByNameContainingIgnoreCase("APPLICATION");
+
+        assertThat(result)
+            .extracting(LogFileMetadata::fileName)
+            .containsExactly("Application.log");
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoFileNameMatches()
+        throws IOException {
+
+        Files.writeString(
+            tempDirectory.resolve("app.log"),
+            "log content");
+
+        Files.writeString(
+            tempDirectory.resolve("server.log"),
+            "server log");
+
+        List<LogFileMetadata> result =
+            logFileDao.findByNameContainingIgnoreCase("unknown");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldExcludeDirectoriesMatchingSearchName()
+        throws IOException {
+
+        Files.writeString(
+            tempDirectory.resolve("app.log"),
+            "log content");
+
+        Files.createDirectory(
+            tempDirectory.resolve("app-archive"));
+
+        List<LogFileMetadata> result =
+            logFileDao.findByNameContainingIgnoreCase("app");
+
+        assertThat(result)
+            .extracting(LogFileMetadata::fileName)
+            .containsExactly("app.log")
+            .doesNotContain("app-archive");
+    }
+
+    @Test
+    void shouldThrowLogFileListingExceptionWhenDirectoryListingFails()
+        throws IOException {
+
+        Path logDirectory = tempDirectory;
+        String configuredLogFile =
+            logDirectory.resolve("app.log").toString();
+
+        FileSystemLogFileDao dao =
+            new FileSystemLogFileDao(configuredLogFile);
+
+        try (MockedStatic<Files> filesMock = mockStatic(Files.class)) {
+            filesMock.when(() -> Files.exists(
+                logDirectory,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(() -> Files.isDirectory(
+                logDirectory,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(() -> Files.isReadable(logDirectory))
+                .thenReturn(true);
+
+            filesMock.when(() -> Files.list(logDirectory))
+                .thenThrow(new IOException("Directory listing failed"));
+
+            assertThatThrownBy(dao::findAll)
+                .isInstanceOf(LogFileListingException.class);
+        }
+    }
+
+    @Test
+    void shouldThrowLogFileListingExceptionWhenReadingMetadataFails()
+        throws IOException {
+
+        Path logDirectory = tempDirectory;
+        Path logFile = logDirectory.resolve("app.log");
+
+        FileSystemLogFileDao dao =
+            new FileSystemLogFileDao(
+                logFile.toString());
+
+        try (MockedStatic<Files> filesMock = mockStatic(Files.class)) {
+            filesMock.when(() -> Files.exists(
+                logDirectory,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(() -> Files.isDirectory(
+                logDirectory,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(() -> Files.isReadable(logDirectory))
+                .thenReturn(true);
+
+            filesMock.when(() -> Files.list(logDirectory))
+                .thenReturn(Stream.of(logFile));
+
+            filesMock.when(() -> Files.readAttributes(
+                logFile,
+                BasicFileAttributes.class,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                .thenThrow(new IOException(
+                    "Failed to read attributes"));
+
+            assertThatThrownBy(dao::findAll)
+                .isInstanceOf(LogFileListingException.class);
+        }
+    }
+
+    @Test
+    void shouldSkipFileWhenItDisappearsDuringDirectoryScan()
+        throws IOException {
+
+        Path logDirectory = tempDirectory;
+        Path logFile = logDirectory.resolve("app.log");
+
+        FileSystemLogFileDao dao =
+            new FileSystemLogFileDao(
+                logFile.toString());
+
+        try (MockedStatic<Files> filesMock = mockStatic(Files.class)) {
+            filesMock.when(() -> Files.exists(
+                logDirectory,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(() -> Files.isDirectory(
+                logDirectory,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(() -> Files.isReadable(logDirectory))
+                .thenReturn(true);
+
+            filesMock.when(() -> Files.list(logDirectory))
+                .thenReturn(Stream.of(logFile));
+
+            filesMock.when(() -> Files.readAttributes(
+                logFile,
+                BasicFileAttributes.class,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                .thenThrow(
+                    new NoSuchFileException(
+                        logFile.toString()));
+
+            List<LogFileMetadata> result =
+                dao.findAll();
+
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Test
+    void shouldThrowLogFileListingExceptionWhenLogPathIsNotDirectory()
+        throws IOException {
+
+        Path notDirectory = Files.writeString(
+            tempDirectory.resolve("not-directory"),
+            "content");
+
+        FileSystemLogFileDao dao =
+            new FileSystemLogFileDao(
+                notDirectory
+                    .resolve("app.log")
+                    .toString());
+
+        assertThatThrownBy(dao::findAll)
+            .isInstanceOf(LogFileListingException.class);
+    }
+
+    @Test
+    void shouldThrowLogFileListingExceptionWhenDirectoryIsNotReadable() {
+
+        try (MockedStatic<Files> filesMock = mockStatic(Files.class)) {
+
+            filesMock.when(() -> Files.exists(
+                tempDirectory,
+                LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(() -> Files.isDirectory(
+                tempDirectory,
+                LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(() -> Files.isReadable(tempDirectory))
+                .thenReturn(false);
+
+            assertThatThrownBy(logFileDao::findAll)
+                .isInstanceOf(LogFileListingException.class);
+        }
     }
 
     private static LogFileMetadata findByFileName(

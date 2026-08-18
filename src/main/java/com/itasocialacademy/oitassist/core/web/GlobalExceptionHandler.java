@@ -250,26 +250,31 @@ public class GlobalExceptionHandler {
     /**
      * Handles {@link MissingServletRequestParameterException} by generating an
      * appropriate error response. This exception is thrown when a required request
-     * parameter is missing.
+     * parameter is missing from the HTTP request.
      *
      * @param ex      the exception object containing details of the missing request
      *                parameter
      * @param request the HTTP request that triggered the exception
      * @return a {@link ResponseEntity} containing an {@link ErrorResponse} with
-     *         error details, including the name of the missing parameter
+     *         error details, including the name of the missing request parameter
      */
     @ExceptionHandler(MissingServletRequestParameterException.class)
-    public ResponseEntity<ErrorResponse> handleMissingServletRequestParameter(
-        MissingServletRequestParameterException ex, HttpServletRequest request) {
-        log.warn("Missing request parameter: traceId={}, parameter={}",
-            MDC.get(TRACE_ID_MDC), ex.getParameterName());
+    public ResponseEntity<ErrorResponse> handleMissingRequestParameter(
+        MissingServletRequestParameterException ex,
+        HttpServletRequest request) {
+        log.warn(
+            "Missing request parameter: traceId={}, parameter={}",
+            MDC.get(TRACE_ID_MDC),
+            ex.getParameterName());
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        return ResponseEntity.status(status)
             .body(buildResponse(
                 request,
                 ErrorCode.COMMON_VALIDATION_FAILED,
                 "Required request parameter '" + ex.getParameterName() + "' is not present",
-                HttpStatus.BAD_REQUEST.value(),
-                null));
+                status.value(),
+                Map.of("parameter", ex.getParameterName())));
     }
 }
