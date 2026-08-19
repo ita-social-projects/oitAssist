@@ -215,12 +215,15 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_publishedToFinished_withAllStagesCompleted_shouldSucceed() {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(
+            CompetitionStatus.FINISHED, 1L);
+
         competition.setCompetitionStatus(CompetitionStatus.PUBLISHED);
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
         when(competitionRepository.save(any(Competition.class))).thenReturn(competition);
         when(mapper.toResponse(any(Competition.class))).thenReturn(getCompetitionResponse());
 
-        competitionService.changeStatus(1L, CompetitionStatus.FINISHED);
+        competitionService.changeStatus(1L, request);
 
         assertEquals(CompetitionStatus.FINISHED, competition.getCompetitionStatus());
         verify(validator).validateAllStagesCompletedForCompetition(1L);
@@ -229,6 +232,9 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_publishedToFinished_withIncompleteStage_shouldThrowException() {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(
+            CompetitionStatus.FINISHED, 1L);
+
         competition.setCompetitionStatus(CompetitionStatus.PUBLISHED);
         when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
 
@@ -239,7 +245,7 @@ class CompetitionServiceTest {
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
-            () -> competitionService.changeStatus(1L, CompetitionStatus.FINISHED));
+            () -> competitionService.changeStatus(1L, request));
 
         assertTrue(exception.getMessage().contains("Not all stages are completed"));
         verify(competitionRepository, never()).save(any());

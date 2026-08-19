@@ -107,7 +107,7 @@ public class CompetitionServiceImpl implements CompetitionService {
         if (request.status() == CompetitionStatus.ENROLLMENT
             || request.status() == CompetitionStatus.PUBLISHED) {
             validatePublishingRequirements(competitionId);
-        } else if (status == CompetitionStatus.FINISHED) {
+        } else if (request.status() == CompetitionStatus.FINISHED) {
             validator.validateAllStagesCompletedForCompetition(competitionId);
         }
 
