@@ -82,7 +82,8 @@ public class SecurityConfig {
                     "/api/v1/news/**",
                     "/api/v1/user-activation/verify",
                     "/ui",
-                    "/ui/**")
+                    "/ui/**",
+                    "/uploads/news/**")
                 .permitAll()
                 .requestMatchers(
                     "/index.html",
