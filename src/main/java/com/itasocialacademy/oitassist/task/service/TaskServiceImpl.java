@@ -95,13 +95,7 @@ public class TaskServiceImpl implements TaskService {
         log.debug("getAllTasks: page={}, size={}, sort={} search={}",
             pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort(), search);
 
-        String normalizedSearch = search == null || search.isBlank()
-            ? ""
-            : search.trim()
-                .replaceAll("\\s+", " ")
-                .replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
+        String normalizedSearch = getNormalizedSearch(search);
 
         Page<TaskBody> tasksPage = taskBodyRepository.findAllByTitleLike(normalizedSearch, pageable);
 
@@ -110,14 +104,16 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<TaskResponseDTO> getAllMyTasks(Pageable pageable) {
+    public Page<TaskResponseDTO> getAllMyTasks(Pageable pageable, String search) {
         Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be logged in to view created tasks",
                 ErrorCode.ACCESS_DENIED));
-        log.debug("getAllMyTasks: userId={}, page={}, size={}, sort={}",
-            currentUserId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        log.debug("getAllMyTasks: userId={}, page={}, size={}, sort={}, search={}",
+            currentUserId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort(), search);
 
-        Page<TaskBody> myTasksPage = taskBodyRepository.findAllByOwnerId(currentUserId, pageable);
+        String normalizedSearch = getNormalizedSearch(search);
+
+        Page<TaskBody> myTasksPage = taskBodyRepository.findAllByOwnerId(currentUserId, normalizedSearch, pageable);
 
         return getResponseBulk(myTasksPage);
     }
@@ -321,5 +317,15 @@ public class TaskServiceImpl implements TaskService {
     private Map<Long, String> getUserEmailsByIdsInBulk(List<Long> userIds) {
         return userFacade.findByIds(userIds).stream()
             .collect(Collectors.toMap(UserAuthDetails::id, UserAuthDetails::email));
+    }
+
+    private String getNormalizedSearch(String search) {
+        return search == null || search.isBlank()
+            ? ""
+            : search.trim()
+                .replaceAll("\\s+", " ")
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 }
