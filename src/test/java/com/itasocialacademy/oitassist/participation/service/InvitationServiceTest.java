@@ -9,6 +9,8 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarch
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.InvitationRequestEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateInvitationResponse;
@@ -25,14 +27,17 @@ import com.itasocialacademy.oitassist.participation.exceptions.UserInvitationReq
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessInvitationMapper;
 import com.itasocialacademy.oitassist.participation.saver.InvitationRequestsSaver;
+import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -46,7 +51,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class InvitationServiceTest {
+class InvitationServiceTest {
     @Mock
     private ParticipationRepository participationRepository;
     @Mock
@@ -63,6 +68,10 @@ public class InvitationServiceTest {
     private ProcessInvitationMapper processInvitationMapper;
     @Mock
     private CompetitionFacade competitionFacade;
+    @Mock
+    private AsyncEmailSender sender;
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private InvitationServiceImpl invitationService;
@@ -91,11 +100,13 @@ public class InvitationServiceTest {
 
         competitionDetail = CompetitionDetail.builder()
             .id(2L)
+            .title("Olympiad")
             .competitionStatus(CompetitionStatus.ENROLLMENT)
             .build();
 
         stageDetail = StageDetail.builder()
             .id(3L)
+            .title("First stage")
             .competitionId(2L)
             .scope(StageScope.DISTRICT)
             .build();
@@ -497,5 +508,55 @@ public class InvitationServiceTest {
             .studentId(10L)
             .status(status)
             .build();
+    }
+
+    // ---- emailSending part ----
+
+    @Test
+    void sendEnrollmentRequest_withSucceededInvitations_shouldScheduleInvitationEmail() {
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(4L));
+        when(invitationRepository.findByStudentIdInAndCompetitionIdAndStageIdAndStatus(
+            List.of(10L), 2L, 3L, RequestStatus.PENDING)).thenReturn(List.of());
+        when(participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(List.of(10L), 2L, 3L))
+            .thenReturn(List.of());
+        when(invitationRequestsSaver.saveSingleInvitation(10L, createInvitationRequest)).thenReturn(invitation);
+        when(userFacade.findByIds(List.of(10L))).thenReturn(List.of(validUser));
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+        when(userFacade.findProfilesByIds(List.of(10L))).thenReturn(
+            List.of(new UserProfileDetails(10L, "Test", "test@mail.com")));
+        when(invitationRequestsSaver.saveSingleInvitation(10L, createInvitationRequest)).thenReturn(invitation);
+        invitationService.sendEnrollmentRequest(createInvitationRequest);
+
+        ArgumentCaptor<InvitationRequestEvent> eventCaptor = ArgumentCaptor.forClass(InvitationRequestEvent.class);
+        verify(sender).sendInvitationEmail(eventCaptor.capture());
+
+        InvitationRequestEvent event = eventCaptor.getValue();
+        assertEquals("Olympiad", event.competitionTitle());
+        assertEquals("First stage", event.stageTitle());
+        assertEquals(1, event.users().size());
+        assertEquals("test@mail.com", event.users().getFirst().email());
+    }
+
+    @Test
+    void sendEnrollmentRequest_whenAllStudentsFail_shouldNotScheduleInvitationEmail() {
+        UserAuthDetails orgUser = new UserAuthDetails(10L, "email1@mail.com", "password1", Role.ORG);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(4L));
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+        when(userFacade.findByIds(List.of(10L))).thenReturn(List.of(orgUser));
+
+        invitationService.sendEnrollmentRequest(createInvitationRequest);
+
+        verify(sender, never()).sendInvitationEmail(any());
+    }
+
+    @Test
+    void sendInvitationEmail_noRecipients_shouldSendNothing() {
+        InvitationRequestEvent event = new InvitationRequestEvent("Olympiad", "District Stage", List.of());
+
+        sender.sendInvitationEmail(event);
+
+        verifyNoInteractions(emailService);
     }
 }

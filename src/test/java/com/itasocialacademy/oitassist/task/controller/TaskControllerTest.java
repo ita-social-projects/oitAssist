@@ -144,11 +144,12 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
     @Test
     void getAllTasks_asAdmin_shouldReturnPageResponseAnd200() throws Exception {
         Page<TaskResponseDTO> page = new PageImpl<>(List.of(mockTaskResponse));
-        when(taskService.getAllTasks(any(Pageable.class))).thenReturn(page);
+        when(taskService.getAllTasks(any(Pageable.class), eq("scratch"))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/tasks")
             .param("page", "0")
-            .param("size", "15"))
+            .param("size", "15")
+            .param("search", "scratch"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content[0].id").value(1L))
@@ -156,12 +157,12 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .andExpect(jsonPath("$.pageNumber").value(0))
             .andExpect(jsonPath("$.totalElements").value(1));
 
-        verify(taskService).getAllTasks(any(Pageable.class));
+        verify(taskService).getAllTasks(any(Pageable.class), eq("scratch"));
     }
 
     @Test
     void getAllTasks_nonAdmin_shouldReturn403() throws Exception {
-        when(taskService.getAllTasks(any(Pageable.class)))
+        when(taskService.getAllTasks(any(Pageable.class), eq(null)))
             .thenThrow(new TaskAccessRestrictedException(0L));
 
         mockMvc.perform(get("/api/v1/tasks")

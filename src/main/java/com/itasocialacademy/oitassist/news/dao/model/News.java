@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "news")
@@ -38,6 +39,10 @@ public class News {
 
     @Column(name = "published_at")
     private OffsetDateTime publishedAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
 
     @Column(name = "archived_at")
     private OffsetDateTime archivedAt;

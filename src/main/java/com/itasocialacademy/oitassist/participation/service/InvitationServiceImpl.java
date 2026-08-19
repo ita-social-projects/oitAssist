@@ -9,6 +9,8 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFound
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.CompetitionValidatedDataEvent;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.InvitationRequestEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.FailedInvitationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.SucceededInvitationResponse;
 import com.itasocialacademy.oitassist.participation.dao.model.Participation;
@@ -24,9 +26,11 @@ import com.itasocialacademy.oitassist.participation.dao.repository.Participation
 import com.itasocialacademy.oitassist.participation.exceptions.*;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessInvitationMapper;
+import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.interfaces.InvitationService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import jakarta.transaction.Transactional;
@@ -52,10 +56,13 @@ public class InvitationServiceImpl implements InvitationService {
     private final ParticipationMapper participationMapper;
     private final ProcessInvitationMapper processInvitationMapper;
     private final CompetitionFacade competitionFacade;
+    private final AsyncEmailSender sender;
 
     @Override
     public CreateInvitationResponse sendEnrollmentRequest(CreateInvitationRequest request) {
-        validateCompetitionAndStageInfo(request.getCompetitionId(), request.getStageId());
+        Long competitionId = request.getCompetitionId();
+        Long stageId = request.getStageId();
+        CompetitionValidatedDataEvent competitionData = validateCompetitionAndStageInfo(competitionId, stageId);
         List<Long> studentIds = validateNoDuplicatesOrThrow(request.getStudentIds());
 
         List<UserAuthDetails> foundUsers = userFacade.findByIds(studentIds);
@@ -89,14 +96,20 @@ public class InvitationServiceImpl implements InvitationService {
                 }
             }
         }
-        return CreateInvitationResponse.builder()
-            .competitionId(request.getCompetitionId())
-            .stageId(request.getStageId())
+        CreateInvitationResponse response = CreateInvitationResponse.builder()
+            .competitionId(competitionId)
+            .stageId(stageId)
             .succeeded(succeeded)
             .failed(failed)
             .issuedBy(getCurrentUserIdOrThrow())
             .issuedAt(Instant.now())
             .build();
+
+        if (!succeeded.isEmpty()) {
+            scheduleInvitationEmail(competitionData, succeeded);
+        }
+
+        return response;
     }
 
     @Override
@@ -162,17 +175,19 @@ public class InvitationServiceImpl implements InvitationService {
         return rawIds;
     }
 
-    private void validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
-        CompetitionDetail competitionDetail = competitionFacade.findCompetitionById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
-        StageDetail stageDetail = competitionFacade.findStageById(stageId)
-            .orElseThrow(() -> new StageNotFoundException(stageId));
+    private CompetitionValidatedDataEvent validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
+        CompetitionDetail competitionDetail = getCompetitionInfoOrThrow(competitionId);
+        StageDetail stageDetail = getStageInfoOrThrow(stageId);
         if (competitionDetail.competitionStatus() != CompetitionStatus.ENROLLMENT) {
             throw new UserInvitationRequestException("The competition cannot be enrolled");
         }
         if (!stageDetail.competitionId().equals(competitionId)) {
             throw new CompetitionHierarchyValidationException("Specified stage does not belong to this competition");
         }
+        return CompetitionValidatedDataEvent.builder()
+            .competitionTitle(competitionDetail.title())
+            .stageTitle(stageDetail.title())
+            .build();
     }
 
     private Invitation getPendingInvitationOrThrow(Long applicationId) {
@@ -224,5 +239,30 @@ public class InvitationServiceImpl implements InvitationService {
             return PENDING_INVITATION_CONSTRAINT.equals(cve.getConstraintName());
         }
         return false;
+    }
+
+    private void scheduleInvitationEmail(
+        CompetitionValidatedDataEvent competitionData,
+        List<SucceededInvitationResponse> succeeded) {
+        List<UserProfileDetails> users = getUserProfiles(succeeded);
+        InvitationRequestEvent event = new InvitationRequestEvent(
+            competitionData.competitionTitle(), competitionData.stageTitle(), users);
+        sender.sendInvitationEmail(event);
+    }
+
+    private CompetitionDetail getCompetitionInfoOrThrow(Long competitionId) {
+        return competitionFacade.findCompetitionById(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+    }
+
+    private StageDetail getStageInfoOrThrow(Long stageId) {
+        return competitionFacade.findStageById(stageId)
+            .orElseThrow(() -> new StageNotFoundException(stageId));
+    }
+
+    private List<UserProfileDetails> getUserProfiles(List<SucceededInvitationResponse> succeeded) {
+        List<Long> userIds = succeeded.stream()
+            .map(SucceededInvitationResponse::studentId).toList();
+        return userFacade.findProfilesByIds(userIds);
     }
 }

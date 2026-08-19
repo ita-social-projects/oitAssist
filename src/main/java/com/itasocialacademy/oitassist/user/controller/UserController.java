@@ -6,17 +6,19 @@ import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserRoleRequest;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ChangeUserStatusRequest;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
+import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -117,21 +119,55 @@ public class UserController {
     })
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    @Parameters({
-        @Parameter(name = "page", description = "Zero-based page index", example = "0"),
-        @Parameter(name = "size", description = "Page size", example = "5"),
-        @Parameter(name = "sort", description = "Sorting criteria", example = "firstName,desc")
-    })
     public ResponseEntity<PageResponse<ResponseUserDTO>> getUsers(
-        @Parameter(hidden = true) @PageableDefault(
-            size = 5,
+        @ParameterObject @PageableDefault(
             sort = "id",
             direction = DESC) Pageable pageable,
 
         @Parameter(
             description = "Optional search query for filtering users by name or email",
-            example = "ivan") @RequestParam(required = false) String search) {
-        return ResponseEntity.ok(PageResponse.from(service.getUsers(pageable, search)));
+            example = "ivan") @RequestParam(required = false) String search,
+        @Parameter(
+            description = "Optional parameter for filtering users by roles",
+            example = "[\"ADMIN\", \"ORG\"]") @RequestParam(required = false) List<Role> roles) {
+        return ResponseEntity.ok(PageResponse.from(service.getUsers(pageable, search, roles)));
+    }
+
+    @Operation(
+        summary = "Get users by ids",
+        description = "Get paginated list of users with given ids")
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Users retrieved successfully"),
+        @ApiResponse(responseCode = "400",
+            description = "Required user IDs are missing or invalid",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized - token is missing or invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - insufficient permissions",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/by-ids")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<PageResponse<ResponseUserDTO>> getUsersByIds(
+        @ParameterObject @PageableDefault(
+            sort = "id",
+            direction = DESC) Pageable pageable,
+
+        @Parameter(
+            description = "Ids of users to search for",
+            example = "[1,2,3]") @RequestParam List<Long> ids) {
+        return ResponseEntity.ok(PageResponse.from(service.getUsersByIds(pageable, ids)));
     }
 
     @PatchMapping("/{id}/status")

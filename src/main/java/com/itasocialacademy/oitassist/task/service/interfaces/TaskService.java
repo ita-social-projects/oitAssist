@@ -36,13 +36,14 @@ public interface TaskService {
     TaskResponseDTO getTaskById(Long id);
 
     /**
-     * Returns all tasks in the system across all users, respecting the pagination
-     * and sorting criteria provided.
+     * Returns all tasks in the system across all users with optional search by
+     * title, respecting the pagination and sorting criteria provided.
      *
      * @param pageable pagination and sorting criteria
+     * @param search   optional search query
      * @return a page of tasks according to the specified pagination parameters
      */
-    Page<TaskResponseDTO> getAllTasks(Pageable pageable);
+    Page<TaskResponseDTO> getAllTasks(Pageable pageable, String search);
 
     /**
      * Retrieves all tasks belonging to the currently authenticated user with
