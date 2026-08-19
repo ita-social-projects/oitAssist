@@ -47,14 +47,15 @@ public interface TaskService {
 
     /**
      * Retrieves all tasks belonging to the currently authenticated user with
-     * pagination support.
+     * optional search by title and pagination support.
      *
      * @param pageable pagination and sorting criteria
+     * @param search   optional search query
      * @return a page of tasks for the current user according to the specified
      *         pagination parameters
      * @throws AuthorizationException if the user is not authenticated or logged in
      */
-    Page<TaskResponseDTO> getAllMyTasks(Pageable pageable);
+    Page<TaskResponseDTO> getAllMyTasks(Pageable pageable, String search);
 
     /**
      * Updates a task's title, description and manages file attachments. Only the
