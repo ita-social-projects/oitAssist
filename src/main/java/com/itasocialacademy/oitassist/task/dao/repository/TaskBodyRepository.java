@@ -17,9 +17,9 @@ public interface TaskBodyRepository extends JpaRepository<TaskBody, Long> {
         SELECT t
         FROM TaskBody t
         JOIN t.owners o
-        WHERE o.id.ownerId = :ownerId
+        WHERE o.id.ownerId = :ownerId AND LOWER(t.title) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
         """)
-    Page<TaskBody> findAllByOwnerId(@Param("ownerId") Long ownerId, Pageable pageable);
+    Page<TaskBody> findAllByOwnerId(@Param("ownerId") Long ownerId, @Param("search") String search, Pageable pageable);
 
     @Query(value = "SELECT t.id AS id, t.title AS title FROM TaskBody t WHERE t.id IN :ids")
     List<TaskTitleView> findTitlesByIds(@Param("ids") Collection<Long> taskIds);

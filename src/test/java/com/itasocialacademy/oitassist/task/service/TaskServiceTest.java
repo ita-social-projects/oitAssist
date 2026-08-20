@@ -308,18 +308,20 @@ class TaskServiceTest {
     void getAllMyTasks_shouldReturnCurrentUserTasks() {
         Pageable pageable = PageRequest.of(0, 15);
         Page<TaskBody> expectedRepositoryPage = new PageImpl<>(List.of(taskBody), pageable, 1);
+        String search = " scratch   ";
+        String normalizedSearch = "scratch";
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
-        when(taskBodyRepository.findAllByOwnerId(100L, pageable)).thenReturn(expectedRepositoryPage);
+        when(taskBodyRepository.findAllByOwnerId(100L, normalizedSearch, pageable)).thenReturn(expectedRepositoryPage);
         when(fileManagerFacade.getFilesByEntities(any(), eq(List.of(1L)), any())).thenReturn(Map.of(1L, testFiles));
         when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
-        Page<TaskResponseDTO> result = taskService.getAllMyTasks(pageable);
+        Page<TaskResponseDTO> result = taskService.getAllMyTasks(pageable, search);
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
         verify(securityFacade).getCurrentUserId();
-        verify(taskBodyRepository).findAllByOwnerId(100L, pageable);
+        verify(taskBodyRepository).findAllByOwnerId(100L, normalizedSearch, pageable);
         verify(taskBodyMapper).toResponse(taskBody, testFiles, "creator@mail.com");
     }
 
@@ -329,9 +331,9 @@ class TaskServiceTest {
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
 
-        assertThrows(AuthorizationException.class, () -> taskService.getAllMyTasks(pageable));
+        assertThrows(AuthorizationException.class, () -> taskService.getAllMyTasks(pageable, null));
 
-        verify(taskBodyRepository, never()).findAllByOwnerId(any(), any());
+        verify(taskBodyRepository, never()).findAllByOwnerId(any(), any(), any());
     }
 
     // ---- updateTask ----
