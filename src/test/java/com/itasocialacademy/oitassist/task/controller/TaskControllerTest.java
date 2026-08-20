@@ -176,7 +176,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
     @Test
     void getMyTasks_shouldReturnPageResponseAnd200() throws Exception {
         Page<TaskResponseDTO> page = new PageImpl<>(List.of(mockTaskResponse));
-        when(taskService.getAllMyTasks(any(Pageable.class))).thenReturn(page);
+        when(taskService.getAllMyTasks(any(Pageable.class), eq(null))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/tasks/my")
             .param("page", "0")
@@ -188,7 +188,26 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .andExpect(jsonPath("$.pageNumber").value(0))
             .andExpect(jsonPath("$.totalElements").value(1));
 
-        verify(taskService).getAllMyTasks(any(Pageable.class));
+        verify(taskService).getAllMyTasks(any(Pageable.class), eq(null));
+    }
+
+    @Test
+    void getMyTasks_withSearch_shouldReturnFilteredPageResponseAnd200() throws Exception {
+        Page<TaskResponseDTO> page = new PageImpl<>(List.of(mockTaskResponse));
+        when(taskService.getAllMyTasks(any(Pageable.class), eq("PowerPoint"))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/tasks/my")
+            .param("page", "0")
+            .param("size", "15")
+            .param("search", "PowerPoint"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content[0].id").value(1L))
+            .andExpect(jsonPath("$.content[0].title").value("PowerPoint Різдвяна зірка"))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(taskService).getAllMyTasks(any(Pageable.class), eq("PowerPoint"));
     }
 
     // ---- updateTask ----
