@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.version.controller;
 
-import com.itasocialacademy.oitassist.version.api.VersionResponse;
+import com.itasocialacademy.oitassist.version.dao.dto.response.VersionResponse;
 import com.itasocialacademy.oitassist.version.service.interfaces.VersionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

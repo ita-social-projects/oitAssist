@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.itasocialacademy.oitassist.core.web.AppExceptionHttpStatusMapper;
 import com.itasocialacademy.oitassist.security.jwt.JwtFilter;
-import com.itasocialacademy.oitassist.version.api.VersionResponse;
+import com.itasocialacademy.oitassist.version.dao.dto.response.VersionResponse;
 import com.itasocialacademy.oitassist.version.service.interfaces.VersionService;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;

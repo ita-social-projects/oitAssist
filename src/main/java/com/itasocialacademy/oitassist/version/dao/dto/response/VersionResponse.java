@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.version.api;
+package com.itasocialacademy.oitassist.version.dao.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;

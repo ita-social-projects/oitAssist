@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.version.service;
 
-import com.itasocialacademy.oitassist.version.api.VersionResponse;
+import com.itasocialacademy.oitassist.version.dao.dto.response.VersionResponse;
 import com.itasocialacademy.oitassist.version.service.interfaces.VersionService;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;

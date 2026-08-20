@@ -3,7 +3,7 @@ package com.itasocialacademy.oitassist.version.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.itasocialacademy.oitassist.version.api.VersionResponse;
+import com.itasocialacademy.oitassist.version.dao.dto.response.VersionResponse;
 import java.time.Instant;
 import java.util.Properties;
 import org.junit.jupiter.api.Test;
