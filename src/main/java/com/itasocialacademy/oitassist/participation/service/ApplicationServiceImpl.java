@@ -12,9 +12,9 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Application;
 import com.itasocialacademy.oitassist.participation.dao.repository.ApplicationRepository;
@@ -22,9 +22,11 @@ import com.itasocialacademy.oitassist.participation.dao.repository.Participation
 import com.itasocialacademy.oitassist.participation.exceptions.ApplicationNotFoundException;
 import com.itasocialacademy.oitassist.participation.exceptions.UnableToProcessApplicationException;
 import com.itasocialacademy.oitassist.participation.exceptions.UserApplicationRequestException;
+import com.itasocialacademy.oitassist.participation.mapper.UserEnrollmentAssembler;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
+import com.itasocialacademy.oitassist.participation.mapper.interfaces.UserSummaryMapper;
 import com.itasocialacademy.oitassist.participation.scheduler.AfterCommitScheduler;
 import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
@@ -32,10 +34,13 @@ import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -52,6 +57,8 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final AsyncEmailSender emailSender;
     private final UserFacade userFacade;
     private final AfterCommitScheduler scheduler;
+    private final UserEnrollmentAssembler enrollmentAssembler;
+    private final UserSummaryMapper userSummaryMapper;
 
     @Override
     @Transactional
@@ -114,6 +121,22 @@ public class ApplicationServiceImpl implements ApplicationService {
         application.setProcessedBy(userId);
         application.setProcessedAt(Instant.now());
         return processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ApplicationListItemResponse> getEnrollmentRequests(EnrollmentRequestsFilter request) {
+        List<Application> applications = applicationRepository.findAllByCompetitionIdAndStageIdAndStatus(
+            request.getCompetitionId(),
+            request.getStageId(),
+            RequestStatus.PENDING);
+        List<ApplicationListItemResponse> responses = enrollmentAssembler.enrichWithUser(
+            applications, Application::getUserId,
+            (application, user) -> new ApplicationListItemResponse(
+                application.getId(),
+                application.getIssuedAt(),
+                application.getStatus(),
+                userSummaryMapper.toUserSummary(user)));
+        return new PageImpl<>(responses);
     }
 
     private void validateUserCanApply(Long userId, CreateApplicationRequest createApplicationRequest) {
