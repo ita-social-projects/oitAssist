@@ -91,8 +91,7 @@ public class TaskController {
     @Operation(
         summary = "Get current user's tasks",
         description = "Retrieves all tasks owned by the currently authenticated user "
-            + "with pagination support and optional search by title."
-            + "Requires ADMIN or ORG role.")
+            + "with pagination support and optional search by title. Requires ADMIN or ORG role.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "User's tasks retrieved successfully",
             content = @Content(mediaType = "application/json",
