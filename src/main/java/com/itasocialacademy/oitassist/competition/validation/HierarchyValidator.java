@@ -12,10 +12,12 @@ import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
+import com.itasocialacademy.oitassist.competition.exceptions.StaleEntityVersionException;
 import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -350,6 +352,12 @@ public class HierarchyValidator {
             throw new CompetitionHierarchyValidationException(
                 errorMessage
                     .formatted(tour.getTitle(), tour.getDateFinish()));
+        }
+    }
+
+    public void validateEntityVersion(Long expectedVersion, Long actualVersion, Class<?> entityClass, Long entityId) {
+        if (!Objects.equals(expectedVersion, actualVersion)) {
+            throw new StaleEntityVersionException(entityClass, entityId);
         }
     }
 }

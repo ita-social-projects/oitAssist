@@ -15,5 +15,6 @@ public record CompetitionResponse(
     @Schema(description = "End date", example = "2026-12-25T18:00:00Z") ZonedDateTime dateFinish,
     @Schema(description = "Current lifecycle status", example = "PUBLISHED") CompetitionStatus competitionStatus,
     @Schema(description = "ID of the user who created it", example = "5") Long createdBy,
-    @Schema(description = "ID of the user who last updated it", example = "5") Long updatedBy) {
+    @Schema(description = "ID of the user who last updated it", example = "5") Long updatedBy,
+    @Schema(description = "Optimistic locking version; must be echoed back on updates") Long version) {
 }

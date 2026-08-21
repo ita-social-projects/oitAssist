@@ -77,6 +77,8 @@ public class TourServiceImpl implements TourService {
         Tour tour = tourRepository.findById(tourId)
             .orElseThrow(() -> new TourNotFoundException(tourId));
 
+        validator.validateEntityVersion(request.version(), tour.getVersion(), Tour.class, tourId);
+
         validator.validateTourEligibility(pathStageId, tour.getStageId());
         validator.validateImmutabilityByStageId(tour.getStageId());
         validator.validateTourDates(tour.getStageId(), request.dateStart(), request.dateFinish());
@@ -113,6 +115,8 @@ public class TourServiceImpl implements TourService {
     public TourResponse changeStatus(Long stageId, Long tourId, ChangeTourStatusRequest request) {
         Tour tour = tourRepository.findById(tourId)
             .orElseThrow(() -> new TourNotFoundException(tourId));
+
+        validator.validateEntityVersion(request.version(), tour.getVersion(), Tour.class, tourId);
 
         validator.validateTourEligibility(stageId, tour.getStageId());
         validator.checkIfCompetitionPublishedByStageId(stageId);

@@ -72,7 +72,10 @@ public enum ErrorCode {
     LOG_FILE_LISTING_FAILED(ErrorCategory.TECHNICAL),
     INVALID_LOG_FILE_SORT(ErrorCategory.VALIDATION),
 
-    DATA_ACCESS_ERROR(ErrorCategory.TECHNICAL);
+    DATA_ACCESS_ERROR(ErrorCategory.TECHNICAL),
+
+    ENTITY_VERSION_CONFLICT(ErrorCategory.CONFLICT),
+    COMMON_CONFLICT(ErrorCategory.CONFLICT);
 
     private final ErrorCategory category;
 }
