@@ -15,11 +15,13 @@ import com.itasocialacademy.oitassist.security.exceptions.TwoFactorEnrollmentNot
 import com.itasocialacademy.oitassist.security.properties.TwoFactorProperties;
 import com.itasocialacademy.oitassist.security.service.interfaces.TwoFactorService;
 import com.itasocialacademy.oitassist.security.twofactor.TotpProvider;
+import com.itasocialacademy.oitassist.security.twofactor.TwoFactorOtpRequestedEvent;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,16 +32,13 @@ import org.springframework.transaction.annotation.Transactional;
  * once the JWT wiring is connected (steps 5-7).
  *
  * <p>
- * <b>Email-OTP is partially wired.</b> {@link #enroll} correctly generates and
- * stores a hashed, expiring pending code on the entity for the
- * {@code EMAIL_OTP} path — but the actual email dispatch is deferred to plan
- * sequencing step 4 ({@code TwoFactorOtpRequestedEvent} + a listener calling
- * {@code core::EmailService}, mirroring {@code auth}'s
- * {@code ActivationAccountEvent}/{@code Listener} pattern). Until that listener
- * exists, an {@code EMAIL_OTP} enrollment persists a valid pending code that
- * nothing yet sends to the user — this method is deliberately structured so
- * wiring in the event publish call is the only change step 4 needs to make
- * here.
+ * <b>Email-OTP is now fully wired</b> (plan sequencing step 4): {@link #enroll}
+ * generates and stores a hashed, expiring pending code on the entity for the
+ * {@code EMAIL_OTP} path, then publishes {@link TwoFactorOtpRequestedEvent}.
+ * {@code TwoFactorOtpListener} (in the {@code twofactor} package) consumes it
+ * after the enrolling transaction commits and sends the code by email —
+ * mirroring {@code auth}'s {@code ActivationAccountEvent}/{@code Listener}
+ * pattern.
  * </p>
  */
 @Service
@@ -59,6 +58,7 @@ public class TwoFactorServiceImpl implements TwoFactorService {
     private final TotpProvider totpProvider;
     private final PasswordEncoder passwordEncoder;
     private final TwoFactorProperties properties;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -68,7 +68,7 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         TwoFactorMethod method = request.getMethod();
         EnrollmentSetup setup = switch (method) {
             case TOTP -> startTotpEnrollment(userId, userEmail);
-            case EMAIL_OTP -> startEmailOtpEnrollment(userId);
+            case EMAIL_OTP -> startEmailOtpEnrollment(userId, userEmail);
         };
 
         UserTwoFactorAuth savedEntity = twoFactorAuthRepository.save(setup.entity());
@@ -91,13 +91,10 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         return new EnrollmentSetup(entity, secret, provisioningUri);
     }
 
-    private EnrollmentSetup startEmailOtpEnrollment(Long userId) {
+    private EnrollmentSetup startEmailOtpEnrollment(Long userId, String userEmail) {
         UserTwoFactorAuth entity = UserTwoFactorAuth.startEnrollment(userId, TwoFactorMethod.EMAIL_OTP, null);
-        issuePendingEmailOtp(entity);
-        // Dispatching the code by email is wired in plan step 4:
-        // eventPublisher.publishEvent(new TwoFactorOtpRequestedEvent(userEmail,
-        // plaintextOtp));
-        // Not yet implemented — see class-level note above.
+        String plaintextOtp = issuePendingEmailOtp(entity);
+        eventPublisher.publishEvent(new TwoFactorOtpRequestedEvent(userEmail, plaintextOtp));
         return new EnrollmentSetup(entity, null, null);
     }
 
@@ -169,10 +166,11 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         return matches;
     }
 
-    private void issuePendingEmailOtp(UserTwoFactorAuth entity) {
+    private String issuePendingEmailOtp(UserTwoFactorAuth entity) {
         String plaintextOtp = generateNumericOtp();
         Instant expiresAt = Instant.now().plusMillis(properties.getEmailOtpValidityMillis());
         entity.setPendingEmailOtp(passwordEncoder.encode(plaintextOtp), expiresAt);
+        return plaintextOtp;
     }
 
     private String generateNumericOtp() {
