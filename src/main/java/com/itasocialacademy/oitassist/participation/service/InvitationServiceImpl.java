@@ -13,12 +13,12 @@ import com.itasocialacademy.oitassist.participation.dao.dto.event.CompetitionVal
 import com.itasocialacademy.oitassist.participation.dao.dto.event.InvitationRequestEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.FailedInvitationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.SucceededInvitationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.dao.model.Participation;
 import com.itasocialacademy.oitassist.participation.saver.InvitationRequestsSaver;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateInvitationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessInvitationResponse;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Invitation;
 import com.itasocialacademy.oitassist.participation.dao.repository.InvitationRepository;
@@ -37,6 +37,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.*;
@@ -145,6 +147,12 @@ public class InvitationServiceImpl implements InvitationService {
         invitation.setStatus(RequestStatus.CANCELLED);
         invitation.setProcessedAt(Instant.now());
         return processInvitationMapper.toResponse(invitationRepository.saveAndFlush(invitation));
+    }
+
+    @Override
+    public Page<ApplicationListItemResponse> getEnrollmentRequests(EnrollmentRequestsFilter request,
+        Pageable pageable) {
+        return null;
     }
 
     private Set<Long> findStudentsWithPendingInvitations(List<Long> studentIds, CreateInvitationRequest request) {

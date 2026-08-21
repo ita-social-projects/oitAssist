@@ -34,6 +34,7 @@ import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
@@ -123,8 +124,12 @@ public class ApplicationServiceImpl implements ApplicationService {
         return processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
     }
 
+    @Override
     @Transactional(readOnly = true)
-    public Page<ApplicationListItemResponse> getEnrollmentRequests(EnrollmentRequestsFilter request) {
+    public Page<ApplicationListItemResponse> getEnrollmentRequests(
+        EnrollmentRequestsFilter request,
+        Pageable pageable) {
+        validateCompetitionAndStageInfo(request.getCompetitionId(), request.getStageId());
         List<Application> applications = applicationRepository.findAllByCompetitionIdAndStageIdAndStatus(
             request.getCompetitionId(),
             request.getStageId(),
@@ -139,44 +144,52 @@ public class ApplicationServiceImpl implements ApplicationService {
         return new PageImpl<>(responses);
     }
 
-    private void validateUserCanApply(Long userId, CreateApplicationRequest createApplicationRequest) {
-        validateNoPendingApplication(userId, createApplicationRequest);
-        validateUserDoesNotAlreadyParticipate(userId, createApplicationRequest);
-        validateCompetitionAndStageInfo(createApplicationRequest);
+    private void validateUserCanApply(Long userId, CreateApplicationRequest request) {
+        validateNoPendingApplication(userId, request);
+        validateUserDoesNotAlreadyParticipate(userId, request);
+        validateCompetitionAndStageInfoForApplying(request.getCompetitionId(), request.getStageId());
     }
 
-    private void validateNoPendingApplication(Long userId, CreateApplicationRequest createApplicationRequest) {
+    private void validateNoPendingApplication(Long userId, CreateApplicationRequest request) {
         boolean hasPendingApplication = applicationRepository.existsByIssuedByAndCompetitionIdAndStageIdAndStatus(
             userId,
-            createApplicationRequest.getCompetitionId(),
-            createApplicationRequest.getStageId(),
+            request.getCompetitionId(),
+            request.getStageId(),
             RequestStatus.PENDING);
         if (hasPendingApplication) {
             throw new UserApplicationRequestException("User already has a pending request");
         }
     }
 
-    private void validateUserDoesNotAlreadyParticipate(Long userId, CreateApplicationRequest createApplicationRequest) {
+    private void validateUserDoesNotAlreadyParticipate(Long userId, CreateApplicationRequest request) {
         boolean isParticipant = participationRepository.existsByUserIdAndCompetitionIdAndStageId(
             userId,
-            createApplicationRequest.getCompetitionId(),
-            createApplicationRequest.getStageId());
+            request.getCompetitionId(),
+            request.getStageId());
         if (isParticipant) {
             throw new UserApplicationRequestException("User is already a participant");
         }
     }
 
-    private void validateCompetitionAndStageInfo(CreateApplicationRequest createApplicationRequest) {
-        Long competitionId = createApplicationRequest.getCompetitionId();
-        Long stageId = createApplicationRequest.getStageId();
+    private void validateCompetitionAndStageInfoForApplying(Long competitionId, Long stageId) {
         CompetitionDetail competitionDetail = getCompetitionInfoOrThrow(competitionId);
         StageDetail stageDetail = getStageInfoOrThrow(stageId);
+        validateHierarchy(competitionId, stageDetail);
         if (competitionDetail.competitionStatus() != CompetitionStatus.ENROLLMENT) {
             throw new UserApplicationRequestException("The competition cannot be enrolled");
         }
         if (stageDetail.scope() != StageScope.DISTRICT && stageDetail.scope() != StageScope.CITY) {
             throw new UserApplicationRequestException("The specified stage cannot be enrolled");
         }
+    }
+
+    private void validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
+        CompetitionDetail competitionDetail = getCompetitionInfoOrThrow(competitionId);
+        StageDetail stageDetail = getStageInfoOrThrow(stageId);
+        validateHierarchy(competitionId, stageDetail);
+    }
+
+    private void validateHierarchy(Long competitionId, StageDetail stageDetail) {
         if (!stageDetail.competitionId().equals(competitionId)) {
             throw new CompetitionHierarchyValidationException("Specified stage does not belong to this competition");
         }
