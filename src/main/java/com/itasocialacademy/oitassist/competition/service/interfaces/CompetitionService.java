@@ -32,11 +32,14 @@ public interface CompetitionService {
     CompetitionResponse getVisibleById(Long competitionId);
 
     /**
-     * Transitions the competition to a new request. Publishing requires at least
-     * one Stage and one Tour.
+     * Transitions the competition to a new status. Publishing (ENROLLMENT or
+     * PUBLISHED) requires at least one Stage and one Tour; finishing (FINISHED)
+     * additionally requires every Stage to be completed. The request's
+     * {@code version} must match the competition's current version, or the
+     * transition is rejected as a stale-version conflict.
      *
      * @param competitionId Competition ID
-     * @param request       a request of a Competition
+     * @param request       the target status and the expected current version
      * @return {@link CompetitionResponse}
      */
     CompetitionResponse changeStatus(Long competitionId, ChangeCompetitionStatusRequest request);
