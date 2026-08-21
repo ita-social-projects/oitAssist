@@ -37,7 +37,8 @@ public interface StageService {
     StageResponse getById(Long stageId);
 
     /**
-     * Retrieves all Stages belonging to a specific Competition, ordered by their sort position.
+     * Retrieves all Stages belonging to a specific Competition, ordered by their
+     * sort position.
      *
      * @param competitionId the ID of the parent competition
      * @return a list of stage response DTOs, ordered ascending by sortPosition
@@ -79,8 +80,8 @@ public interface StageService {
      * status.</li>
      * <li>Starting a stage requires the previous stage (by sort position) to be
      * FINISHED; finishing a stage requires all its tours to be completed.</li>
-     * <li>The request's {@code version} must match the stage's current version,
-     * or the change is rejected as a stale-version conflict.</li>
+     * <li>The request's {@code version} must match the stage's current version, or
+     * the change is rejected as a stale-version conflict.</li>
      * </ul>
      *
      * @param compId  the competition ID from the request path
