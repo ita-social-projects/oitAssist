@@ -83,6 +83,14 @@ jwt:
   validity: ${JWT_VALIDITY:600000}
   refresh-validity: ${JWT_REFRESH_VALIDITY:1209600000}
 
+two-factor:
+  issuer: ${TWO_FACTOR_ISSUER:OITAssist}
+  recovery-code-count: ${TWO_FACTOR_RECOVERY_CODE_COUNT:10}
+  recovery-code-length: ${TWO_FACTOR_RECOVERY_CODE_LENGTH:8}
+  totp-tolerance-steps: ${TWO_FACTOR_TOTP_TOLERANCE_STEPS:1}
+  pending-token-validity-millis: ${TWO_FACTOR_PENDING_TOKEN_VALIDITY_MILLIS:300000}
+  email-otp-validity-millis: ${TWO_FACTOR_EMAIL_OTP_VALIDITY_MILLIS:600000}
+
 logging:
   level:
     root: ${LOG_LEVEL_ROOT:INFO}
