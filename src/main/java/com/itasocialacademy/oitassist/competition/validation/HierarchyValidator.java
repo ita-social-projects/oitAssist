@@ -298,6 +298,27 @@ public class HierarchyValidator {
     }
 
     @Transactional(readOnly = true)
+    public void validateAllStagesCompletedForCompetition(Long competitionId) {
+        List<Stage> stages = stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(competitionId);
+
+        if (stages.isEmpty()) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot finish competition: Competition must have at least one stage.");
+        }
+        List<String> incompleteStages = stages.stream()
+            .filter(stage -> stage.getStatus() != StageStatus.FINISHED
+                && stage.getStatus() != StageStatus.CANCELLED)
+            .map(stage -> "'%s' (Status: %s)".formatted(stage.getTitle(), stage.getStatus()))
+            .toList();
+
+        if (!incompleteStages.isEmpty()) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot finish competition: Not all stages are completed. Incomplete stages: "
+                    + String.join(", ", incompleteStages));
+        }
+    }
+
+    @Transactional(readOnly = true)
     public void validateAllToursCompletedForStage(Long stageId) {
         List<Tour> tours = tourRepository.findAllByStageIdOrderBySortPositionAsc(stageId);
 

@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.logfile.api.LogFileResponse;
 import com.itasocialacademy.oitassist.logfile.api.PageResponse;
 import com.itasocialacademy.oitassist.logfile.service.LogFileService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,6 +15,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -46,5 +48,27 @@ public class LogFileController {
             sort = "lastModified",
             direction = Sort.Direction.DESC) Pageable pageable) {
         return logFileService.getAll(pageable);
+    }
+
+    @GetMapping("/search")
+    @Operation(
+        summary = "Search log files by name",
+        description = """
+            Searches application log files by a partial file name match.
+            The search is case-insensitive and supports pagination and sorting.
+            Access is restricted to administrators.
+            """)
+    @ApiResponses({
+        @ApiResponse(responseCode = "200",
+            description = "Log files matching the specified name were successfully retrieved"),
+        @ApiResponse(responseCode = "400", description = "Invalid search or sorting parameters"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - token is missing or invalid"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions")})
+    public PageResponse<LogFileResponse> searchByName(
+        @Parameter(
+            description = "Full or partial log file name to search for",
+            example = "app") @RequestParam String name,
+        @ParameterObject @PageableDefault(size = 10) Pageable pageable) {
+        return logFileService.searchByName(name, pageable);
     }
 }

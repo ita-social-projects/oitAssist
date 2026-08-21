@@ -128,4 +128,11 @@ public interface UserFacade {
      *         given ID
      */
     Optional<UserProfileDetails> findProfileById(Long userId);
+
+    /**
+     * Bulk variant of {@link #findProfileById} — returns the display-side
+     * projections for all matching users. IDs with no matching user are simply
+     * omitted from the result, consistent with {@link #findByIds}.
+     */
+    List<UserProfileDetails> findProfilesByIds(List<Long> userIds);
 }
