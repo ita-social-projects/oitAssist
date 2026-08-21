@@ -28,4 +28,5 @@
     <include file="/db/changelog/logs/2026-07-27-ch-alter-invitations-Haleliuk.xml"/>
     <include file="/db/changelog/logs/2026-08-04-ch-create-task-owners-table-Murashko.xml"/>
     <include file="/db/changelog/logs/2026-08-13-ch-add-news-updated-at-Rakuta.xml"/>
+    <include file="/db/changelog/logs/2026-08-21-ch-alter-submissions-to-have-task-assignment-id-fk-Murashko.xml"/>
 </databaseChangeLog>
