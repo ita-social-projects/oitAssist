@@ -14,6 +14,6 @@ public class StaleEntityVersionException extends BusinessException {
 
     public StaleEntityVersionException(Class<?> entityClass, Object identifier) {
         super(ERROR_MESSAGE
-            .formatted(entityClass.getName(), identifier), ErrorCode.ENTITY_VERSION_CONFLICT);
+            .formatted(entityClass.getSimpleName(), identifier), ErrorCode.ENTITY_VERSION_CONFLICT);
     }
 }
