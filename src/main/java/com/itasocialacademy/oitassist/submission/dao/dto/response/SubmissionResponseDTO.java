@@ -29,6 +29,5 @@ public record SubmissionResponseDTO(
         example = "1") Long taskAssignmentId,
 
     @Schema(
-        description = "Submission`s date and time of sending",
-        example = "") Instant submittedAt) {
+        description = "Submission`s date and time of sending") Instant submittedAt) {
 }

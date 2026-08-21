@@ -40,6 +40,8 @@ public enum ErrorCode {
 
     ENTITY_NOT_FOUND(ErrorCategory.NOT_FOUND),
 
+    SUBMISSION_NOT_FOUND(ErrorCategory.NOT_FOUND),
+
     TASK_NOT_FOUND(ErrorCategory.NOT_FOUND),
     TASK_ASSIGNMENT_NOT_FOUND(ErrorCategory.NOT_FOUND),
     TASK_ALREADY_COMPLETED(ErrorCategory.CONFLICT),

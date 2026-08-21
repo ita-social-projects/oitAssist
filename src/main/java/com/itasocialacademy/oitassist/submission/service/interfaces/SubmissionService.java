@@ -2,7 +2,7 @@ package com.itasocialacademy.oitassist.submission.service.interfaces;
 
 import com.itasocialacademy.oitassist.submission.dao.dto.request.SubmissionCreateRequest;
 import com.itasocialacademy.oitassist.submission.dao.dto.response.SubmissionResponseDTO;
-import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
+import com.itasocialacademy.oitassist.submission.exceptions.SubmissionNotFoundException;
 
 public interface SubmissionService {
     /**
@@ -16,9 +16,29 @@ public interface SubmissionService {
     /**
      * Retrieves a submission by userId and taskAssignmentId.
      *
-     * @param userId           unique identifier of the user who sent the submission
+     * @param submittedBy      unique identifier of the user who sent the submission
      * @param taskAssignmentId unique identifier of the task assignment which submission was sent for
      * @return {@link SubmissionResponseDTO}
+     * @throws SubmissionNotFoundException if there is no submission found with given userId and
+     *                                     taskAssignmentId
      */
-    SubmissionResponseDTO getSubmissionFromUserOnTaskAssignment(Long userId, Long taskAssignmentId);
+    SubmissionResponseDTO getSubmissionBySubmittedByAndTaskAssignmentId(Long submittedBy, Long taskAssignmentId);
+
+    /**
+     * Retrieves a submission by id.
+     *
+     * @param id unique identifier of the submission
+     * @return {@link SubmissionResponseDTO}
+     * @throws SubmissionNotFoundException if there is no submission found with given id
+     */
+    SubmissionResponseDTO getSubmissionById(Long id);
+
+    /**
+     * Retrieves a current user`s submission by task assignment id.
+     *
+     * @param taskAssignmentId unique identifier of the task assignment which submission was sent for
+     * @return {@link SubmissionResponseDTO}
+     * @throws SubmissionNotFoundException if there is no submission found with given id
+     */
+    SubmissionResponseDTO getMySubmissionByTaskAssignmentId(Long taskAssignmentId);
 }
