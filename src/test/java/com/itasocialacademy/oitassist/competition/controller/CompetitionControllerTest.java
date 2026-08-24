@@ -268,8 +268,8 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
             .thenThrow(new PessimisticLockingFailureException("Lock wait timeout exceeded"));
 
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isConflict());
     }
 
