@@ -88,15 +88,14 @@ public class HierarchyValidator {
     }
 
     /**
-     * Checks whether it is allowed to change the hierarchy (add/remove stages and
-     * tours).
+     * Checks whether it is allowed to change the hierarchy (add/remove stages and tours). Locks the Competition row for
+     * the duration of the transaction.
      *
      * @param competitionId ID of a competition
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public void validateImmutabilityByCompetitionId(Long competitionId) {
-        Competition competition = competitionRepository.findById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+        Competition competition = lockCompetitionForUpdate(competitionId);
 
         if (competition.getCompetitionStatus() == CompetitionStatus.ARCHIVED) {
             throw new CompetitionHierarchyValidationException(
@@ -121,13 +120,11 @@ public class HierarchyValidator {
     }
 
     /**
-     * Validates that the stage belongs to the competition specified in the request
-     * path. Prevents cross-competition manipulation (e.g., updating Stage 5 via
-     * /competitions/999/stages/5).
+     * Validates that the stage belongs to the competition specified in the request path. Prevents cross-competition
+     * manipulation (e.g., updating Stage 5 via /competitions/999/stages/5).
      *
      * @param pathCompetitionId   Competition ID taken from URI as a path variable
-     * @param entityCompetitionId Competition ID extracted from the fetched Stage
-     *                            entity
+     * @param entityCompetitionId Competition ID extracted from the fetched Stage entity
      */
     public void validateStageEligibility(Long pathCompetitionId, Long entityCompetitionId) {
         if (!pathCompetitionId.equals(entityCompetitionId)) {
@@ -166,9 +163,8 @@ public class HierarchyValidator {
     }
 
     /**
-     * Validates that narrowing a Stage's date range does not orphan any of its
-     * already-existing Tours — i.e. that every Tour currently under this Stage
-     * would still fall within the proposed new {@code newStart}/{@code newFinish}
+     * Validates that narrowing a Stage's date range does not orphan any of its already-existing Tours — i.e. that every
+     * Tour currently under this Stage would still fall within the proposed new {@code newStart}/{@code newFinish}
      * window.
      */
     @Transactional(readOnly = true)
@@ -359,5 +355,19 @@ public class HierarchyValidator {
         if (!Objects.equals(expectedVersion, actualVersion)) {
             throw new StaleEntityVersionException(entityClass, entityId);
         }
+    }
+
+    /**
+     * Fetches and locks the Competition row (SELECT ... FOR UPDATE) for the duration of the current transaction. Must
+     * be called before any structural hierarchy mutation or lifecycle status transition, to serialize concurrent
+     * changes on the same competition.
+     *
+     * @param competitionId Competition ID
+     * @return the locked Competition entity
+     */
+    @Transactional
+    public Competition lockCompetitionForUpdate(Long competitionId) {
+        return competitionRepository.findByIdForUpdate(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
     }
 }
