@@ -5,6 +5,8 @@ import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
@@ -21,6 +23,7 @@ import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssign
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.DetailedTaskAssignmentResponseDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.response.LinkedToursResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
@@ -212,6 +215,25 @@ public class AssignmentServiceImpl implements AssignmentService {
         return taskAssignmentRepository.existsByTaskBodyId(taskBodyId);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<LinkedToursResponseDTO> getLinkedToursByTaskId(Long taskBodyId) {
+        TaskBodyDetail taskBody = taskBodyFacade.findTaskBodyById(taskBodyId).orElseThrow(
+            () -> new TaskNotFoundException(taskBodyId));
+
+        checkAdminOrOrg();
+
+        List<Long> tourIds = taskAssignmentRepository.findTourIdsByTaskBodyId(taskBody.id());
+
+        List<TourDetail> tours =
+            tourIds.stream()
+                .map(id -> competitionFacade.findTourById(id).orElseThrow(() -> new TourNotFoundException(id)))
+                .toList();
+
+        return tours.stream().map(taskAssignmentMapper::toLinkedToursResponse).toList();
+    }
+
+    // helpers
     private List<FileDetailsDTO> resolveTaskFiles(Long taskBodyId) {
         Set<FileRole> allowedFileRoles;
 
@@ -227,6 +249,12 @@ public class AssignmentServiceImpl implements AssignmentService {
     private void validateTourStatus(TourDetail tour, String msg) {
         if (tour.executionStatus() != ExecutionStatus.SCHEDULED) {
             throw new CompetitionHierarchyValidationException(msg + " Tour has already started");
+        }
+    }
+
+    private void checkAdminOrOrg() {
+        if (!securityFacade.hasRole("ADMIN") && !securityFacade.hasRole("ORG")) {
+            throw new AuthorizationException("You do not have permission to this operation", ErrorCode.ACCESS_DENIED);
         }
     }
 }
