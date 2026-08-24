@@ -1,14 +1,20 @@
 package com.itasocialacademy.oitassist.core.web;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
-import com.itasocialacademy.oitassist.core.exceptions.*;
+import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
+import com.itasocialacademy.oitassist.core.exceptions.BusinessException;
 import com.itasocialacademy.oitassist.core.exceptions.SecurityException;
 import com.itasocialacademy.oitassist.core.exceptions.TechnicalException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -20,10 +26,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import java.time.Instant;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
@@ -236,6 +238,19 @@ public class GlobalExceptionHandler {
                 request,
                 ErrorCode.ENTITY_VERSION_CONFLICT,
                 "This resource was modified by someone else. Please refresh and try again.",
+                HttpStatus.CONFLICT.value(),
+                null));
+    }
+
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handlePessimisticLockingFailure(
+        PessimisticLockingFailureException ex, HttpServletRequest request) {
+        log.warn("Pessimistic locking conflict: traceId={}", MDC.get(TRACE_ID_MDC));
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(buildResponse(
+                request,
+                ErrorCode.COMMON_CONFLICT,
+                "This competition is currently being edited; please try again.",
                 HttpStatus.CONFLICT.value(),
                 null));
     }
