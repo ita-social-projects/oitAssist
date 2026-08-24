@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -256,6 +257,19 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isConflict());
+    }
+
+    @Test
+    void changeStatus_pessimisticLockConflict_shouldReturn409() throws Exception {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.PUBLISHED, 1L);
+
+        when(competitionService.changeStatus(eq(1L), eq(request)))
+            .thenThrow(new PessimisticLockingFailureException("Lock wait timeout exceeded"));
+
+        mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isConflict());
     }
 
