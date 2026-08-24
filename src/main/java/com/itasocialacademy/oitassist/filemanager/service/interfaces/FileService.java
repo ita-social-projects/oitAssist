@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import java.util.List;
 import java.util.Map;
@@ -96,4 +97,14 @@ public interface FileService {
      */
     Map<Long, List<FileDetailsDTO>> getFilesByEntities(RelatedEntityType entityType, List<Long> entityIds,
         Set<FileRole> roles);
+
+    /**
+     * Updates the role of a file if it is in ATTACHED state. Only the owner of the
+     * file or an ADMIN can update the role.
+     *
+     * @param fileId     the ID of the file to update
+     * @param requestDto the DTO containing the new role
+     * @return the updated file response DTO
+     */
+    FileResponseDto updateRole(Long fileId, UpdateFileRoleRequestDto requestDto);
 }

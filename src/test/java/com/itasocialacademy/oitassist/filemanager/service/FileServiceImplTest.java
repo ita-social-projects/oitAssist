@@ -10,6 +10,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
@@ -38,6 +39,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.validation.enums.AllowedExtension;
 import org.springframework.data.jpa.domain.Specification;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -784,6 +786,87 @@ class FileServiceImplTest {
         assertEquals(1, result.size());
         assertEquals("SOLUTION", result.getFirst().fileRole());
         verify(fileRepository).findAll(any(Specification.class));
+    }
+
+    // --- Update Role Tests ---
+
+    @Test
+    void updateRole_ShouldUpdateRoleAndReturnDto_WhenValidRequest() {
+        UpdateFileRoleRequestDto requestDto = new UpdateFileRoleRequestDto(FileRole.PROBLEM);
+
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setUserId(userId);
+        file.setStatus(FileStatus.ATTACHED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setFileRole(FileRole.REFERENCE);
+        file.setStorageProvider(StorageProviderType.LOCAL);
+        file.setStorageKey("task/problem.docx");
+        file.setOriginalFilename("problem.docx");
+
+        FileResponseDto expectedDto = FileResponseDto.builder().id(fileId).build();
+
+        FilePolicy newRolePolicy = mock(FilePolicy.class);
+        when(newRolePolicy.getAllowedExtensions()).thenReturn(Set.of(AllowedExtension.DOCX));
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(filePolicyResolver.resolve(RelatedEntityType.TASK, FileRole.PROBLEM)).thenReturn(newRolePolicy);
+        when(fileRepository.save(any(FileAsset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(fileMapper.toDto(any(FileAsset.class))).thenReturn(expectedDto);
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.getFileUrl("task/problem.docx")).thenReturn("/uploads/task/problem.docx");
+
+        FileResponseDto result = fileService.updateRole(fileId, requestDto);
+
+        assertNotNull(result);
+        assertEquals(expectedDto, result);
+        assertEquals(FileRole.PROBLEM, file.getFileRole());
+
+        verify(fileRepository).save(file);
+        verify(filePolicyResolver).resolve(RelatedEntityType.TASK, FileRole.PROBLEM);
+        verify(newRolePolicy).getAllowedExtensions();
+    }
+
+    @Test
+    void updateRole_ShouldThrowValidationException_WhenFileNotAttached() {
+        UpdateFileRoleRequestDto requestDto = new UpdateFileRoleRequestDto(FileRole.PROBLEM);
+
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setUserId(userId);
+        file.setStatus(FileStatus.TEMPORARY);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+
+        ValidationException exception =
+            assertThrows(ValidationException.class, () -> fileService.updateRole(fileId, requestDto));
+        assertTrue(exception.getMessage().contains("ATTACHED state"));
+
+        verifyNoInteractions(filePolicyResolver, fileMapper);
+        verify(fileRepository, never()).save(any());
+    }
+
+    @Test
+    void updateRole_ShouldThrowAuthorizationException_WhenUserNotOwnerOrAdmin() {
+        Long ownerId = 99L;
+        UpdateFileRoleRequestDto requestDto = new UpdateFileRoleRequestDto(FileRole.PROBLEM);
+
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setUserId(ownerId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+
+        assertThrows(AuthorizationException.class, () -> fileService.updateRole(fileId, requestDto));
+
+        verifyNoInteractions(filePolicyResolver, fileMapper);
+        verify(fileRepository, never()).save(any());
     }
 
     // --- Helpers ---
