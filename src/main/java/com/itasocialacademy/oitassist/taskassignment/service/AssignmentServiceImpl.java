@@ -225,10 +225,7 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         List<Long> tourIds = taskAssignmentRepository.findTourIdsByTaskBodyId(taskBody.id());
 
-        List<TourDetail> tours =
-            tourIds.stream()
-                .map(id -> competitionFacade.findTourById(id).orElseThrow(() -> new TourNotFoundException(id)))
-                .toList();
+        List<TourDetail> tours = competitionFacade.findToursByIds(tourIds);
 
         return tours.stream().map(taskAssignmentMapper::toLinkedToursResponse).toList();
     }
