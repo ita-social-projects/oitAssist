@@ -122,13 +122,7 @@ public class UserServiceImpl implements UserService {
             throw new InsufficientPermissionsException();
         }
 
-        String normalizedSearch = search == null || search.isBlank()
-            ? null
-            : search.trim()
-                .replaceAll("\\s+", " ")
-                .replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
+        String normalizedSearch = normalizeSearch(search);
 
         List<Role> normalizedRoles = roles == null || roles.isEmpty()
             ? null
@@ -166,5 +160,24 @@ public class UserServiceImpl implements UserService {
         }
         user.setUserStatus(newStatus);
         return mapper.toResponseUserDTO(repository.save(user));
+    }
+
+    @Override
+    public Optional<List<Long>> findUserIdsBySearch(String search, List<Long> candidateIds) {
+        String normalizedSearch = normalizeSearch(search);
+        if (normalizedSearch == null) {
+            return Optional.empty();
+        }
+        return Optional.of(repository.findIdsBySearch(normalizedSearch, candidateIds));
+    }
+
+    private String normalizeSearch(String search) {
+        return search == null || search.isBlank()
+            ? null
+            : search.trim()
+                .replaceAll("\\s+", " ")
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 }
