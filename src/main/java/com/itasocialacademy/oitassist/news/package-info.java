@@ -4,7 +4,8 @@
     "security::SecurityFacade",
     "filemanager::FilesAttachRequestedEvent",
     "filemanager::FilesDetachRequestedEvent",
-    "filemanager::RelatedEntityType"
+    "filemanager::RelatedEntityType",
+    "filemanager::FileAccessValidator"
 })
 package com.itasocialacademy.oitassist.news;
 
