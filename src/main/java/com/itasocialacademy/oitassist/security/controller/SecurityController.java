@@ -1,9 +1,10 @@
 package com.itasocialacademy.oitassist.security.controller;
 
 import com.itasocialacademy.oitassist.security.dao.dto.request.RefreshTokenRequest;
-import com.itasocialacademy.oitassist.security.service.interfaces.TokenService;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TokenRequest;
+import com.itasocialacademy.oitassist.security.dao.dto.response.LoginResponse;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
+import com.itasocialacademy.oitassist.security.service.interfaces.TokenService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -30,19 +31,25 @@ public class SecurityController {
 
     @PostMapping("/signIn")
     @Operation(
-        summary = "Generate JWT access and refresh tokens",
-        description = "Creates a JWT token based on provided credentials",
+        summary = "Authenticate and obtain either full tokens or a 2FA challenge",
+        description = "Validates credentials and returns one of three outcomes (see LoginResponse.outcome): "
+            + "SUCCESS returns a full access+refresh token pair; TWO_FA_VERIFICATION_REQUIRED returns a "
+            + "short-lived pendingTwoFactorToken to submit to /2fa/verify along with a code; "
+            + "TWO_FA_SETUP_REQUIRED returns a pendingTwoFactorToken to submit to /2fa/enroll — the account's "
+            + "role requires 2FA and none is configured yet.",
         responses = {
-            @ApiResponse(responseCode = "200", description = "Token created successfully"),
+            @ApiResponse(responseCode = "200", description = "Login processed; check outcome to see which of "
+                + "the three cases applies"),
             @ApiResponse(responseCode = "400", description = "Invalid credentials")
         })
-    public TokenResponse createToken(@RequestBody TokenRequest tokenRequest) {
+    public LoginResponse createToken(@RequestBody TokenRequest tokenRequest) {
         return tokenService.generateToken(tokenRequest);
     }
 
     @Operation(
         summary = "Generate new JWT access and refresh token",
-        description = "Creates a new JWT access and refresh tokens based on send refresh token",
+        description = "Creates a new JWT access and refresh tokens based on send refresh token. Never triggers "
+            + "a 2FA challenge — a refresh token represents an already-verified session.",
         responses = {
             @ApiResponse(responseCode = "200", description = "Token created successfully"),
             @ApiResponse(responseCode = "403", description = "Invalid token")
