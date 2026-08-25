@@ -16,6 +16,9 @@ import com.itasocialacademy.oitassist.participation.dao.dto.response.SucceededIn
 import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.dao.model.Participation;
+import com.itasocialacademy.oitassist.participation.dao.specification.InvitationSpecification;
+import com.itasocialacademy.oitassist.participation.mapper.UserEnrollmentAssembler;
+import com.itasocialacademy.oitassist.participation.mapper.interfaces.UserSummaryMapper;
 import com.itasocialacademy.oitassist.participation.saver.InvitationRequestsSaver;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
@@ -33,7 +36,8 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
-import jakarta.transaction.Transactional;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -59,6 +63,8 @@ public class InvitationServiceImpl implements InvitationService {
     private final ProcessInvitationMapper processInvitationMapper;
     private final CompetitionFacade competitionFacade;
     private final AsyncEmailSender sender;
+    private final UserEnrollmentAssembler enrollmentAssembler;
+    private final UserSummaryMapper userSummaryMapper;
 
     @Override
     public CreateInvitationResponse sendEnrollmentRequest(CreateInvitationRequest request) {
@@ -150,9 +156,42 @@ public class InvitationServiceImpl implements InvitationService {
     }
 
     @Override
-    public Page<ApplicationListItemResponse> getEnrollmentRequests(EnrollmentRequestsFilter request,
+    @Transactional(readOnly = true)
+    public Page<InvitationListItemResponse> getEnrollmentRequests(EnrollmentRequestsFilter request,
+        String search,
         Pageable pageable) {
-        return null;
+        Long competitionId = request.getCompetitionId();
+        Long stageId = request.getStageId();
+        List<Long> candidateUserIds = invitationRepository.findAll(
+            InvitationSpecification.hasCompetitionAndStage(competitionId, stageId)
+                .and(InvitationSpecification.hasStatus(RequestStatus.PENDING)))
+            .stream()
+            .map(Invitation::getStudentId)
+            .distinct()
+            .toList();
+        if (candidateUserIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        Optional<List<Long>> matchingUserIds = userFacade.findUserIdsBySearchWithinIds(search, candidateUserIds);
+        List<Long> filterIds = matchingUserIds.orElse(candidateUserIds);
+
+        if (matchingUserIds.isPresent() && matchingUserIds.get().isEmpty()) {
+            return Page.empty(pageable);
+        }
+        Page<Invitation> invitations = invitationRepository.findAll(
+            InvitationSpecification.hasCompetitionAndStage(competitionId, stageId)
+                .and(InvitationSpecification.userIdIn(filterIds)),
+            pageable);
+
+        List<InvitationListItemResponse> responses = enrollmentAssembler.enrichWithUser(
+            invitations.toList(), Invitation::getUserId,
+            (invitation, user) -> new InvitationListItemResponse(
+                invitation.getId(),
+                invitation.getIssuedAt(),
+                invitation.getStatus(),
+                userSummaryMapper.toUserSummary(user)));
+        return new PageImpl<>(responses);
     }
 
     private Set<Long> findStudentsWithPendingInvitations(List<Long> studentIds, CreateInvitationRequest request) {

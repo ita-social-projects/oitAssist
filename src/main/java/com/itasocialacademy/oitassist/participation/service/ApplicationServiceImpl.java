@@ -128,6 +128,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Transactional(readOnly = true)
     public Page<ApplicationListItemResponse> getEnrollmentRequests(
         EnrollmentRequestsFilter request,
+        String search,
         Pageable pageable) {
         validateCompetitionAndStageInfo(request.getCompetitionId(), request.getStageId());
         List<Application> applications = applicationRepository.findAllByCompetitionIdAndStageIdAndStatus(
@@ -184,7 +185,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     private void validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
-        CompetitionDetail competitionDetail = getCompetitionInfoOrThrow(competitionId);
+        getCompetitionInfoOrThrow(competitionId);
         StageDetail stageDetail = getStageInfoOrThrow(stageId);
         validateHierarchy(competitionId, stageDetail);
     }

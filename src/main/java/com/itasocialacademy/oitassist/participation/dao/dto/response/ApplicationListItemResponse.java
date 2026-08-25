@@ -9,5 +9,5 @@ public record ApplicationListItemResponse(
     Long applicationId,
     Instant issuedAt,
     RequestStatus status,
-    UserSummary summary) {
+    UserSummary user) {
 }
