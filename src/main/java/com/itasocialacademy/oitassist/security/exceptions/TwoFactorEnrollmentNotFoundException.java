@@ -14,14 +14,6 @@ import com.itasocialacademy.oitassist.core.exceptions.NotFoundException;
  * should react to differently (redirect to start enrollment, vs. let the user
  * retry).
  * </p>
- *
- * <p>
- * <b>Assumption flagged:</b> extends {@link NotFoundException} based on naming
- * convention alone (other {@code XNotFoundException} classes in this codebase —
- * {@code TaskNotFoundException}, {@code CompetitionNotFoundException} —
- * strongly suggest a shared {@code NotFoundException} base exists), but its
- * actual constructor shape hasn't been directly confirmed; adjust once seen.
- * </p>
  */
 public class TwoFactorEnrollmentNotFoundException extends NotFoundException {
     public TwoFactorEnrollmentNotFoundException(String message, ErrorCode errorCode) {
