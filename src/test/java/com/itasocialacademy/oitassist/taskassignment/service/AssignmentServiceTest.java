@@ -581,7 +581,7 @@ class AssignmentServiceTest {
         when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskAssignmentRepository.findTourIdsByTaskBodyId(3L)).thenReturn(List.of(10L));
-        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
+        when(competitionFacade.findToursByIds(List.of(10L))).thenReturn(List.of(tourDetail));
         when(taskAssignmentMapper.toLinkedToursResponse(tourDetail)).thenReturn(mockTourResponse);
 
         List<LinkedToursResponseDTO> result = assignmentService.getLinkedToursByTaskId(3L);
@@ -612,15 +612,5 @@ class AssignmentServiceTest {
         assertThrows(com.itasocialacademy.oitassist.core.exceptions.AuthorizationException.class,
             () -> assignmentService.getLinkedToursByTaskId(3L));
         verify(taskAssignmentRepository, never()).findTourIdsByTaskBodyId(any());
-    }
-
-    @Test
-    void getLinkedToursByTaskId_whenLinkedTourNotFound_shouldThrowTourNotFoundException() {
-        when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
-        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
-        when(taskAssignmentRepository.findTourIdsByTaskBodyId(3L)).thenReturn(List.of(10L));
-        when(competitionFacade.findTourById(10L)).thenReturn(Optional.empty());
-
-        assertThrows(TourNotFoundException.class, () -> assignmentService.getLinkedToursByTaskId(3L));
     }
 }
