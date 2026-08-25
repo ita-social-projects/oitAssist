@@ -233,6 +233,25 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         List<TourDetail> tours = competitionFacade.findToursByIds(tourIds);
 
+        List<Long> returnedIds = tours.stream()
+            .map(TourDetail::id)
+            .toList();
+
+        List<Long> missingIds = tourIds.stream()
+            .filter(id -> !returnedIds.contains(id))
+            .toList();
+
+        if (!missingIds.isEmpty()) {
+            log.warn(
+                "Missing linked tours for task body Id {}: requested {} tour(s) but only found {}. "
+                    + "Missing tour IDs: {}",
+                taskBodyId,
+                tourIds.size(),
+                tours.size(),
+                missingIds
+            );
+        }
+
         return tours.stream().map(taskAssignmentMapper::toLinkedToursResponse).toList();
     }
 
