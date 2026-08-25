@@ -4,6 +4,7 @@ import com.azure.core.annotation.QueryParam;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileDownloadDto;
 import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
@@ -18,9 +19,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +39,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 @Tag(name = "File Manager V1", description = "Operations related to file management")
 public class FileController {
+    private static final String DEFAULT_DOWNLOAD_FILENAME = "download";
+
     private final FileService fileService;
     private final FileCleanupService cleanupService;
 
@@ -243,5 +250,91 @@ public class FileController {
         @PathVariable Long id,
         @Valid @QueryParam("newRole") UpdateFileRoleRequestDto requestDto) {
         return ResponseEntity.ok(fileService.updateRole(id, requestDto));
+    }
+
+    /**
+     * Downloads a file by its ID.
+     *
+     * @param id the ID of the file to download
+     * @return HTTP 200 with the file resource and appropriate headers, or error response
+     */
+    @Operation(
+        summary = "Download or view file",
+        description = """
+            Streams a file resource by its database ID, enforcing access permissions based on the file status
+            (temporary vs attached) and entity-specific access rules.
+            """)
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "File retrieved successfully",
+            content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE)),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Access denied to the requested file",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "File not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/download/{id}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable Long id) {
+        FileDownloadDto dto = fileService.downloadFile(id);
+        return buildDownloadResponse(dto);
+    }
+
+    /**
+     * Builds the HTTP response entity for a file download, configuring content type,
+     * inline content disposition, content length (if known), and the body stream.
+     *
+     * @param dto the file download DTO containing resource and metadata
+     * @return a {@link ResponseEntity} configured for file streaming
+     */
+    private ResponseEntity<Resource> buildDownloadResponse(FileDownloadDto dto) {
+        var responseBuilder = ResponseEntity.ok()
+            .contentType(resolveMediaType(dto.mimeType()))
+            .header(HttpHeaders.CONTENT_DISPOSITION, buildContentDisposition(dto.originalFilename()));
+
+        if (dto.contentLength() != null && dto.contentLength() > 0) {
+            responseBuilder.contentLength(dto.contentLength());
+        }
+
+        return responseBuilder.body(dto.resource());
+    }
+
+    /**
+     * Resolves the {@link MediaType} from a MIME type string, falling back to
+     * {@link MediaType#APPLICATION_OCTET_STREAM} if null, empty, or unparseable.
+     *
+     * @param mimeType the MIME type string (e.g., {@code "image/png"})
+     * @return the resolved {@link MediaType}
+     */
+    private MediaType resolveMediaType(String mimeType) {
+        if (mimeType == null || mimeType.isBlank()) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+        return MediaType.parseMediaType(mimeType);
+    }
+
+    /**
+     * Constructs an inline {@code Content-Disposition} header value with UTF-8 filename encoding.
+     *
+     * @param filename the original filename, or fallback to default if blank
+     * @return the formatted {@code Content-Disposition} header string
+     */
+    private String buildContentDisposition(String filename) {
+        String resolvedFilename = (filename != null && !filename.isBlank())
+            ? filename
+            : DEFAULT_DOWNLOAD_FILENAME;
+
+        return ContentDisposition.inline()
+            .filename(resolvedFilename, StandardCharsets.UTF_8)
+            .build()
+            .toString();
     }
 }

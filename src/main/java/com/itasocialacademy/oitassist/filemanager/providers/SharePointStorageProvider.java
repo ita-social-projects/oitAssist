@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileDeleteException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileListingException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
@@ -15,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
 /**
@@ -273,36 +276,48 @@ public class SharePointStorageProvider implements StorageProvider {
     }
 
     /**
-     * Constructs a URL for accessing the file in SharePoint based on its storage
-     * key.
+     * <p>
+     * Fetches the file content stream directly from the configured Microsoft Graph SharePoint drive
+     * and wraps it in an {@link InputStreamResource}.
+     * </p>
      *
-     * @param storageKey the relative path of the file within the configured drive
-     * @return a URL string that can be used to access the file in SharePoint
+     * @param storageKey the relative path of the file within the SharePoint drive
+     * @return the {@link Resource} streaming the SharePoint file contents
+     * @throws InvalidFilePathException   if the storage key is blank
+     * @throws FileAssetNotFoundException if Microsoft Graph returns a 404 Not Found
+     * @throws FileListingException       if reading or streaming from SharePoint fails
      */
     @Override
-    public String getFileUrl(String storageKey) {
+    public Resource getResource(String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) {
+            throw new InvalidFilePathException("Cannot get resource: blank storage key");
+        }
         try {
-            String driveId = graphProperties.getDriveId();
-
-            var item = graphClient
+            InputStream content = graphClient
                 .drives()
-                .byDriveId(driveId)
+                .byDriveId(graphProperties.getDriveId())
                 .items()
                 .byDriveItemId(DRIVE_ROOT_PREFIX + storageKey + DRIVE_ROOT_SUFFIX)
+                .content()
                 .get();
 
-            if (item == null || item.getWebUrl() == null) {
-                log.warn("Could not retrieve webUrl for file: {}", storageKey);
-                return null;
+            if (content == null) {
+                throw new FileListingException(
+                    "Could not retrieve file content from SharePoint for: " + storageKey,
+                    new IllegalArgumentException(storageKey));
             }
 
-            return item.getWebUrl();
+            return new InputStreamResource(content);
         } catch (ApiException e) {
-            log.error("Graph API error while retrieving webUrl for: {}", storageKey, e);
-            return null;
+            if (e.getResponseStatusCode() == 404) {
+                log.warn("File not found in SharePoint when retrieving resource: {}", storageKey);
+                throw new FileAssetNotFoundException("File not found in SharePoint storage: " + storageKey);
+            }
+            log.error("Failed to stream file from SharePoint: {}", storageKey, e);
+            throw new FileListingException("Could not read file from SharePoint", e);
         } catch (Exception e) {
-            log.error("Unexpected error while retrieving webUrl for: {}", storageKey, e);
-            return null;
+            log.error("Unexpected error while streaming file from SharePoint: {}", storageKey, e);
+            throw new FileListingException("Could not read file from SharePoint", e);
         }
     }
 }

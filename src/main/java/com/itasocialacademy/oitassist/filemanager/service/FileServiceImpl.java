@@ -13,6 +13,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.dao.specification.FileAssetSpecification;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileDownloadDto;
 import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
@@ -24,8 +25,11 @@ import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FilePolicy;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
+import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileAccessValidatorResolver;
 import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FilePolicyResolver;
+import com.itasocialacademy.oitassist.filemanager.access.FileAccessValidator;
 import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileValidationStrategyResolver;
+import org.springframework.core.io.Resource;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.io.IOException;
 import java.time.OffsetDateTime;
@@ -48,6 +52,7 @@ public class FileServiceImpl implements FileService {
     private final FileMapper fileMapper;
     private final SecurityFacade securityFacade;
     private final FilePolicyResolver filePolicyResolver;
+    private final FileAccessValidatorResolver accessValidatorResolver;
 
     /**
      * Role identifier for administrative users. Used for role-based access control
@@ -241,11 +246,11 @@ public class FileServiceImpl implements FileService {
 
     /**
      * Returns all {@link FileStatus#ATTACHED} files for the given entity, enriched
-     * with their publicly accessible URLs resolved from the storage provider.
+     * with unified download endpoint URLs ({@code /api/v1/files/download/{id}}).
      *
      * @param entityType the type of the related entity
      * @param entityId   the ID of the related entity
-     * @return list of file DTOs with resolved URLs
+     * @return list of file DTOs with resolved download URLs
      */
     @Override
     @Transactional(readOnly = true)
@@ -257,8 +262,7 @@ public class FileServiceImpl implements FileService {
         return files.stream()
             .map(file -> {
                 FileResponseDto dto = fileMapper.toDto(file);
-                StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
-                dto.setUrl(provider.getFileUrl(file.getStorageKey()));
+                dto.setUrl(buildDownloadUrl(file.getId()));
                 return dto;
             })
             .toList();
@@ -270,7 +274,7 @@ public class FileServiceImpl implements FileService {
      * <p>
      * Uses JPA Specifications to filter by entity type, entity ID, ATTACHED status,
      * and the provided set of file roles. Maps results directly to
-     * {@link FileDetailsDTO} via the file mapper.
+     * {@link FileDetailsDTO} via the file mapper with unified download URLs.
      * </p>
      */
     @Override
@@ -283,10 +287,7 @@ public class FileServiceImpl implements FileService {
             .and(FileAssetSpecification.hasFileRoleIn(roles));
 
         return repository.findAll(spec).stream()
-            .map(file -> {
-                StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
-                return fileMapper.toDetails(file, provider.getFileUrl(file.getStorageKey()));
-            })
+            .map(file -> fileMapper.toDetails(file, buildDownloadUrl(file.getId())))
             .toList();
     }
 
@@ -296,7 +297,7 @@ public class FileServiceImpl implements FileService {
      * <p>
      * Uses JPA Specifications to filter by entity type, entity IDs, ATTACHED
      * status, and the provided set of file roles. Maps results directly to
-     * {@link FileDetailsDTO} via the file mapper and groups them by entity ID.
+     * {@link FileDetailsDTO} via the file mapper and groups them by entity ID with unified download URLs.
      * </p>
      */
     @Override
@@ -321,8 +322,7 @@ public class FileServiceImpl implements FileService {
         }
 
         for (FileAsset file : files) {
-            StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
-            FileDetailsDTO dto = fileMapper.toDetails(file, provider.getFileUrl(file.getStorageKey()));
+            FileDetailsDTO dto = fileMapper.toDetails(file, buildDownloadUrl(file.getId()));
             resultMap.computeIfAbsent(file.getRelatedEntityId(), k -> new ArrayList<>()).add(dto);
         }
 
@@ -346,12 +346,10 @@ public class FileServiceImpl implements FileService {
                 ErrorCode.FILE_VALIDATION_FAILED);
         }
 
-        StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
-
         if (file.getFileRole().equals(request.getNewRole())) {
             FileAsset saved = repository.save(file);
             FileResponseDto dto = fileMapper.toDto(saved);
-            dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+            dto.setUrl(buildDownloadUrl(saved.getId()));
             return dto;
         }
 
@@ -373,7 +371,7 @@ public class FileServiceImpl implements FileService {
         log.debug("Updated file role for id={} to {}", saved.getId(), saved.getFileRole());
 
         FileResponseDto dto = fileMapper.toDto(saved);
-        dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+        dto.setUrl(buildDownloadUrl(saved.getId()));
 
         return dto;
     }
@@ -429,6 +427,33 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
+     * Resolves and returns the file download DTO, handling access control and
+     * providing the resource and file metadata for presentation.
+     *
+     * @param id the ID of the file to download
+     * @return FileDownloadDto containing the resource, metadata or redirect details
+     * @throws FileAssetNotFoundException if the file is not found with the given ID
+     * @throws AuthorizationException     if the user does not have permission to view this file
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public FileDownloadDto downloadFile(Long id) {
+        FileAsset file = repository.findById(id)
+            .orElseThrow(() -> new FileAssetNotFoundException("File not found with ID: " + id));
+
+        validateFileAccess(file);
+
+        StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+        Resource resource = provider.getResource(file.getStorageKey());
+
+        return new FileDownloadDto(
+            resource,
+            file.getMimeType(),
+            file.getOriginalFilename(),
+            file.getSize());
+    }
+
+    /**
      * Uploads a single file to the default storage provider and persists its
      * metadata.
      *
@@ -443,7 +468,7 @@ public class FileServiceImpl implements FileService {
         StorageProvider provider = providerResolver.resolveDefault();
         FileAsset saved = uploadFileAndGetFileAsset(file, requestDto, userId, provider);
         FileResponseDto dto = fileMapper.toDto(saved);
-        dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+        dto.setUrl(buildDownloadUrl(saved.getId()));
         return dto;
     }
 
@@ -461,7 +486,7 @@ public class FileServiceImpl implements FileService {
     private FileDetailsDTO uploadSingleToFileDetails(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
         StorageProvider provider = providerResolver.resolveDefault();
         FileAsset saved = uploadFileAndGetFileAsset(file, requestDto, userId, provider);
-        return fileMapper.toDetails(saved, provider.getFileUrl(saved.getStorageKey()));
+        return fileMapper.toDetails(saved, buildDownloadUrl(saved.getId()));
     }
 
     /**
@@ -634,5 +659,62 @@ public class FileServiceImpl implements FileService {
                 "You do not have permission to modify this file.",
                 ErrorCode.ACCESS_DENIED);
         }
+    }
+
+    /**
+     * Validates whether the currently authenticated or anonymous user is authorized to access the given file.
+     * Temporary files are checked based on ownership or admin roles, while attached files are checked via
+     * the entity-specific {@link FileAccessValidator}.
+     *
+     * @param file the {@link FileAsset} to check access for
+     * @throws AuthorizationException if access is denied
+     */
+    private void validateFileAccess(FileAsset file) {
+        Long currentUserId = securityFacade.getCurrentUserId().orElse(null);
+
+        if (file.getStatus() == FileStatus.TEMPORARY) {
+            validateTemporaryFileAccess(file, currentUserId);
+            return;
+        }
+
+        FileAccessValidator validator = accessValidatorResolver.resolve(file.getRelatedEntityType());
+        if (!validator.canAccess(file.getRelatedEntityId(), currentUserId, securityFacade::hasRole)) {
+            log.warn("Security Breach: user {} attempted to access file {} without permission",
+                currentUserId, file.getId());
+            throw new AuthorizationException("Access denied to this file", ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    /**
+     * Temporary files aren't linked to any entity yet ({@code relatedEntityId} is
+     * {@code null}), so a per-entity {@link FileAccessValidator} has nothing to
+     * check against. Access is granted only to the uploader or privileged roles — used e.g. when the
+     * editor previews an image right after upload, before the entity post is saved.
+     *
+     * @param file          the temporary file asset
+     * @param currentUserId the ID of the current user, or {@code null} if unauthenticated
+     * @throws AuthorizationException if the user is not the owner and lacks admin/org privileges
+     */
+    private void validateTemporaryFileAccess(FileAsset file, Long currentUserId) {
+        boolean isOwner = currentUserId != null && currentUserId.equals(file.getUserId());
+        boolean isAdmin = securityFacade.hasRole("ADMIN") || securityFacade.hasRole("ORG");
+        if (!isOwner && !isAdmin) {
+            log.warn("Security Breach: user {} attempted to access temporary file {} they don't own",
+                currentUserId, file.getId());
+            throw new AuthorizationException("Access denied to this file", ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    /**
+     * Builds the URL through which the frontend must always fetch a file's bytes.
+     * This is identical for every storage provider — access control happens in
+     * {@link #downloadFile}, not at the physical storage layer — so the URL is
+     * computed here once instead of duplicated per provider.
+     *
+     * @param id the database ID of the file asset
+     * @return the unified relative download URL (e.g., {@code "/api/v1/files/download/123"})
+     */
+    private String buildDownloadUrl(Long id) {
+        return "/api/v1/files/download/" + id;
     }
 }
