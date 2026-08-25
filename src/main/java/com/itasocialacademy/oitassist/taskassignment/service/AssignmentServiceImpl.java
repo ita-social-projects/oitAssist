@@ -248,8 +248,7 @@ public class AssignmentServiceImpl implements AssignmentService {
                 taskBodyId,
                 tourIds.size(),
                 tours.size(),
-                missingIds
-            );
+                missingIds);
         }
 
         return tours.stream().map(taskAssignmentMapper::toLinkedToursResponse).toList();
