@@ -96,8 +96,7 @@ public class CompetitionServiceImpl implements CompetitionService {
     @Override
     @Transactional
     public CompetitionResponse changeStatus(Long competitionId, ChangeCompetitionStatusRequest request) {
-        Competition competition = competitionRepository.findById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+        Competition competition = validator.lockCompetitionForUpdate(competitionId);
 
         validator.validateEntityVersion(request.version(), competition.getVersion(), Competition.class, competitionId);
         CompetitionStatus currentStatus = competition.getCompetitionStatus();

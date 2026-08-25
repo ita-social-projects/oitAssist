@@ -89,14 +89,13 @@ public class HierarchyValidator {
 
     /**
      * Checks whether it is allowed to change the hierarchy (add/remove stages and
-     * tours).
+     * tours). Locks the Competition row for the duration of the transaction.
      *
      * @param competitionId ID of a competition
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public void validateImmutabilityByCompetitionId(Long competitionId) {
-        Competition competition = competitionRepository.findById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+        Competition competition = lockCompetitionForUpdate(competitionId);
 
         if (competition.getCompetitionStatus() == CompetitionStatus.ARCHIVED) {
             throw new CompetitionHierarchyValidationException(
@@ -359,5 +358,20 @@ public class HierarchyValidator {
         if (!Objects.equals(expectedVersion, actualVersion)) {
             throw new StaleEntityVersionException(entityClass, entityId);
         }
+    }
+
+    /**
+     * Fetches and locks the Competition row (SELECT ... FOR UPDATE) for the
+     * duration of the current transaction. Must be called before any structural
+     * hierarchy mutation or lifecycle status transition, to serialize concurrent
+     * changes on the same competition.
+     *
+     * @param competitionId Competition ID
+     * @return the locked Competition entity
+     */
+    @Transactional
+    public Competition lockCompetitionForUpdate(Long competitionId) {
+        return competitionRepository.findByIdForUpdate(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
     }
 }
