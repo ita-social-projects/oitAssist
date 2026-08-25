@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.security.properties;
 
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -32,6 +33,7 @@ import org.springframework.stereotype.Component;
  *   totp-tolerance-steps: 1
  *   pending-token-validity-millis: 300000       # 5 minutes
  *   email-otp-validity-millis: 600000           # 10 minutes
+ *   mandatory-roles: ADMIN,AUTHOR,JURY,ORG      # bare role names, no ROLE_ prefix
  * }</pre>
  */
 @Setter
@@ -45,4 +47,5 @@ public class TwoFactorProperties {
     private int totpToleranceSteps;
     private long pendingTokenValidityMillis;
     private long emailOtpValidityMillis;
+    private Set<String> mandatoryRoles;
 }
