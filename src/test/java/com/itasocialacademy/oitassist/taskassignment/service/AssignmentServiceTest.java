@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.taskassignment.service;
 import java.util.Set;
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
+import com.itasocialacademy.oitassist.taskassignment.dto.response.LinkedToursResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -563,5 +564,53 @@ class AssignmentServiceTest {
         when(taskAssignmentRepository.existsByTaskBodyId(99L)).thenReturn(false);
 
         assertFalse(assignmentService.existsByTaskBodyId(99L));
+    }
+
+    // ---- getLinkedToursByTaskId ----
+
+    @Test
+    void getLinkedToursByTaskId_whenTaskExistsAndUserAuthorized_shouldReturnLinkedTours() {
+        LinkedToursResponseDTO mockTourResponse = LinkedToursResponseDTO.builder()
+            .tourId(10L)
+            .title("Tour 1")
+            .description("Description")
+            .location("Location")
+            .executionStatus(ExecutionStatus.SCHEDULED)
+            .build();
+
+        when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(taskAssignmentRepository.findTourIdsByTaskBodyId(3L)).thenReturn(List.of(10L));
+        when(competitionFacade.findToursByIds(List.of(10L))).thenReturn(List.of(tourDetail));
+        when(taskAssignmentMapper.toLinkedToursResponse(tourDetail)).thenReturn(mockTourResponse);
+
+        List<LinkedToursResponseDTO> result = assignmentService.getLinkedToursByTaskId(3L);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(10L, result.getFirst().tourId());
+        assertEquals("Tour 1", result.getFirst().title());
+        assertEquals("Description", result.getFirst().description());
+        assertEquals("Location", result.getFirst().location());
+        assertEquals(ExecutionStatus.SCHEDULED, result.getFirst().executionStatus());
+    }
+
+    @Test
+    void getLinkedToursByTaskId_whenTaskDoesNotExist_shouldThrowTaskNotFoundException() {
+        when(taskBodyFacade.findTaskBodyById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(TaskNotFoundException.class, () -> assignmentService.getLinkedToursByTaskId(99L));
+        verify(taskAssignmentRepository, never()).findTourIdsByTaskBodyId(any());
+    }
+
+    @Test
+    void getLinkedToursByTaskId_whenUserNotAuthorized_shouldThrowAuthorizationException() {
+        when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.hasRole("ORG")).thenReturn(false);
+
+        assertThrows(com.itasocialacademy.oitassist.core.exceptions.AuthorizationException.class,
+            () -> assignmentService.getLinkedToursByTaskId(3L));
+        verify(taskAssignmentRepository, never()).findTourIdsByTaskBodyId(any());
     }
 }
