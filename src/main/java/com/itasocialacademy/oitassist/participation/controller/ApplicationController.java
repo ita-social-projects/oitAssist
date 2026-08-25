@@ -160,10 +160,11 @@ public class ApplicationController {
     public ResponseEntity<PageResponse<ApplicationListItemResponse>> getRequests(
         @PathVariable Long competitionId,
         @PathVariable Long stageId,
+        @RequestParam String search,
         @ParameterObject @PageableDefault(size = 20, sort = "issuedAt") Pageable pageable) {
         EnrollmentRequestsFilter request = EnrollmentRequestsFilter.builder()
             .competitionId(competitionId).stageId(stageId).build();
         return ResponseEntity.status(HttpStatus.OK)
-            .body(PageResponse.from(applicationService.getEnrollmentRequests(request, pageable)));
+            .body(PageResponse.from(applicationService.getEnrollmentRequests(request, search, pageable)));
     }
 }

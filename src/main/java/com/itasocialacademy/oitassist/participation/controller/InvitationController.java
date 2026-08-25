@@ -1,8 +1,11 @@
 package com.itasocialacademy.oitassist.participation.controller;
 
+import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateInvitationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.InvitationListItemResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessInvitationResponse;
 import com.itasocialacademy.oitassist.participation.service.interfaces.InvitationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +16,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,7 +27,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/competitions/invitations")
+@RequestMapping("/api/v1")
 @Tag(name = "Invitation Manager v1", description = "Operations related to competition invitations")
 public class InvitationController {
     private final InvitationService invitationService;
@@ -54,8 +60,10 @@ public class InvitationController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PreAuthorize("hasRole('ORG')")
-    @PostMapping
+    @PostMapping("/competitions/{competitionId}/stages/{stageId}/invitations")
     public ResponseEntity<CreateInvitationResponse> invite(
+        @PathVariable Long competitionId,
+        @PathVariable Long stageId,
         @Valid @RequestBody CreateInvitationRequest createInvitationRequest) {
         return ResponseEntity.status(HttpStatus.CREATED)
             .body((CreateInvitationResponse) invitationService.sendEnrollmentRequest(createInvitationRequest));
@@ -77,7 +85,7 @@ public class InvitationController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PreAuthorize("hasRole('USER')")
-    @PostMapping("/accept/{id}")
+    @PostMapping("/enrollment/invitations/{id}/accept")
     public ResponseEntity<ProcessInvitationResponse> acceptRequest(@PathVariable Long id) {
         return ResponseEntity.status(HttpStatus.CREATED)
             .body((ProcessInvitationResponse) invitationService.acceptRequest(id));
@@ -98,7 +106,7 @@ public class InvitationController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PreAuthorize("hasRole('USER')")
-    @PatchMapping("/reject/{id}")
+    @PatchMapping("/enrollment/invitations/{id}/reject")
     public ResponseEntity<ProcessInvitationResponse> rejectRequest(
         @PathVariable Long id,
         @RequestBody RejectEnrollmentRequest rejectEnrollmentRequest) {
@@ -124,9 +132,42 @@ public class InvitationController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PreAuthorize("hasRole('ORG')")
-    @PatchMapping("/cancel/{id}")
+    @PatchMapping("/enrollment/invitations/{id}/cancel")
     public ResponseEntity<ProcessInvitationResponse> cancelRequest(@PathVariable Long id) {
         return ResponseEntity.status(HttpStatus.OK)
             .body((ProcessInvitationResponse) invitationService.cancelRequest(id));
+    }
+
+    @Operation(
+        summary = "Get users' pending invitations",
+        description = "Retrieves a paginated list of invitations "
+            + "for a specific competition stage.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Invitations retrieved successfully",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = InvitationListItemResponse.class))),
+        @ApiResponse(responseCode = "400", description = """
+            The competition and stage info error. The reason: \s
+            specified stage ID does not belong to the competition ID.""",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ORG role)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = """
+            Resource missing. Possible reasons:\s
+            - The requested competition does not exist.\s
+            - The requested stage does not exist.""",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PreAuthorize("hasRole('ORG')")
+    @GetMapping("/competitions/{competitionId}/stages/{stageId}/invitations")
+    public ResponseEntity<PageResponse<InvitationListItemResponse>> getRequests(
+        @PathVariable Long competitionId,
+        @PathVariable Long stageId,
+        @RequestParam(required = false) String search,
+        @ParameterObject @PageableDefault(size = 20, sort = "issuedAt") Pageable pageable) {
+        EnrollmentRequestsFilter request = EnrollmentRequestsFilter.builder()
+            .competitionId(competitionId).stageId(stageId).build();
+        return ResponseEntity.status(HttpStatus.OK)
+            .body(PageResponse.from(invitationService.getEnrollmentRequests(request, search, pageable)));
     }
 }
