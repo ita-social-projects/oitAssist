@@ -22,6 +22,7 @@ import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.RemoveOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
+import com.itasocialacademy.oitassist.task.exceptions.StaleTaskVersionException;
 import com.itasocialacademy.oitassist.task.exceptions.TaskAccessRestrictedException;
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.task.mapper.TaskBodyMapper;
@@ -128,6 +129,8 @@ public class TaskServiceImpl implements TaskService {
             .map(o -> o.getId().getOwnerId()).collect(Collectors.toSet()),
             existingTask.getId());
 
+        checkTaskVersion(existingTask.getVersion(), requestDTO.version(), existingTask.getId());
+
         existingTask.setTitle(requestDTO.title());
         existingTask.setDescription(requestDTO.description());
 
@@ -161,6 +164,8 @@ public class TaskServiceImpl implements TaskService {
             throw new ValidationException("Provided user is not ADMIN nor ORG", ErrorCode.COMMON_VALIDATION_FAILED);
         }
 
+        checkTaskVersion(task.getVersion(), addOwnerRequest.version(), task.getId());
+
         if (task.getOwners().stream()
             .anyMatch(owner -> owner.getId().getOwnerId().equals(userDetails.id()))) {
             return getResponse(task);
@@ -189,6 +194,8 @@ public class TaskServiceImpl implements TaskService {
 
         UserAuthDetails userDetails = userFacade.findByEmail(removeOwnerRequest.ownerEmail())
             .orElseThrow(UserNotFoundException::new);
+
+        checkTaskVersion(task.getVersion(), removeOwnerRequest.version(), task.getId());
 
         Optional<TaskOwner> toRemove = task.getOwners().stream()
             .filter(o -> o.getId().getOwnerId().equals(userDetails.id())).findFirst();
@@ -327,5 +334,11 @@ public class TaskServiceImpl implements TaskService {
                 .replace("\\", "\\\\")
                 .replace("%", "\\%")
                 .replace("_", "\\_");
+    }
+
+    private void checkTaskVersion(Long actualVersion, Long providedVersion, Long taskId) {
+        if (!Objects.equals(actualVersion, providedVersion)) {
+            throw new StaleTaskVersionException(taskId);
+        }
     }
 }
