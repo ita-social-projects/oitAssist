@@ -1,17 +1,20 @@
 package com.itasocialacademy.oitassist.submission.service.interfaces;
 
-import com.itasocialacademy.oitassist.submission.dao.dto.request.SubmissionCreateRequest;
 import com.itasocialacademy.oitassist.submission.dao.dto.response.SubmissionResponseDTO;
 import com.itasocialacademy.oitassist.submission.exceptions.SubmissionNotFoundException;
+import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface SubmissionService {
     /**
      * Creates a new submission based on the provided request data.
      *
-     * @param submissionCreateRequest the request containing submission details
+     * @param comment          optional comment for the submission
+     * @param taskAssignmentId the ID of the task assignment for this submission
+     * @param files            files to submit
      * @return the created submission as a {@link SubmissionResponseDTO}
      */
-    SubmissionResponseDTO createSubmission(SubmissionCreateRequest submissionCreateRequest);
+    SubmissionResponseDTO createSubmission(String comment, Long taskAssignmentId, List<MultipartFile> files);
 
     /**
      * Retrieves a submission by userId and taskAssignmentId.

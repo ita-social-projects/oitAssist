@@ -4,11 +4,9 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
-import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachAllRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
-import com.itasocialacademy.oitassist.submission.dao.dto.request.SubmissionCreateRequest;
 import com.itasocialacademy.oitassist.submission.dao.dto.response.SubmissionResponseDTO;
 import com.itasocialacademy.oitassist.submission.dao.model.Submission;
 import com.itasocialacademy.oitassist.submission.dao.repository.SubmissionRepository;
@@ -20,7 +18,6 @@ import com.itasocialacademy.oitassist.taskassignment.dao.model.TaskRequirements;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import java.time.Instant;
 import java.util.*;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,12 +33,11 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final SecurityFacade securityFacade;
     private final FileManagerFacade fileManagerFacade;
     private final TaskAssignmentFacade taskAssignmentFacade;
-    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     @Transactional
-    public SubmissionResponseDTO createSubmission(SubmissionCreateRequest submissionCreateRequest) {
-        Long taskAssignmentId = submissionCreateRequest.taskAssignmentId();
+    public SubmissionResponseDTO createSubmission(String comment, Long taskAssignmentId,
+                                                  List<MultipartFile> files) {
         Long userId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be logged in to create submissions",
                 ErrorCode.ACCESS_DENIED));
@@ -51,7 +47,7 @@ public class SubmissionServiceImpl implements SubmissionService {
             .requirements();
 
         List<MultipartFile> filesToUpload = findValidFiles(
-            submissionCreateRequest.files(),
+            files,
             requirements.requiredFiles()
         );
 
@@ -59,12 +55,13 @@ public class SubmissionServiceImpl implements SubmissionService {
         Submission entity;
         if (found.isPresent()) {
             entity = found.get();
-            applicationEventPublisher.publishEvent(
-                new FilesDetachAllRequestedEvent(RelatedEntityType.SUBMISSION, entity.getId(), userId));
+            fileManagerFacade.detachAllFilesByEntity(RelatedEntityType.SUBMISSION, entity.getId(), userId);
+            entity.setComment(comment);
+            entity.setSubmittedAt(Instant.now());
         } else {
             entity = Submission.builder()
                 .taskAssignmentId(taskAssignmentId)
-                .comment(submissionCreateRequest.comment())
+                .comment(comment)
                 .submittedBy(userId)
                 .submittedAt(Instant.now())
                 .build();

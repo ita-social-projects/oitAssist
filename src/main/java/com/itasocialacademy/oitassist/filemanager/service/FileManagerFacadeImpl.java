@@ -38,4 +38,9 @@ public class FileManagerFacadeImpl implements FileManagerFacade {
             .relatedEntityId(entityId)
             .build());
     }
+
+    @Override
+    public void detachAllFilesByEntity(RelatedEntityType entityType, Long entityId, Long userId) {
+        fileService.detachAllFilesByEntityId(entityType, entityId, userId);
+    }
 }

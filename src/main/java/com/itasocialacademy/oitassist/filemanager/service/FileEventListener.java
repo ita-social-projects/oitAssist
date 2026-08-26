@@ -1,7 +1,6 @@
 package com.itasocialacademy.oitassist.filemanager.service;
 
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequestedEvent;
-import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachAllRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
 import lombok.RequiredArgsConstructor;
@@ -60,24 +59,5 @@ public class FileEventListener {
         log.debug("Received FilesDetachRequestedEvent for fileIds={}", event.fileIds());
 
         fileService.detachFiles(event.entityType(), event.entityId(), event.fileIds(), event.userId());
-    }
-
-    /**
-     * Processes an all files detachment request event.
-     *
-     * <p>
-     * Unlinks the specified files from their associated entities by delegating to
-     * the file service.
-     * </p>
-     *
-     * @param event the event containing file IDs to unlink and the user performing
-     *              the detachment
-     */
-    @ApplicationModuleListener
-    public void onFileDetachAllRequested(FilesDetachAllRequestedEvent event) {
-        log.debug("Received FilesDetachRequestedAllEvent for entity={} and entity id={}", event.entityType(),
-            event.entityId());
-
-        fileService.detachAllFilesByEntityId(event.entityType(), event.entityId(), event.userId());
     }
 }

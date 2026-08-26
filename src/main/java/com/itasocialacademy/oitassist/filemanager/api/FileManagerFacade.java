@@ -48,4 +48,13 @@ public interface FileManagerFacade {
      */
     List<FileDetailsDTO> uploadFiles(
         List<MultipartFile> files, RelatedEntityType entityType, Long entityId, FileRole role);
+
+    /**
+     * Detaches all files by given entity type and id by marking them as SOFT_DELETED.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the related entity
+     * @param userId     the ID of user performing the detachment
+     */
+    void detachAllFilesByEntity(RelatedEntityType entityType, Long entityId, Long userId);
 }
