@@ -12,9 +12,12 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.InvitationRequestEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateInvitationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.InvitationListItemResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessInvitationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.UserSummary;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Invitation;
 import com.itasocialacademy.oitassist.participation.dao.model.Participation;
@@ -25,7 +28,9 @@ import com.itasocialacademy.oitassist.participation.exceptions.UnableToProcessIn
 import com.itasocialacademy.oitassist.participation.exceptions.UnexpectedConstraintViolationException;
 import com.itasocialacademy.oitassist.participation.exceptions.UserInvitationRequestException;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
+import com.itasocialacademy.oitassist.participation.mapper.UserEnrollmentAssembler;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessInvitationMapper;
+import com.itasocialacademy.oitassist.participation.mapper.interfaces.UserSummaryMapper;
 import com.itasocialacademy.oitassist.participation.saver.InvitationRequestsSaver;
 import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -42,9 +47,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiFunction;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -72,6 +84,10 @@ class InvitationServiceTest {
     private AsyncEmailSender sender;
     @Mock
     private EmailService emailService;
+    @Mock
+    private UserSummaryMapper userSummaryMapper;
+    @Mock
+    private UserEnrollmentAssembler enrollmentAssembler;
 
     @InjectMocks
     private InvitationServiceImpl invitationService;
@@ -524,7 +540,7 @@ class InvitationServiceTest {
         when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
         when(userFacade.findProfilesByIds(List.of(10L))).thenReturn(
-            List.of(new UserProfileDetails(10L, "Test", "test@mail.com")));
+            List.of(new UserProfileDetails(10L, "Test", "Test Surname", "test@mail.com")));
         when(invitationRequestsSaver.saveSingleInvitation(10L, createInvitationRequest)).thenReturn(invitation);
         invitationService.sendEnrollmentRequest(createInvitationRequest);
 
@@ -558,5 +574,150 @@ class InvitationServiceTest {
         sender.sendInvitationEmail(event);
 
         verifyNoInteractions(emailService);
+    }
+
+    // ---- getInvitations ----
+
+    @Test
+    void getEnrollmentRequests_noCandidates_shouldReturnEmptyPage() {
+        Pageable pageable = PageRequest.of(0, 10);
+        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
+            .competitionId(2L).stageId(3L).build();
+
+        when(invitationRepository.findAll(any(Specification.class))).thenReturn(List.of());
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+
+        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(filter, null, pageable);
+
+        assertTrue(result.isEmpty());
+        verify(userFacade, never()).findUserIdsBySearchWithinIds(any(), any());
+        verify(invitationRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void getEnrollmentRequests_noSearch_shouldReturnAllCandidates() {
+        Pageable pageable = PageRequest.of(0, 10);
+        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
+            .competitionId(2L).stageId(3L).build();
+
+        Invitation candidateInvitation = new Invitation();
+        candidateInvitation.setId(1L);
+        candidateInvitation.setStudentId(10L);
+        candidateInvitation.setIssuedAt(Instant.parse("2026-07-28T10:00:00Z"));
+        candidateInvitation.setStatus(RequestStatus.PENDING);
+
+        when(invitationRepository.findAll(any(Specification.class))).thenReturn(List.of(candidateInvitation));
+        when(userFacade.findUserIdsBySearchWithinIds(null, List.of(10L))).thenReturn(Optional.empty());
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+
+        Page<Invitation> invitationPage = new PageImpl<>(List.of(candidateInvitation), pageable, 1);
+        when(invitationRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(invitationPage);
+
+        UserProfileDetails user = new UserProfileDetails(10L, "Test", "Test Surname", "test@mail.com");
+        when(userSummaryMapper.toUserSummary(user))
+            .thenReturn(new UserSummary("Test", "Test Surname", "test@mail.com"));
+        when(enrollmentAssembler.enrichWithUser(any(), any(), any())).thenAnswer(invocation -> {
+            List<Invitation> apps = invocation.getArgument(0);
+            BiFunction<Invitation, UserProfileDetails, InvitationListItemResponse> combiner =
+                invocation.getArgument(2);
+            return apps.stream()
+                .map(app -> combiner.apply(app, user))
+                .toList();
+        });
+
+        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(filter, null, pageable);
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1L, result.getContent().getFirst().invitationId());
+        assertEquals(RequestStatus.PENDING, result.getContent().getFirst().status());
+    }
+
+    @Test
+    void getEnrollmentRequests_searchMatchesNoOne_shouldReturnEmptyPage() {
+        Pageable pageable = PageRequest.of(0, 10);
+        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
+            .competitionId(2L).stageId(3L).build();
+
+        Invitation candidateInvitation = new Invitation();
+        candidateInvitation.setStudentId(10L);
+
+        when(invitationRepository.findAll(any(Specification.class))).thenReturn(List.of(candidateInvitation));
+        when(userFacade.findUserIdsBySearchWithinIds("xyz", List.of(10L))).thenReturn(Optional.of(List.of()));
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+
+        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(filter, "xyz", pageable);
+
+        assertTrue(result.isEmpty());
+        verify(invitationRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void getEnrollmentRequests_searchMatchesSubset_shouldFilterByMatchingIds() {
+        Pageable pageable = PageRequest.of(0, 10);
+        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
+            .competitionId(2L).stageId(3L).build();
+
+        Invitation candidateA = new Invitation();
+        candidateA.setStudentId(10L);
+        Invitation candidateB = new Invitation();
+        candidateB.setStudentId(11L);
+
+        when(invitationRepository.findAll(any(Specification.class))).thenReturn(List.of(candidateA, candidateB));
+        when(userFacade.findUserIdsBySearchWithinIds("test", List.of(10L, 11L)))
+            .thenReturn(Optional.of(List.of(10L)));
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+
+        Invitation matchedInvitation = new Invitation();
+        matchedInvitation.setId(5L);
+        matchedInvitation.setStudentId(10L);
+        matchedInvitation.setIssuedAt(Instant.parse("2026-07-28T10:00:00Z"));
+        matchedInvitation.setStatus(RequestStatus.PENDING);
+
+        Page<Invitation> invitationPage = new PageImpl<>(List.of(matchedInvitation), pageable, 1);
+        when(invitationRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(invitationPage);
+
+        UserProfileDetails user = new UserProfileDetails(10L, "Test", "Test Surname", "test@mail.com");
+        when(userSummaryMapper.toUserSummary(user))
+            .thenReturn(new UserSummary("Test", "Test Surname", "test@mail.com"));
+        when(enrollmentAssembler.enrichWithUser(any(), any(), any())).thenAnswer(invocation -> {
+            List<Invitation> apps = invocation.getArgument(0);
+            BiFunction<Invitation, UserProfileDetails, InvitationListItemResponse> combiner =
+                invocation.getArgument(2);
+            return apps.stream()
+                .map(app -> combiner.apply(app, user))
+                .toList();
+        });
+
+        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(filter, "test", pageable);
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(5L, result.getContent().getFirst().invitationId());
+    }
+
+    @Test
+    void getEnrollmentRequests_stageDoesNotBelongToCompetition_shouldThrowCompetitionHierarchyException() {
+        Pageable pageable = PageRequest.of(0, 10);
+        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
+            .competitionId(2L).stageId(3L).build();
+
+        StageDetail mismatchedStage = StageDetail.builder()
+            .id(3L)
+            .competitionId(99L)
+            .scope(StageScope.DISTRICT)
+            .build();
+
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(mismatchedStage));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> invitationService.getEnrollmentRequests(filter, null, pageable));
+
+        assertTrue(exception.getMessage().contains("does not belong to this competition"));
+        verify(invitationRepository, never()).findAll(any(Specification.class));
     }
 }

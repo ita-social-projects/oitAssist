@@ -99,7 +99,7 @@ class TaskServiceTest {
             .build();
 
         lenient().when(userFacade.findProfileById(100L))
-            .thenReturn(Optional.of(new UserProfileDetails(100L, "Creator", "creator@mail.com")));
+            .thenReturn(Optional.of(new UserProfileDetails(100L, "Creator", "Creator Surname", "creator@mail.com")));
 
         lenient().when(userFacade.findByIds(List.of(100L)))
             .thenReturn(List.of(new UserAuthDetails(100L, "creator@mail.com", "pass", Role.ADMIN)));
