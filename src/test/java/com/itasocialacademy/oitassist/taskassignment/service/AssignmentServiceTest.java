@@ -46,6 +46,7 @@ import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssign
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.DetailedTaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
+import com.itasocialacademy.oitassist.taskassignment.exceptions.StaleAssignmentVersionException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import com.itasocialacademy.oitassist.taskassignment.mapper.TaskAssignmentMapper;
@@ -100,6 +101,7 @@ class AssignmentServiceTest {
             .maxPoints(25)
             .requirements(requirements)
             .createdBy(100L)
+            .version(0L)
             .build();
 
         assignmentResponse = TaskAssignmentResponseDTO.builder()
@@ -117,7 +119,7 @@ class AssignmentServiceTest {
 
         detailedResponse = new DetailedTaskAssignmentResponseDTO(
             1L, 3L, "PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
-            10L, AssignmentVisibility.VISIBLE, 25, requirements, testFiles, 100L);
+            10L, AssignmentVisibility.VISIBLE, 25, requirements, testFiles, 100L, 0L);
 
         tourDetail = TourDetail.builder()
             .id(10L)
@@ -326,7 +328,7 @@ class AssignmentServiceTest {
     @Test
     void updateTaskAssignment_validRequest_shouldUpdateAndReturnDetailedResponse() {
         UpdateTaskAssignmentRequestDTO request =
-            new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, 30, null);
+            new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, 30, null, 0L);
 
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
         when(competitionFacade.findTourById(any())).thenReturn(Optional.of(tourDetail));
@@ -349,7 +351,7 @@ class AssignmentServiceTest {
     @Test
     void updateTaskAssignment_partialUpdate_shouldOnlyUpdateProvidedFields() {
         UpdateTaskAssignmentRequestDTO request =
-            new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, null, null);
+            new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, null, null, 0L);
         Integer oldMaxPoints = taskAssignment.getMaxPoints();
         TaskRequirements oldRequirements = taskAssignment.getRequirements();
 
@@ -373,7 +375,7 @@ class AssignmentServiceTest {
     @Test
     void updateTaskAssignment_notFound_shouldThrowTaskAssignmentNotFoundException() {
         UpdateTaskAssignmentRequestDTO request =
-            new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, 30, null);
+            new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, 30, null, 0L);
 
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -383,7 +385,7 @@ class AssignmentServiceTest {
     @Test
     void updateTaskAssignment_tourNotScheduled_shouldThrowCompetitionHierarchyValidationException() {
         UpdateTaskAssignmentRequestDTO request =
-            new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, 30, null);
+            new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, 30, null, 0L);
 
         TourDetail activeTour = TourDetail.builder()
             .id(10L)
@@ -612,5 +614,21 @@ class AssignmentServiceTest {
         assertThrows(com.itasocialacademy.oitassist.core.exceptions.AuthorizationException.class,
             () -> assignmentService.getLinkedToursByTaskId(3L));
         verify(taskAssignmentRepository, never()).findTourIdsByTaskBodyId(any());
+    }
+
+    // ---- version conflict (optimistic locking) ----
+
+    @Test
+    void updateTaskAssignment_staleVersion_shouldThrowStaleAssignmentVersionException() {
+        UpdateTaskAssignmentRequestDTO request =
+            new UpdateTaskAssignmentRequestDTO(AssignmentVisibility.HIDDEN, 30, null, 999L);
+
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(competitionFacade.findTourById(any())).thenReturn(Optional.of(tourDetail));
+
+        assertThrows(StaleAssignmentVersionException.class,
+            () -> assignmentService.updateTaskAssignment(1L, request));
+
+        verify(taskAssignmentRepository, never()).save(any());
     }
 }
