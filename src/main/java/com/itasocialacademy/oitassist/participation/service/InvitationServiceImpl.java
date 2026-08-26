@@ -70,7 +70,8 @@ public class InvitationServiceImpl implements InvitationService {
     public CreateInvitationResponse sendEnrollmentRequest(CreateInvitationRequest request) {
         Long competitionId = request.getCompetitionId();
         Long stageId = request.getStageId();
-        CompetitionValidatedDataEvent competitionData = validateCompetitionAndStageInfo(competitionId, stageId);
+        CompetitionValidatedDataEvent competitionData =
+            validateCompetitionAndStageInfoForInviting(competitionId, stageId);
         List<Long> studentIds = validateNoDuplicatesOrThrow(request.getStudentIds());
 
         List<UserAuthDetails> foundUsers = userFacade.findByIds(studentIds);
@@ -162,6 +163,7 @@ public class InvitationServiceImpl implements InvitationService {
         Pageable pageable) {
         Long competitionId = request.getCompetitionId();
         Long stageId = request.getStageId();
+        validateCompetitionAndStageInfo(competitionId, stageId);
         List<Long> candidateUserIds = invitationRepository.findAll(
             InvitationSpecification.hasCompetitionAndStage(competitionId, stageId)
                 .and(InvitationSpecification.hasStatus(RequestStatus.PENDING)))
@@ -181,7 +183,7 @@ public class InvitationServiceImpl implements InvitationService {
         }
         Page<Invitation> invitations = invitationRepository.findAll(
             InvitationSpecification.hasCompetitionAndStage(competitionId, stageId)
-                .and(InvitationSpecification.userIdIn(filterIds)),
+                .and(InvitationSpecification.studentIdIn(filterIds)),
             pageable);
 
         List<InvitationListItemResponse> responses = enrollmentAssembler.enrichWithUser(
@@ -222,19 +224,29 @@ public class InvitationServiceImpl implements InvitationService {
         return rawIds;
     }
 
-    private CompetitionValidatedDataEvent validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
+    private CompetitionValidatedDataEvent validateCompetitionAndStageInfoForInviting(Long competitionId, Long stageId) {
         CompetitionDetail competitionDetail = getCompetitionInfoOrThrow(competitionId);
         StageDetail stageDetail = getStageInfoOrThrow(stageId);
+        validateHierarchy(competitionId, stageDetail);
         if (competitionDetail.competitionStatus() != CompetitionStatus.ENROLLMENT) {
             throw new UserInvitationRequestException("The competition cannot be enrolled");
-        }
-        if (!stageDetail.competitionId().equals(competitionId)) {
-            throw new CompetitionHierarchyValidationException("Specified stage does not belong to this competition");
         }
         return CompetitionValidatedDataEvent.builder()
             .competitionTitle(competitionDetail.title())
             .stageTitle(stageDetail.title())
             .build();
+    }
+
+    private void validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
+        getCompetitionInfoOrThrow(competitionId);
+        StageDetail stageDetail = getStageInfoOrThrow(stageId);
+        validateHierarchy(competitionId, stageDetail);
+    }
+
+    private void validateHierarchy(Long competitionId, StageDetail stageDetail) {
+        if (!stageDetail.competitionId().equals(competitionId)) {
+            throw new CompetitionHierarchyValidationException("Specified stage does not belong to this competition");
+        }
     }
 
     private Invitation getPendingInvitationOrThrow(Long applicationId) {

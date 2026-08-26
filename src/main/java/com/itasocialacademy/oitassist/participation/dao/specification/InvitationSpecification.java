@@ -15,9 +15,9 @@ public class InvitationSpecification {
             cb.equal(root.get("stageId"), stageId));
     }
 
-    public static Specification<Invitation> userIdIn(List<Long> userIds) {
+    public static Specification<Invitation> studentIdIn(List<Long> userIds) {
         return (root, query, cb) -> userIds == null
-            ? cb.conjunction() // no-op filter — condition always true, safely skipped
+            ? cb.conjunction()
             : root.get("studentId").in(userIds);
     }
 
