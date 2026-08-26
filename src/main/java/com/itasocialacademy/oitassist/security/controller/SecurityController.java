@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.security.controller;
 
 import com.itasocialacademy.oitassist.security.dao.dto.request.RefreshTokenRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TokenRequest;
+import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorVerifyRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.response.LoginResponse;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
 import com.itasocialacademy.oitassist.security.service.interfaces.TokenService;
@@ -57,6 +58,20 @@ public class SecurityController {
     @PostMapping("/refresh")
     public TokenResponse refresh(@Valid @RequestBody RefreshTokenRequest request) {
         return tokenService.refreshToken(request.getToken());
+    }
+
+    @Operation(
+        summary = "Complete a pending 2FA verification and obtain full tokens",
+        description = "Submitted after /signIn returns outcome=TWO_FA_VERIFICATION_REQUIRED. Accepts the "
+            + "pendingTwoFactorToken from that response plus a TOTP code, email-OTP code, or recovery code. "
+            + "On success, returns a full access+refresh token pair exactly as a direct SUCCESS login would.",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Code accepted; full token pair returned"),
+            @ApiResponse(responseCode = "401", description = "Invalid or expired pending token, or invalid code")
+        })
+    @PostMapping("/2fa/verify")
+    public TokenResponse verifyTwoFactor(@Valid @RequestBody TwoFactorVerifyRequest request) {
+        return tokenService.verifyTwoFactor(request);
     }
 
     @GetMapping("/api")
