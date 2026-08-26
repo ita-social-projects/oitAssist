@@ -15,4 +15,8 @@ public class TwoFactorConfirmRequest {
     @Schema(description = "The code produced by the just-configured method, proving enrollment succeeded",
         example = "123456")
     private String code;
+
+    @Schema(description = "The pendingTwoFactorToken from /signIn (outcome=TWO_FA_SETUP_REQUIRED). Same "
+        + "rule as TwoFactorEnrollRequest — required only when there is no normal authenticated session.")
+    private String pendingTwoFactorToken;
 }
