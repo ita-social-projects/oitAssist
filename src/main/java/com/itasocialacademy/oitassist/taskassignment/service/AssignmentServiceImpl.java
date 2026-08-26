@@ -25,6 +25,7 @@ import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssig
 import com.itasocialacademy.oitassist.taskassignment.dto.response.DetailedTaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.LinkedToursResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
+import com.itasocialacademy.oitassist.taskassignment.exceptions.StaleAssignmentVersionException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import com.itasocialacademy.oitassist.taskassignment.mapper.TaskAssignmentMapper;
@@ -35,10 +36,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -137,6 +135,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         TourDetail tour = competitionFacade.findTourById(assignment.getTourId()).orElseThrow(
             () -> new TourNotFoundException(assignment.getTourId()));
 
+        checkAssignmentVersion(assignment.getVersion(), request.version(), assignment.getId());
         validateTourStatus(tour, "Cannot update task assignment.");
 
         if (request.visibility() != null) {
@@ -276,6 +275,12 @@ public class AssignmentServiceImpl implements AssignmentService {
     private void checkAdminOrOrg() {
         if (!securityFacade.hasRole("ADMIN") && !securityFacade.hasRole("ORG")) {
             throw new AuthorizationException("You do not have permission to this operation", ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    public void checkAssignmentVersion(Long actualVersion, Long expectedVersion, Long assignmentId) {
+        if (!Objects.equals(actualVersion, expectedVersion)) {
+            throw new StaleAssignmentVersionException(assignmentId);
         }
     }
 }
