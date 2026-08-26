@@ -374,4 +374,22 @@ public class HierarchyValidator {
         return competitionRepository.findByIdForUpdate(competitionId)
             .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
     }
+
+    @Transactional(readOnly = true)
+    public void validateTourDeletionKeepsStageNonEmpty(Long stageId) {
+        Stage stage = stageRepository.findById(stageId)
+            .orElseThrow(() -> new StageNotFoundException(stageId));
+        Competition competition = competitionRepository.findById(stage.getCompetitionId())
+            .orElseThrow(() -> new CompetitionNotFoundException(stage.getCompetitionId()));
+
+        if (competition.getCompetitionStatus() == CompetitionStatus.DRAFT) {
+            return;
+        }
+
+        if (tourRepository.countByStageId(stageId) <= 1) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot delete tour: it is the last tour of this stage, "
+                    + "and the competition has already left DRAFT status.");
+        }
+    }
 }
