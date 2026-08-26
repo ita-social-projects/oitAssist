@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorConfirmRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorEnrollRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorEnrollResponse;
+import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorRecoveryCodesResponse;
 import com.itasocialacademy.oitassist.security.jwt.JwtTokenIssuer;
 import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
 import com.itasocialacademy.oitassist.security.service.interfaces.TwoFactorService;
@@ -12,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -89,6 +91,25 @@ public class TwoFactorController {
     public void confirmEnrollment(@Valid @RequestBody TwoFactorConfirmRequest request) {
         EnrollingIdentity identity = resolveEnrollingIdentity(request.getPendingTwoFactorToken());
         twoFactorService.confirmEnrollment(identity.userId(), request);
+    }
+
+    @Operation(
+        summary = "Regenerate recovery codes",
+        description = "Generates a fresh batch of ten recovery codes, invalidating every previously unused "
+            + "one. An account-settings action — always requires a normal authenticated session, never a "
+            + "pendingTwoFactorToken, since this isn't part of completing a login.",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "New codes generated"),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "404", description = "No enabled 2FA setup found for this user")
+        })
+    @PostMapping("/recovery-codes/regenerate")
+    public TwoFactorRecoveryCodesResponse regenerateRecoveryCodes() {
+        Long userId = securityService.getCurrentUserId()
+            .orElseThrow(() -> new AuthenticationException(
+                "Authentication required", ErrorCode.AUTHENTICATION_REQUIRED));
+        List<String> codes = twoFactorService.regenerateRecoveryCodes(userId);
+        return TwoFactorRecoveryCodesResponse.builder().recoveryCodes(codes).build();
     }
 
     /**
