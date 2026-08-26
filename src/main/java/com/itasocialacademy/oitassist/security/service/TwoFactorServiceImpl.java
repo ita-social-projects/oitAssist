@@ -27,16 +27,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Implementation of {@link TwoFactorService}. Covers enrollment only, per plan
- * sequencing step 3 — {@code /2fa/verify} (login-time verification) is added
- * once the JWT wiring is connected (steps 5-7).
+ * Implementation of {@link TwoFactorService}: enrollment, confirmation, and
+ * login-time verification.
  *
  * <p>
- * <b>Email-OTP is now fully wired</b> (plan sequencing step 4): {@link #enroll}
- * generates and stores a hashed, expiring pending code on the entity for the
- * {@code EMAIL_OTP} path, then publishes {@link TwoFactorOtpRequestedEvent}.
- * {@code TwoFactorOtpListener} (in the {@code twofactor} package) consumes it
- * after the enrolling transaction commits and sends the code by email —
+ * Email-OTP dispatch (plan sequencing step 4) publishes
+ * {@link TwoFactorOtpRequestedEvent} after the enrolling/verifying
+ * transaction commits; {@code TwoFactorOtpListener} (in the
+ * {@code twofactor} package) consumes it and sends the code by email —
  * mirroring {@code auth}'s {@code ActivationAccountEvent}/{@code Listener}
  * pattern.
  * </p>
@@ -47,9 +45,9 @@ public class TwoFactorServiceImpl implements TwoFactorService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     /**
-     * Alphabet for recovery codes: uppercase alphanumeric with ambiguous characters
-     * removed (0/O, 1/I/L) so a user transcribing a saved code by hand doesn't
-     * stumble over lookalikes.
+     * Alphabet for recovery codes: uppercase alphanumeric with ambiguous
+     * characters removed (0/O, 1/I/L) so a user transcribing a saved code by
+     * hand doesn't stumble over lookalikes.
      */
     private static final String RECOVERY_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
@@ -93,19 +91,18 @@ public class TwoFactorServiceImpl implements TwoFactorService {
 
     private EnrollmentSetup startEmailOtpEnrollment(Long userId, String userEmail) {
         UserTwoFactorAuth entity = UserTwoFactorAuth.startEnrollment(userId, TwoFactorMethod.EMAIL_OTP, null);
-        String plaintextOtp = issuePendingEmailOtp(entity);
-        eventPublisher.publishEvent(new TwoFactorOtpRequestedEvent(userEmail, plaintextOtp));
+        issueAndDispatchEmailOtp(entity, userEmail);
         return new EnrollmentSetup(entity, null, null);
     }
 
     /**
-     * Everything {@link #enroll} needs out of a method-specific setup step, bundled
-     * so the two branches ({@link #startTotpEnrollment},
-     * {@link #startEmailOtpEnrollment}) can each return one immutable value instead
-     * of the caller pre-declaring nullable locals and conditionally assigning them.
-     * {@code secret}/{@code provisioningUri} are null for {@code EMAIL_OTP} by
-     * design — see {@link TwoFactorEnrollResponse}'s field docs, which document the
-     * same nullability at the API boundary.
+     * Everything {@link #enroll} needs out of a method-specific setup step,
+     * bundled so the two branches ({@link #startTotpEnrollment},
+     * {@link #startEmailOtpEnrollment}) can each return one immutable value
+     * instead of the caller pre-declaring nullable locals and conditionally
+     * assigning them. {@code secret}/{@code provisioningUri} are null for
+     * {@code EMAIL_OTP} by design — see {@link TwoFactorEnrollResponse}'s
+     * field docs, which document the same nullability at the API boundary.
      */
     private record EnrollmentSetup(UserTwoFactorAuth entity, String secret, String provisioningUri) {
     }
@@ -131,6 +128,66 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         twoFactorAuthRepository.save(entity);
     }
 
+    @Override
+    @Transactional
+    public void verify(Long userId, String code) {
+        UserTwoFactorAuth entity = findEnabledTwoFactorAuth(userId);
+
+        boolean valid = switch (entity.getMethod()) {
+            case TOTP -> confirmTotp(entity, code);
+            case EMAIL_OTP -> confirmEmailOtp(entity, code);
+        };
+
+        // A recovery code is always a valid fallback, regardless of the
+        // configured method — this is the entire point of having them.
+        if (!valid) {
+            valid = tryRecoveryCode(entity, code);
+        }
+
+        if (!valid) {
+            throw new InvalidTwoFactorCodeException(
+                "Invalid verification code", ErrorCode.INVALID_TWO_FACTOR_CODE);
+        }
+
+        twoFactorAuthRepository.save(entity);
+    }
+
+    @Override
+    @Transactional
+    public void resendLoginOtp(Long userId, String userEmail) {
+        UserTwoFactorAuth entity = findEnabledTwoFactorAuth(userId);
+        issueAndDispatchEmailOtp(entity, userEmail);
+        twoFactorAuthRepository.save(entity);
+    }
+
+    private UserTwoFactorAuth findEnabledTwoFactorAuth(Long userId) {
+        return twoFactorAuthRepository.findByUserId(userId)
+            .filter(UserTwoFactorAuth::isEnabled)
+            .orElseThrow(() -> new TwoFactorEnrollmentNotFoundException(
+                "No active two-factor setup found for this user", ErrorCode.TWO_FACTOR_ENROLLMENT_NOT_FOUND));
+    }
+
+    /**
+     * Tries a candidate string against every unused recovery code's hash.
+     * There's no way to look a hash up by plaintext directly (that's the
+     * point of hashing) — this is the same linear-scan-and-compare approach
+     * password verification always uses, just over a handful of hashes (at
+     * most {@code recoveryCodeCount}, typically 10) instead of one.
+     */
+    private boolean tryRecoveryCode(UserTwoFactorAuth entity, String code) {
+        List<UserRecoveryCode> unusedCodes =
+            recoveryCodeRepository.findByTwoFactorAuthIdAndUsedFalse(entity.getId());
+
+        for (UserRecoveryCode candidate : unusedCodes) {
+            if (passwordEncoder.matches(code, candidate.getCodeHash())) {
+                candidate.markUsed();
+                recoveryCodeRepository.save(candidate);
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void discardAnyUnconfirmedPriorAttempt(Long userId) {
         twoFactorAuthRepository.findByUserId(userId).ifPresent(existing -> {
             if (existing.isEnabled()) {
@@ -139,8 +196,7 @@ public class TwoFactorServiceImpl implements TwoFactorService {
                         + "use /2fa/change-method to switch methods",
                     ErrorCode.TWO_FACTOR_ALREADY_ENABLED);
             }
-            // Unconfirmed attempt — nothing was ever protected by it, safe to replace
-            // outright.
+            // Unconfirmed attempt — nothing was ever protected by it, safe to replace outright.
             recoveryCodeRepository.deleteByTwoFactorAuthId(existing.getId());
             twoFactorAuthRepository.delete(existing);
         });
@@ -171,6 +227,19 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         Instant expiresAt = Instant.now().plusMillis(properties.getEmailOtpValidityMillis());
         entity.setPendingEmailOtp(passwordEncoder.encode(plaintextOtp), expiresAt);
         return plaintextOtp;
+    }
+
+    /**
+     * Shared by {@link #startEmailOtpEnrollment} and {@link #resendLoginOtp}:
+     * generate a fresh code, hash+store it on the entity, and publish the
+     * event that dispatches it by email. Kept as one method rather than
+     * duplicated at both call sites — enrollment and login-time resend need
+     * the exact same "generate, store, dispatch" sequence, just applied to a
+     * freshly-built entity vs. one already fetched from the repository.
+     */
+    private void issueAndDispatchEmailOtp(UserTwoFactorAuth entity, String userEmail) {
+        String plaintextOtp = issuePendingEmailOtp(entity);
+        eventPublisher.publishEvent(new TwoFactorOtpRequestedEvent(userEmail, plaintextOtp));
     }
 
     private String generateNumericOtp() {
