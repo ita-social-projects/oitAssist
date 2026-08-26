@@ -134,4 +134,21 @@ public interface UserService {
      */
     @NonNull
     ResponseUserDTO changeUserStatus(@NonNull Long userId, @NonNull UserStatus newStatus);
+
+    /**
+     * Filters a provided list of candidate user IDs based on a text search against
+     * the user's first name, surname or email, required by
+     * {@code UserFacade.findUserIdsBySearchWithinIds}.
+     * <p>
+     * This method is designed to perform a constrained search. Instead of searching
+     * the entire database, it only searches within the provided
+     * {@code candidateIds}.
+     * </p>
+     *
+     * @param search       the text search query (e.g., "Ivan", "ivan@email.com").
+     * @param candidateIds the pool of user IDs to restrict the search to.
+     * @return an {@code Optional} containing the filtered list of matching user
+     *         IDs, or {@code Optional.empty()} if the search string is null/blank.
+     */
+    Optional<List<Long>> findUserIdsBySearch(String search, List<Long> candidateIds);
 }

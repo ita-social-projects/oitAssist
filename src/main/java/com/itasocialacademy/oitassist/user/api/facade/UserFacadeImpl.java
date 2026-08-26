@@ -99,4 +99,12 @@ public class UserFacadeImpl implements UserFacade {
     public List<UserProfileDetails> findProfilesByIds(List<Long> userIds) {
         return userService.findProfilesDetailsByIds(userIds);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<List<Long>> findUserIdsBySearchWithinIds(String search, List<Long> candidateIds) {
+        return userService.findUserIdsBySearch(search, candidateIds);
+    }
 }
