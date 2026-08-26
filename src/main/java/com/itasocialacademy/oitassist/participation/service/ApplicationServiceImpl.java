@@ -19,6 +19,7 @@ import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Application;
 import com.itasocialacademy.oitassist.participation.dao.repository.ApplicationRepository;
 import com.itasocialacademy.oitassist.participation.dao.repository.ParticipationRepository;
+import com.itasocialacademy.oitassist.participation.dao.specification.ApplicationSpecification;
 import com.itasocialacademy.oitassist.participation.exceptions.ApplicationNotFoundException;
 import com.itasocialacademy.oitassist.participation.exceptions.UnableToProcessApplicationException;
 import com.itasocialacademy.oitassist.participation.exceptions.UserApplicationRequestException;
@@ -38,6 +39,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -130,13 +132,31 @@ public class ApplicationServiceImpl implements ApplicationService {
         EnrollmentRequestsFilter request,
         String search,
         Pageable pageable) {
-        validateCompetitionAndStageInfo(request.getCompetitionId(), request.getStageId());
-        List<Application> applications = applicationRepository.findAllByCompetitionIdAndStageIdAndStatus(
-            request.getCompetitionId(),
-            request.getStageId(),
-            RequestStatus.PENDING);
+        Long competitionId = request.getCompetitionId();
+        Long stageId = request.getStageId();
+        validateCompetitionAndStageInfo(competitionId, stageId);
+        List<Long> candidateUserIds = applicationRepository.findAll(
+            ApplicationSpecification.hasCompetitionAndStage(competitionId, stageId)
+                .and(ApplicationSpecification.hasStatus(RequestStatus.PENDING)))
+            .stream()
+            .map(Application::getUserId)
+            .distinct()
+            .toList();
+        if (candidateUserIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        Optional<List<Long>> matchingUserIds = userFacade.findUserIdsBySearchWithinIds(search, candidateUserIds);
+        List<Long> filterIds = matchingUserIds.orElse(candidateUserIds);
+
+        if (matchingUserIds.isPresent() && matchingUserIds.get().isEmpty()) {
+            return Page.empty(pageable);
+        }
+        Page<Application> applications = applicationRepository.findAll(
+            ApplicationSpecification.hasCompetitionAndStage(competitionId, stageId)
+                .and(ApplicationSpecification.userIdIn(filterIds)),
+            pageable);
         List<ApplicationListItemResponse> responses = enrollmentAssembler.enrichWithUser(
-            applications, Application::getUserId,
+            applications.toList(), Application::getUserId,
             (application, user) -> new ApplicationListItemResponse(
                 application.getId(),
                 application.getIssuedAt(),
