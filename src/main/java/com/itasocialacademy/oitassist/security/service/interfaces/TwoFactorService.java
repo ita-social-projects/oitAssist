@@ -3,6 +3,8 @@ package com.itasocialacademy.oitassist.security.service.interfaces;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorConfirmRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorEnrollRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorEnrollResponse;
+import com.itasocialacademy.oitassist.security.exceptions.InvalidTwoFactorCodeException;
+import com.itasocialacademy.oitassist.security.exceptions.TwoFactorEnrollmentNotFoundException;
 
 /**
  * Enrollment, confirmation, and login-time verification for two-factor
@@ -69,49 +71,16 @@ public interface TwoFactorService {
      *
      * @param userId the user completing the challenge
      * @param code   the TOTP code, email-OTP code, or recovery code submitted
-     * @throws com.itasocialacademy.oitassist.security.exceptions.TwoFactorEnrollmentNotFoundException if
-     *                                                                                                 the
-     *                                                                                                 user
-     *                                                                                                 has
-     *                                                                                                 no
-     *                                                                                                 enabled
-     *                                                                                                 2FA
-     *                                                                                                 setup
-     *                                                                                                 (shouldn't
-     *                                                                                                 normally
-     *                                                                                                 happen
-     *                                                                                                 if
-     *                                                                                                 the
-     *                                                                                                 caller
-     *                                                                                                 only
-     *                                                                                                 reaches
-     *                                                                                                 this
-     *                                                                                                 after
-     *                                                                                                 a
-     *                                                                                                 {@code TWO_FA_VERIFICATION_REQUIRED}
-     *                                                                                                 login
-     *                                                                                                 outcome,
-     *                                                                                                 but
-     *                                                                                                 guards
-     *                                                                                                 against
-     *                                                                                                 a
-     *                                                                                                 race
-     *                                                                                                 where
-     *                                                                                                 2FA
-     *                                                                                                 was
-     *                                                                                                 disabled
-     *                                                                                                 in
-     *                                                                                                 between)
-     * @throws com.itasocialacademy.oitassist.security.exceptions.InvalidTwoFactorCodeException        if
-     *                                                                                                 neither
-     *                                                                                                 the
-     *                                                                                                 primary
-     *                                                                                                 method
-     *                                                                                                 nor
-     *                                                                                                 any
-     *                                                                                                 recovery
-     *                                                                                                 code
-     *                                                                                                 matches
+     * @throws TwoFactorEnrollmentNotFoundException if the user has no enabled 2FA
+     *                                              setup (shouldn't normally happen
+     *                                              if the caller only reaches this
+     *                                              after a
+     *                                              {@code TWO_FA_VERIFICATION_REQUIRED}
+     *                                              login outcome, but guards
+     *                                              against a race where 2FA was
+     *                                              disabled in between)
+     * @throws InvalidTwoFactorCodeException        if neither the primary method
+     *                                              nor any recovery code matches
      */
     void verify(Long userId, String code);
 
