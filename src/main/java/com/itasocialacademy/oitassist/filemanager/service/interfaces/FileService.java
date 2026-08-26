@@ -26,6 +26,17 @@ public interface FileService {
     List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto);
 
     /**
+     * Validates and uploads a batch of files, linking them to the specified entity.
+     *
+     * @param files      the files to upload
+     * @param requestDto upload context metadata (entity type and optional entity
+     *                   ID)
+     * @return a list of {@link FileDetailsDTO} with resolved URLs
+     * @throws ValidationException if any file fails the policy validation
+     */
+    List<FileDetailsDTO> uploadToFileDetails(List<MultipartFile> files, FileUploadRequestDto requestDto);
+
+    /**
      * Method to mark a file SOFT_DELETED, but keep a physical file intact.
      *
      * @param fileId id of the file record in the db.
@@ -57,11 +68,21 @@ public interface FileService {
      * content. Validates ownership for each file using the provided userId.
      *
      * @param entityType the type of the related entity
-     * @param entityId   the ID of the entity to detach files to
+     * @param entityId   the ID of the entity to detach files from
      * @param fileIds    the IDs of files to soft-delete
      * @param userId     the ID of the user who triggered detach
      */
     void detachFiles(RelatedEntityType entityType, Long entityId, List<Long> fileIds, Long userId);
+
+    /**
+     * Marks a batch of files as SOFT_DELETED. Called when files are removed from
+     * content. Validates ownership for each file using the provided userId.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity to detach files from
+     * @param userId     the ID of the user who triggered detach
+     */
+    void detachAllFilesByEntityId(RelatedEntityType entityType, Long entityId, Long userId);
 
     /**
      * Returns all {@link FileStatus#ATTACHED} files for the given entity.

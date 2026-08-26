@@ -1,15 +1,14 @@
 package com.itasocialacademy.oitassist.submission.controller;
 
+import com.itasocialacademy.oitassist.submission.dao.dto.request.SubmissionCreateRequest;
 import com.itasocialacademy.oitassist.submission.dao.dto.response.SubmissionResponseDTO;
 import com.itasocialacademy.oitassist.submission.service.interfaces.SubmissionService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/submissions")
@@ -37,5 +36,11 @@ public class SubmissionController {
     public ResponseEntity<SubmissionResponseDTO> getMySubmissionByTaskAssignmentId(@PathVariable
                                                                                    Long taskAssignmentId) {
         return ResponseEntity.ok(service.getMySubmissionByTaskAssignmentId(taskAssignmentId));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<SubmissionResponseDTO> postSubmission(SubmissionCreateRequest request) {
+        return ResponseEntity.ok(service.createSubmission(request));
     }
 }
