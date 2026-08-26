@@ -159,6 +159,23 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         twoFactorAuthRepository.save(entity);
     }
 
+    @Override
+    @Transactional
+    public List<String> regenerateRecoveryCodes(Long userId) {
+        UserTwoFactorAuth entity = findEnabledTwoFactorAuth(userId);
+
+        // Old codes are invalidated outright, not just marked stale — same reasoning as
+        // discardAnyUnconfirmedPriorAttempt: there's no partial-validity state for a
+        // recovery
+        // code batch, a fresh generation fully replaces the old one.
+        recoveryCodeRepository.deleteByTwoFactorAuthId(entity.getId());
+
+        List<String> plaintextRecoveryCodes = generateRecoveryCodes();
+        persistRecoveryCodes(entity.getId(), plaintextRecoveryCodes);
+
+        return plaintextRecoveryCodes;
+    }
+
     private UserTwoFactorAuth findEnabledTwoFactorAuth(Long userId) {
         return twoFactorAuthRepository.findByUserId(userId)
             .filter(UserTwoFactorAuth::isEnabled)

@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorEnrollRe
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorEnrollResponse;
 import com.itasocialacademy.oitassist.security.exceptions.InvalidTwoFactorCodeException;
 import com.itasocialacademy.oitassist.security.exceptions.TwoFactorEnrollmentNotFoundException;
+import java.util.List;
 
 /**
  * Enrollment, confirmation, and login-time verification for two-factor
@@ -43,21 +44,9 @@ public interface TwoFactorService {
      *
      * @param userId  the user confirming enrollment
      * @param request the code to validate
-     * @throws com.itasocialacademy.oitassist.security.exceptions.TwoFactorEnrollmentNotFoundException if
-     *                                                                                                 no
-     *                                                                                                 enrollment
-     *                                                                                                 is
-     *                                                                                                 in
-     *                                                                                                 progress
-     *                                                                                                 for
-     *                                                                                                 this
-     *                                                                                                 user
-     * @throws com.itasocialacademy.oitassist.security.exceptions.InvalidTwoFactorCodeException        if
-     *                                                                                                 the
-     *                                                                                                 code
-     *                                                                                                 does
-     *                                                                                                 not
-     *                                                                                                 validate
+     * @throws TwoFactorEnrollmentNotFoundException if no enrollment is in progress
+     *                                              for this user
+     * @throws InvalidTwoFactorCodeException        if the code does not validate
      */
     void confirmEnrollment(Long userId, TwoFactorConfirmRequest request);
 
@@ -93,14 +82,23 @@ public interface TwoFactorService {
      *
      * @param userId    the user logging in
      * @param userEmail where to send the code
-     * @throws com.itasocialacademy.oitassist.security.exceptions.TwoFactorEnrollmentNotFoundException if
-     *                                                                                                 the
-     *                                                                                                 user
-     *                                                                                                 has
-     *                                                                                                 no
-     *                                                                                                 enabled
-     *                                                                                                 2FA
-     *                                                                                                 setup
+     * @throws TwoFactorEnrollmentNotFoundException if the user has no enabled 2FA
+     *                                              setup
      */
     void resendLoginOtp(Long userId, String userEmail);
+
+    /**
+     * Generates a fresh batch of ten recovery codes, invalidating every previously
+     * unused one. An account-settings action — used when a user is running low,
+     * suspects their old codes were exposed, or just wants a fresh set. Never
+     * available via a pending 2FA token; only reachable with a normal authenticated
+     * session, since this isn't part of completing a login.
+     *
+     * @param userId the user regenerating their codes
+     * @return ten new plaintext recovery codes — shown here once, never retrievable
+     *         again
+     * @throws TwoFactorEnrollmentNotFoundException if the user has no enabled 2FA
+     *                                              setup
+     */
+    List<String> regenerateRecoveryCodes(Long userId);
 }
