@@ -64,9 +64,11 @@ public class InvitationController {
     public ResponseEntity<CreateInvitationResponse> invite(
         @PathVariable Long competitionId,
         @PathVariable Long stageId,
-        @Valid @RequestBody CreateInvitationRequest createInvitationRequest) {
+        @Valid @RequestBody CreateInvitationRequest request) {
+        request.setCompetitionId(competitionId);
+        request.setStageId(stageId);
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body((CreateInvitationResponse) invitationService.sendEnrollmentRequest(createInvitationRequest));
+            .body((CreateInvitationResponse) invitationService.sendEnrollmentRequest(request));
     }
 
     @Operation(

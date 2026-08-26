@@ -183,7 +183,8 @@ public class InvitationServiceImpl implements InvitationService {
         }
         Page<Invitation> invitations = invitationRepository.findAll(
             InvitationSpecification.hasCompetitionAndStage(competitionId, stageId)
-                .and(InvitationSpecification.studentIdIn(filterIds)),
+                .and(InvitationSpecification.studentIdIn(filterIds))
+                .and(InvitationSpecification.hasStatus(RequestStatus.PENDING)),
             pageable);
 
         List<InvitationListItemResponse> responses = enrollmentAssembler.enrichWithUser(
@@ -193,7 +194,7 @@ public class InvitationServiceImpl implements InvitationService {
                 invitation.getIssuedAt(),
                 invitation.getStatus(),
                 userSummaryMapper.toUserSummary(user)));
-        return new PageImpl<>(responses);
+        return new PageImpl<>(responses, pageable, invitations.getTotalPages());
     }
 
     private Set<Long> findStudentsWithPendingInvitations(List<Long> studentIds, CreateInvitationRequest request) {

@@ -153,7 +153,8 @@ public class ApplicationServiceImpl implements ApplicationService {
         }
         Page<Application> applications = applicationRepository.findAll(
             ApplicationSpecification.hasCompetitionAndStage(competitionId, stageId)
-                .and(ApplicationSpecification.userIdIn(filterIds)),
+                .and(ApplicationSpecification.userIdIn(filterIds))
+                .and(ApplicationSpecification.hasStatus(RequestStatus.PENDING)),
             pageable);
         List<ApplicationListItemResponse> responses = enrollmentAssembler.enrichWithUser(
             applications.toList(), Application::getUserId,
@@ -162,7 +163,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                 application.getIssuedAt(),
                 application.getStatus(),
                 userSummaryMapper.toUserSummary(user)));
-        return new PageImpl<>(responses);
+        return new PageImpl<>(responses, pageable, applications.getTotalPages());
     }
 
     private void validateUserCanApply(Long userId, CreateApplicationRequest request) {
