@@ -32,11 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>
  * Email-OTP dispatch (plan sequencing step 4) publishes
- * {@link TwoFactorOtpRequestedEvent} after the enrolling/verifying
- * transaction commits; {@code TwoFactorOtpListener} (in the
- * {@code twofactor} package) consumes it and sends the code by email —
- * mirroring {@code auth}'s {@code ActivationAccountEvent}/{@code Listener}
- * pattern.
+ * {@link TwoFactorOtpRequestedEvent} after the enrolling/verifying transaction
+ * commits; {@code TwoFactorOtpListener} (in the {@code twofactor} package)
+ * consumes it and sends the code by email — mirroring {@code auth}'s
+ * {@code ActivationAccountEvent}/{@code Listener} pattern.
  * </p>
  */
 @Service
@@ -45,9 +44,9 @@ public class TwoFactorServiceImpl implements TwoFactorService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     /**
-     * Alphabet for recovery codes: uppercase alphanumeric with ambiguous
-     * characters removed (0/O, 1/I/L) so a user transcribing a saved code by
-     * hand doesn't stumble over lookalikes.
+     * Alphabet for recovery codes: uppercase alphanumeric with ambiguous characters
+     * removed (0/O, 1/I/L) so a user transcribing a saved code by hand doesn't
+     * stumble over lookalikes.
      */
     private static final String RECOVERY_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
@@ -96,13 +95,13 @@ public class TwoFactorServiceImpl implements TwoFactorService {
     }
 
     /**
-     * Everything {@link #enroll} needs out of a method-specific setup step,
-     * bundled so the two branches ({@link #startTotpEnrollment},
-     * {@link #startEmailOtpEnrollment}) can each return one immutable value
-     * instead of the caller pre-declaring nullable locals and conditionally
-     * assigning them. {@code secret}/{@code provisioningUri} are null for
-     * {@code EMAIL_OTP} by design — see {@link TwoFactorEnrollResponse}'s
-     * field docs, which document the same nullability at the API boundary.
+     * Everything {@link #enroll} needs out of a method-specific setup step, bundled
+     * so the two branches ({@link #startTotpEnrollment},
+     * {@link #startEmailOtpEnrollment}) can each return one immutable value instead
+     * of the caller pre-declaring nullable locals and conditionally assigning them.
+     * {@code secret}/{@code provisioningUri} are null for {@code EMAIL_OTP} by
+     * design — see {@link TwoFactorEnrollResponse}'s field docs, which document the
+     * same nullability at the API boundary.
      */
     private record EnrollmentSetup(UserTwoFactorAuth entity, String secret, String provisioningUri) {
     }
@@ -168,11 +167,11 @@ public class TwoFactorServiceImpl implements TwoFactorService {
     }
 
     /**
-     * Tries a candidate string against every unused recovery code's hash.
-     * There's no way to look a hash up by plaintext directly (that's the
-     * point of hashing) — this is the same linear-scan-and-compare approach
-     * password verification always uses, just over a handful of hashes (at
-     * most {@code recoveryCodeCount}, typically 10) instead of one.
+     * Tries a candidate string against every unused recovery code's hash. There's
+     * no way to look a hash up by plaintext directly (that's the point of hashing)
+     * — this is the same linear-scan-and-compare approach password verification
+     * always uses, just over a handful of hashes (at most
+     * {@code recoveryCodeCount}, typically 10) instead of one.
      */
     private boolean tryRecoveryCode(UserTwoFactorAuth entity, String code) {
         List<UserRecoveryCode> unusedCodes =
@@ -196,7 +195,8 @@ public class TwoFactorServiceImpl implements TwoFactorService {
                         + "use /2fa/change-method to switch methods",
                     ErrorCode.TWO_FACTOR_ALREADY_ENABLED);
             }
-            // Unconfirmed attempt — nothing was ever protected by it, safe to replace outright.
+            // Unconfirmed attempt — nothing was ever protected by it, safe to replace
+            // outright.
             recoveryCodeRepository.deleteByTwoFactorAuthId(existing.getId());
             twoFactorAuthRepository.delete(existing);
         });
@@ -231,11 +231,11 @@ public class TwoFactorServiceImpl implements TwoFactorService {
 
     /**
      * Shared by {@link #startEmailOtpEnrollment} and {@link #resendLoginOtp}:
-     * generate a fresh code, hash+store it on the entity, and publish the
-     * event that dispatches it by email. Kept as one method rather than
-     * duplicated at both call sites — enrollment and login-time resend need
-     * the exact same "generate, store, dispatch" sequence, just applied to a
-     * freshly-built entity vs. one already fetched from the repository.
+     * generate a fresh code, hash+store it on the entity, and publish the event
+     * that dispatches it by email. Kept as one method rather than duplicated at
+     * both call sites — enrollment and login-time resend need the exact same
+     * "generate, store, dispatch" sequence, just applied to a freshly-built entity
+     * vs. one already fetched from the repository.
      */
     private void issueAndDispatchEmailOtp(UserTwoFactorAuth entity, String userEmail) {
         String plaintextOtp = issuePendingEmailOtp(entity);

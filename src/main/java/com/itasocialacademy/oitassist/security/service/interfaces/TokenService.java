@@ -11,13 +11,12 @@ public interface TokenService {
     TokenResponse refreshToken(String refreshToken);
 
     /**
-     * Completes a {@code TWO_FA_VERIFICATION_REQUIRED} login: validates the
-     * pending token and submitted code, then issues a full access+refresh
-     * pair exactly as {@link #generateToken} would have on a direct
-     * {@code SUCCESS}.
+     * Completes a {@code TWO_FA_VERIFICATION_REQUIRED} login: validates the pending
+     * token and submitted code, then issues a full access+refresh pair exactly as
+     * {@link #generateToken} would have on a direct {@code SUCCESS}.
      *
-     * @param request the pending token from {@link #generateToken} plus the
-     *                code the user is submitting
+     * @param request the pending token from {@link #generateToken} plus the code
+     *                the user is submitting
      * @return a full token pair
      */
     TokenResponse verifyTwoFactor(TwoFactorVerifyRequest request);
