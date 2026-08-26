@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.security.jwt;
 
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
+import io.jsonwebtoken.Claims;
 import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -40,12 +41,13 @@ public class JwtTokenIssuer {
     private static final String ROLE_PREFIX = "ROLE_";
 
     /**
-     * Claim distinguishing what a {@link JwtHelper#TWO_FACTOR_PENDING_TOKEN} grants
-     * access to: either submitting a verification code
+     * Claim distinguishing what a {@link JwtHelper#TWO_FACTOR_PENDING_TOKEN}
+     * grants access to: either submitting a verification code
      * ({@link #PURPOSE_TWO_FACTOR_VERIFY}) or completing enrollment
-     * ({@link #PURPOSE_TWO_FACTOR_SETUP}). The two purposes are not interchangeable
-     * — a setup-purpose token must not be usable at the verify endpoint and vice
-     * versa, since a user with no enrollment yet has nothing to verify against.
+     * ({@link #PURPOSE_TWO_FACTOR_SETUP}). The two purposes are not
+     * interchangeable — a setup-purpose token must not be usable at the verify
+     * endpoint and vice versa, since a user with no enrollment yet has nothing
+     * to verify against.
      */
     static final String CLAIM_PURPOSE = "purpose";
     public static final String PURPOSE_TWO_FACTOR_VERIFY = "2fa_verify";
@@ -86,16 +88,16 @@ public class JwtTokenIssuer {
      * Issues a short-lived pending-2FA token, scoped to exactly one purpose.
      *
      * <p>
-     * Deliberately omits the {@code role} claim carried by access tokens: this
-     * token grants no general API access (see {@link JwtHelper#extractUsername},
+     * Deliberately omits the {@code role} claim carried by access tokens:
+     * this token grants no general API access (see {@link JwtHelper#extractUsername},
      * which every protected route relies on and which only accepts
      * {@link JwtHelper#ACCESS_TOKEN} — a {@code 2fa_pending} token is rejected
      * there automatically without any change to the existing filter chain).
      * </p>
      *
-     * @param userDetails    the principal who just passed password verification
-     * @param purpose        either {@link #PURPOSE_TWO_FACTOR_VERIFY} or
-     *                       {@link #PURPOSE_TWO_FACTOR_SETUP}
+     * @param userDetails the principal who just passed password verification
+     * @param purpose either {@link #PURPOSE_TWO_FACTOR_VERIFY} or
+     *                {@link #PURPOSE_TWO_FACTOR_SETUP}
      * @param validityMillis how long the token remains valid, in milliseconds
      * @return the signed+encrypted pending token
      */
@@ -105,6 +107,44 @@ public class JwtTokenIssuer {
             CLAIM_TOKEN_TYPE, JwtHelper.TWO_FACTOR_PENDING_TOKEN,
             CLAIM_PURPOSE, purpose);
         return jwtHelper.createTwoFactorPendingToken(claims, userDetails.getUsername(), validityMillis);
+    }
+
+    /**
+     * Reads back the claims embedded in a pending-2FA token (issued by
+     * {@link #issuePendingTwoFactorToken}), after validating its signature,
+     * decryption, and {@code token_type}.
+     *
+     * <p>
+     * Returns a typed record rather than a raw {@link Claims} map, so callers
+     * outside this package (e.g. {@code TokenServiceImpl}, resolving who's
+     * completing a 2FA challenge) never need to know this class's internal
+     * claim-key vocabulary ({@code CLAIM_ID}, {@code CLAIM_PURPOSE}, etc.) —
+     * those stay {@code package-private}, exactly as they already were before
+     * this method existed.
+     * </p>
+     *
+     * @param rawToken the token exactly as the client submitted it
+     * @return the userId, email (JWT subject), and purpose embedded at
+     *         issuance
+     * @throws com.itasocialacademy.oitassist.core.exceptions.AuthenticationException
+     *             if the token's signature, encryption, or {@code token_type}
+     *             don't check out
+     */
+    public PendingTwoFactorClaims readPendingTwoFactorToken(String rawToken) {
+        String encryptedJwt = jwtHelper.extractEncryptedToken(rawToken);
+        Claims claims = jwtHelper.extractClaims(encryptedJwt, JwtHelper.TWO_FACTOR_PENDING_TOKEN);
+        return new PendingTwoFactorClaims(
+            claims.get(CLAIM_ID, Long.class),
+            claims.getSubject(),
+            claims.get(CLAIM_PURPOSE, String.class));
+    }
+
+    /**
+     * The userId, email, and purpose embedded in a pending-2FA token —
+     * everything a caller needs to act on the token without touching this
+     * class's internal claim-key constants directly.
+     */
+    public record PendingTwoFactorClaims(Long userId, String email, String purpose) {
     }
 
     private String extractRole(UserDetailsImpl userDetails) {
