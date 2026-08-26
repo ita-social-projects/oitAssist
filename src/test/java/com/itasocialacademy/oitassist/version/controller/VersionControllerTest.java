@@ -40,6 +40,10 @@ class VersionControllerTest {
     private static final String SHORT_COMMIT_ID = "3534bab";
     private static final String COMMIT_TIME = "2026-08-19T08:22:05Z";
     private static final String BUILD_TIME = "2026-08-19T19:55:29.490Z";
+    private static final String FRONTEND_COMMIT_ID = "9f1c2ab7d4e58306b1c0f2a4d7e93b5c8a6d1e42";
+    private static final String FRONTEND_SHORT_COMMIT_ID = "9f1c2ab";
+    private static final String FRONTEND_COMMIT_TIME = "2026-08-21T10:15:00Z";
+    private static final String FRONTEND_VERSION = "1.4.2";
 
     @Autowired
     private MockMvc mockMvc;
@@ -60,6 +64,12 @@ class VersionControllerTest {
                     Instant.parse(COMMIT_TIME),
                     "dev",
                     "0.0.1-SNAPSHOT"),
+                new VersionResponse.FrontendVersion(
+                    FRONTEND_COMMIT_ID,
+                    FRONTEND_SHORT_COMMIT_ID,
+                    Instant.parse(FRONTEND_COMMIT_TIME),
+                    "dev",
+                    FRONTEND_VERSION),
                 Instant.parse(BUILD_TIME)));
 
         mockMvc.perform(get(ENDPOINT))
@@ -70,6 +80,11 @@ class VersionControllerTest {
             .andExpect(jsonPath("$.backend.commitTime").value(COMMIT_TIME))
             .andExpect(jsonPath("$.backend.branch").value("dev"))
             .andExpect(jsonPath("$.backend.version").value("0.0.1-SNAPSHOT"))
+            .andExpect(jsonPath("$.frontend.commitId").value(FRONTEND_COMMIT_ID))
+            .andExpect(jsonPath("$.frontend.shortCommitId").value(FRONTEND_SHORT_COMMIT_ID))
+            .andExpect(jsonPath("$.frontend.commitTime").value(FRONTEND_COMMIT_TIME))
+            .andExpect(jsonPath("$.frontend.branch").value("dev"))
+            .andExpect(jsonPath("$.frontend.version").value(FRONTEND_VERSION))
             .andExpect(jsonPath("$.buildTime").value(BUILD_TIME));
     }
 
@@ -78,6 +93,7 @@ class VersionControllerTest {
         when(versionService.getVersion()).thenReturn(
             new VersionResponse(
                 new VersionResponse.BackendVersion(null, null, null, null, null),
+                new VersionResponse.FrontendVersion(null, null, null, null, null),
                 null));
 
         mockMvc.perform(get(ENDPOINT))
@@ -86,6 +102,12 @@ class VersionControllerTest {
             .andExpect(jsonPath("$.backend.commitId").isEmpty())
             .andExpect(jsonPath("$.backend.commitTime").isEmpty())
             .andExpect(jsonPath("$.backend.branch").isEmpty())
+            .andExpect(jsonPath("$.frontend").exists())
+            .andExpect(jsonPath("$.frontend.commitId").isEmpty())
+            .andExpect(jsonPath("$.frontend.shortCommitId").isEmpty())
+            .andExpect(jsonPath("$.frontend.commitTime").isEmpty())
+            .andExpect(jsonPath("$.frontend.branch").isEmpty())
+            .andExpect(jsonPath("$.frontend.version").isEmpty())
             .andExpect(jsonPath("$.buildTime").isEmpty());
     }
 
