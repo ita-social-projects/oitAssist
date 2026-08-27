@@ -135,7 +135,7 @@ public class TaskServiceImpl implements TaskService {
         existingTask.setTitle(requestDTO.title());
         existingTask.setDescription(requestDTO.description());
 
-        TaskBody updatedTask = taskBodyRepository.save(existingTask);
+        TaskBody updatedTask = taskBodyRepository.saveAndFlush(existingTask);
         log.debug("Updated Task: Id {}, Title - {}", updatedTask.getId(), updatedTask.getTitle());
 
         Long currentUserId = securityFacade.getCurrentUserId()
@@ -354,6 +354,6 @@ public class TaskServiceImpl implements TaskService {
     private void auditOwnersUpdate(TaskBody taskBody) {
         taskBody.setUpdatedAt(Instant.now());
         taskBody.setUpdatedBy(securityFacade.getCurrentUserId().orElseThrow(UserNotFoundException::new));
-        taskBodyRepository.save(taskBody);
+        taskBodyRepository.saveAndFlush(taskBody);
     }
 }

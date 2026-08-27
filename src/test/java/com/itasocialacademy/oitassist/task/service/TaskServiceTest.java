@@ -356,7 +356,7 @@ class TaskServiceTest {
 
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
-        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
+        when(taskBodyRepository.saveAndFlush(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
         when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(updatedResponse);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
@@ -369,7 +369,7 @@ class TaskServiceTest {
         assertEquals("creator@mail.com", result.createdByEmail());
 
         ArgumentCaptor<TaskBody> captor = ArgumentCaptor.forClass(TaskBody.class);
-        verify(taskBodyRepository).save(captor.capture());
+        verify(taskBodyRepository).saveAndFlush(captor.capture());
         assertEquals("Updated Title", captor.getValue().getTitle());
         assertEquals("Updated Description", captor.getValue().getDescription());
 
@@ -385,7 +385,7 @@ class TaskServiceTest {
 
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
-        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
+        when(taskBodyRepository.saveAndFlush(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
         when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
@@ -404,7 +404,7 @@ class TaskServiceTest {
 
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
-        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
+        when(taskBodyRepository.saveAndFlush(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
         when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
@@ -425,7 +425,7 @@ class TaskServiceTest {
 
         assertThrows(TaskNotFoundException.class, () -> taskService.updateTask(99L, request));
 
-        verify(taskBodyRepository, never()).save(any());
+        verify(taskBodyRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -439,7 +439,7 @@ class TaskServiceTest {
 
         assertThrows(TaskAccessRestrictedException.class, () -> taskService.updateTask(1L, request));
 
-        verify(taskBodyRepository, never()).save(any());
+        verify(taskBodyRepository, never()).saveAndFlush(any());
     }
 
     // ---- addTaskOwner ----
@@ -454,7 +454,7 @@ class TaskServiceTest {
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("newowner@mail.com")).thenReturn(Optional.of(newOwner));
-        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
+        when(taskBodyRepository.saveAndFlush(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
         when(taskBodyMapper.toResponse(any(TaskBody.class), any(), eq("creator@mail.com"))).thenReturn(taskResponse);
 
@@ -564,7 +564,7 @@ class TaskServiceTest {
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("currentowner@mail.com")).thenReturn(Optional.of(owner));
-        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
+        when(taskBodyRepository.saveAndFlush(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
         when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
