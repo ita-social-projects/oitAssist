@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.submission.service;
 
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
@@ -79,6 +80,9 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Transactional(readOnly = true)
     public SubmissionResponseDTO getSubmissionBySubmittedByAndTaskAssignmentId(Long submittedBy,
                                                                                Long taskAssignmentId) {
+        if (!securityFacade.hasRole("JURY") && !securityFacade.hasRole("ADMIN")) {
+            throw new InsufficientPermissionsException();
+        }
         Submission submission = repository.findBySubmittedByAndTaskAssignmentId(submittedBy, taskAssignmentId)
             .orElseThrow(() -> new SubmissionNotFoundException(submittedBy, taskAssignmentId));
         List<FileDetailsDTO> files =
@@ -90,6 +94,9 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional(readOnly = true)
     public SubmissionResponseDTO getSubmissionById(Long id) {
+        if (!securityFacade.hasRole("JURY") && !securityFacade.hasRole("ADMIN")) {
+            throw new InsufficientPermissionsException();
+        }
         Submission submission = repository.findById(id).orElseThrow(() -> new SubmissionNotFoundException(id));
         List<FileDetailsDTO> files =
             fileManagerFacade.getFilesByEntity(RelatedEntityType.SUBMISSION, submission.getId(),
@@ -101,11 +108,24 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Transactional(readOnly = true)
     public SubmissionResponseDTO getMySubmissionByTaskAssignmentId(Long taskAssignmentId) {
         Long currentUserId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User must be logged in to view created tasks",
+            .orElseThrow(() -> new AuthorizationException("User must be logged in to view submissions",
                 ErrorCode.ACCESS_DENIED));
-        return getSubmissionBySubmittedByAndTaskAssignmentId(currentUserId, taskAssignmentId);
+        Submission submission = repository.findBySubmittedByAndTaskAssignmentId(currentUserId, taskAssignmentId)
+            .orElseThrow(() -> new SubmissionNotFoundException(currentUserId, taskAssignmentId));
+        List<FileDetailsDTO> files =
+            fileManagerFacade.getFilesByEntity(RelatedEntityType.SUBMISSION, submission.getId(),
+                Set.of(FileRole.GENERIC));
+        return submissionMapper.toResponse(submission, files);
     }
 
+    /**
+     * Filters the given files to only include the ones that pass the requirements of the task assignment.
+     * Only one file can be passed through one requirement.
+     *
+     * @param files         list of files to filter
+     * @param requiredFiles list of file requirements
+     * @return list of filtered MultipartFiles
+     */
     private List<MultipartFile> findValidFiles(
         List<MultipartFile> files,
         List<TaskRequirements.RequiredFile> requiredFiles
@@ -132,6 +152,13 @@ public class SubmissionServiceImpl implements SubmissionService {
         return validFiles;
     }
 
+    /**
+     * Helper method that calls other methods to check all the requirements for a specific file.
+     *
+     * @param file        file to check
+     * @param requirement requirements for the file
+     * @return True if all requirements are met. False otherwise
+     */
     private boolean matchesRequirement(
         MultipartFile file,
         TaskRequirements.RequiredFile requirement
