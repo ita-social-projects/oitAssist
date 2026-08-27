@@ -194,7 +194,7 @@ public class InvitationServiceImpl implements InvitationService {
                 invitation.getIssuedAt(),
                 invitation.getStatus(),
                 userSummaryMapper.toUserSummary(user)));
-        return new PageImpl<>(responses, pageable, invitations.getTotalPages());
+        return new PageImpl<>(responses, pageable, invitations.getTotalElements());
     }
 
     private Set<Long> findStudentsWithPendingInvitations(List<Long> studentIds, CreateInvitationRequest request) {

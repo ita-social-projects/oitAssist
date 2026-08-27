@@ -163,7 +163,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                 application.getIssuedAt(),
                 application.getStatus(),
                 userSummaryMapper.toUserSummary(user)));
-        return new PageImpl<>(responses, pageable, applications.getTotalPages());
+        return new PageImpl<>(responses, pageable, applications.getTotalElements());
     }
 
     private void validateUserCanApply(Long userId, CreateApplicationRequest request) {

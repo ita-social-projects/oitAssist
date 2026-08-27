@@ -142,7 +142,7 @@ public class ApplicationController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Applications retrieved successfully",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = ApplicationListItemResponse.class))),
+                schema = @Schema(implementation = PageResponse.class))),
         @ApiResponse(responseCode = "400", description = """
             The competition and stage info error. The reason: \s
             specified stage ID does not belong to the competition ID.""",
