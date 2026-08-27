@@ -15,7 +15,7 @@ import com.itasocialacademy.oitassist.submission.exceptions.SubmissionNotFoundEx
 import com.itasocialacademy.oitassist.submission.mapper.SubmissionMapper;
 import com.itasocialacademy.oitassist.submission.service.interfaces.SubmissionService;
 import com.itasocialacademy.oitassist.taskassignment.api.TaskAssignmentFacade;
-import com.itasocialacademy.oitassist.taskassignment.dao.model.TaskRequirements;
+import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskRequirementsDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import java.time.Instant;
 import java.util.*;
@@ -38,19 +38,18 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional
     public SubmissionResponseDTO createSubmission(String comment, Long taskAssignmentId,
-                                                  List<MultipartFile> files) {
+        List<MultipartFile> files) {
         Long userId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be logged in to create submissions",
                 ErrorCode.ACCESS_DENIED));
 
-        TaskRequirements requirements = taskAssignmentFacade.findAssignmentById(taskAssignmentId)
+        TaskRequirementsDTO requirements = taskAssignmentFacade.findAssignmentById(taskAssignmentId)
             .orElseThrow(() -> new TaskAssignmentNotFoundException(taskAssignmentId))
             .requirements();
 
         List<MultipartFile> filesToUpload = findValidFiles(
             files,
-            requirements.requiredFiles()
-        );
+            requirements.requiredFiles());
 
         Optional<Submission> found = repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId);
         Submission entity;
@@ -79,7 +78,7 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional(readOnly = true)
     public SubmissionResponseDTO getSubmissionBySubmittedByAndTaskAssignmentId(Long submittedBy,
-                                                                               Long taskAssignmentId) {
+        Long taskAssignmentId) {
         if (!securityFacade.hasRole("JURY") && !securityFacade.hasRole("ADMIN")) {
             throw new InsufficientPermissionsException();
         }
@@ -119,8 +118,8 @@ public class SubmissionServiceImpl implements SubmissionService {
     }
 
     /**
-     * Filters the given files to only include the ones that pass the requirements of the task assignment.
-     * Only one file can be passed through one requirement.
+     * Filters the given files to only include the ones that pass the requirements
+     * of the task assignment. Only one file can be passed through one requirement.
      *
      * @param files         list of files to filter
      * @param requiredFiles list of file requirements
@@ -128,8 +127,7 @@ public class SubmissionServiceImpl implements SubmissionService {
      */
     private List<MultipartFile> findValidFiles(
         List<MultipartFile> files,
-        List<TaskRequirements.RequiredFile> requiredFiles
-    ) {
+        List<TaskRequirementsDTO.RequiredFileDTO> requiredFiles) {
         Set<Integer> matchedRequirements = new HashSet<>();
         List<MultipartFile> validFiles = new ArrayList<>();
 
@@ -139,7 +137,7 @@ public class SubmissionServiceImpl implements SubmissionService {
                     continue;
                 }
 
-                TaskRequirements.RequiredFile requirement = requiredFiles.get(i);
+                TaskRequirementsDTO.RequiredFileDTO requirement = requiredFiles.get(i);
 
                 if (matchesRequirement(file, requirement)) {
                     validFiles.add(file);
@@ -153,7 +151,8 @@ public class SubmissionServiceImpl implements SubmissionService {
     }
 
     /**
-     * Helper method that calls other methods to check all the requirements for a specific file.
+     * Helper method that calls other methods to check all the requirements for a
+     * specific file.
      *
      * @param file        file to check
      * @param requirement requirements for the file
@@ -161,8 +160,7 @@ public class SubmissionServiceImpl implements SubmissionService {
      */
     private boolean matchesRequirement(
         MultipartFile file,
-        TaskRequirements.RequiredFile requirement
-    ) {
+        TaskRequirementsDTO.RequiredFileDTO requirement) {
         return !file.isEmpty()
             && matchesName(file, requirement.namingRule())
             && matchesExtension(file, requirement.allowedExtensions())
@@ -171,8 +169,7 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     private boolean matchesSize(
         MultipartFile file,
-        Integer maxFileSizeMb
-    ) {
+        Integer maxFileSizeMb) {
         if (maxFileSizeMb == null) {
             return true;
         }
@@ -184,8 +181,7 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     private boolean matchesExtension(
         MultipartFile file,
-        List<String> allowedExtensions
-    ) {
+        List<String> allowedExtensions) {
         if (allowedExtensions == null || allowedExtensions.isEmpty()) {
             return false;
         }
@@ -210,8 +206,7 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     private boolean matchesName(
         MultipartFile file,
-        String namingRule
-    ) {
+        String namingRule) {
         String filename = file.getOriginalFilename();
 
         if (filename == null || namingRule == null || namingRule.isBlank()) {

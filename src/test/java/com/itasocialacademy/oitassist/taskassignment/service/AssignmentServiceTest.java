@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.taskassignment.service;
 
+import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskRequirementsDTO;
 import java.util.Set;
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
@@ -525,8 +526,11 @@ class AssignmentServiceTest {
 
     @Test
     void getTaskAssignmentDetailById_existingId_shouldReturnDetail() {
+        TaskRequirementsDTO requirementsDto = new TaskRequirementsDTO(List.of(
+            new TaskRequirementsDTO.RequiredFileDTO("PowerPoint_РіздвянаЗірка",
+                List.of(".pptx"), 50)));
         TaskAssignmentDetailDTO detailDTO = new TaskAssignmentDetailDTO(
-            1L, 3L, 10L, AssignmentVisibility.VISIBLE, 25, requirements);
+            1L, 3L, 10L, AssignmentVisibility.VISIBLE, 25, requirementsDto);
 
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
         when(taskAssignmentMapper.toDetails(taskAssignment)).thenReturn(detailDTO);

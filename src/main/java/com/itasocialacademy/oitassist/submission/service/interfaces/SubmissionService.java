@@ -17,40 +17,48 @@ public interface SubmissionService {
      * @param files            files to submit
      * @return the created submission as a {@link SubmissionResponseDTO}
      * @throws AuthorizationException          if current user is unauthorized
-     * @throws TaskAssignmentNotFoundException if task assignment is not found by the given id
+     * @throws TaskAssignmentNotFoundException if task assignment is not found by
+     *                                         the given id
      */
     SubmissionResponseDTO createSubmission(String comment, Long taskAssignmentId, List<MultipartFile> files);
 
     /**
-     * Retrieves a submission by userId and taskAssignmentId. Only users with ADMIN or JURY role can perform this action
+     * Retrieves a submission by userId and taskAssignmentId. Only users with ADMIN
+     * or JURY role can perform this action
      *
      * @param submittedBy      unique identifier of the user who sent the submission
-     * @param taskAssignmentId unique identifier of the task assignment which submission was sent for
+     * @param taskAssignmentId unique identifier of the task assignment which
+     *                         submission was sent for
      * @return {@link SubmissionResponseDTO}
-     * @throws SubmissionNotFoundException if there is no submission found with given userId and
-     *                                     taskAssignmentId
-     * @throws InsufficientPermissionsException if user doesnt have ADMIN or JURY role
+     * @throws SubmissionNotFoundException      if there is no submission found with
+     *                                          given userId and taskAssignmentId
+     * @throws InsufficientPermissionsException if user doesnt have ADMIN or JURY
+     *                                          role
      */
     SubmissionResponseDTO getSubmissionBySubmittedByAndTaskAssignmentId(Long submittedBy, Long taskAssignmentId);
 
     /**
-     * Retrieves a submission by id. Only users with ADMIN or JURY role can perform this action
+     * Retrieves a submission by id. Only users with ADMIN or JURY role can perform
+     * this action
      *
      * @param id unique identifier of the submission
      * @return {@link SubmissionResponseDTO}
-     * @throws SubmissionNotFoundException      if there is no submission found with given id
-     * @throws InsufficientPermissionsException if user doesnt have ADMIN or JURY role
+     * @throws SubmissionNotFoundException      if there is no submission found with
+     *                                          given id
+     * @throws InsufficientPermissionsException if user doesnt have ADMIN or JURY
+     *                                          role
      */
     SubmissionResponseDTO getSubmissionById(Long id);
 
     /**
      * Retrieves a current user`s submission by task assignment id.
      *
-     * @param taskAssignmentId unique identifier of the task assignment which submission was sent for
+     * @param taskAssignmentId unique identifier of the task assignment which
+     *                         submission was sent for
      * @return {@link SubmissionResponseDTO}
      * @throws AuthorizationException      if current user is unauthorized
-     * @throws SubmissionNotFoundException if there is no submission found with currentUserId and
-     *                                     taskAssignmentId
+     * @throws SubmissionNotFoundException if there is no submission found with
+     *                                     currentUserId and taskAssignmentId
      */
     SubmissionResponseDTO getMySubmissionByTaskAssignmentId(Long taskAssignmentId);
 }

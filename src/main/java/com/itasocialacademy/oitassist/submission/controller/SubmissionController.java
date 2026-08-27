@@ -35,9 +35,7 @@ public class SubmissionController {
             description = "Submission retrieved successfully",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = SubmissionResponseDTO.class)
-            )
-        ),
+                schema = @Schema(implementation = SubmissionResponseDTO.class))),
         @ApiResponse(
             responseCode = "401",
             description = "Unauthorized",
@@ -49,17 +47,13 @@ public class SubmissionController {
             description = "Access denied - User does not have ADMIN or JURY role",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)
-            )
-        ),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Submission not found",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)
-            )
-        )
+                schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'JURY')")
@@ -78,9 +72,7 @@ public class SubmissionController {
             description = "Submission retrieved successfully",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = SubmissionResponseDTO.class)
-            )
-        ),
+                schema = @Schema(implementation = SubmissionResponseDTO.class))),
         @ApiResponse(
             responseCode = "401",
             description = "Unauthorized",
@@ -92,23 +84,18 @@ public class SubmissionController {
             description = "Access denied - User does not have ADMIN or JURY role",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)
-            )
-        ),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Submission not found for the specified user and task assignment",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)
-            )
-        )
+                schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/{userId}/{taskAssignmentId}/by-user-and-task-assignment")
     @PreAuthorize("hasAnyRole('ADMIN', 'JURY')")
     public ResponseEntity<SubmissionResponseDTO> getSubmissionByUserIdAndTaskAssignmentId(@PathVariable Long userId,
-                                                                                          @PathVariable
-                                                                                          Long taskAssignmentId) {
+        @PathVariable Long taskAssignmentId) {
         return ResponseEntity.ok(service.getSubmissionBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId));
     }
 
@@ -121,9 +108,7 @@ public class SubmissionController {
             description = "Submission retrieved successfully",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = SubmissionResponseDTO.class)
-            )
-        ),
+                schema = @Schema(implementation = SubmissionResponseDTO.class))),
         @ApiResponse(
             responseCode = "401",
             description = "Unauthorized",
@@ -135,17 +120,13 @@ public class SubmissionController {
             description = "Access denied - User does not have USER role",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)
-            )
-        ),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Submission not found for the current user and task assignment",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)
-            )
-        )
+                schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/my/{taskAssignmentId}/by-task-assignment")
     @PreAuthorize("hasRole('USER')")
@@ -165,17 +146,13 @@ public class SubmissionController {
             description = "Submission created or updated successfully",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = SubmissionResponseDTO.class)
-            )
-        ),
+                schema = @Schema(implementation = SubmissionResponseDTO.class))),
         @ApiResponse(
             responseCode = "400",
             description = "Validation failed - required files are missing or request parameters are invalid",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)
-            )
-        ),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "401",
             description = "Unauthorized",
@@ -187,24 +164,19 @@ public class SubmissionController {
             description = "Access denied - User does not have USER role",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)
-            )
-        ),
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Task assignment not found",
             content = @Content(
                 mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)
-            )
-        )
+                schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<SubmissionResponseDTO> postSubmission(@RequestParam(required = false) String comment,
-                                                                @RequestParam Long taskAssignmentId,
-                                                                @RequestPart("files") @NotEmpty
-                                                                List<MultipartFile> files) {
+        @RequestParam Long taskAssignmentId,
+        @RequestPart("files") @NotEmpty List<MultipartFile> files) {
         return ResponseEntity.ok(service.createSubmission(comment, taskAssignmentId, files));
     }
 }

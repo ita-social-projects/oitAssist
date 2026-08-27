@@ -287,7 +287,7 @@ public class FileServiceImpl implements FileService {
     @Override
     @Transactional(readOnly = true)
     public Map<Long, List<FileDetailsDTO>> getFilesByEntities(RelatedEntityType entityType, List<Long> entityIds,
-                                                              Set<FileRole> roles) {
+        Set<FileRole> roles) {
         if (entityIds == null || entityIds.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -364,7 +364,6 @@ public class FileServiceImpl implements FileService {
         }
     }
 
-
     /**
      * Uploads a single file to the default storage provider and persists its
      * metadata.
@@ -378,7 +377,7 @@ public class FileServiceImpl implements FileService {
      */
     private FileResponseDto uploadSingle(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
         StorageProvider provider = providerResolver.resolveDefault();
-        FileAsset saved = getFileAsset(file, requestDto, userId);
+        FileAsset saved = getFileAsset(file, requestDto, userId, provider);
         FileResponseDto dto = fileMapper.toDto(saved);
         dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
         return dto;
@@ -397,7 +396,7 @@ public class FileServiceImpl implements FileService {
      */
     private FileDetailsDTO uploadSingleToFileDetails(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
         StorageProvider provider = providerResolver.resolveDefault();
-        FileAsset saved = getFileAsset(file, requestDto, userId);
+        FileAsset saved = getFileAsset(file, requestDto, userId, provider);
         return fileMapper.toDetails(saved, provider.getFileUrl(saved.getStorageKey()));
     }
 
@@ -408,16 +407,16 @@ public class FileServiceImpl implements FileService {
      * @param file       the file to upload
      * @param requestDto upload context metadata
      * @param userId     the ID of the uploading user
+     * @param provider   the resolved StorageProvider
      * @return the persisted file record as a {@link FileResponseDto}
      * @throws FileUploadException if the file stream cannot be read or the upload
      *                             fails
      */
-    private FileAsset getFileAsset(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
+    private FileAsset getFileAsset(MultipartFile file, FileUploadRequestDto requestDto, Long userId,
+        StorageProvider provider) {
         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
         String storedFilename = generateStoredFilename(originalFilename);
         String relativePath = buildRelativePath(requestDto);
-
-        StorageProvider provider = providerResolver.resolveDefault();
 
         String storageKey;
         try (var inputStream = file.getInputStream()) {

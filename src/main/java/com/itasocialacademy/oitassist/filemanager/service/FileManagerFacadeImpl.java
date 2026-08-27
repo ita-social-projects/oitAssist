@@ -25,13 +25,13 @@ public class FileManagerFacadeImpl implements FileManagerFacade {
 
     @Override
     public Map<Long, List<FileDetailsDTO>> getFilesByEntities(RelatedEntityType entityType, List<Long> entityIds,
-                                                              Set<FileRole> roles) {
+        Set<FileRole> roles) {
         return fileService.getFilesByEntities(entityType, entityIds, roles);
     }
 
     @Override
     public List<FileDetailsDTO> uploadFiles(List<MultipartFile> files, RelatedEntityType entityType, Long entityId,
-                                            FileRole role) {
+        FileRole role) {
         return fileService.uploadToFileDetails(files, FileUploadRequestDto.builder()
             .fileRole(role)
             .relatedEntityType(entityType)
