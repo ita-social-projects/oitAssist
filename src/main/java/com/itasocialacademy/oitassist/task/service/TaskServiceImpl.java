@@ -31,6 +31,7 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -176,6 +177,7 @@ public class TaskServiceImpl implements TaskService {
             .build();
 
         task.addOwner(owner);
+        auditOwnersUpdate(task);
 
         log.debug("User {} added to task`s {} owners", userDetails.id(), task.getId());
 
@@ -200,16 +202,18 @@ public class TaskServiceImpl implements TaskService {
         Optional<TaskOwner> toRemove = task.getOwners().stream()
             .filter(o -> o.getId().getOwnerId().equals(userDetails.id())).findFirst();
 
-        if (toRemove.isPresent()) {
-            if (task.getOwners().size() == 1) {
-                throw new ValidationException(
-                    "Cannot remove the last owner of a task",
-                    ErrorCode.COMMON_VALIDATION_FAILED);
-            }
-            task.removeOwner(toRemove.get());
-        } else {
+        if (toRemove.isEmpty()) {
             return getResponse(task);
         }
+
+        if (task.getOwners().size() == 1) {
+            throw new ValidationException(
+                "Cannot remove the last owner of a task",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+
+        task.removeOwner(toRemove.get());
+        auditOwnersUpdate(task);
 
         log.debug("User {} removed from task`s {} owners", userDetails.id(), task.getId());
 
@@ -345,5 +349,11 @@ public class TaskServiceImpl implements TaskService {
         if (!Objects.equals(actualVersion, providedVersion)) {
             throw new StaleTaskVersionException(taskId);
         }
+    }
+
+    private void auditOwnersUpdate(TaskBody taskBody) {
+        taskBody.setUpdatedAt(Instant.now());
+        taskBody.setUpdatedBy(securityFacade.getCurrentUserId().orElseThrow(UserNotFoundException::new));
+        taskBodyRepository.save(taskBody);
     }
 }
