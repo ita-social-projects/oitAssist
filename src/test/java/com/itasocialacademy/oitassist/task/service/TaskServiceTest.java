@@ -451,8 +451,10 @@ class TaskServiceTest {
             new UserAuthDetails(200L, "newowner@mail.com", "12345678", Role.ORG);
 
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("newowner@mail.com")).thenReturn(Optional.of(newOwner));
+        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
         when(taskBodyMapper.toResponse(any(TaskBody.class), any(), eq("creator@mail.com"))).thenReturn(taskResponse);
 
@@ -559,8 +561,10 @@ class TaskServiceTest {
             new UserAuthDetails(100L, "currentowner@mail.com", "12345678", Role.ORG);
 
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
         when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
         when(userFacade.findByEmail("currentowner@mail.com")).thenReturn(Optional.of(owner));
+        when(taskBodyRepository.save(any(TaskBody.class))).thenReturn(taskBody);
         when(fileManagerFacade.getFilesByEntity(any(), eq(1L), any())).thenReturn(testFiles);
         when(taskBodyMapper.toResponse(taskBody, testFiles, "creator@mail.com")).thenReturn(taskResponse);
 
