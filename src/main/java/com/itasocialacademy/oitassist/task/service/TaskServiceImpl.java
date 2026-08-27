@@ -201,6 +201,11 @@ public class TaskServiceImpl implements TaskService {
             .filter(o -> o.getId().getOwnerId().equals(userDetails.id())).findFirst();
 
         if (toRemove.isPresent()) {
+            if (task.getOwners().size() == 1) {
+                throw new ValidationException(
+                    "Cannot remove the last owner of a task",
+                    ErrorCode.COMMON_VALIDATION_FAILED);
+            }
             task.removeOwner(toRemove.get());
         } else {
             return getResponse(task);
