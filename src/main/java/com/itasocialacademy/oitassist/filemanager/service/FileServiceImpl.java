@@ -441,7 +441,7 @@ public class FileServiceImpl implements FileService {
      */
     private FileResponseDto uploadSingle(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
         StorageProvider provider = providerResolver.resolveDefault();
-        FileAsset saved = getFileAsset(file, requestDto, userId, provider);
+        FileAsset saved = uploadFileAndGetFileAsset(file, requestDto, userId, provider);
         FileResponseDto dto = fileMapper.toDto(saved);
         dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
         return dto;
@@ -454,13 +454,13 @@ public class FileServiceImpl implements FileService {
      * @param file       the file to upload
      * @param requestDto upload context metadata
      * @param userId     the ID of the uploading user
-     * @return the persisted file record as a {@link FileResponseDto}
+     * @return the persisted file record as a {@link FileDetailsDTO}
      * @throws FileUploadException if the file stream cannot be read or the upload
      *                             fails
      */
     private FileDetailsDTO uploadSingleToFileDetails(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
         StorageProvider provider = providerResolver.resolveDefault();
-        FileAsset saved = getFileAsset(file, requestDto, userId, provider);
+        FileAsset saved = uploadFileAndGetFileAsset(file, requestDto, userId, provider);
         return fileMapper.toDetails(saved, provider.getFileUrl(saved.getStorageKey()));
     }
 
@@ -472,11 +472,11 @@ public class FileServiceImpl implements FileService {
      * @param requestDto upload context metadata
      * @param userId     the ID of the uploading user
      * @param provider   the resolved StorageProvider
-     * @return the persisted file record as a {@link FileResponseDto}
+     * @return the persisted file record as a {@link FileAsset}
      * @throws FileUploadException if the file stream cannot be read or the upload
      *                             fails
      */
-    private FileAsset getFileAsset(MultipartFile file, FileUploadRequestDto requestDto, Long userId,
+    private FileAsset uploadFileAndGetFileAsset(MultipartFile file, FileUploadRequestDto requestDto, Long userId,
         StorageProvider provider) {
         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
         String storedFilename = generateStoredFilename(originalFilename);
