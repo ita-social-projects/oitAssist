@@ -1,5 +1,9 @@
 package com.itasocialacademy.oitassist.submission.service;
 
+import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
+import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
+import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
+import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
@@ -7,14 +11,18 @@ import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
+import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.submission.dao.dto.response.SubmissionResponseDTO;
 import com.itasocialacademy.oitassist.submission.dao.model.Submission;
 import com.itasocialacademy.oitassist.submission.dao.repository.SubmissionRepository;
+import com.itasocialacademy.oitassist.submission.exceptions.NotAParticipantException;
 import com.itasocialacademy.oitassist.submission.exceptions.SubmissionNotFoundException;
+import com.itasocialacademy.oitassist.submission.exceptions.TourIsNotInProgressException;
 import com.itasocialacademy.oitassist.submission.mapper.SubmissionMapper;
 import com.itasocialacademy.oitassist.submission.service.interfaces.SubmissionService;
 import com.itasocialacademy.oitassist.taskassignment.api.TaskAssignmentFacade;
+import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskRequirementsDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import java.time.Instant;
@@ -34,6 +42,8 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final SecurityFacade securityFacade;
     private final FileManagerFacade fileManagerFacade;
     private final TaskAssignmentFacade taskAssignmentFacade;
+    private final CompetitionFacade competitionFacade;
+    private final ParticipationFacade participationFacade;
 
     @Override
     @Transactional
@@ -43,13 +53,24 @@ public class SubmissionServiceImpl implements SubmissionService {
             .orElseThrow(() -> new AuthorizationException("User must be logged in to create submissions",
                 ErrorCode.ACCESS_DENIED));
 
-        TaskRequirementsDTO requirements = taskAssignmentFacade.findAssignmentById(taskAssignmentId)
-            .orElseThrow(() -> new TaskAssignmentNotFoundException(taskAssignmentId))
-            .requirements();
+        TaskAssignmentDetailDTO taskAssignment = taskAssignmentFacade.findAssignmentById(taskAssignmentId)
+            .orElseThrow(() -> new TaskAssignmentNotFoundException(taskAssignmentId));
+
+        Long tourId = taskAssignment.tourId();
+        TourDetail tourDetail = competitionFacade.findTourById(tourId)
+            .orElseThrow(() -> new TourNotFoundException(tourId));
+
+        if (!Objects.equals(tourDetail.executionStatus(), ExecutionStatus.IN_PROGRESS)) {
+            throw new TourIsNotInProgressException();
+        }
+
+        if (!participationFacade.isUserAStageParticipant(userId, tourDetail.stageId())) {
+            throw new NotAParticipantException();
+        }
 
         List<MultipartFile> filesToUpload = findValidFiles(
             files,
-            requirements.requiredFiles());
+            taskAssignment.requirements().requiredFiles());
 
         Optional<Submission> found = repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId);
         Submission entity;
@@ -109,8 +130,20 @@ public class SubmissionServiceImpl implements SubmissionService {
         Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be logged in to view submissions",
                 ErrorCode.ACCESS_DENIED));
+
+        TaskAssignmentDetailDTO taskAssignment = taskAssignmentFacade.findAssignmentById(taskAssignmentId)
+            .orElseThrow(() -> new TaskAssignmentNotFoundException(taskAssignmentId));
+
+        TourDetail tourDetail = competitionFacade.findTourById(taskAssignment.tourId())
+            .orElseThrow(() -> new TourNotFoundException(taskAssignment.tourId()));
+
+        if (!Objects.equals(tourDetail.executionStatus(), ExecutionStatus.IN_PROGRESS)) {
+            throw new TourIsNotInProgressException();
+        }
+
         Submission submission = repository.findBySubmittedByAndTaskAssignmentId(currentUserId, taskAssignmentId)
             .orElseThrow(() -> new SubmissionNotFoundException(currentUserId, taskAssignmentId));
+
         List<FileDetailsDTO> files =
             fileManagerFacade.getFilesByEntity(RelatedEntityType.SUBMISSION, submission.getId(),
                 Set.of(FileRole.GENERIC));

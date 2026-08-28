@@ -4,7 +4,10 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.submission.dao.dto.response.SubmissionResponseDTO;
 import com.itasocialacademy.oitassist.submission.exceptions.SubmissionNotFoundException;
+import com.itasocialacademy.oitassist.submission.exceptions.TourIsNotInProgressException;
+import com.itasocialacademy.oitassist.submission.exceptions.NotAParticipantException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
+import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,6 +22,10 @@ public interface SubmissionService {
      * @throws AuthorizationException          if current user is unauthorized
      * @throws TaskAssignmentNotFoundException if task assignment is not found by
      *                                         the given id
+     * @throws TourNotFoundException           if tour is not found
+     * @throws TourIsNotInProgressException    if tour is not currently in progress
+     * @throws NotAParticipantException        if current user is not a tour
+     *                                         participant
      */
     SubmissionResponseDTO createSubmission(String comment, Long taskAssignmentId, List<MultipartFile> files);
 
@@ -56,9 +63,13 @@ public interface SubmissionService {
      * @param taskAssignmentId unique identifier of the task assignment which
      *                         submission was sent for
      * @return {@link SubmissionResponseDTO}
-     * @throws AuthorizationException      if current user is unauthorized
-     * @throws SubmissionNotFoundException if there is no submission found with
-     *                                     currentUserId and taskAssignmentId
+     * @throws AuthorizationException          if current user is unauthorized
+     * @throws SubmissionNotFoundException     if there is no submission found with
+     *                                         currentUserId and taskAssignmentId
+     * @throws TaskAssignmentNotFoundException if task assignment is not found by
+     *                                         the given id
+     * @throws TourNotFoundException           if tour is not found
+     * @throws TourIsNotInProgressException    if tour is not currently in progress
      */
     SubmissionResponseDTO getMySubmissionByTaskAssignmentId(Long taskAssignmentId);
 }

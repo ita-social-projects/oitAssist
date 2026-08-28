@@ -41,6 +41,8 @@ public enum ErrorCode {
     ENTITY_NOT_FOUND(ErrorCategory.NOT_FOUND),
 
     SUBMISSION_NOT_FOUND(ErrorCategory.NOT_FOUND),
+    TOUR_NOT_IN_PROGRESS(ErrorCategory.CONFLICT),
+    NOT_A_PARTICIPANT(ErrorCategory.AUTHORIZATION),
 
     TASK_NOT_FOUND(ErrorCategory.NOT_FOUND),
     TASK_ASSIGNMENT_NOT_FOUND(ErrorCategory.NOT_FOUND),

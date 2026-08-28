@@ -4,17 +4,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
+import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
+import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
+import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.submission.dao.dto.response.SubmissionResponseDTO;
 import com.itasocialacademy.oitassist.submission.dao.model.Submission;
 import com.itasocialacademy.oitassist.submission.dao.repository.SubmissionRepository;
+import com.itasocialacademy.oitassist.submission.exceptions.NotAParticipantException;
 import com.itasocialacademy.oitassist.submission.exceptions.SubmissionNotFoundException;
+import com.itasocialacademy.oitassist.submission.exceptions.TourIsNotInProgressException;
 import com.itasocialacademy.oitassist.submission.mapper.SubmissionMapper;
 import com.itasocialacademy.oitassist.taskassignment.api.TaskAssignmentFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
@@ -47,6 +53,10 @@ public class SubmissionServiceTest {
     private SubmissionServiceImpl submissionService;
     @Mock
     private SubmissionMapper submissionMapper;
+    @Mock
+    private CompetitionFacade competitionFacade;
+    @Mock
+    private ParticipationFacade participationFacade;
 
     private Submission submission;
     private SubmissionResponseDTO response;
@@ -204,15 +214,33 @@ public class SubmissionServiceTest {
     void getMySubmissionByTaskAssignmentId_ShouldReturnSubmission_WhenSubmissionExists() {
         Long userId = 100L;
         Long taskAssignmentId = 200L;
+        Long tourId = 300L;
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+
+        TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
+        when(assignment.tourId()).thenReturn(tourId);
+
+        TourDetail tourDetail = mock(TourDetail.class);
+        when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
+
+        when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
+            .thenReturn(Optional.of(assignment));
+
+        when(competitionFacade.findTourById(tourId))
+            .thenReturn(Optional.of(tourDetail));
+
         when(repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId))
             .thenReturn(Optional.of(submission));
+
         when(fileManagerFacade.getFilesByEntity(
             eq(RelatedEntityType.SUBMISSION),
             eq(1L),
-            eq(Set.of(FileRole.GENERIC)))).thenReturn(files);
-        when(submissionMapper.toResponse(submission, files)).thenReturn(response);
+            eq(Set.of(FileRole.GENERIC))))
+            .thenReturn(files);
+
+        when(submissionMapper.toResponse(submission, files))
+            .thenReturn(response);
 
         SubmissionResponseDTO result =
             submissionService.getMySubmissionByTaskAssignmentId(taskAssignmentId);
@@ -220,11 +248,20 @@ public class SubmissionServiceTest {
         assertThat(result).isSameAs(response);
 
         verify(securityFacade).getCurrentUserId();
-        verify(repository).findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId);
+
+        verify(taskAssignmentFacade).findAssignmentById(taskAssignmentId);
+
+        verify(competitionFacade).findTourById(tourId);
+
+        verify(repository).findBySubmittedByAndTaskAssignmentId(
+            userId,
+            taskAssignmentId);
+
         verify(fileManagerFacade).getFilesByEntity(
             RelatedEntityType.SUBMISSION,
             1L,
             Set.of(FileRole.GENERIC));
+
         verify(submissionMapper).toResponse(submission, files);
     }
 
@@ -243,21 +280,45 @@ public class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("getMySubmissionByTaskAssignmentId should throw SubmissionNotFoundException when submission does not" +
-        " exist")
+    @DisplayName("getMySubmissionByTaskAssignmentId should throw SubmissionNotFoundException when submission does not exist")
     void getMySubmissionByTaskAssignmentId_ShouldThrowSubmissionNotFoundException_WhenSubmissionDoesNotExist() {
         Long userId = 100L;
         Long taskAssignmentId = 200L;
+        Long tourId = 300L;
+
+        TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
+        when(assignment.tourId()).thenReturn(tourId);
+
+        TourDetail tourDetail = mock(TourDetail.class);
+        when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+
+        when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
+            .thenReturn(Optional.of(assignment));
+
+        when(competitionFacade.findTourById(tourId))
+            .thenReturn(Optional.of(tourDetail));
+
         when(repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId))
             .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> submissionService.getMySubmissionByTaskAssignmentId(taskAssignmentId))
             .isInstanceOf(SubmissionNotFoundException.class);
 
-        verify(repository).findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId);
-        verifyNoInteractions(fileManagerFacade, submissionMapper);
+        verify(securityFacade).getCurrentUserId();
+
+        verify(taskAssignmentFacade).findAssignmentById(taskAssignmentId);
+
+        verify(competitionFacade).findTourById(tourId);
+
+        verify(repository).findBySubmittedByAndTaskAssignmentId(
+            userId,
+            taskAssignmentId);
+
+        verifyNoInteractions(
+            fileManagerFacade,
+            submissionMapper);
     }
 
     private TaskRequirementsDTO taskRequirements() {
@@ -277,6 +338,8 @@ public class SubmissionServiceTest {
     void createSubmission_ShouldCreateSubmissionAndUploadValidFiles() {
         Long userId = 100L;
         Long taskAssignmentId = 200L;
+        Long tourId = 300L;
+        Long stageId = 400L;
 
         MultipartFile validFile = mock(MultipartFile.class);
         MultipartFile invalidFile = mock(MultipartFile.class);
@@ -291,11 +354,26 @@ public class SubmissionServiceTest {
         TaskRequirementsDTO requirements = taskRequirements();
 
         TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
+        when(assignment.tourId()).thenReturn(tourId);
         when(assignment.requirements()).thenReturn(requirements);
 
+        TourDetail tourDetail = mock(TourDetail.class);
+        when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
+        when(tourDetail.stageId()).thenReturn(stageId);
+
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+
         when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
             .thenReturn(Optional.of(assignment));
+
+        when(competitionFacade.findTourById(tourId))
+            .thenReturn(Optional.of(tourDetail));
+
+        when(participationFacade.isUserAStageParticipant(userId, stageId))
+            .thenReturn(true);
+
+        when(repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId))
+            .thenReturn(Optional.empty());
 
         when(repository.save(any(Submission.class))).thenAnswer(invocation -> {
             Submission saved = invocation.getArgument(0);
@@ -303,14 +381,12 @@ public class SubmissionServiceTest {
             return saved;
         });
 
-        when(repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId))
-            .thenReturn(Optional.empty());
-
         when(fileManagerFacade.uploadFiles(
             eq(List.of(validFile)),
             eq(RelatedEntityType.SUBMISSION),
             eq(1L),
-            eq(FileRole.GENERIC))).thenReturn(files);
+            eq(FileRole.GENERIC)))
+            .thenReturn(files);
 
         when(submissionMapper.toResponse(any(Submission.class), eq(files)))
             .thenReturn(response);
@@ -322,6 +398,15 @@ public class SubmissionServiceTest {
 
         assertThat(result).isSameAs(response);
 
+        verify(securityFacade).getCurrentUserId();
+
+        verify(taskAssignmentFacade).findAssignmentById(taskAssignmentId);
+
+        verify(competitionFacade).findTourById(tourId);
+
+        verify(participationFacade).isUserAStageParticipant(userId, stageId);
+
+        verify(repository).findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId);
         verify(repository).save(any(Submission.class));
 
         verify(fileManagerFacade).uploadFiles(
@@ -330,7 +415,9 @@ public class SubmissionServiceTest {
             eq(1L),
             eq(FileRole.GENERIC));
 
-        verify(submissionMapper).toResponse(any(Submission.class), eq(files));
+        verify(submissionMapper).toResponse(
+            any(Submission.class),
+            eq(files));
     }
 
     @Test
@@ -338,6 +425,8 @@ public class SubmissionServiceTest {
     void createSubmission_ShouldUpdateExistingSubmission_WhenSubmissionAlreadyExists() {
         Long userId = 100L;
         Long taskAssignmentId = 200L;
+        Long tourId = 300L;
+        Long stageId = 400L;
 
         MultipartFile file = mock(MultipartFile.class);
 
@@ -348,7 +437,12 @@ public class SubmissionServiceTest {
         TaskRequirementsDTO requirements = taskRequirements();
 
         TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
+        when(assignment.tourId()).thenReturn(tourId);
         when(assignment.requirements()).thenReturn(requirements);
+
+        TourDetail tourDetail = mock(TourDetail.class);
+        when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
+        when(tourDetail.stageId()).thenReturn(stageId);
 
         Submission existingSubmission = Submission.builder()
             .id(1L)
@@ -364,15 +458,26 @@ public class SubmissionServiceTest {
             .build();
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+
         when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
             .thenReturn(Optional.of(assignment));
+
+        when(competitionFacade.findTourById(tourId))
+            .thenReturn(Optional.of(tourDetail));
+
+        when(participationFacade.isUserAStageParticipant(userId, stageId))
+            .thenReturn(true);
+
         when(repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId))
             .thenReturn(Optional.of(existingSubmission));
+
         when(fileManagerFacade.uploadFiles(
             eq(List.of(file)),
             eq(RelatedEntityType.SUBMISSION),
             eq(1L),
-            eq(FileRole.GENERIC))).thenReturn(uploadedFiles);
+            eq(FileRole.GENERIC)))
+            .thenReturn(uploadedFiles);
+
         when(submissionMapper.toResponse(existingSubmission, uploadedFiles))
             .thenReturn(response);
 
@@ -384,6 +489,15 @@ public class SubmissionServiceTest {
         assertThat(result).isSameAs(response);
         assertThat(existingSubmission.getComment()).isEqualTo("New comment");
 
+        verify(securityFacade).getCurrentUserId();
+
+        verify(taskAssignmentFacade).findAssignmentById(taskAssignmentId);
+
+        verify(competitionFacade).findTourById(tourId);
+
+        verify(participationFacade).isUserAStageParticipant(userId, stageId);
+
+        verify(repository).findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId);
         verify(repository, never()).save(any(Submission.class));
 
         verify(fileManagerFacade).detachAllFilesByEntity(
@@ -396,14 +510,18 @@ public class SubmissionServiceTest {
             eq(RelatedEntityType.SUBMISSION),
             eq(1L),
             eq(FileRole.GENERIC));
+
+        verify(submissionMapper).toResponse(existingSubmission, uploadedFiles);
     }
 
     @Test
     @DisplayName("createSubmission should throw TaskAssignmentNotFoundException when assignment does not exist")
     void createSubmission_ShouldThrowTaskAssignmentNotFoundException_WhenAssignmentDoesNotExist() {
+        Long userId = 100L;
         Long taskAssignmentId = 200L;
 
-        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+
         when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
             .thenReturn(Optional.empty());
 
@@ -413,8 +531,16 @@ public class SubmissionServiceTest {
             List.of(mock(MultipartFile.class))))
             .isInstanceOf(TaskAssignmentNotFoundException.class);
 
+        verify(securityFacade).getCurrentUserId();
+
         verify(taskAssignmentFacade).findAssignmentById(taskAssignmentId);
-        verifyNoInteractions(repository, fileManagerFacade, submissionMapper);
+
+        verifyNoInteractions(
+            competitionFacade,
+            participationFacade,
+            repository,
+            fileManagerFacade,
+            submissionMapper);
     }
 
     @Test
@@ -422,6 +548,8 @@ public class SubmissionServiceTest {
     void createSubmission_ShouldUploadOnlyOneMatchingFile_WhenFilesMatchSameRequirement() {
         Long userId = 100L;
         Long taskAssignmentId = 200L;
+        Long tourId = 1L;
+        Long stageId = 200L;
 
         MultipartFile firstFile = mock(MultipartFile.class);
         MultipartFile secondFile = mock(MultipartFile.class);
@@ -437,8 +565,22 @@ public class SubmissionServiceTest {
                 10)));
 
         TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
+        when(assignment.tourId()).thenReturn(tourId);
         when(assignment.requirements()).thenReturn(requirements);
 
+        TourDetail tourDetail = mock(TourDetail.class);
+        when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
+        when(tourDetail.stageId()).thenReturn(stageId);
+
+        when(competitionFacade.findTourById(tourId))
+            .thenReturn(Optional.of(tourDetail));
+        when(tourDetail.executionStatus())
+            .thenReturn(ExecutionStatus.IN_PROGRESS);
+        when(tourDetail.stageId())
+            .thenReturn(stageId);
+
+        when(participationFacade.isUserAStageParticipant(userId, stageId))
+            .thenReturn(true);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
             .thenReturn(Optional.of(assignment));
@@ -484,5 +626,136 @@ public class SubmissionServiceTest {
         verify(submissionMapper).toResponse(
             any(Submission.class),
             eq(uploadedFiles));
+    }
+
+    @Test
+    @DisplayName("createSubmission should throw TourIsNotInProgressException when tour is not in progress")
+    void createSubmission_ShouldThrowTourIsNotInProgressException_WhenTourIsNotInProgress() {
+        Long userId = 100L;
+        Long taskAssignmentId = 200L;
+        Long tourId = 300L;
+
+        TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
+        when(assignment.tourId()).thenReturn(tourId);
+
+        TourDetail tourDetail = mock(TourDetail.class);
+        when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.SCHEDULED);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
+            .thenReturn(Optional.of(assignment));
+        when(competitionFacade.findTourById(tourId))
+            .thenReturn(Optional.of(tourDetail));
+
+        assertThatThrownBy(() -> submissionService.createSubmission(
+            "Test comment",
+            taskAssignmentId,
+            List.of()))
+            .isInstanceOf(TourIsNotInProgressException.class);
+
+        verify(securityFacade).getCurrentUserId();
+        verify(taskAssignmentFacade).findAssignmentById(taskAssignmentId);
+        verify(competitionFacade).findTourById(tourId);
+
+        verifyNoInteractions(
+            participationFacade,
+            repository,
+            fileManagerFacade,
+            submissionMapper);
+    }
+
+    @Test
+    @DisplayName("createSubmission should throw NotAParticipantException when user is not a stage participant")
+    void createSubmission_ShouldThrowNotAParticipantException_WhenUserIsNotStageParticipant() {
+        Long userId = 100L;
+        Long taskAssignmentId = 200L;
+        Long tourId = 300L;
+        Long stageId = 400L;
+
+        TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
+        when(assignment.tourId()).thenReturn(tourId);
+
+        TourDetail tourDetail = mock(TourDetail.class);
+        when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
+        when(tourDetail.stageId()).thenReturn(stageId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
+            .thenReturn(Optional.of(assignment));
+        when(competitionFacade.findTourById(tourId))
+            .thenReturn(Optional.of(tourDetail));
+        when(participationFacade.isUserAStageParticipant(userId, stageId))
+            .thenReturn(false);
+
+        assertThatThrownBy(() -> submissionService.createSubmission(
+            "Test comment",
+            taskAssignmentId,
+            List.of()))
+            .isInstanceOf(NotAParticipantException.class);
+
+        verify(securityFacade).getCurrentUserId();
+        verify(taskAssignmentFacade).findAssignmentById(taskAssignmentId);
+        verify(competitionFacade).findTourById(tourId);
+        verify(participationFacade).isUserAStageParticipant(userId, stageId);
+
+        verifyNoInteractions(
+            repository,
+            fileManagerFacade,
+            submissionMapper);
+    }
+
+    @Test
+    @DisplayName("getMySubmissionByTaskAssignmentId should throw TaskAssignmentNotFoundException when assignment does not exist")
+    void getMySubmissionByTaskAssignmentId_ShouldThrowTaskAssignmentNotFoundException_WhenAssignmentDoesNotExist() {
+        Long userId = 100L;
+        Long taskAssignmentId = 200L;
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
+            .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> submissionService.getMySubmissionByTaskAssignmentId(taskAssignmentId))
+            .isInstanceOf(TaskAssignmentNotFoundException.class);
+
+        verify(securityFacade).getCurrentUserId();
+        verify(taskAssignmentFacade).findAssignmentById(taskAssignmentId);
+
+        verifyNoInteractions(
+            competitionFacade,
+            repository,
+            fileManagerFacade,
+            submissionMapper);
+    }
+
+    @Test
+    @DisplayName("getMySubmissionByTaskAssignmentId should throw TourIsNotInProgressException when tour is not in progress")
+    void getMySubmissionByTaskAssignmentId_ShouldThrowTourIsNotInProgressException_WhenTourIsNotInProgress() {
+        Long userId = 100L;
+        Long taskAssignmentId = 200L;
+        Long tourId = 300L;
+
+        TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
+        when(assignment.tourId()).thenReturn(tourId);
+
+        TourDetail tourDetail = mock(TourDetail.class);
+        when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.FINISHED);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
+            .thenReturn(Optional.of(assignment));
+        when(competitionFacade.findTourById(tourId))
+            .thenReturn(Optional.of(tourDetail));
+
+        assertThatThrownBy(() -> submissionService.getMySubmissionByTaskAssignmentId(taskAssignmentId))
+            .isInstanceOf(TourIsNotInProgressException.class);
+
+        verify(securityFacade).getCurrentUserId();
+        verify(taskAssignmentFacade).findAssignmentById(taskAssignmentId);
+        verify(competitionFacade).findTourById(tourId);
+
+        verifyNoInteractions(
+            repository,
+            fileManagerFacade,
+            submissionMapper);
     }
 }
