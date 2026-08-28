@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.participation.saver;
+package com.itasocialacademy.oitassist.participation.components.saver;
 
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Invitation;

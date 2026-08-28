@@ -18,7 +18,7 @@ import com.itasocialacademy.oitassist.participation.dao.model.Participation;
 import com.itasocialacademy.oitassist.participation.dao.specification.InvitationSpecification;
 import com.itasocialacademy.oitassist.participation.mapper.UserEnrollmentAssembler;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.UserSummaryMapper;
-import com.itasocialacademy.oitassist.participation.saver.InvitationRequestsSaver;
+import com.itasocialacademy.oitassist.participation.components.saver.InvitationRequestsSaver;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
@@ -28,7 +28,7 @@ import com.itasocialacademy.oitassist.participation.dao.repository.Participation
 import com.itasocialacademy.oitassist.participation.exceptions.*;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessInvitationMapper;
-import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
+import com.itasocialacademy.oitassist.participation.components.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.interfaces.InvitationService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;

@@ -26,8 +26,8 @@ import com.itasocialacademy.oitassist.participation.mapper.interfaces.Applicatio
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.UserSummaryMapper;
-import com.itasocialacademy.oitassist.participation.scheduler.AfterCommitScheduler;
-import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
+import com.itasocialacademy.oitassist.participation.components.scheduler.AfterCommitScheduler;
+import com.itasocialacademy.oitassist.participation.components.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
