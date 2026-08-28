@@ -12,7 +12,6 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.InvitationRequestEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateInvitationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.InvitationListItemResponse;
@@ -101,10 +100,7 @@ class InvitationServiceTest {
     @BeforeEach
     void setUp() {
         createInvitationRequest = CreateInvitationRequest.builder()
-            .competitionId(2L)
-            .stageId(3L)
-            .studentIds(List.of(10L))
-            .build();
+            .studentIds(List.of(10L)).build();
 
         invitation = new Invitation();
         invitation.setId(1L);
@@ -142,9 +138,9 @@ class InvitationServiceTest {
             List.of(10L), 2L, 3L, RequestStatus.PENDING)).thenReturn(List.of());
         when(participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(List.of(10L), 2L, 3L))
             .thenReturn(List.of());
-        when(invitationRequestsSaver.saveSingleInvitation(10L, createInvitationRequest)).thenReturn(invitation);
+        when(invitationRequestsSaver.saveSingleInvitation(10L, 2L, 3L)).thenReturn(invitation);
 
-        CreateInvitationResponse response = invitationService.sendEnrollmentRequest(createInvitationRequest);
+        CreateInvitationResponse response = invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest);
 
         assertNotNull(response);
         assertEquals(1, response.getSucceeded().size());
@@ -156,19 +152,16 @@ class InvitationServiceTest {
     @Test
     void sendEnrollmentRequest_duplicateStudentIds_shouldThrowUserInvitationRequestException() {
         CreateInvitationRequest requestWithDuplicates = CreateInvitationRequest.builder()
-            .competitionId(2L)
-            .stageId(3L)
-            .studentIds(List.of(10L, 10L))
-            .build();
+            .studentIds(List.of(10L, 10L)).build();
 
         when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
 
         UserInvitationRequestException exception = assertThrows(UserInvitationRequestException.class,
-            () -> invitationService.sendEnrollmentRequest(requestWithDuplicates));
+            () -> invitationService.sendInvitationRequests(2L, 3L, requestWithDuplicates));
 
         assertTrue(exception.getMessage().contains("Duplicate student IDs"));
-        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any());
+        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any(), any());
     }
 
     @Test
@@ -176,9 +169,9 @@ class InvitationServiceTest {
         when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.empty());
 
         assertThrows(CompetitionNotFoundException.class,
-            () -> invitationService.sendEnrollmentRequest(createInvitationRequest));
+            () -> invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest));
 
-        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any());
+        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any(), any());
     }
 
     @Test
@@ -187,9 +180,9 @@ class InvitationServiceTest {
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.empty());
 
         assertThrows(StageNotFoundException.class,
-            () -> invitationService.sendEnrollmentRequest(createInvitationRequest));
+            () -> invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest));
 
-        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any());
+        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any(), any());
     }
 
     @Test
@@ -203,10 +196,10 @@ class InvitationServiceTest {
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
 
         UserInvitationRequestException exception = assertThrows(UserInvitationRequestException.class,
-            () -> invitationService.sendEnrollmentRequest(createInvitationRequest));
+            () -> invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest));
 
         assertTrue(exception.getMessage().contains("cannot be enrolled"));
-        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any());
+        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any(), any());
     }
 
     @Test
@@ -221,9 +214,9 @@ class InvitationServiceTest {
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(mismatchedStage));
 
         assertThrows(CompetitionHierarchyValidationException.class,
-            () -> invitationService.sendEnrollmentRequest(createInvitationRequest));
+            () -> invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest));
 
-        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any());
+        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any(), any());
     }
 
     @Test
@@ -237,13 +230,13 @@ class InvitationServiceTest {
         when(participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(List.of(10L), 2L, 3L))
             .thenReturn(List.of());
 
-        CreateInvitationResponse response = invitationService.sendEnrollmentRequest(createInvitationRequest);
+        CreateInvitationResponse response = invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest);
 
         assertTrue(response.getSucceeded().isEmpty());
         assertEquals(1, response.getFailed().size());
         assertEquals(10L, response.getFailed().getFirst().studentId());
         assertEquals("Student not found", response.getFailed().getFirst().reason());
-        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any());
+        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any(), any());
     }
 
     @Test
@@ -259,12 +252,12 @@ class InvitationServiceTest {
         when(participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(List.of(10L), 2L, 3L))
             .thenReturn(List.of());
 
-        CreateInvitationResponse response = invitationService.sendEnrollmentRequest(createInvitationRequest);
+        CreateInvitationResponse response = invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest);
 
         assertTrue(response.getSucceeded().isEmpty());
         assertEquals(1, response.getFailed().size());
         assertEquals("User does not have the required role", response.getFailed().getFirst().reason());
-        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any());
+        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any(), any());
     }
 
     @Test
@@ -281,12 +274,12 @@ class InvitationServiceTest {
         when(participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(List.of(10L), 2L, 3L))
             .thenReturn(List.of());
 
-        CreateInvitationResponse response = invitationService.sendEnrollmentRequest(createInvitationRequest);
+        CreateInvitationResponse response = invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest);
 
         assertTrue(response.getSucceeded().isEmpty());
         assertEquals(1, response.getFailed().size());
         assertEquals("Student already has a pending invitation", response.getFailed().getFirst().reason());
-        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any());
+        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any(), any());
     }
 
     @Test
@@ -305,11 +298,11 @@ class InvitationServiceTest {
         when(participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(List.of(10L), 2L, 3L))
             .thenReturn(List.of(participation));
 
-        CreateInvitationResponse response = invitationService.sendEnrollmentRequest(createInvitationRequest);
+        CreateInvitationResponse response = invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest);
 
         assertTrue(response.getSucceeded().isEmpty());
         assertEquals(1, response.getFailed().size());
-        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any());
+        verify(invitationRequestsSaver, never()).saveSingleInvitation(any(), any(), any());
     }
 
     @Test
@@ -325,10 +318,10 @@ class InvitationServiceTest {
         ConstraintViolationException constraintViolation = new ConstraintViolationException(
             "duplicate pending invitation", null, "idx_unique_pending_invitation");
 
-        when(invitationRequestsSaver.saveSingleInvitation(10L, createInvitationRequest))
+        when(invitationRequestsSaver.saveSingleInvitation(10L, 2L, 3L))
             .thenThrow(new DataIntegrityViolationException("constraint violation", constraintViolation));
 
-        CreateInvitationResponse response = invitationService.sendEnrollmentRequest(createInvitationRequest);
+        CreateInvitationResponse response = invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest);
 
         assertTrue(response.getSucceeded().isEmpty());
         assertEquals(1, response.getFailed().size());
@@ -348,11 +341,11 @@ class InvitationServiceTest {
         ConstraintViolationException unrelatedViolation = new ConstraintViolationException(
             "not-null violation", null, "some_other_constraint");
 
-        when(invitationRequestsSaver.saveSingleInvitation(10L, createInvitationRequest))
+        when(invitationRequestsSaver.saveSingleInvitation(10L, 2L, 3L))
             .thenThrow(new DataIntegrityViolationException("constraint violation", unrelatedViolation));
 
         assertThrows(UnexpectedConstraintViolationException.class,
-            () -> invitationService.sendEnrollmentRequest(createInvitationRequest));
+            () -> invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest));
     }
 
     // ---- acceptRequest ----
@@ -535,14 +528,14 @@ class InvitationServiceTest {
             List.of(10L), 2L, 3L, RequestStatus.PENDING)).thenReturn(List.of());
         when(participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(List.of(10L), 2L, 3L))
             .thenReturn(List.of());
-        when(invitationRequestsSaver.saveSingleInvitation(10L, createInvitationRequest)).thenReturn(invitation);
+        when(invitationRequestsSaver.saveSingleInvitation(10L, 2L, 3L)).thenReturn(invitation);
         when(userFacade.findByIds(List.of(10L))).thenReturn(List.of(validUser));
         when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
         when(userFacade.findProfilesByIds(List.of(10L))).thenReturn(
             List.of(new UserProfileDetails(10L, "Test", "Test Surname", "test@mail.com")));
-        when(invitationRequestsSaver.saveSingleInvitation(10L, createInvitationRequest)).thenReturn(invitation);
-        invitationService.sendEnrollmentRequest(createInvitationRequest);
+        when(invitationRequestsSaver.saveSingleInvitation(10L, 2L, 3L)).thenReturn(invitation);
+        invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest);
 
         ArgumentCaptor<InvitationRequestEvent> eventCaptor = ArgumentCaptor.forClass(InvitationRequestEvent.class);
         verify(sender).sendInvitationEmail(eventCaptor.capture());
@@ -562,7 +555,7 @@ class InvitationServiceTest {
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
         when(userFacade.findByIds(List.of(10L))).thenReturn(List.of(orgUser));
 
-        invitationService.sendEnrollmentRequest(createInvitationRequest);
+        invitationService.sendInvitationRequests(2L, 3L, createInvitationRequest);
 
         verify(sender, never()).sendInvitationEmail(any());
     }
@@ -581,14 +574,12 @@ class InvitationServiceTest {
     @Test
     void getEnrollmentRequests_noCandidates_shouldReturnEmptyPage() {
         Pageable pageable = PageRequest.of(0, 10);
-        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
-            .competitionId(2L).stageId(3L).build();
 
         when(invitationRepository.findAll(any(Specification.class))).thenReturn(List.of());
         when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
 
-        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(filter, null, pageable);
+        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(2L, 3L, null, pageable);
 
         assertTrue(result.isEmpty());
         verify(userFacade, never()).findUserIdsBySearchWithinIds(any(), any());
@@ -598,8 +589,6 @@ class InvitationServiceTest {
     @Test
     void getEnrollmentRequests_noSearch_shouldReturnAllCandidates() {
         Pageable pageable = PageRequest.of(0, 10);
-        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
-            .competitionId(2L).stageId(3L).build();
 
         Invitation candidateInvitation = new Invitation();
         candidateInvitation.setId(1L);
@@ -627,7 +616,7 @@ class InvitationServiceTest {
                 .toList();
         });
 
-        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(filter, null, pageable);
+        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(2L, 3L, null, pageable);
 
         assertEquals(1, result.getTotalElements());
         assertEquals(1L, result.getContent().getFirst().invitationId());
@@ -637,8 +626,6 @@ class InvitationServiceTest {
     @Test
     void getEnrollmentRequests_searchMatchesNoOne_shouldReturnEmptyPage() {
         Pageable pageable = PageRequest.of(0, 10);
-        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
-            .competitionId(2L).stageId(3L).build();
 
         Invitation candidateInvitation = new Invitation();
         candidateInvitation.setStudentId(10L);
@@ -648,7 +635,7 @@ class InvitationServiceTest {
         when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
 
-        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(filter, "xyz", pageable);
+        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(2L, 3L, "xyz", pageable);
 
         assertTrue(result.isEmpty());
         verify(invitationRepository, never()).findAll(any(Specification.class), any(Pageable.class));
@@ -657,8 +644,6 @@ class InvitationServiceTest {
     @Test
     void getEnrollmentRequests_searchMatchesSubset_shouldFilterByMatchingIds() {
         Pageable pageable = PageRequest.of(0, 10);
-        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
-            .competitionId(2L).stageId(3L).build();
 
         Invitation candidateA = new Invitation();
         candidateA.setStudentId(10L);
@@ -692,7 +677,7 @@ class InvitationServiceTest {
                 .toList();
         });
 
-        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(filter, "test", pageable);
+        Page<InvitationListItemResponse> result = invitationService.getEnrollmentRequests(2L, 3L, "test", pageable);
 
         assertEquals(1, result.getTotalElements());
         assertEquals(5L, result.getContent().getFirst().invitationId());
@@ -701,8 +686,6 @@ class InvitationServiceTest {
     @Test
     void getEnrollmentRequests_stageDoesNotBelongToCompetition_shouldThrowCompetitionHierarchyException() {
         Pageable pageable = PageRequest.of(0, 10);
-        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
-            .competitionId(2L).stageId(3L).build();
 
         StageDetail mismatchedStage = StageDetail.builder()
             .id(3L)
@@ -715,7 +698,7 @@ class InvitationServiceTest {
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
-            () -> invitationService.getEnrollmentRequests(filter, null, pageable));
+            () -> invitationService.getEnrollmentRequests(2L, 3L, null, pageable));
 
         assertTrue(exception.getMessage().contains("does not belong to this competition"));
         verify(invitationRepository, never()).findAll(any(Specification.class));
