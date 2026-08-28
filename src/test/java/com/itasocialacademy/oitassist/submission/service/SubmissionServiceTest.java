@@ -365,13 +365,6 @@ class SubmissionServiceTest {
         when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
         when(tourDetail.stageId()).thenReturn(stageId);
 
-        Submission submission = Submission.builder()
-            .id(1L)
-            .submittedBy(userId)
-            .taskAssignmentId(taskAssignmentId)
-            .comment("Test comment")
-            .build();
-
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
 
         when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
@@ -588,12 +581,6 @@ class SubmissionServiceTest {
         TourDetail tourDetail = mock(TourDetail.class);
         when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
         when(tourDetail.stageId()).thenReturn(stageId);
-
-        Submission submission = Submission.builder()
-            .id(1L)
-            .submittedBy(userId)
-            .taskAssignmentId(taskAssignmentId)
-            .build();
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
 
