@@ -8,6 +8,7 @@ import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.exceptions.DataAccessException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
@@ -364,6 +365,13 @@ class SubmissionServiceTest {
         when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
         when(tourDetail.stageId()).thenReturn(stageId);
 
+        Submission submission = Submission.builder()
+            .id(1L)
+            .submittedBy(userId)
+            .taskAssignmentId(taskAssignmentId)
+            .comment("Test comment")
+            .build();
+
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
 
         when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
@@ -376,13 +384,7 @@ class SubmissionServiceTest {
             .thenReturn(true);
 
         when(repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId))
-            .thenReturn(Optional.empty());
-
-        when(repository.save(any(Submission.class))).thenAnswer(invocation -> {
-            Submission saved = invocation.getArgument(0);
-            saved.setId(1L);
-            return saved;
-        });
+            .thenReturn(Optional.of(submission));
 
         when(fileManagerFacade.uploadFiles(
             List.of(validFile),
@@ -391,7 +393,7 @@ class SubmissionServiceTest {
             FileRole.GENERIC))
             .thenReturn(files);
 
-        when(submissionMapper.toResponse(any(Submission.class), eq(files)))
+        when(submissionMapper.toResponse(submission, files))
             .thenReturn(response);
 
         SubmissionResponseDTO result = submissionService.createSubmission(
@@ -402,15 +404,24 @@ class SubmissionServiceTest {
         assertThat(result).isSameAs(response);
 
         verify(securityFacade).getCurrentUserId();
-
         verify(taskAssignmentFacade).findAssignmentById(taskAssignmentId);
-
         verify(competitionFacade).findTourById(tourId);
-
         verify(participationFacade).isUserAStageParticipant(userId, stageId);
 
-        verify(repository).findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId);
-        verify(repository).save(any(Submission.class));
+        verify(repository).upsertSubmission(
+            eq(userId),
+            eq(taskAssignmentId),
+            eq("Test comment"),
+            any(Instant.class));
+
+        verify(repository).findBySubmittedByAndTaskAssignmentId(
+            userId,
+            taskAssignmentId);
+
+        verify(fileManagerFacade).detachAllFilesByEntity(
+            RelatedEntityType.SUBMISSION,
+            1L,
+            userId);
 
         verify(fileManagerFacade).uploadFiles(
             List.of(validFile),
@@ -418,9 +429,7 @@ class SubmissionServiceTest {
             1L,
             FileRole.GENERIC);
 
-        verify(submissionMapper).toResponse(
-            any(Submission.class),
-            eq(files));
+        verify(submissionMapper).toResponse(submission, files);
     }
 
     @Test
@@ -490,18 +499,21 @@ class SubmissionServiceTest {
             List.of(file));
 
         assertThat(result).isSameAs(responseDTO);
-        assertThat(existingSubmission.getComment()).isEqualTo("New comment");
 
         verify(securityFacade).getCurrentUserId();
-
         verify(taskAssignmentFacade).findAssignmentById(taskAssignmentId);
-
         verify(competitionFacade).findTourById(tourId);
-
         verify(participationFacade).isUserAStageParticipant(userId, stageId);
 
-        verify(repository).findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId);
-        verify(repository, never()).save(any(Submission.class));
+        verify(repository).upsertSubmission(
+            eq(userId),
+            eq(taskAssignmentId),
+            eq("New comment"),
+            any(Instant.class));
+
+        verify(repository).findBySubmittedByAndTaskAssignmentId(
+            userId,
+            taskAssignmentId);
 
         verify(fileManagerFacade).detachAllFilesByEntity(
             RelatedEntityType.SUBMISSION,
@@ -577,43 +589,41 @@ class SubmissionServiceTest {
         when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
         when(tourDetail.stageId()).thenReturn(stageId);
 
-        when(competitionFacade.findTourById(tourId))
-            .thenReturn(Optional.of(tourDetail));
-        when(tourDetail.executionStatus())
-            .thenReturn(ExecutionStatus.IN_PROGRESS);
-        when(tourDetail.stageId())
-            .thenReturn(stageId);
+        Submission submission = Submission.builder()
+            .id(1L)
+            .submittedBy(userId)
+            .taskAssignmentId(taskAssignmentId)
+            .build();
 
-        when(participationFacade.isUserAStageParticipant(userId, stageId))
-            .thenReturn(true);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+
         when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
             .thenReturn(Optional.of(assignment));
 
-        when(repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId))
-            .thenReturn(Optional.empty());
+        when(competitionFacade.findTourById(tourId))
+            .thenReturn(Optional.of(tourDetail));
 
-        when(repository.save(any(Submission.class))).thenAnswer(invocation -> {
-            Submission saved = invocation.getArgument(0);
-            saved.setId(1L);
-            return saved;
-        });
+        when(participationFacade.isUserAStageParticipant(userId, stageId))
+            .thenReturn(true);
+
+        when(repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId))
+            .thenReturn(Optional.of(submission));
 
         List<FileDetailsDTO> uploadedFiles = List.of();
 
         when(fileManagerFacade.uploadFiles(
-            anyList(),
-            eq(RelatedEntityType.SUBMISSION),
-            eq(1L),
-            eq(FileRole.GENERIC))).thenReturn(uploadedFiles);
+            List.of(firstFile),
+            RelatedEntityType.SUBMISSION,
+            1L,
+            FileRole.GENERIC))
+            .thenReturn(uploadedFiles);
 
         SubmissionResponseDTO responseDTO = SubmissionResponseDTO.builder()
             .id(1L)
             .build();
 
-        when(submissionMapper.toResponse(
-            any(Submission.class),
-            eq(uploadedFiles))).thenReturn(responseDTO);
+        when(submissionMapper.toResponse(submission, uploadedFiles))
+            .thenReturn(responseDTO);
 
         SubmissionResponseDTO result = submissionService.createSubmission(
             "Test",
@@ -622,6 +632,21 @@ class SubmissionServiceTest {
 
         assertThat(result).isSameAs(responseDTO);
 
+        verify(repository).upsertSubmission(
+            eq(userId),
+            eq(taskAssignmentId),
+            eq("Test"),
+            any(Instant.class));
+
+        verify(repository).findBySubmittedByAndTaskAssignmentId(
+            userId,
+            taskAssignmentId);
+
+        verify(fileManagerFacade).detachAllFilesByEntity(
+            RelatedEntityType.SUBMISSION,
+            1L,
+            userId);
+
         verify(fileManagerFacade).uploadFiles(
             List.of(firstFile),
             RelatedEntityType.SUBMISSION,
@@ -629,8 +654,8 @@ class SubmissionServiceTest {
             FileRole.GENERIC);
 
         verify(submissionMapper).toResponse(
-            any(Submission.class),
-            eq(uploadedFiles));
+            submission,
+            uploadedFiles);
     }
 
     @Test
@@ -665,6 +690,56 @@ class SubmissionServiceTest {
         verifyNoInteractions(
             participationFacade,
             repository,
+            fileManagerFacade,
+            submissionMapper);
+    }
+
+    @Test
+    @DisplayName("createSubmission should throw DataAccessException when submission cannot be found after upsert")
+    void createSubmission_ShouldThrowDataAccessException_WhenSubmissionNotFoundAfterUpsert() {
+        Long userId = 100L;
+        Long taskAssignmentId = 200L;
+        Long tourId = 300L;
+        Long stageId = 400L;
+
+        TaskRequirementsDTO requirements = taskRequirements();
+
+        TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
+        when(assignment.tourId()).thenReturn(tourId);
+        when(assignment.requirements()).thenReturn(requirements);
+
+        TourDetail tourDetail = mock(TourDetail.class);
+        when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
+        when(tourDetail.stageId()).thenReturn(stageId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
+            .thenReturn(Optional.of(assignment));
+        when(competitionFacade.findTourById(tourId))
+            .thenReturn(Optional.of(tourDetail));
+        when(participationFacade.isUserAStageParticipant(userId, stageId))
+            .thenReturn(true);
+
+        when(repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId))
+            .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> submissionService.createSubmission(
+            "Test comment",
+            taskAssignmentId,
+            List.of()))
+            .isInstanceOf(DataAccessException.class);
+
+        verify(repository).upsertSubmission(
+            eq(userId),
+            eq(taskAssignmentId),
+            eq("Test comment"),
+            any(Instant.class));
+
+        verify(repository).findBySubmittedByAndTaskAssignmentId(
+            userId,
+            taskAssignmentId);
+
+        verifyNoInteractions(
             fileManagerFacade,
             submissionMapper);
     }

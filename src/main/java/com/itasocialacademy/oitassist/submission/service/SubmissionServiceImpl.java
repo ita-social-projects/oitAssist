@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.core.exceptions.DataAccessException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
@@ -51,24 +52,33 @@ public class SubmissionServiceImpl implements SubmissionService {
 
     @Override
     @Transactional
-    public SubmissionResponseDTO createSubmission(String comment, Long taskAssignmentId,
+    public SubmissionResponseDTO createSubmission(
+        String comment,
+        Long taskAssignmentId,
         List<MultipartFile> files) {
         Long userId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User must be logged in to create submissions",
+            .orElseThrow(() -> new AuthorizationException(
+                "User must be logged in to create submissions",
                 ErrorCode.ACCESS_DENIED));
 
-        TaskAssignmentDetailDTO taskAssignment = taskAssignmentFacade.findAssignmentById(taskAssignmentId)
-            .orElseThrow(() -> new TaskAssignmentNotFoundException(taskAssignmentId));
+        TaskAssignmentDetailDTO taskAssignment =
+            taskAssignmentFacade.findAssignmentById(taskAssignmentId)
+                .orElseThrow(() -> new TaskAssignmentNotFoundException(taskAssignmentId));
 
         Long tourId = taskAssignment.tourId();
+
         TourDetail tourDetail = competitionFacade.findTourById(tourId)
             .orElseThrow(() -> new TourNotFoundException(tourId));
 
-        if (!Objects.equals(tourDetail.executionStatus(), ExecutionStatus.IN_PROGRESS)) {
+        if (!Objects.equals(
+            tourDetail.executionStatus(),
+            ExecutionStatus.IN_PROGRESS)) {
             throw new TourIsNotInProgressException();
         }
 
-        if (!participationFacade.isUserAStageParticipant(userId, tourDetail.stageId())) {
+        if (!participationFacade.isUserAStageParticipant(
+            userId,
+            tourDetail.stageId())) {
             throw new NotAParticipantException();
         }
 
@@ -76,25 +86,28 @@ public class SubmissionServiceImpl implements SubmissionService {
             files,
             taskAssignment.requirements().requiredFiles());
 
-        Optional<Submission> found = repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId);
-        Submission entity;
-        if (found.isPresent()) {
-            entity = found.get();
-            fileManagerFacade.detachAllFilesByEntity(RelatedEntityType.SUBMISSION, entity.getId(), userId);
-            entity.setComment(comment);
-            entity.setSubmittedAt(Instant.now());
-        } else {
-            entity = Submission.builder()
-                .taskAssignmentId(taskAssignmentId)
-                .comment(comment)
-                .submittedBy(userId)
-                .submittedAt(Instant.now())
-                .build();
-            repository.save(entity);
-        }
+        repository.upsertSubmission(
+            userId,
+            taskAssignmentId,
+            comment,
+            Instant.now());
+
+        Submission entity = repository
+            .findBySubmittedByAndTaskAssignmentId(
+                userId,
+                taskAssignmentId)
+            .orElseThrow(() -> new DataAccessException("Submission was not created", ErrorCode.DATA_ACCESS_ERROR));
+
+        fileManagerFacade.detachAllFilesByEntity(
+            RelatedEntityType.SUBMISSION,
+            entity.getId(),
+            userId);
 
         List<FileDetailsDTO> uploadedFiles =
-            fileManagerFacade.uploadFiles(filesToUpload, RelatedEntityType.SUBMISSION, entity.getId(),
+            fileManagerFacade.uploadFiles(
+                filesToUpload,
+                RelatedEntityType.SUBMISSION,
+                entity.getId(),
                 FileRole.GENERIC);
 
         return submissionMapper.toResponse(entity, uploadedFiles);
