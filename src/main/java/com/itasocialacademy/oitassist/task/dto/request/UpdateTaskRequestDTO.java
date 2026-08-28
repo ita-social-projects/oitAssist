@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.task.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 @Schema(description = "DTO for updating an already existing task")
@@ -21,5 +22,7 @@ public record UpdateTaskRequestDTO(
     @Schema(
         description = "File ids to be detached from task",
         example = "[52]",
-        requiredMode = Schema.RequiredMode.NOT_REQUIRED) List<Long> removedFileIds) {
+        requiredMode = Schema.RequiredMode.NOT_REQUIRED) List<Long> removedFileIds,
+    @Schema(description = "Optimistic locking version; must be echoed back on updates",
+        requiredMode = Schema.RequiredMode.REQUIRED) @NotNull Long version) {
 }
