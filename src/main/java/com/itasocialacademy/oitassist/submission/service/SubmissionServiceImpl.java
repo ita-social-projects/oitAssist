@@ -52,7 +52,7 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional
     public SubmissionResponseDTO createSubmission(String comment, Long taskAssignmentId,
-                                                  List<MultipartFile> files) {
+        List<MultipartFile> files) {
         Long userId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be logged in to create submissions",
                 ErrorCode.ACCESS_DENIED));
@@ -103,7 +103,7 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional(readOnly = true)
     public SubmissionResponseDTO getSubmissionBySubmittedByAndTaskAssignmentId(Long submittedBy,
-                                                                               Long taskAssignmentId) {
+        Long taskAssignmentId) {
         if (!securityFacade.hasRole(JURY_ROLE) && !securityFacade.hasRole(ADMIN_ROLE)) {
             throw new InsufficientPermissionsException();
         }
