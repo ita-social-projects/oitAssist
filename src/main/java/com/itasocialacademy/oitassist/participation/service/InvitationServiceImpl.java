@@ -13,7 +13,6 @@ import com.itasocialacademy.oitassist.participation.dao.dto.event.CompetitionVal
 import com.itasocialacademy.oitassist.participation.dao.dto.event.InvitationRequestEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.FailedInvitationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.SucceededInvitationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.dao.model.Participation;
 import com.itasocialacademy.oitassist.participation.dao.specification.InvitationSpecification;
@@ -53,6 +52,7 @@ import java.util.stream.Collectors;
 public class InvitationServiceImpl implements InvitationService {
     private static final String ALREADY_PENDING_MESSAGE = "Student already has a pending invitation";
     private static final String PENDING_INVITATION_CONSTRAINT = "idx_unique_pending_invitation";
+    private static final RequestStatus PENDING_STATUS = RequestStatus.PENDING;
 
     private final ParticipationRepository participationRepository;
     private final InvitationRepository invitationRepository;
@@ -67,9 +67,10 @@ public class InvitationServiceImpl implements InvitationService {
     private final UserSummaryMapper userSummaryMapper;
 
     @Override
-    public CreateInvitationResponse sendEnrollmentRequest(CreateInvitationRequest request) {
-        Long competitionId = request.getCompetitionId();
-        Long stageId = request.getStageId();
+    public CreateInvitationResponse sendInvitationRequests(
+        Long competitionId,
+        Long stageId,
+        CreateInvitationRequest request) {
         CompetitionValidatedDataEvent competitionData =
             validateCompetitionAndStageInfoForInviting(competitionId, stageId);
         List<Long> studentIds = validateNoDuplicatesOrThrow(request.getStudentIds());
@@ -158,15 +159,15 @@ public class InvitationServiceImpl implements InvitationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<InvitationListItemResponse> getEnrollmentRequests(EnrollmentRequestsFilter request,
+    public Page<InvitationListItemResponse> getEnrollmentRequests(
+        Long competitionId,
+        Long stageId,
         String search,
         Pageable pageable) {
-        Long competitionId = request.getCompetitionId();
-        Long stageId = request.getStageId();
         validateCompetitionAndStageInfo(competitionId, stageId);
         List<Long> candidateUserIds = invitationRepository.findAll(
             InvitationSpecification.hasCompetitionAndStage(competitionId, stageId)
-                .and(InvitationSpecification.hasStatus(RequestStatus.PENDING)))
+                .and(InvitationSpecification.hasStatus(PENDING_STATUS)))
             .stream()
             .map(Invitation::getStudentId)
             .distinct()
@@ -184,7 +185,7 @@ public class InvitationServiceImpl implements InvitationService {
         Page<Invitation> invitations = invitationRepository.findAll(
             InvitationSpecification.hasCompetitionAndStage(competitionId, stageId)
                 .and(InvitationSpecification.studentIdIn(filterIds))
-                .and(InvitationSpecification.hasStatus(RequestStatus.PENDING)),
+                .and(InvitationSpecification.hasStatus(PENDING_STATUS)),
             pageable);
 
         List<InvitationListItemResponse> responses = enrollmentAssembler.enrichWithUser(
@@ -202,7 +203,7 @@ public class InvitationServiceImpl implements InvitationService {
             studentIds,
             request.getCompetitionId(),
             request.getStageId(),
-            RequestStatus.PENDING);
+            PENDING_STATUS);
         return pendingInvitations.stream().map(Invitation::getStudentId).collect(Collectors.toSet());
     }
 
@@ -253,7 +254,7 @@ public class InvitationServiceImpl implements InvitationService {
     private Invitation getPendingInvitationOrThrow(Long applicationId) {
         Invitation invitation = invitationRepository.findById(applicationId)
             .orElseThrow(() -> new InvitationNotFoundException("The invitation was not found"));
-        if (invitation.getStatus() != RequestStatus.PENDING) {
+        if (invitation.getStatus() != PENDING_STATUS) {
             throw new UnableToProcessInvitationException("The invitation request is not in the PENDING status");
         }
         return invitation;
