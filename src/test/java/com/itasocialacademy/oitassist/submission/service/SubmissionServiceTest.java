@@ -523,7 +523,7 @@ class SubmissionServiceTest {
         Long userId = 100L;
         Long taskAssignmentId = 200L;
 
-        List<MultipartFile> files = List.of(mock(MultipartFile.class));
+        List<MultipartFile> mockFiles = List.of(mock(MultipartFile.class));
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
 
@@ -533,7 +533,7 @@ class SubmissionServiceTest {
         assertThatThrownBy(() -> submissionService.createSubmission(
             "Test comment",
             taskAssignmentId,
-            files))
+            mockFiles))
             .isInstanceOf(TaskAssignmentNotFoundException.class);
 
         verify(securityFacade).getCurrentUserId();
