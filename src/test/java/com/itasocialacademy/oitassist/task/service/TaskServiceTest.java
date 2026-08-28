@@ -466,6 +466,7 @@ class TaskServiceTest {
             .anyMatch(owner -> owner.getId().getOwnerId().equals(200L)));
 
         verify(taskBodyMapper).toResponse(taskBody, testFiles, "creator@mail.com");
+        verify(taskBodyRepository).saveAndFlush(taskBody);
     }
 
     @Test
@@ -579,6 +580,7 @@ class TaskServiceTest {
             .anyMatch(o -> o.getId().getOwnerId().equals(200L)));
 
         verify(taskBodyMapper).toResponse(taskBody, testFiles, "creator@mail.com");
+        verify(taskBodyRepository).saveAndFlush(taskBody);
     }
 
     @Test
@@ -717,7 +719,10 @@ class TaskServiceTest {
 
         assertThrows(StaleTaskVersionException.class, () -> taskService.updateTask(1L, request));
 
-        verify(taskBodyRepository, never()).save(any());
+        verify(taskBodyRepository, never()).saveAndFlush(any());
+
+        assertEquals("Test Task", taskBody.getTitle());
+        assertEquals("Test Description", taskBody.getDescription());
     }
 
     @Test
@@ -731,6 +736,11 @@ class TaskServiceTest {
         when(userFacade.findByEmail("newowner@mail.com")).thenReturn(Optional.of(newOwner));
 
         assertThrows(StaleTaskVersionException.class, () -> taskService.addTaskOwner(1L, request));
+
+        verify(taskBodyRepository, never()).saveAndFlush(any());
+
+        assertEquals(1, taskBody.getOwners().size());
+        assertFalse(taskBody.getOwners().stream().anyMatch(o -> o.getId().getOwnerId().equals(200L)));
     }
 
     @Test
@@ -745,6 +755,9 @@ class TaskServiceTest {
 
         assertThrows(StaleTaskVersionException.class, () -> taskService.removeTaskOwner(1L, request));
 
+        verify(taskBodyRepository, never()).saveAndFlush(any());
+
         assertEquals(1, taskBody.getOwners().size());
+        assertTrue(taskBody.getOwners().stream().anyMatch(o -> o.getId().getOwnerId().equals(100L)));
     }
 }
