@@ -43,6 +43,17 @@ class EnvVariableServiceImplTest {
     }
 
     @Test
+    void getenv_ShouldReturnSnapshot_WhenTheProviderMapIsMutatedAfterwards() {
+        Map<String, String> environment = environment();
+        when(envVariableProvider.getenv()).thenReturn(environment);
+
+        Map<String, String> result = createService(ALL, null, null).getenv();
+        environment.put(ABSENT_KEY, PUBLIC_VALUE);
+
+        assertThat(result).doesNotContainKey(ABSENT_KEY);
+    }
+
+    @Test
     void getenv_ShouldReturnOnlyListedKeys_WhenAccessModeIsWhitelist() {
         when(envVariableProvider.getenv()).thenReturn(environment());
 

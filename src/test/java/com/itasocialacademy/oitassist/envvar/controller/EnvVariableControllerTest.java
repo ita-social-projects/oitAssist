@@ -1,11 +1,8 @@
 package com.itasocialacademy.oitassist.envvar.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Named.named;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -14,15 +11,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.itasocialacademy.oitassist.core.web.AppExceptionHttpStatusMapper;
 import com.itasocialacademy.oitassist.envvar.service.interfaces.EnvVariableService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.security.jwt.CustomAuthenticationEntryPoint;
 import com.itasocialacademy.oitassist.security.jwt.JwtFilter;
 import io.swagger.v3.oas.annotations.Hidden;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -36,10 +30,11 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import tools.jackson.databind.ObjectMapper;
 
 @WebMvcTest(
     controllers = EnvVariableController.class,
@@ -89,13 +84,23 @@ class EnvVariableControllerTest {
             .andExpect(jsonPath("$").isEmpty());
     }
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("callersWithoutAdminRole")
-    void getMap_ShouldReturnForbidden_WhenCallerIsNotAdmin(RequestPostProcessor caller) throws Exception {
-        mockMvc.perform(get(ENDPOINT).with(caller))
+    @Test
+    @WithMockUser(roles = "USER")
+    void getMap_ShouldReturnForbidden_WhenCallerIsAuthenticatedButNotAdmin() throws Exception {
+        mockMvc.perform(get(ENDPOINT))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
             .andExpect(jsonPath("$.status").value(403));
+
+        verifyNoInteractions(envVariableService);
+    }
+
+    @Test
+    void getMap_ShouldReturnUnauthorized_WhenCallerIsAnonymous() throws Exception {
+        mockMvc.perform(get(ENDPOINT))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"))
+            .andExpect(jsonPath("$.status").value(401));
 
         verifyNoInteractions(envVariableService);
     }
@@ -107,23 +112,23 @@ class EnvVariableControllerTest {
             .isNotNull();
     }
 
-    private static Stream<Arguments> callersWithoutAdminRole() {
-        return Stream.of(
-            Arguments.of(named("caller with the USER role", user("someone").roles("USER"))),
-            Arguments.of(named("anonymous caller", anonymous())));
-    }
-
     @TestConfiguration(proxyBeanMethods = false)
     @EnableWebSecurity
     @EnableMethodSecurity
     static class SecurityTestConfiguration {
         @Bean
-        SecurityFilterChain securityFilterChain(HttpSecurity http) {
+        AuthenticationEntryPoint authenticationEntryPoint() {
+            return new CustomAuthenticationEntryPoint(new ObjectMapper());
+        }
+
+        @Bean
+        SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationEntryPoint entryPoint) {
             return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorization -> authorization
                     .anyRequest()
-                    .permitAll())
+                    .authenticated())
+                .exceptionHandling(exception -> exception.authenticationEntryPoint(entryPoint))
                 .build();
         }
     }

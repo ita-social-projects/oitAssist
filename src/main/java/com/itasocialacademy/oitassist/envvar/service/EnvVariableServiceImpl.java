@@ -24,7 +24,7 @@ public class EnvVariableServiceImpl implements EnvVariableService {
     public @NonNull Map<@NonNull String, @Nullable String> getenv() {
         Map<String, String> all = envVariableProvider.getenv();
         if (envVariableProperties.accessMode() == ALL) {
-            return Collections.unmodifiableMap(all);
+            return Collections.unmodifiableMap(new HashMap<>(all));
         }
 
         Map<String, String> result = new HashMap<>();
