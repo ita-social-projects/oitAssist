@@ -46,10 +46,13 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final CompetitionFacade competitionFacade;
     private final ParticipationFacade participationFacade;
 
+    private static final String ADMIN_ROLE = "ADMIN";
+    private static final String JURY_ROLE = "JURY";
+
     @Override
     @Transactional
     public SubmissionResponseDTO createSubmission(String comment, Long taskAssignmentId,
-        List<MultipartFile> files) {
+                                                  List<MultipartFile> files) {
         Long userId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be logged in to create submissions",
                 ErrorCode.ACCESS_DENIED));
@@ -100,8 +103,8 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional(readOnly = true)
     public SubmissionResponseDTO getSubmissionBySubmittedByAndTaskAssignmentId(Long submittedBy,
-        Long taskAssignmentId) {
-        if (!securityFacade.hasRole("JURY") && !securityFacade.hasRole("ADMIN")) {
+                                                                               Long taskAssignmentId) {
+        if (!securityFacade.hasRole(JURY_ROLE) && !securityFacade.hasRole(ADMIN_ROLE)) {
             throw new InsufficientPermissionsException();
         }
         Submission submission = repository.findBySubmittedByAndTaskAssignmentId(submittedBy, taskAssignmentId)
@@ -115,7 +118,7 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional(readOnly = true)
     public SubmissionResponseDTO getSubmissionById(Long id) {
-        if (!securityFacade.hasRole("JURY") && !securityFacade.hasRole("ADMIN")) {
+        if (!securityFacade.hasRole(JURY_ROLE) && !securityFacade.hasRole(ADMIN_ROLE)) {
             throw new InsufficientPermissionsException();
         }
         Submission submission = repository.findById(id).orElseThrow(() -> new SubmissionNotFoundException(id));
@@ -128,7 +131,7 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional(readOnly = true)
     public SubmissionDetail getSubmissionDetailById(Long id) {
-        if (!securityFacade.hasRole("JURY") && !securityFacade.hasRole("ADMIN")) {
+        if (!securityFacade.hasRole(JURY_ROLE) && !securityFacade.hasRole(ADMIN_ROLE)) {
             throw new InsufficientPermissionsException();
         }
         Submission submission = repository.findById(id).orElseThrow(() -> new SubmissionNotFoundException(id));
@@ -177,13 +180,8 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         for (MultipartFile file : files) {
             for (int i = 0; i < requiredFiles.size(); i++) {
-                if (matchedRequirements.contains(i)) {
-                    continue;
-                }
-
-                TaskRequirementsDTO.RequiredFileDTO requirement = requiredFiles.get(i);
-
-                if (matchesRequirement(file, requirement)) {
+                if (!matchedRequirements.contains(i)
+                    && matchesRequirement(file, requiredFiles.get(i))) {
                     validFiles.add(file);
                     matchedRequirements.add(i);
                     break;

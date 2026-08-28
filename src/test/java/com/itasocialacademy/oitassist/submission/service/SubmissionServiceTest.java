@@ -41,7 +41,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
-public class SubmissionServiceTest {
+class SubmissionServiceTest {
 
     @Mock
     private SecurityFacade securityFacade;
@@ -94,9 +94,9 @@ public class SubmissionServiceTest {
         when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(repository.findById(submissionId)).thenReturn(Optional.of(submission));
         when(fileManagerFacade.getFilesByEntity(
-            eq(RelatedEntityType.SUBMISSION),
-            eq(submissionId),
-            eq(Set.of(FileRole.GENERIC)))).thenReturn(files);
+            RelatedEntityType.SUBMISSION,
+            submissionId,
+            Set.of(FileRole.GENERIC))).thenReturn(files);
         when(submissionMapper.toResponse(submission, files)).thenReturn(response);
 
         SubmissionResponseDTO result = submissionService.getSubmissionById(submissionId);
@@ -155,9 +155,9 @@ public class SubmissionServiceTest {
         when(repository.findBySubmittedByAndTaskAssignmentId(userId, taskAssignmentId))
             .thenReturn(Optional.of(submission));
         when(fileManagerFacade.getFilesByEntity(
-            eq(RelatedEntityType.SUBMISSION),
-            eq(1L),
-            eq(Set.of(FileRole.GENERIC)))).thenReturn(files);
+            RelatedEntityType.SUBMISSION,
+            1L,
+            Set.of(FileRole.GENERIC))).thenReturn(files);
         when(submissionMapper.toResponse(submission, files)).thenReturn(response);
 
         SubmissionResponseDTO result =
@@ -236,9 +236,9 @@ public class SubmissionServiceTest {
             .thenReturn(Optional.of(submission));
 
         when(fileManagerFacade.getFilesByEntity(
-            eq(RelatedEntityType.SUBMISSION),
-            eq(1L),
-            eq(Set.of(FileRole.GENERIC))))
+            RelatedEntityType.SUBMISSION,
+            1L,
+            Set.of(FileRole.GENERIC)))
             .thenReturn(files);
 
         when(submissionMapper.toResponse(submission, files))
@@ -282,7 +282,8 @@ public class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("getMySubmissionByTaskAssignmentId should throw SubmissionNotFoundException when submission does not exist")
+    @DisplayName("getMySubmissionByTaskAssignmentId should throw SubmissionNotFoundException when submission does not" +
+        " exist")
     void getMySubmissionByTaskAssignmentId_ShouldThrowSubmissionNotFoundException_WhenSubmissionDoesNotExist() {
         Long userId = 100L;
         Long taskAssignmentId = 200L;
@@ -384,10 +385,10 @@ public class SubmissionServiceTest {
         });
 
         when(fileManagerFacade.uploadFiles(
-            eq(List.of(validFile)),
-            eq(RelatedEntityType.SUBMISSION),
-            eq(1L),
-            eq(FileRole.GENERIC)))
+            List.of(validFile),
+            RelatedEntityType.SUBMISSION,
+            1L,
+            FileRole.GENERIC))
             .thenReturn(files);
 
         when(submissionMapper.toResponse(any(Submission.class), eq(files)))
@@ -412,10 +413,10 @@ public class SubmissionServiceTest {
         verify(repository).save(any(Submission.class));
 
         verify(fileManagerFacade).uploadFiles(
-            eq(List.of(validFile)),
-            eq(RelatedEntityType.SUBMISSION),
-            eq(1L),
-            eq(FileRole.GENERIC));
+            List.of(validFile),
+            RelatedEntityType.SUBMISSION,
+            1L,
+            FileRole.GENERIC);
 
         verify(submissionMapper).toResponse(
             any(Submission.class),
@@ -455,7 +456,7 @@ public class SubmissionServiceTest {
 
         List<FileDetailsDTO> uploadedFiles = List.of();
 
-        SubmissionResponseDTO response = SubmissionResponseDTO.builder()
+        SubmissionResponseDTO responseDTO = SubmissionResponseDTO.builder()
             .id(1L)
             .build();
 
@@ -474,21 +475,21 @@ public class SubmissionServiceTest {
             .thenReturn(Optional.of(existingSubmission));
 
         when(fileManagerFacade.uploadFiles(
-            eq(List.of(file)),
-            eq(RelatedEntityType.SUBMISSION),
-            eq(1L),
-            eq(FileRole.GENERIC)))
+            List.of(file),
+            RelatedEntityType.SUBMISSION,
+            1L,
+            FileRole.GENERIC))
             .thenReturn(uploadedFiles);
 
         when(submissionMapper.toResponse(existingSubmission, uploadedFiles))
-            .thenReturn(response);
+            .thenReturn(responseDTO);
 
         SubmissionResponseDTO result = submissionService.createSubmission(
             "New comment",
             taskAssignmentId,
             List.of(file));
 
-        assertThat(result).isSameAs(response);
+        assertThat(result).isSameAs(responseDTO);
         assertThat(existingSubmission.getComment()).isEqualTo("New comment");
 
         verify(securityFacade).getCurrentUserId();
@@ -508,10 +509,10 @@ public class SubmissionServiceTest {
             userId);
 
         verify(fileManagerFacade).uploadFiles(
-            eq(List.of(file)),
-            eq(RelatedEntityType.SUBMISSION),
-            eq(1L),
-            eq(FileRole.GENERIC));
+            List.of(file),
+            RelatedEntityType.SUBMISSION,
+            1L,
+            FileRole.GENERIC);
 
         verify(submissionMapper).toResponse(existingSubmission, uploadedFiles);
     }
@@ -522,6 +523,8 @@ public class SubmissionServiceTest {
         Long userId = 100L;
         Long taskAssignmentId = 200L;
 
+        List<MultipartFile> files = List.of(mock(MultipartFile.class));
+
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
 
         when(taskAssignmentFacade.findAssignmentById(taskAssignmentId))
@@ -530,7 +533,7 @@ public class SubmissionServiceTest {
         assertThatThrownBy(() -> submissionService.createSubmission(
             "Test comment",
             taskAssignmentId,
-            List.of(mock(MultipartFile.class))))
+            files))
             .isInstanceOf(TaskAssignmentNotFoundException.class);
 
         verify(securityFacade).getCurrentUserId();
@@ -604,26 +607,26 @@ public class SubmissionServiceTest {
             eq(1L),
             eq(FileRole.GENERIC))).thenReturn(uploadedFiles);
 
-        SubmissionResponseDTO response = SubmissionResponseDTO.builder()
+        SubmissionResponseDTO responseDTO = SubmissionResponseDTO.builder()
             .id(1L)
             .build();
 
         when(submissionMapper.toResponse(
             any(Submission.class),
-            eq(uploadedFiles))).thenReturn(response);
+            eq(uploadedFiles))).thenReturn(responseDTO);
 
         SubmissionResponseDTO result = submissionService.createSubmission(
             "Test",
             taskAssignmentId,
             List.of(firstFile, secondFile));
 
-        assertThat(result).isSameAs(response);
+        assertThat(result).isSameAs(responseDTO);
 
         verify(fileManagerFacade).uploadFiles(
-            eq(List.of(firstFile)),
-            eq(RelatedEntityType.SUBMISSION),
-            eq(1L),
-            eq(FileRole.GENERIC));
+            List.of(firstFile),
+            RelatedEntityType.SUBMISSION,
+            1L,
+            FileRole.GENERIC);
 
         verify(submissionMapper).toResponse(
             any(Submission.class),
@@ -707,7 +710,8 @@ public class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("getMySubmissionByTaskAssignmentId should throw TaskAssignmentNotFoundException when assignment does not exist")
+    @DisplayName("getMySubmissionByTaskAssignmentId should throw TaskAssignmentNotFoundException when assignment does" +
+        " not exist")
     void getMySubmissionByTaskAssignmentId_ShouldThrowTaskAssignmentNotFoundException_WhenAssignmentDoesNotExist() {
         Long userId = 100L;
         Long taskAssignmentId = 200L;
@@ -730,7 +734,8 @@ public class SubmissionServiceTest {
     }
 
     @Test
-    @DisplayName("getMySubmissionByTaskAssignmentId should throw TourIsNotInProgressException when tour is not in progress")
+    @DisplayName("getMySubmissionByTaskAssignmentId should throw TourIsNotInProgressException when tour is not in " +
+        "progress")
     void getMySubmissionByTaskAssignmentId_ShouldThrowTourIsNotInProgressException_WhenTourIsNotInProgress() {
         Long userId = 100L;
         Long taskAssignmentId = 200L;

@@ -105,7 +105,7 @@ public class FileServiceImpl implements FileService {
     public List<FileDetailsDTO> uploadToFileDetails(List<MultipartFile> files, FileUploadRequestDto requestDto) {
         Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException(
-                "Not authenticated", ErrorCode.ACCESS_DENIED));
+                NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
 
         checkValidation(files, requestDto);
 

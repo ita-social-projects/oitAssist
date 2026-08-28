@@ -825,6 +825,8 @@ class FileServiceImplTest {
             "image/jpeg",
             new byte[10]);
 
+        List<MultipartFile> files = List.of(file);
+
         FileUploadRequestDto request =
             uploadRequest(RelatedEntityType.NEWS, 1L);
 
@@ -832,7 +834,7 @@ class FileServiceImplTest {
 
         assertThrows(
             AuthorizationException.class,
-            () -> fileService.uploadToFileDetails(List.of(file), request));
+            () -> fileService.uploadToFileDetails(files, request));
 
         verifyNoInteractions(
             validationStrategyResolver,
@@ -850,6 +852,8 @@ class FileServiceImplTest {
             "image/jpeg",
             new byte[512]);
 
+        List<MultipartFile> files = List.of(file);
+
         FileUploadRequestDto request =
             uploadRequest(RelatedEntityType.NEWS, 1L);
 
@@ -863,7 +867,7 @@ class FileServiceImplTest {
 
         ValidationException exception = assertThrows(
             ValidationException.class,
-            () -> fileService.uploadToFileDetails(List.of(file), request));
+            () -> fileService.uploadToFileDetails(files, request));
 
         assertTrue(exception.getMessage().contains("File size exceeded"));
 
@@ -1188,7 +1192,9 @@ class FileServiceImplTest {
             RelatedEntityType.TASK,
             999L);
 
-        when(fileRepository.findAllById(List.of(fileId)))
+        List<Long> fileIds = List.of(fileId);
+
+        when(fileRepository.findAllById(fileIds))
             .thenReturn(List.of(file));
 
         when(securityFacade.hasRole(ROLE_ADMIN))
@@ -1199,7 +1205,7 @@ class FileServiceImplTest {
             () -> fileService.detachFiles(
                 RelatedEntityType.NEWS,
                 10L,
-                List.of(fileId),
+                fileIds,
                 userId));
 
         assertTrue(exception.getMessage().contains("does not belong"));
@@ -1217,7 +1223,9 @@ class FileServiceImplTest {
             RelatedEntityType.NEWS,
             10L);
 
-        when(fileRepository.findAllById(List.of(fileId)))
+        List<Long> fileIds = List.of(fileId);
+
+        when(fileRepository.findAllById(fileIds))
             .thenReturn(List.of(file));
 
         when(securityFacade.hasRole(ROLE_ADMIN))
@@ -1228,7 +1236,7 @@ class FileServiceImplTest {
             () -> fileService.detachFiles(
                 RelatedEntityType.NEWS,
                 10L,
-                List.of(fileId),
+                fileIds,
                 userId));
 
         assertEquals(FileStatus.ATTACHED, file.getStatus());
