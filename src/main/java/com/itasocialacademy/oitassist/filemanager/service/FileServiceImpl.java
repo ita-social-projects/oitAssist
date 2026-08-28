@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.filemanager.service;
 
+import static com.itasocialacademy.oitassist.filemanager.validation.util.FileValidationUtils.*;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
@@ -12,6 +13,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.dao.specification.FileAssetSpecification;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
@@ -54,6 +56,19 @@ public class FileServiceImpl implements FileService {
     private static final String ROLE_ADMIN = "ADMIN";
 
     /**
+     * Error message indicating that the user is not authenticated. Used when an
+     * operation requires authentication, but it is invalid.
+     */
+    public static final String NOT_AUTHENTICATED = "Not authenticated";
+
+    /**
+     * Error message prefix indicating that a requested file could not be found in
+     * the database. This message is typically appended with the file identifier to
+     * provide context.
+     */
+    public static final String FILE_NOT_FOUND_IN_THE_DATABASE = "File not found in the database: ";
+
+    /**
      * {@inheritDoc}
      *
      * <p>
@@ -67,7 +82,7 @@ public class FileServiceImpl implements FileService {
     public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto) {
         Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException(
-                "Not authenticated", ErrorCode.ACCESS_DENIED));
+                NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
 
         checkValidation(files, requestDto);
 
@@ -112,10 +127,10 @@ public class FileServiceImpl implements FileService {
     public void deleteSoft(Long fileId) {
         Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException(
-                "Not authenticated", ErrorCode.ACCESS_DENIED));
+                NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
 
         FileAsset file = repository.findById(fileId)
-            .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
+            .orElseThrow(() -> new FileAssetNotFoundException(FILE_NOT_FOUND_IN_THE_DATABASE + fileId));
 
         checkOwnerOrAdmin(file.getUserId(), currentUserId);
 
@@ -134,7 +149,7 @@ public class FileServiceImpl implements FileService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void deleteHard(Long fileId) {
         FileAsset file = repository.findById(fileId)
-            .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
+            .orElseThrow(() -> new FileAssetNotFoundException(FILE_NOT_FOUND_IN_THE_DATABASE + fileId));
 
         validateAdmin();
 
@@ -312,6 +327,55 @@ public class FileServiceImpl implements FileService {
         }
 
         return resultMap;
+    }
+
+    @Override
+    @Transactional
+    public FileResponseDto updateRole(Long fileId, UpdateFileRoleRequestDto request) {
+        Long currentUserId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException(NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
+
+        FileAsset file = repository.findById(fileId)
+            .orElseThrow(() -> new FileAssetNotFoundException(FILE_NOT_FOUND_IN_THE_DATABASE + fileId));
+
+        checkOwnerOrAdmin(file.getUserId(), currentUserId);
+
+        if (!file.getStatus().equals(FileStatus.ATTACHED)) {
+            throw new ValidationException(
+                "File must be in ATTACHED state to update its role",
+                ErrorCode.FILE_VALIDATION_FAILED);
+        }
+
+        StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+
+        if (file.getFileRole().equals(request.getNewRole())) {
+            FileAsset saved = repository.save(file);
+            FileResponseDto dto = fileMapper.toDto(saved);
+            dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+            return dto;
+        }
+
+        // Validate if new role is allowed for the file extension
+        FilePolicy newPolicy = filePolicyResolver.resolve(file.getRelatedEntityType(), request.getNewRole());
+        String extension = extractExtension(file.getOriginalFilename());
+
+        if (isExtensionNotAllowed(extension, newPolicy.getAllowedExtensions())) {
+            throw new ValidationException(
+                "File '%s' has extension '%s' which is not allowed for role %s. Allowed: %s.".formatted(
+                    file.getOriginalFilename(), extension, request.getNewRole(),
+                    formatAllowed(newPolicy.getAllowedExtensions())),
+                ErrorCode.FILE_VALIDATION_FAILED);
+        }
+
+        file.setFileRole(request.getNewRole());
+        FileAsset saved = repository.save(file);
+
+        log.debug("Updated file role for id={} to {}", saved.getId(), saved.getFileRole());
+
+        FileResponseDto dto = fileMapper.toDto(saved);
+        dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+
+        return dto;
     }
 
     /**

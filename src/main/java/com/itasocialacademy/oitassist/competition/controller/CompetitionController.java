@@ -143,6 +143,10 @@ public class CompetitionController {
         @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Competition not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{competitionId}/status")
@@ -150,6 +154,6 @@ public class CompetitionController {
     public ResponseEntity<CompetitionResponse> changeStatus(
         @PathVariable Long competitionId,
         @Valid @RequestBody ChangeCompetitionStatusRequest request) {
-        return ResponseEntity.ok(competitionService.changeStatus(competitionId, request.status()));
+        return ResponseEntity.ok(competitionService.changeStatus(competitionId, request));
     }
 }

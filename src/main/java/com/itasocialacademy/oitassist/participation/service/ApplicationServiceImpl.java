@@ -12,19 +12,22 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Application;
 import com.itasocialacademy.oitassist.participation.dao.repository.ApplicationRepository;
 import com.itasocialacademy.oitassist.participation.dao.repository.ParticipationRepository;
+import com.itasocialacademy.oitassist.participation.dao.specification.ApplicationSpecification;
 import com.itasocialacademy.oitassist.participation.exceptions.ApplicationNotFoundException;
 import com.itasocialacademy.oitassist.participation.exceptions.UnableToProcessApplicationException;
 import com.itasocialacademy.oitassist.participation.exceptions.UserApplicationRequestException;
+import com.itasocialacademy.oitassist.participation.mapper.UserEnrollmentAssembler;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
+import com.itasocialacademy.oitassist.participation.mapper.interfaces.UserSummaryMapper;
 import com.itasocialacademy.oitassist.participation.scheduler.AfterCommitScheduler;
 import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
@@ -32,10 +35,15 @@ import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -52,6 +60,8 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final AsyncEmailSender emailSender;
     private final UserFacade userFacade;
     private final AfterCommitScheduler scheduler;
+    private final UserEnrollmentAssembler enrollmentAssembler;
+    private final UserSummaryMapper userSummaryMapper;
 
     @Override
     @Transactional
@@ -116,44 +126,92 @@ public class ApplicationServiceImpl implements ApplicationService {
         return processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
     }
 
-    private void validateUserCanApply(Long userId, CreateApplicationRequest createApplicationRequest) {
-        validateNoPendingApplication(userId, createApplicationRequest);
-        validateUserDoesNotAlreadyParticipate(userId, createApplicationRequest);
-        validateCompetitionAndStageInfo(createApplicationRequest);
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ApplicationListItemResponse> getEnrollmentRequests(
+        EnrollmentRequestsFilter request,
+        String search,
+        Pageable pageable) {
+        Long competitionId = request.getCompetitionId();
+        Long stageId = request.getStageId();
+        validateCompetitionAndStageInfo(competitionId, stageId);
+        List<Long> candidateUserIds = applicationRepository.findAll(
+            ApplicationSpecification.hasCompetitionAndStage(competitionId, stageId)
+                .and(ApplicationSpecification.hasStatus(RequestStatus.PENDING)))
+            .stream()
+            .map(Application::getUserId)
+            .distinct()
+            .toList();
+        if (candidateUserIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        Optional<List<Long>> matchingUserIds = userFacade.findUserIdsBySearchWithinIds(search, candidateUserIds);
+        List<Long> filterIds = matchingUserIds.orElse(candidateUserIds);
+
+        if (matchingUserIds.isPresent() && matchingUserIds.get().isEmpty()) {
+            return Page.empty(pageable);
+        }
+        Page<Application> applications = applicationRepository.findAll(
+            ApplicationSpecification.hasCompetitionAndStage(competitionId, stageId)
+                .and(ApplicationSpecification.userIdIn(filterIds))
+                .and(ApplicationSpecification.hasStatus(RequestStatus.PENDING)),
+            pageable);
+        List<ApplicationListItemResponse> responses = enrollmentAssembler.enrichWithUser(
+            applications.toList(), Application::getUserId,
+            (application, user) -> new ApplicationListItemResponse(
+                application.getId(),
+                application.getIssuedAt(),
+                application.getStatus(),
+                userSummaryMapper.toUserSummary(user)));
+        return new PageImpl<>(responses, pageable, applications.getTotalElements());
     }
 
-    private void validateNoPendingApplication(Long userId, CreateApplicationRequest createApplicationRequest) {
+    private void validateUserCanApply(Long userId, CreateApplicationRequest request) {
+        validateNoPendingApplication(userId, request);
+        validateUserDoesNotAlreadyParticipate(userId, request);
+        validateCompetitionAndStageInfoForApplying(request.getCompetitionId(), request.getStageId());
+    }
+
+    private void validateNoPendingApplication(Long userId, CreateApplicationRequest request) {
         boolean hasPendingApplication = applicationRepository.existsByIssuedByAndCompetitionIdAndStageIdAndStatus(
             userId,
-            createApplicationRequest.getCompetitionId(),
-            createApplicationRequest.getStageId(),
+            request.getCompetitionId(),
+            request.getStageId(),
             RequestStatus.PENDING);
         if (hasPendingApplication) {
             throw new UserApplicationRequestException("User already has a pending request");
         }
     }
 
-    private void validateUserDoesNotAlreadyParticipate(Long userId, CreateApplicationRequest createApplicationRequest) {
+    private void validateUserDoesNotAlreadyParticipate(Long userId, CreateApplicationRequest request) {
         boolean isParticipant = participationRepository.existsByUserIdAndCompetitionIdAndStageId(
             userId,
-            createApplicationRequest.getCompetitionId(),
-            createApplicationRequest.getStageId());
+            request.getCompetitionId(),
+            request.getStageId());
         if (isParticipant) {
             throw new UserApplicationRequestException("User is already a participant");
         }
     }
 
-    private void validateCompetitionAndStageInfo(CreateApplicationRequest createApplicationRequest) {
-        Long competitionId = createApplicationRequest.getCompetitionId();
-        Long stageId = createApplicationRequest.getStageId();
+    private void validateCompetitionAndStageInfoForApplying(Long competitionId, Long stageId) {
         CompetitionDetail competitionDetail = getCompetitionInfoOrThrow(competitionId);
         StageDetail stageDetail = getStageInfoOrThrow(stageId);
+        validateHierarchy(competitionId, stageDetail);
         if (competitionDetail.competitionStatus() != CompetitionStatus.ENROLLMENT) {
             throw new UserApplicationRequestException("The competition cannot be enrolled");
         }
         if (stageDetail.scope() != StageScope.DISTRICT && stageDetail.scope() != StageScope.CITY) {
             throw new UserApplicationRequestException("The specified stage cannot be enrolled");
         }
+    }
+
+    private void validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
+        getCompetitionInfoOrThrow(competitionId);
+        StageDetail stageDetail = getStageInfoOrThrow(stageId);
+        validateHierarchy(competitionId, stageDetail);
+    }
+
+    private void validateHierarchy(Long competitionId, StageDetail stageDetail) {
         if (!stageDetail.competitionId().equals(competitionId)) {
             throw new CompetitionHierarchyValidationException("Specified stage does not belong to this competition");
         }

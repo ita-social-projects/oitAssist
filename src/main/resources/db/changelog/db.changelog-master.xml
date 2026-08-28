@@ -29,4 +29,5 @@
     <include file="/db/changelog/logs/2026-08-04-ch-create-task-owners-table-Murashko.xml"/>
     <include file="/db/changelog/logs/2026-08-13-ch-add-news-updated-at-Rakuta.xml"/>
     <include file="/db/changelog/logs/2026-08-21-ch-alter-submissions-Murashko.xml"/>
+    <include file="/db/changelog/logs/2026-08-11-ch-add-version-to-competitions-Pampukha.xml"/>
 </databaseChangeLog>

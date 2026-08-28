@@ -11,9 +11,12 @@ import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundExcept
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.ApplicationListItemResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.UserSummary;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Application;
 import com.itasocialacademy.oitassist.participation.dao.model.Participation;
@@ -22,15 +25,19 @@ import com.itasocialacademy.oitassist.participation.dao.repository.Participation
 import com.itasocialacademy.oitassist.participation.exceptions.ApplicationNotFoundException;
 import com.itasocialacademy.oitassist.participation.exceptions.UnableToProcessApplicationException;
 import com.itasocialacademy.oitassist.participation.exceptions.UserApplicationRequestException;
+import com.itasocialacademy.oitassist.participation.mapper.UserEnrollmentAssembler;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
+import com.itasocialacademy.oitassist.participation.mapper.interfaces.UserSummaryMapper;
 import com.itasocialacademy.oitassist.participation.scheduler.AfterCommitScheduler;
 import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
-import com.itasocialacademy.oitassist.participation.service.ApplicationServiceImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.BiFunction;
+
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +47,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.AssertionsKt.assertNotNull;
@@ -67,6 +79,10 @@ class ApplicationServiceTest {
     private AfterCommitScheduler scheduler;
     @Mock
     private UserFacade userFacade;
+    @Mock
+    private UserSummaryMapper userSummaryMapper;
+    @Mock
+    private UserEnrollmentAssembler enrollmentAssembler;
 
     @InjectMocks
     private ApplicationServiceImpl applicationService;
@@ -104,7 +120,7 @@ class ApplicationServiceTest {
         lenient().when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
         lenient().when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
         lenient().when(userFacade.findProfileById(4L)).thenReturn(Optional.of(
-            new UserProfileDetails(4L, "Test", "test@mail.com")));
+            new UserProfileDetails(4L, "Test", "Test Surname", "test@mail.com")));
     }
 
     // ---- userApply ----
@@ -490,5 +506,105 @@ class ApplicationServiceTest {
         assertEquals(RequestStatus.REJECTED, event.status());
         assertEquals("Incomplete profile", event.rejectionReason());
         assertEquals("test@mail.com", event.email());
+    }
+
+    // ---- getApplications ----
+
+    @Test
+    void getEnrollmentRequests_noCandidates_shouldReturnEmptyPage() {
+        Pageable pageable = PageRequest.of(0, 10);
+        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
+            .competitionId(2L).stageId(3L).build();
+
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+        when(applicationRepository.findAll(any(Specification.class))).thenReturn(List.of());
+
+        Page<ApplicationListItemResponse> result = applicationService.getEnrollmentRequests(filter, null, pageable);
+
+        assertTrue(result.isEmpty());
+        verify(userFacade, never()).findUserIdsBySearchWithinIds(any(), any());
+        verify(applicationRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void getEnrollmentRequests_noSearch_shouldReturnAllCandidates() {
+        Pageable pageable = PageRequest.of(0, 10);
+        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
+            .competitionId(2L).stageId(3L).build();
+
+        Application candidateApplication = new Application();
+        candidateApplication.setId(1L);
+        candidateApplication.setIssuedBy(4L);
+        candidateApplication.setIssuedAt(Instant.parse("2026-07-28T10:00:00Z"));
+        candidateApplication.setStatus(RequestStatus.PENDING);
+
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+        when(applicationRepository.findAll(any(Specification.class))).thenReturn(List.of(candidateApplication));
+        when(userFacade.findUserIdsBySearchWithinIds(null, List.of(4L))).thenReturn(Optional.empty());
+
+        Page<Application> applicationPage = new PageImpl<>(List.of(candidateApplication), pageable, 1);
+        when(applicationRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(applicationPage);
+
+        UserProfileDetails user = new UserProfileDetails(4L, "Test", "Test Surname", "test@mail.com");
+        when(userSummaryMapper.toUserSummary(user))
+            .thenReturn(new UserSummary("Test", "Test Surname", "test@mail.com"));
+        when(enrollmentAssembler.enrichWithUser(any(), any(), any())).thenAnswer(invocation -> {
+            List<Application> apps = invocation.getArgument(0);
+            BiFunction<Application, UserProfileDetails, ApplicationListItemResponse> combiner =
+                invocation.getArgument(2);
+            return apps.stream()
+                .map(app -> combiner.apply(app, user))
+                .toList();
+        });
+        Page<ApplicationListItemResponse> result = applicationService.getEnrollmentRequests(filter, null, pageable);
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1L, result.getContent().getFirst().applicationId());
+        assertEquals(RequestStatus.PENDING, result.getContent().getFirst().status());
+    }
+
+    @Test
+    void getEnrollmentRequests_searchMatchesNoOne_shouldReturnEmptyPage() {
+        Pageable pageable = PageRequest.of(0, 10);
+        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
+            .competitionId(2L).stageId(3L).build();
+
+        Application candidateApplication = new Application();
+        candidateApplication.setIssuedBy(4L);
+
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+        when(applicationRepository.findAll(any(Specification.class))).thenReturn(List.of(candidateApplication));
+        when(userFacade.findUserIdsBySearchWithinIds("xyz", List.of(4L))).thenReturn(Optional.of(List.of()));
+
+        Page<ApplicationListItemResponse> result = applicationService.getEnrollmentRequests(filter, "xyz", pageable);
+
+        assertTrue(result.isEmpty());
+        verify(applicationRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    void getEnrollmentRequests_stageDoesNotBelongToCompetition_shouldThrowCompetitionHierarchyValidationException() {
+        Pageable pageable = PageRequest.of(0, 10);
+        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
+            .competitionId(2L).stageId(3L).build();
+
+        StageDetail mismatchedStage = StageDetail.builder()
+            .id(3L)
+            .competitionId(99L)
+            .scope(StageScope.DISTRICT)
+            .build();
+
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(mismatchedStage));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> applicationService.getEnrollmentRequests(filter, null, pageable));
+
+        assertTrue(exception.getMessage().contains("does not belong to this competition"));
+        verify(applicationRepository, never()).findAll(any(Specification.class));
     }
 }

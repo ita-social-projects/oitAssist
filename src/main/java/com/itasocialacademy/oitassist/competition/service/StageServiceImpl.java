@@ -83,6 +83,8 @@ public class StageServiceImpl implements StageService {
         Stage stage = stageRepository.findById(stageId)
             .orElseThrow(() -> new StageNotFoundException(stageId));
 
+        validator.validateEntityVersion(request.version(), stage.getVersion(), Stage.class, stageId);
+
         validator.validateStageEligibility(compId, stage.getCompetitionId());
         validator.validateImmutabilityByCompetitionId(stage.getCompetitionId());
         validator.validateStageDates(stage.getCompetitionId(), request.dateStart(), request.dateFinish());
@@ -124,6 +126,8 @@ public class StageServiceImpl implements StageService {
     public StageResponse changeStatus(Long compId, Long stageId, ChangeStageStatusRequest request) {
         Stage stage = stageRepository.findById(stageId)
             .orElseThrow(() -> new StageNotFoundException(stageId));
+
+        validator.validateEntityVersion(request.version(), stage.getVersion(), Stage.class, stageId);
 
         validator.validateStageEligibility(compId, stage.getCompetitionId());
         validator.checkIfCompetitionPublishedByCompetitionId(compId);

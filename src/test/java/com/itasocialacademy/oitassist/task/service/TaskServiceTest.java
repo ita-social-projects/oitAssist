@@ -99,7 +99,7 @@ class TaskServiceTest {
             .build();
 
         lenient().when(userFacade.findProfileById(100L))
-            .thenReturn(Optional.of(new UserProfileDetails(100L, "Creator", "creator@mail.com")));
+            .thenReturn(Optional.of(new UserProfileDetails(100L, "Creator", "Creator Surname", "creator@mail.com")));
 
         lenient().when(userFacade.findByIds(List.of(100L)))
             .thenReturn(List.of(new UserAuthDetails(100L, "creator@mail.com", "pass", Role.ADMIN)));
@@ -545,6 +545,12 @@ class TaskServiceTest {
 
     @Test
     void removeTaskOwner_shouldSucceed() {
+        TaskOwner secondOwner = TaskOwner.builder()
+            .id(new TaskOwnerId(1L, 200L))
+            .task(taskBody)
+            .build();
+        taskBody.addOwner(secondOwner);
+
         RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("currentowner@mail.com");
 
         UserAuthDetails owner =
@@ -563,7 +569,29 @@ class TaskServiceTest {
         assertFalse(taskBody.getOwners().stream()
             .anyMatch(o -> o.getId().getOwnerId().equals(100L)));
 
+        assertTrue(taskBody.getOwners().stream()
+            .anyMatch(o -> o.getId().getOwnerId().equals(200L)));
+
         verify(taskBodyMapper).toResponse(taskBody, testFiles, "creator@mail.com");
+    }
+
+    @Test
+    void removeTaskOwner_lastOwner_shouldThrowValidationException() {
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("currentowner@mail.com");
+
+        UserAuthDetails owner =
+            new UserAuthDetails(100L, "currentowner@mail.com", "12345678", Role.ORG);
+
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(taskBodyRepository.findById(1L)).thenReturn(Optional.of(taskBody));
+        when(userFacade.findByEmail("currentowner@mail.com")).thenReturn(Optional.of(owner));
+
+        assertThrows(ValidationException.class,
+            () -> taskService.removeTaskOwner(1L, request));
+
+        assertEquals(1, taskBody.getOwners().size());
+        assertTrue(taskBody.getOwners().stream()
+            .anyMatch(o -> o.getId().getOwnerId().equals(100L)));
     }
 
     @Test
