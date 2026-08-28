@@ -25,7 +25,8 @@ public class EnvVariableController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public @NonNull Map<@NonNull String, @Nullable String> getMap() {
-        log.info("User with ID '{}' requested all environment variables", securityFacade.getCurrentUserId());
+        log.info("User with ID '{}' requested all environment variables",
+            securityFacade.getCurrentUserId().orElse(null));
         return envVariableService.getenv();
     }
 }
