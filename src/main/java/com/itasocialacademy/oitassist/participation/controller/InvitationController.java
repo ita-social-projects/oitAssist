@@ -2,7 +2,6 @@ package com.itasocialacademy.oitassist.participation.controller;
 
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateInvitationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.InvitationListItemResponse;
@@ -65,10 +64,9 @@ public class InvitationController {
         @PathVariable Long competitionId,
         @PathVariable Long stageId,
         @Valid @RequestBody CreateInvitationRequest request) {
-        request.setCompetitionId(competitionId);
-        request.setStageId(stageId);
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body((CreateInvitationResponse) invitationService.sendEnrollmentRequest(request));
+            .body((CreateInvitationResponse) invitationService.sendInvitationRequests(
+                competitionId, stageId, request));
     }
 
     @Operation(
@@ -167,9 +165,7 @@ public class InvitationController {
         @PathVariable Long stageId,
         @RequestParam(required = false) String search,
         @ParameterObject @PageableDefault(size = 20, sort = "issuedAt") Pageable pageable) {
-        EnrollmentRequestsFilter request = EnrollmentRequestsFilter.builder()
-            .competitionId(competitionId).stageId(stageId).build();
         return ResponseEntity.status(HttpStatus.OK)
-            .body(PageResponse.from(invitationService.getEnrollmentRequests(request, search, pageable)));
+            .body(PageResponse.from(invitationService.getEnrollmentRequests(competitionId, stageId, search, pageable)));
     }
 }
