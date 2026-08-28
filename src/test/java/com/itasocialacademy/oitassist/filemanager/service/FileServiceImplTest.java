@@ -1368,6 +1368,8 @@ class FileServiceImplTest {
         assertNull(file.getDeletedAt());
 
         verify(fileRepository, never()).saveAll(any());
+    }
+
     // --- Update Role Tests ---
 
     @Test
