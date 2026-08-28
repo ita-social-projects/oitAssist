@@ -79,8 +79,8 @@ public class InvitationServiceImpl implements InvitationService {
         Map<Long, UserAuthDetails> foundById = foundUsers.stream()
             .collect(Collectors.toMap(UserAuthDetails::id, u -> u));
 
-        Set<Long> alreadyPending = findStudentsWithPendingInvitations(studentIds, request);
-        Set<Long> alreadyParticipants = findParticipants(studentIds, request);
+        Set<Long> alreadyPending = findStudentsWithPendingInvitations(studentIds, competitionId, stageId);
+        Set<Long> alreadyParticipants = findParticipants(studentIds, competitionId, stageId);
 
         List<SucceededInvitationResponse> succeeded = new ArrayList<>();
         List<FailedInvitationResponse> failed = new ArrayList<>();
@@ -93,7 +93,7 @@ public class InvitationServiceImpl implements InvitationService {
                 continue;
             }
             try {
-                Invitation invitation = invitationRequestsSaver.saveSingleInvitation(studentId, request);
+                Invitation invitation = invitationRequestsSaver.saveSingleInvitation(studentId, competitionId, stageId);
                 succeeded.add(new SucceededInvitationResponse(invitation.getId(), studentId));
             } catch (DataIntegrityViolationException e) {
                 if (isPendingInvitationConstraintViolation(e)) {
@@ -198,20 +198,20 @@ public class InvitationServiceImpl implements InvitationService {
         return new PageImpl<>(responses, pageable, invitations.getTotalElements());
     }
 
-    private Set<Long> findStudentsWithPendingInvitations(List<Long> studentIds, CreateInvitationRequest request) {
+    private Set<Long> findStudentsWithPendingInvitations(List<Long> studentIds, Long competitionId, Long stageId) {
         List<Invitation> pendingInvitations = invitationRepository.findByStudentIdInAndCompetitionIdAndStageIdAndStatus(
             studentIds,
-            request.getCompetitionId(),
-            request.getStageId(),
+            competitionId,
+            stageId,
             PENDING_STATUS);
         return pendingInvitations.stream().map(Invitation::getStudentId).collect(Collectors.toSet());
     }
 
-    private Set<Long> findParticipants(List<Long> studentIds, CreateInvitationRequest request) {
+    private Set<Long> findParticipants(List<Long> studentIds, Long competitionId, Long stageId) {
         List<Participation> participationRecords = participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(
             studentIds,
-            request.getCompetitionId(),
-            request.getStageId());
+            competitionId,
+            stageId);
         return participationRecords.stream().map(Participation::getUserId).collect(Collectors.toSet());
     }
 
