@@ -36,9 +36,10 @@ class EnvVariableServiceImplTest {
 
         Map<String, String> result = createService(ALL, null, null).getenv();
 
-        assertThat(result).containsOnlyKeys(PUBLIC_KEY, RESTRICTED_KEY);
-        assertThat(result).containsEntry(PUBLIC_KEY, PUBLIC_VALUE);
-        assertThat(result).containsEntry(RESTRICTED_KEY, RESTRICTED_VALUE);
+        assertThat(result)
+            .containsOnlyKeys(PUBLIC_KEY, RESTRICTED_KEY)
+            .containsEntry(PUBLIC_KEY, PUBLIC_VALUE)
+            .containsEntry(RESTRICTED_KEY, RESTRICTED_VALUE);
     }
 
     @Test
@@ -47,8 +48,9 @@ class EnvVariableServiceImplTest {
 
         Map<String, String> result = createService(WHITELIST, Set.of(PUBLIC_KEY), null).getenv();
 
-        assertThat(result).containsOnlyKeys(PUBLIC_KEY);
-        assertThat(result).containsEntry(PUBLIC_KEY, PUBLIC_VALUE);
+        assertThat(result)
+            .containsOnlyKeys(PUBLIC_KEY)
+            .containsEntry(PUBLIC_KEY, PUBLIC_VALUE);
     }
 
     @Test
@@ -58,8 +60,9 @@ class EnvVariableServiceImplTest {
         Map<String, String> result =
             createService(WHITELIST, Set.of(PUBLIC_KEY, ABSENT_KEY), null).getenv();
 
-        assertThat(result).containsOnlyKeys(PUBLIC_KEY);
-        assertThat(result).doesNotContainKey(ABSENT_KEY);
+        assertThat(result)
+            .containsOnlyKeys(PUBLIC_KEY)
+            .doesNotContainKey(ABSENT_KEY);
     }
 
     @Test
@@ -77,8 +80,9 @@ class EnvVariableServiceImplTest {
 
         Map<String, String> result = createService(BLACKLIST, null, Set.of(RESTRICTED_KEY)).getenv();
 
-        assertThat(result).containsOnlyKeys(PUBLIC_KEY);
-        assertThat(result).doesNotContainKey(RESTRICTED_KEY);
+        assertThat(result)
+            .containsOnlyKeys(PUBLIC_KEY)
+            .doesNotContainKey(RESTRICTED_KEY);
     }
 
     @Test

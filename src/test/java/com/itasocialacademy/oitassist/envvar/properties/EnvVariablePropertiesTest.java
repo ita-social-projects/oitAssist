@@ -46,30 +46,34 @@ class EnvVariablePropertiesTest {
 
     @Test
     void whitelist_ShouldBeUnmodifiable_WhenItIsConfigured() {
-        EnvVariableProperties properties = new EnvVariableProperties(WHITELIST, Set.of(PUBLIC_KEY), null);
+        Set<String> whitelist = new EnvVariableProperties(WHITELIST, Set.of(PUBLIC_KEY), null).whitelist();
 
-        assertThatThrownBy(() -> properties.whitelist().add(RESTRICTED_KEY))
+        assertThatThrownBy(() -> whitelist.add(RESTRICTED_KEY))
             .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
     void blacklist_ShouldBeUnmodifiable_WhenItIsConfigured() {
-        EnvVariableProperties properties = new EnvVariableProperties(BLACKLIST, null, Set.of(RESTRICTED_KEY));
+        Set<String> blacklist = new EnvVariableProperties(BLACKLIST, null, Set.of(RESTRICTED_KEY)).blacklist();
 
-        assertThatThrownBy(() -> properties.blacklist().add(PUBLIC_KEY))
+        assertThatThrownBy(() -> blacklist.add(PUBLIC_KEY))
             .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
     void constructor_ShouldThrow_WhenAccessModeIsAllAndWhitelistIsConfigured() {
-        assertThatThrownBy(() -> new EnvVariableProperties(ALL, Set.of(PUBLIC_KEY), null))
+        Set<String> whitelist = Set.of(PUBLIC_KEY);
+
+        assertThatThrownBy(() -> new EnvVariableProperties(ALL, whitelist, null))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("accessMode=ALL");
     }
 
     @Test
     void constructor_ShouldThrow_WhenAccessModeIsAllAndBlacklistIsConfigured() {
-        assertThatThrownBy(() -> new EnvVariableProperties(ALL, null, Set.of(RESTRICTED_KEY)))
+        Set<String> blacklist = Set.of(RESTRICTED_KEY);
+
+        assertThatThrownBy(() -> new EnvVariableProperties(ALL, null, blacklist))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("accessMode=ALL");
     }

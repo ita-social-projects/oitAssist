@@ -1,8 +1,11 @@
 package com.itasocialacademy.oitassist.envvar.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Named.named;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,7 +18,11 @@ import com.itasocialacademy.oitassist.security.jwt.JwtFilter;
 import io.swagger.v3.oas.annotations.Hidden;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -32,6 +39,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @WebMvcTest(
     controllers = EnvVariableController.class,
@@ -81,20 +89,10 @@ class EnvVariableControllerTest {
             .andExpect(jsonPath("$").isEmpty());
     }
 
-    @Test
-    @WithMockUser(roles = "USER")
-    void getMap_ShouldReturnForbidden_WhenCallerIsNotAdmin() throws Exception {
-        mockMvc.perform(get(ENDPOINT))
-            .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
-            .andExpect(jsonPath("$.status").value(403));
-
-        verifyNoInteractions(envVariableService);
-    }
-
-    @Test
-    void getMap_ShouldReturnForbidden_WhenCallerIsAnonymous() throws Exception {
-        mockMvc.perform(get(ENDPOINT))
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("callersWithoutAdminRole")
+    void getMap_ShouldReturnForbidden_WhenCallerIsNotAdmin(RequestPostProcessor caller) throws Exception {
+        mockMvc.perform(get(ENDPOINT).with(caller))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
             .andExpect(jsonPath("$.status").value(403));
@@ -109,12 +107,18 @@ class EnvVariableControllerTest {
             .isNotNull();
     }
 
+    private static Stream<Arguments> callersWithoutAdminRole() {
+        return Stream.of(
+            Arguments.of(named("caller with the USER role", user("someone").roles("USER"))),
+            Arguments.of(named("anonymous caller", anonymous())));
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     @EnableWebSecurity
     @EnableMethodSecurity
     static class SecurityTestConfiguration {
         @Bean
-        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        SecurityFilterChain securityFilterChain(HttpSecurity http) {
             return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorization -> authorization
