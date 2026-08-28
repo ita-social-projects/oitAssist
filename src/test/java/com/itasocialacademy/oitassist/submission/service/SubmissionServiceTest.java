@@ -15,6 +15,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.submission.api.dto.SubmissionDetail;
 import com.itasocialacademy.oitassist.submission.dao.dto.response.SubmissionResponseDTO;
 import com.itasocialacademy.oitassist.submission.dao.model.Submission;
 import com.itasocialacademy.oitassist.submission.dao.repository.SubmissionRepository;
@@ -26,6 +27,7 @@ import com.itasocialacademy.oitassist.taskassignment.api.TaskAssignmentFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskRequirementsDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -757,5 +759,65 @@ public class SubmissionServiceTest {
             repository,
             fileManagerFacade,
             submissionMapper);
+    }
+
+    @Test
+    @DisplayName("getSubmissionDetailById should return submission detail when user is admin")
+    void getSubmissionDetailById_ShouldReturnSubmissionDetail_WhenUserIsAdmin() {
+        Long submissionId = 1L;
+
+        SubmissionDetail detail = SubmissionDetail.builder()
+            .id(1L)
+            .comment("Test comment")
+            .submittedAt(Instant.now())
+            .submittedBy(100L)
+            .taskAssignmentId(200L)
+            .build();
+
+        when(securityFacade.hasRole("JURY")).thenReturn(false);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(repository.findById(submissionId)).thenReturn(Optional.of(submission));
+        when(submissionMapper.toDetail(submission)).thenReturn(detail);
+
+        SubmissionDetail result = submissionService.getSubmissionDetailById(submissionId);
+
+        assertThat(result).isSameAs(detail);
+
+        verify(securityFacade).hasRole("JURY");
+        verify(securityFacade).hasRole("ADMIN");
+        verify(repository).findById(submissionId);
+        verify(submissionMapper).toDetail(submission);
+    }
+
+    @Test
+    @DisplayName("getSubmissionDetailById should throw InsufficientPermissionsException when user is not jury or admin")
+    void getSubmissionDetailById_ShouldThrowInsufficientPermissionsException_WhenUserIsNotJuryOrAdmin() {
+        Long submissionId = 1L;
+
+        when(securityFacade.hasRole("JURY")).thenReturn(false);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+
+        assertThatThrownBy(() -> submissionService.getSubmissionDetailById(submissionId))
+            .isInstanceOf(InsufficientPermissionsException.class);
+
+        verify(securityFacade).hasRole("JURY");
+        verify(securityFacade).hasRole("ADMIN");
+        verifyNoInteractions(repository, submissionMapper);
+    }
+
+    @Test
+    @DisplayName("getSubmissionDetailById should throw SubmissionNotFoundException when submission does not exist")
+    void getSubmissionDetailById_ShouldThrowSubmissionNotFoundException_WhenSubmissionDoesNotExist() {
+        Long submissionId = 1L;
+
+        when(securityFacade.hasRole("JURY")).thenReturn(false);
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(repository.findById(submissionId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> submissionService.getSubmissionDetailById(submissionId))
+            .isInstanceOf(SubmissionNotFoundException.class);
+
+        verify(repository).findById(submissionId);
+        verifyNoInteractions(submissionMapper);
     }
 }

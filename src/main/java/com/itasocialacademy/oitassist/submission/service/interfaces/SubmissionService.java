@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.submission.service.interfaces;
 
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
+import com.itasocialacademy.oitassist.submission.api.dto.SubmissionDetail;
 import com.itasocialacademy.oitassist.submission.dao.dto.response.SubmissionResponseDTO;
 import com.itasocialacademy.oitassist.submission.exceptions.SubmissionNotFoundException;
 import com.itasocialacademy.oitassist.submission.exceptions.TourIsNotInProgressException;
@@ -56,6 +57,19 @@ public interface SubmissionService {
      *                                          role
      */
     SubmissionResponseDTO getSubmissionById(Long id);
+
+    /**
+     * Retrieves a submission detail by id. Only users with ADMIN or JURY role can
+     * perform this action
+     *
+     * @param id unique identifier of the submission
+     * @return {@link SubmissionDetail}
+     * @throws SubmissionNotFoundException      if there is no submission found with
+     *                                          given id
+     * @throws InsufficientPermissionsException if user doesnt have ADMIN or JURY
+     *                                          role
+     */
+    SubmissionDetail getSubmissionDetailById(Long id);
 
     /**
      * Retrieves a current user`s submission by task assignment id.

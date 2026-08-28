@@ -13,6 +13,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.submission.api.dto.SubmissionDetail;
 import com.itasocialacademy.oitassist.submission.dao.dto.response.SubmissionResponseDTO;
 import com.itasocialacademy.oitassist.submission.dao.model.Submission;
 import com.itasocialacademy.oitassist.submission.dao.repository.SubmissionRepository;
@@ -122,6 +123,16 @@ public class SubmissionServiceImpl implements SubmissionService {
             fileManagerFacade.getFilesByEntity(RelatedEntityType.SUBMISSION, submission.getId(),
                 Set.of(FileRole.GENERIC));
         return submissionMapper.toResponse(submission, files);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SubmissionDetail getSubmissionDetailById(Long id) {
+        if (!securityFacade.hasRole("JURY") && !securityFacade.hasRole("ADMIN")) {
+            throw new InsufficientPermissionsException();
+        }
+        Submission submission = repository.findById(id).orElseThrow(() -> new SubmissionNotFoundException(id));
+        return submissionMapper.toDetail(submission);
     }
 
     @Override
