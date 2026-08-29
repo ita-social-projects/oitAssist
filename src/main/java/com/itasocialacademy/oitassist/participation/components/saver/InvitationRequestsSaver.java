@@ -1,6 +1,5 @@
-package com.itasocialacademy.oitassist.participation.saver;
+package com.itasocialacademy.oitassist.participation.components.saver;
 
-import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Invitation;
 import com.itasocialacademy.oitassist.participation.dao.repository.InvitationRepository;
@@ -15,11 +14,11 @@ public class InvitationRequestsSaver {
     private final InvitationRepository repository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Invitation saveSingleInvitation(Long studentId, CreateInvitationRequest request) {
+    public Invitation saveSingleInvitation(Long studentId, Long competitionId, Long stageId) {
         Invitation invitation = Invitation.builder()
             .studentId(studentId)
-            .competitionId(request.getCompetitionId())
-            .stageId(request.getStageId())
+            .competitionId(competitionId)
+            .stageId(stageId)
             .status(RequestStatus.PENDING)
             .build();
 

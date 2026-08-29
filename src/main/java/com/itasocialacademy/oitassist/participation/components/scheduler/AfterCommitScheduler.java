@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.participation.scheduler;
+package com.itasocialacademy.oitassist.participation.components.scheduler;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;

@@ -1,8 +1,6 @@
 package com.itasocialacademy.oitassist.participation.controller;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ApplicationListItemResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
@@ -48,12 +46,6 @@ class ApplicationControllerTest extends ControllerUnitTest<ApplicationController
 
     @Test
     void createApplication_shouldReturnCreated_whenRequestIsValid() throws Exception {
-
-        CreateApplicationRequest request = CreateApplicationRequest.builder()
-            .competitionId(2L)
-            .stageId(3L)
-            .build();
-
         CreateApplicationResponse response = CreateApplicationResponse.builder()
             .id(1L)
             .competitionId(2L)
@@ -62,27 +54,21 @@ class ApplicationControllerTest extends ControllerUnitTest<ApplicationController
             .status(RequestStatus.PENDING)
             .build();
 
-        when(applicationService.sendEnrollmentRequest(any(CreateApplicationRequest.class))).thenReturn(response);
+        when(applicationService.sendApplicationRequest(2L, 3L)).thenReturn(response);
 
-        mockMvc.perform(post(COMPETITION_BASE_LINK, 2L, 3L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(post(COMPETITION_BASE_LINK, 2L, 3L))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(1L))
             .andExpect(jsonPath("$.competitionId").value(2L))
             .andExpect(jsonPath("$.stageId").value(3L))
             .andExpect(jsonPath("$.status").value("PENDING"));
 
-        verify(applicationService).sendEnrollmentRequest(any(CreateApplicationRequest.class));
+        verify(applicationService).sendApplicationRequest(2L, 3L);
     }
 
     @Test
     void createApplication_shouldReturnBadRequest_whenRequestIsInvalid() throws Exception {
-        CreateApplicationRequest request = CreateApplicationRequest.builder().build();
-
-        mockMvc.perform(post(COMPETITION_BASE_LINK, "a", "z")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(post(COMPETITION_BASE_LINK, "a", "z"))
             .andExpect(status().isBadRequest());
     }
 
@@ -180,7 +166,7 @@ class ApplicationControllerTest extends ControllerUnitTest<ApplicationController
 
         Page<ApplicationListItemResponse> page = new PageImpl<>(List.of(item), PageRequest.of(0, 20), 1);
 
-        when(applicationService.getEnrollmentRequests(any(EnrollmentRequestsFilter.class), any(), any(Pageable.class)))
+        when(applicationService.getEnrollmentRequests(any(), any(), any(), any(Pageable.class)))
             .thenReturn(page);
 
         mockMvc.perform(get(COMPETITION_BASE_LINK, 2L, 3L)
@@ -193,14 +179,12 @@ class ApplicationControllerTest extends ControllerUnitTest<ApplicationController
             .andExpect(jsonPath("$.content[0].user.firstName").value("Test"))
             .andExpect(jsonPath("$.totalElements").value(1));
 
-        verify(applicationService).getEnrollmentRequests(any(EnrollmentRequestsFilter.class), isNull(),
-            any(Pageable.class));
+        verify(applicationService).getEnrollmentRequests(any(), any(), isNull(), any(Pageable.class));
     }
 
     @Test
     void getEnrollmentRequests_withSearchParam_shouldPassSearchToService() throws Exception {
-        when(applicationService.getEnrollmentRequests(any(EnrollmentRequestsFilter.class), eq("test"),
-            any(Pageable.class)))
+        when(applicationService.getEnrollmentRequests(any(), any(), eq("test"), any(Pageable.class)))
             .thenReturn(Page.empty(PageRequest.of(0, 20)));
 
         mockMvc.perform(get(COMPETITION_BASE_LINK, 2L, 3L)
@@ -208,13 +192,13 @@ class ApplicationControllerTest extends ControllerUnitTest<ApplicationController
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isEmpty());
 
-        verify(applicationService).getEnrollmentRequests(any(EnrollmentRequestsFilter.class), eq("test"),
+        verify(applicationService).getEnrollmentRequests(any(), any(), eq("test"),
             any(Pageable.class));
     }
 
     @Test
     void getEnrollmentRequests_noResults_shouldReturnEmptyPage() throws Exception {
-        when(applicationService.getEnrollmentRequests(any(EnrollmentRequestsFilter.class), any(), any(Pageable.class)))
+        when(applicationService.getEnrollmentRequests(any(), any(), any(), any(Pageable.class)))
             .thenReturn(Page.empty());
 
         mockMvc.perform(get(COMPETITION_BASE_LINK, 2L, 3L))

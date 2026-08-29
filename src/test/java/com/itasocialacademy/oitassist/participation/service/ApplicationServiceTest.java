@@ -10,8 +10,6 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFound
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ApplicationListItemResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
@@ -30,8 +28,8 @@ import com.itasocialacademy.oitassist.participation.mapper.interfaces.Applicatio
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.UserSummaryMapper;
-import com.itasocialacademy.oitassist.participation.scheduler.AfterCommitScheduler;
-import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
+import com.itasocialacademy.oitassist.participation.components.scheduler.AfterCommitScheduler;
+import com.itasocialacademy.oitassist.participation.components.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.Instant;
 import java.util.List;
@@ -44,6 +42,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -83,22 +82,18 @@ class ApplicationServiceTest {
     private UserSummaryMapper userSummaryMapper;
     @Mock
     private UserEnrollmentAssembler enrollmentAssembler;
+    @Captor
+    private ArgumentCaptor<Application> applicationCaptor;
 
     @InjectMocks
     private ApplicationServiceImpl applicationService;
 
-    private CreateApplicationRequest createApplicationRequest;
     private Application application;
     private CompetitionDetail competitionDetail;
     private StageDetail stageDetail;
 
     @BeforeEach
     void setUp() {
-        createApplicationRequest = CreateApplicationRequest.builder()
-            .competitionId(2L)
-            .stageId(3L)
-            .build();
-
         application = new Application();
         application.setId(1L);
         application.setCompetitionId(2L);
@@ -133,15 +128,19 @@ class ApplicationServiceTest {
         when(participationRepository.existsByUserIdAndCompetitionIdAndStageId(4L, 2L, 3L)).thenReturn(false);
         when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
-        when(applicationMapper.toEntity(createApplicationRequest)).thenReturn(application);
-        when(applicationRepository.save(application)).thenReturn(application);
-        when(applicationMapper.toResponse(application)).thenReturn(getCreateApplicationResponse());
 
-        CreateApplicationResponse response = applicationService.sendEnrollmentRequest(createApplicationRequest);
+        when(applicationRepository.save(any(Application.class))).thenReturn(application);
+        when(applicationMapper.toResponse(any(Application.class))).thenReturn(getCreateApplicationResponse());
 
+        CreateApplicationResponse response = applicationService.sendApplicationRequest(2L, 3L);
+
+        verify(applicationRepository).save(applicationCaptor.capture());
+        Application savedApplication = applicationCaptor.getValue();
+
+        assertEquals(RequestStatus.PENDING, savedApplication.getStatus());
+        assertEquals(2L, savedApplication.getCompetitionId());
+        assertEquals(3L, savedApplication.getStageId());
         assertNotNull(response);
-        assertEquals(RequestStatus.PENDING, application.getStatus());
-        verify(applicationRepository).save(application);
     }
 
     @Test
@@ -149,7 +148,7 @@ class ApplicationServiceTest {
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
 
         assertThrows(AuthorizationException.class,
-            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
+            () -> applicationService.sendApplicationRequest(2L, 3L));
 
         verify(applicationRepository, never()).save(any());
     }
@@ -161,7 +160,7 @@ class ApplicationServiceTest {
             4L, 2L, 3L, RequestStatus.PENDING)).thenReturn(true);
 
         UserApplicationRequestException exception = assertThrows(UserApplicationRequestException.class,
-            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
+            () -> applicationService.sendApplicationRequest(2L, 3L));
 
         assertTrue(exception.getMessage().contains("already has a pending request"));
         verify(applicationRepository, never()).save(any());
@@ -175,7 +174,7 @@ class ApplicationServiceTest {
         when(participationRepository.existsByUserIdAndCompetitionIdAndStageId(4L, 2L, 3L)).thenReturn(true);
 
         UserApplicationRequestException exception = assertThrows(UserApplicationRequestException.class,
-            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
+            () -> applicationService.sendApplicationRequest(2L, 3L));
 
         assertTrue(exception.getMessage().contains("already a participant"));
         verify(applicationRepository, never()).save(any());
@@ -190,7 +189,7 @@ class ApplicationServiceTest {
         when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.empty());
 
         assertThrows(CompetitionNotFoundException.class,
-            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
+            () -> applicationService.sendApplicationRequest(2L, 3L));
 
         verify(applicationRepository, never()).save(any());
     }
@@ -205,7 +204,7 @@ class ApplicationServiceTest {
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.empty());
 
         assertThrows(StageNotFoundException.class,
-            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
+            () -> applicationService.sendApplicationRequest(2L, 3L));
 
         verify(applicationRepository, never()).save(any());
     }
@@ -225,7 +224,7 @@ class ApplicationServiceTest {
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
 
         UserApplicationRequestException exception = assertThrows(UserApplicationRequestException.class,
-            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
+            () -> applicationService.sendApplicationRequest(2L, 3L));
 
         assertTrue(exception.getMessage().contains("cannot be enrolled"));
         verify(applicationRepository, never()).save(any());
@@ -247,7 +246,7 @@ class ApplicationServiceTest {
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(regionalStage));
 
         UserApplicationRequestException exception = assertThrows(UserApplicationRequestException.class,
-            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
+            () -> applicationService.sendApplicationRequest(2L, 3L));
 
         assertTrue(exception.getMessage().contains("cannot be enrolled"));
         verify(applicationRepository, never()).save(any());
@@ -270,7 +269,7 @@ class ApplicationServiceTest {
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
-            () -> applicationService.sendEnrollmentRequest(createApplicationRequest));
+            () -> applicationService.sendApplicationRequest(2L, 3L));
 
         assertTrue(exception.getMessage().contains("does not belong to this competition"));
         verify(applicationRepository, never()).save(any());
@@ -513,14 +512,12 @@ class ApplicationServiceTest {
     @Test
     void getEnrollmentRequests_noCandidates_shouldReturnEmptyPage() {
         Pageable pageable = PageRequest.of(0, 10);
-        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
-            .competitionId(2L).stageId(3L).build();
 
         when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
         when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
         when(applicationRepository.findAll(any(Specification.class))).thenReturn(List.of());
 
-        Page<ApplicationListItemResponse> result = applicationService.getEnrollmentRequests(filter, null, pageable);
+        Page<ApplicationListItemResponse> result = applicationService.getEnrollmentRequests(2L, 3L, null, pageable);
 
         assertTrue(result.isEmpty());
         verify(userFacade, never()).findUserIdsBySearchWithinIds(any(), any());
@@ -530,8 +527,6 @@ class ApplicationServiceTest {
     @Test
     void getEnrollmentRequests_noSearch_shouldReturnAllCandidates() {
         Pageable pageable = PageRequest.of(0, 10);
-        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
-            .competitionId(2L).stageId(3L).build();
 
         Application candidateApplication = new Application();
         candidateApplication.setId(1L);
@@ -558,7 +553,7 @@ class ApplicationServiceTest {
                 .map(app -> combiner.apply(app, user))
                 .toList();
         });
-        Page<ApplicationListItemResponse> result = applicationService.getEnrollmentRequests(filter, null, pageable);
+        Page<ApplicationListItemResponse> result = applicationService.getEnrollmentRequests(2L, 3L, null, pageable);
 
         assertEquals(1, result.getTotalElements());
         assertEquals(1L, result.getContent().getFirst().applicationId());
@@ -568,8 +563,6 @@ class ApplicationServiceTest {
     @Test
     void getEnrollmentRequests_searchMatchesNoOne_shouldReturnEmptyPage() {
         Pageable pageable = PageRequest.of(0, 10);
-        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
-            .competitionId(2L).stageId(3L).build();
 
         Application candidateApplication = new Application();
         candidateApplication.setIssuedBy(4L);
@@ -579,7 +572,7 @@ class ApplicationServiceTest {
         when(applicationRepository.findAll(any(Specification.class))).thenReturn(List.of(candidateApplication));
         when(userFacade.findUserIdsBySearchWithinIds("xyz", List.of(4L))).thenReturn(Optional.of(List.of()));
 
-        Page<ApplicationListItemResponse> result = applicationService.getEnrollmentRequests(filter, "xyz", pageable);
+        Page<ApplicationListItemResponse> result = applicationService.getEnrollmentRequests(2L, 3L, "xyz", pageable);
 
         assertTrue(result.isEmpty());
         verify(applicationRepository, never()).findAll(any(Specification.class), any(Pageable.class));
@@ -588,8 +581,6 @@ class ApplicationServiceTest {
     @Test
     void getEnrollmentRequests_stageDoesNotBelongToCompetition_shouldThrowCompetitionHierarchyValidationException() {
         Pageable pageable = PageRequest.of(0, 10);
-        EnrollmentRequestsFilter filter = EnrollmentRequestsFilter.builder()
-            .competitionId(2L).stageId(3L).build();
 
         StageDetail mismatchedStage = StageDetail.builder()
             .id(3L)
@@ -602,7 +593,7 @@ class ApplicationServiceTest {
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
-            () -> applicationService.getEnrollmentRequests(filter, null, pageable));
+            () -> applicationService.getEnrollmentRequests(2L, 3L, null, pageable));
 
         assertTrue(exception.getMessage().contains("does not belong to this competition"));
         verify(applicationRepository, never()).findAll(any(Specification.class));

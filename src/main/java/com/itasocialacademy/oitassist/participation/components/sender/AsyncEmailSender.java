@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.participation.sender;
+package com.itasocialacademy.oitassist.participation.components.sender;
 
 import com.itasocialacademy.oitassist.core.properties.WebClientProperties;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;

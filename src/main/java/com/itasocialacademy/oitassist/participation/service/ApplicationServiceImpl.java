@@ -11,8 +11,6 @@ import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundExcept
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateApplicationRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.EnrollmentRequestsFilter;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
@@ -28,8 +26,8 @@ import com.itasocialacademy.oitassist.participation.mapper.interfaces.Applicatio
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessApplicationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.UserSummaryMapper;
-import com.itasocialacademy.oitassist.participation.scheduler.AfterCommitScheduler;
-import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
+import com.itasocialacademy.oitassist.participation.components.scheduler.AfterCommitScheduler;
+import com.itasocialacademy.oitassist.participation.components.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
@@ -50,6 +48,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class ApplicationServiceImpl implements ApplicationService {
+    private static final RequestStatus PENDING_STATUS = RequestStatus.PENDING;
+
     private final ParticipationRepository participationRepository;
     private final ApplicationRepository applicationRepository;
     private final ApplicationMapper applicationMapper;
@@ -65,11 +65,14 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional
-    public CreateApplicationResponse sendEnrollmentRequest(CreateApplicationRequest createApplicationRequest) {
+    public CreateApplicationResponse sendApplicationRequest(Long competitionId, Long stageId) {
         Long userId = getCurrentUserIdOrThrow();
-        validateUserCanApply(userId, createApplicationRequest);
-        Application application = applicationMapper.toEntity(createApplicationRequest);
-        application.setStatus(RequestStatus.PENDING);
+        validateUserCanApply(userId, competitionId, stageId);
+        Application application = Application.builder()
+            .competitionId(competitionId)
+            .stageId(stageId)
+            .status(PENDING_STATUS)
+            .build();
         return applicationMapper.toResponse(applicationRepository.save(application));
     }
 
@@ -129,15 +132,14 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Override
     @Transactional(readOnly = true)
     public Page<ApplicationListItemResponse> getEnrollmentRequests(
-        EnrollmentRequestsFilter request,
+        Long competitionId,
+        Long stageId,
         String search,
         Pageable pageable) {
-        Long competitionId = request.getCompetitionId();
-        Long stageId = request.getStageId();
         validateCompetitionAndStageInfo(competitionId, stageId);
         List<Long> candidateUserIds = applicationRepository.findAll(
             ApplicationSpecification.hasCompetitionAndStage(competitionId, stageId)
-                .and(ApplicationSpecification.hasStatus(RequestStatus.PENDING)))
+                .and(ApplicationSpecification.hasStatus(PENDING_STATUS)))
             .stream()
             .map(Application::getUserId)
             .distinct()
@@ -154,7 +156,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         Page<Application> applications = applicationRepository.findAll(
             ApplicationSpecification.hasCompetitionAndStage(competitionId, stageId)
                 .and(ApplicationSpecification.userIdIn(filterIds))
-                .and(ApplicationSpecification.hasStatus(RequestStatus.PENDING)),
+                .and(ApplicationSpecification.hasStatus(PENDING_STATUS)),
             pageable);
         List<ApplicationListItemResponse> responses = enrollmentAssembler.enrichWithUser(
             applications.toList(), Application::getUserId,
@@ -166,28 +168,28 @@ public class ApplicationServiceImpl implements ApplicationService {
         return new PageImpl<>(responses, pageable, applications.getTotalElements());
     }
 
-    private void validateUserCanApply(Long userId, CreateApplicationRequest request) {
-        validateNoPendingApplication(userId, request);
-        validateUserDoesNotAlreadyParticipate(userId, request);
-        validateCompetitionAndStageInfoForApplying(request.getCompetitionId(), request.getStageId());
+    private void validateUserCanApply(Long userId, Long competitionId, Long stageId) {
+        validateNoPendingApplication(userId, competitionId, stageId);
+        validateUserDoesNotAlreadyParticipate(userId, competitionId, stageId);
+        validateCompetitionAndStageInfoForApplying(competitionId, stageId);
     }
 
-    private void validateNoPendingApplication(Long userId, CreateApplicationRequest request) {
+    private void validateNoPendingApplication(Long userId, Long competitionId, Long stageId) {
         boolean hasPendingApplication = applicationRepository.existsByIssuedByAndCompetitionIdAndStageIdAndStatus(
             userId,
-            request.getCompetitionId(),
-            request.getStageId(),
-            RequestStatus.PENDING);
+            competitionId,
+            stageId,
+            PENDING_STATUS);
         if (hasPendingApplication) {
             throw new UserApplicationRequestException("User already has a pending request");
         }
     }
 
-    private void validateUserDoesNotAlreadyParticipate(Long userId, CreateApplicationRequest request) {
+    private void validateUserDoesNotAlreadyParticipate(Long userId, Long competitionId, Long stageId) {
         boolean isParticipant = participationRepository.existsByUserIdAndCompetitionIdAndStageId(
             userId,
-            request.getCompetitionId(),
-            request.getStageId());
+            competitionId,
+            stageId);
         if (isParticipant) {
             throw new UserApplicationRequestException("User is already a participant");
         }
@@ -220,7 +222,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     private Application getPendingApplicationOrThrow(Long applicationId) {
         Application application = applicationRepository.findById(applicationId)
             .orElseThrow(() -> new ApplicationNotFoundException("The application was not found"));
-        if (application.getStatus() != RequestStatus.PENDING) {
+        if (application.getStatus() != PENDING_STATUS) {
             throw new UnableToProcessApplicationException("The application request is not in the PENDING status");
         }
         return application;
