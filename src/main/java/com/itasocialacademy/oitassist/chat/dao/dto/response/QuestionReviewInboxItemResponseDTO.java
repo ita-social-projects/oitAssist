@@ -7,8 +7,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import lombok.Builder;
 
+/**
+ * Immutable reviewer-neutral projection used by administrator and
+ * organizing-committee review queues.
+ */
 @Builder
-@Schema(description = "Administrator question inbox item")
+@Schema(description = "Question review queue item")
 public record QuestionReviewInboxItemResponseDTO(
     Long id,
     Long taskAssignmentId,

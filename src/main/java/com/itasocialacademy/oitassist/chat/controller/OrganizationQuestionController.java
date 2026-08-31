@@ -1,0 +1,645 @@
+package com.itasocialacademy.oitassist.chat.controller;
+
+import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.ClaimQuestionRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateOfficialAnswerRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStateRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionStatusRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionVisibilityRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
+import com.itasocialacademy.oitassist.chat.service.interfaces.OrganizationQuestionService;
+import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
+import com.itasocialacademy.oitassist.core.web.ErrorResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/org/questions")
+@RequiredArgsConstructor
+@PreAuthorize("hasRole('ORG')")
+@Tag(
+    name = "Organization Questions V1",
+    description = """
+        TaskAssignment-scoped question review operations for organizing
+        committee responders
+        """)
+public class OrganizationQuestionController {
+    private static final int DEFAULT_PAGE = 0;
+
+    private static final int DEFAULT_PAGE_SIZE = 20;
+
+    private final OrganizationQuestionService organizationQuestionService;
+
+    @Operation(
+        summary = "Get responder-scoped question inbox",
+        description = """
+            Returns open, new and unassigned questions from exact
+            TaskAssignments for which the authenticated ORG user has
+            responder eligibility.
+
+            Question visibility does not affect responder eligibility.
+            Results are ordered by createdAt ASC and id ASC.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Responder inbox retrieved successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = PageResponse.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Pagination parameters are invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global ORG role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/inbox")
+    public ResponseEntity<PageResponse<QuestionReviewInboxItemResponseDTO>> getResponderInbox(
+        @Parameter(
+            description = "Zero-based page number",
+            example = "0") @RequestParam(
+                defaultValue = "0") int page,
+
+        @Parameter(
+            description = "Page size within the configured limit",
+            example = "20") @RequestParam(
+                defaultValue = "20") int size) {
+        validatePageAndSize(
+            page,
+            size);
+
+        return ResponseEntity.ok(
+            PageResponse.from(
+                organizationQuestionService
+                    .getResponderInbox(
+                        page,
+                        size)));
+    }
+
+    @Operation(
+        summary = "Get questions assigned to current responder",
+        description = """
+            Returns open questions assigned to the authenticated ORG
+            responder.
+
+            The optional status filter supports NEW, IN_REVIEW and ANSWERED.
+            Results are ordered by updatedAt DESC and id DESC.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Assigned question page retrieved successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = PageResponse.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Pagination or status parameter is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global ORG role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/assigned-to-me")
+    public ResponseEntity<PageResponse<QuestionReviewInboxItemResponseDTO>> getAssignedToCurrentResponder(
+        @Parameter(
+            description = "Optional question-status filter",
+            example = "IN_REVIEW") @RequestParam(
+                required = false) QuestionStatus status,
+
+        @Parameter(
+            description = "Zero-based page number",
+            example = "0") @RequestParam(
+                defaultValue = "0") int page,
+
+        @Parameter(
+            description = "Page size within the configured limit",
+            example = "20") @RequestParam(
+                defaultValue = "20") int size) {
+        validatePageAndSize(
+            page,
+            size);
+
+        return ResponseEntity.ok(
+            PageResponse.from(
+                organizationQuestionService
+                    .getAssignedToCurrentResponder(
+                        status,
+                        page,
+                        size)));
+    }
+
+    @Operation(
+        summary = "Claim a question as an ORG responder",
+        description = """
+            Atomically assigns an eligible open, new and unclaimed question
+            to the authenticated organizing-committee responder.
+
+            The caller must have responder eligibility for the question's
+            exact TaskAssignment. The backend controls reviewer assignment,
+            status transition and version increment.
+
+            Missing and inaccessible questions use the same not-found
+            response to avoid exposing protected question information.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Question claimed successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionThreadResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question id or expected version is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global ORG role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = """
+                Question was not found or is outside the current
+                responder's TaskAssignment scope
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = """
+                Question is already assigned, is closed, is not NEW or its
+                persisted version differs from the expected version
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/{questionId}/claim")
+    public ResponseEntity<QuestionThreadResponseDTO> claimQuestion(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42",
+            required = true) @PathVariable Long questionId,
+
+        @Valid @RequestBody ClaimQuestionRequestDTO request) {
+        validateQuestionId(
+            questionId);
+
+        return ResponseEntity.ok(
+            organizationQuestionService
+                .claimQuestion(
+                    questionId,
+                    request.version()));
+    }
+
+    @Operation(
+        summary = "Publish an official answer as an ORG responder",
+        description = """
+            Publishes an official answer in an open question thread owned by
+            the authenticated organizing-committee responder.
+
+            The service verifies that the current user owns the assigned
+            review and still has responder eligibility for the question's
+            exact TaskAssignment.
+
+            The request controls only answer content. The backend controls
+            the author id, question id, message type, identifier and creation
+            timestamp.
+
+            Questions in NEW or IN_REVIEW status transition to ANSWERED.
+            An additional official answer is allowed when the question is
+            already ANSWERED.
+
+            Missing questions, questions assigned to another reviewer and
+            questions without a matching responder grant use the same
+            not-found response.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "201",
+            description = "Official answer published successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionMessageResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question identifier or answer content is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global ORG role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = """
+                Question was not found, is assigned to another reviewer or
+                has no matching responder grant
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = """
+                Question is closed or a concurrent lifecycle operation
+                prevents official-answer publication
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/{questionId}/official-answers")
+    public ResponseEntity<QuestionMessageResponseDTO> publishOfficialAnswer(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42",
+            required = true) @PathVariable Long questionId,
+        @Valid @RequestBody CreateOfficialAnswerRequestDTO request) {
+        validateQuestionId(
+            questionId);
+
+        QuestionMessageResponseDTO response =
+            organizationQuestionService
+                .publishOfficialAnswer(
+                    questionId,
+                    request);
+
+        return ResponseEntity
+            .status(
+                HttpStatus.CREATED)
+            .body(
+                response);
+    }
+
+    @Operation(
+        summary = "Change assigned question visibility",
+        description = """
+            Changes visibility of a question owned by the authenticated
+            organizing-committee responder.
+
+            The service verifies assigned-review ownership and responder
+            eligibility for the question's exact TaskAssignment.
+
+            Only visibility, updatedAt and version may change. Review status,
+            lifecycle state and assigned reviewer remain unchanged.
+
+            The expected current version is required. A successful update
+            increments the version exactly once. A stale version produces
+            QUESTION_VERSION_CONFLICT and is not retried automatically.
+
+            Missing questions, questions assigned to another responder and
+            questions without a matching responder grant use the same
+            not-found response.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Question visibility updated successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionThreadResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question id, visibility or expected version is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global ORG role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = """
+                Question was not found, is assigned to another responder or
+                has no matching responder grant
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Supplied question version is stale",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/{questionId}/visibility")
+    public ResponseEntity<QuestionThreadResponseDTO> updateVisibility(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42",
+            required = true) @PathVariable Long questionId,
+        @Valid @RequestBody UpdateQuestionVisibilityRequestDTO request) {
+        validateQuestionId(
+            questionId);
+
+        return ResponseEntity.ok(
+            organizationQuestionService
+                .updateVisibility(
+                    questionId,
+                    request));
+    }
+
+    @Operation(
+        summary = "Change assigned question review status",
+        description = """
+            Changes review status of a question owned by the authenticated
+            organizing-committee responder.
+
+            Supported values are NEW, IN_REVIEW and ANSWERED. The service
+            verifies assigned-review ownership and exact TaskAssignment
+            responder eligibility.
+
+            Only status, updatedAt and version may change. Visibility,
+            lifecycle state and assigned reviewer remain unchanged.
+
+            The expected current version is required. A successful update
+            increments the version exactly once. A stale request returns
+            QUESTION_VERSION_CONFLICT without an automatic retry.
+
+            Missing questions, questions assigned to another responder and
+            questions without a matching responder grant use the same
+            not-found response.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Question status updated successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionThreadResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question id, status or expected version is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global ORG role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = """
+                Question was not found, is assigned to another responder or
+                has no matching responder grant
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Supplied question version is stale",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/{questionId}/status")
+    public ResponseEntity<QuestionThreadResponseDTO> updateStatus(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42",
+            required = true) @PathVariable Long questionId,
+        @Valid @RequestBody UpdateQuestionStatusRequestDTO request) {
+        validateQuestionId(
+            questionId);
+
+        return ResponseEntity.ok(
+            organizationQuestionService
+                .updateStatus(
+                    questionId,
+                    request));
+    }
+
+    @Operation(
+        summary = "Change assigned question lifecycle state",
+        description = """
+            Closes or reopens a question owned by the authenticated
+            organizing-committee responder.
+
+            Supported values are OPEN and CLOSED. The service verifies
+            assigned-review ownership and exact TaskAssignment responder
+            eligibility.
+
+            Only lifecycle state, updatedAt and version may change.
+            Visibility, review status and assigned reviewer remain unchanged.
+
+            The expected current version is required. A successful update
+            increments the version exactly once. A stale request returns
+            QUESTION_VERSION_CONFLICT without an automatic retry.
+
+            Missing questions, questions assigned to another responder and
+            questions without a matching responder grant use the same
+            not-found response.
+            """)
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Question lifecycle state updated successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = QuestionThreadResponseDTO.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Question id, state or expected version is invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Authentication is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Global ORG role is required",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = """
+                Question was not found, is assigned to another responder or
+                has no matching responder grant
+                """,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Supplied question version is stale",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/{questionId}/state")
+    public ResponseEntity<QuestionThreadResponseDTO> updateState(
+        @Parameter(
+            description = "Positive question identifier",
+            example = "42",
+            required = true) @PathVariable Long questionId,
+        @Valid @RequestBody UpdateQuestionStateRequestDTO request) {
+        validateQuestionId(
+            questionId);
+
+        return ResponseEntity.ok(
+            organizationQuestionService
+                .updateState(
+                    questionId,
+                    request));
+    }
+
+    private void validateQuestionId(
+        Long questionId) {
+        if (questionId == null
+            || questionId <= 0) {
+            throw new ValidationException(
+                "Question id must be a positive number",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+    }
+
+    private void validatePageAndSize(
+        int page,
+        int size) {
+        if (page < 0) {
+            throw new ValidationException(
+                "Page number must not be negative",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+
+        if (size < 1
+            || size > MAX_PAGE_SIZE) {
+            throw new ValidationException(
+                "Page size must be between 1 and %d"
+                    .formatted(
+                        MAX_PAGE_SIZE),
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+    }
+}

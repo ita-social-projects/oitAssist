@@ -7,6 +7,8 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionCreationNotAllowedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionForumAccessRestrictedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
+import com.itasocialacademy.oitassist.chat.service.interfaces.TaskAssignmentForumResponderService;
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
@@ -27,11 +29,13 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class QuestionAccessPolicy {
     private static final String ADMIN_ROLE = "ADMIN";
+    private static final String ORG_ROLE = "ORG";
 
     private final SecurityFacade securityFacade;
     private final TaskAssignmentFacade taskAssignmentFacade;
     private final CompetitionFacade competitionFacade;
     private final ParticipationFacade participationFacade;
+    private final TaskAssignmentForumResponderService forumResponderService;
 
     /**
      * Determines whether the current user created the question.
@@ -43,10 +47,8 @@ public class QuestionAccessPolicy {
     /**
      * Determines whether the current user is assigned to review the question.
      */
-    public boolean isAssignedReviewer(
-        QuestionThread questionThread) {
-        return currentUserMatches(
-            questionThread.getAssignedReviewerId());
+    public boolean isAssignedReviewer(QuestionThread questionThread) {
+        return currentUserMatches(questionThread.getAssignedReviewerId());
     }
 
     /**
@@ -56,6 +58,16 @@ public class QuestionAccessPolicy {
         return securityFacade.hasRole(ADMIN_ROLE);
     }
 
+    public boolean isOrganizationResponder() {
+        return securityFacade.hasRole(ORG_ROLE);
+    }
+
+    public boolean isOrganizationResponder(Long taskAssignmentId) {
+        return securityFacade.hasRole(ORG_ROLE)
+            && forumResponderService.isResponder(taskAssignmentId,
+                securityFacade.getCurrentUserId().orElse(null));
+    }
+
     /**
      * Validates that the authenticated user may view the forum belonging to the
      * specified task assignment.
@@ -63,10 +75,8 @@ public class QuestionAccessPolicy {
      * @param taskAssignmentId identifier of the task assignment
      * @return current authenticated user's identifier
      */
-    public Long requireTaskAssignmentForumAccess(
-        Long taskAssignmentId) {
-        return requireTaskAssignmentParticipantAccess(
-            taskAssignmentId).userId();
+    public Long requireTaskAssignmentForumAccess(Long taskAssignmentId) {
+        return resolveTaskAssignmentAccess(taskAssignmentId).userId();
     }
 
     /**
@@ -137,23 +147,37 @@ public class QuestionAccessPolicy {
             return context;
         }
 
+        /*
+         * An assigned ORG responder receives a question-scoped bypass of participant
+         * visibility and participation requirements.
+         *
+         * Ownership alone is insufficient: the matching responder grant for the
+         * question's exact TaskAssignment is also required.
+         */
+        if (isOrganizationResponder(question.getTaskAssignmentId())) {
+            return context;
+        }
+
+//        if (isAssignedOrganizationResponder(
+//            question,
+//            context.userId())) {
+//            return context;
+//        }
+
         boolean author = Objects.equals(
             context.userId(),
             question.getAuthorId());
 
-        boolean assignedReviewer = Objects.equals(
-            context.userId(),
-            question.getAssignedReviewerId());
-
         /*
-         * Another participant's private question is masked before checking
-         * participation, preventing disclosure of protected thread data.
+         * assignedReviewerId alone must not expose a private question.
+         *
+         * A reviewer obtains the bypass only through the validated ORG branch above.
+         * The remaining branch represents ordinary participant access.
          */
         if (question.getVisibility() == PRIVATE
-            && !author
-            && !assignedReviewer) {
+                && !author) {
             throw new QuestionNotFoundException(
-                question.getId());
+                    question.getId());
         }
 
         requireVisibleAssignment(context);
@@ -176,10 +200,36 @@ public class QuestionAccessPolicy {
             return context;
         }
 
+        if (isOrganizationResponder(taskAssignmentId)) {
+            return context;
+        }
+
         requireVisibleAssignment(context);
         requireParticipation(context);
 
         return context;
+    }
+
+    private boolean isAssignedOrganizationResponder(
+            QuestionThread question,
+            Long currentUserId) {
+        /*
+         * Check ownership first so ordinary participants and unrelated ORG users do not
+         * cause unnecessary responder-assignment queries.
+         */
+        if (!Objects.equals(
+                currentUserId,
+                question.getAssignedReviewerId())) {
+            return false;
+        }
+
+        if (!securityFacade.hasRole(ORG_ROLE)) {
+            return false;
+        }
+
+        return forumResponderService.isResponder(
+                question.getTaskAssignmentId(),
+                currentUserId);
     }
 
     private TaskAssignmentAccessContext resolveTaskAssignmentContext(
@@ -190,21 +240,39 @@ public class QuestionAccessPolicy {
                 "Authentication is required to access the question forum",
                 ErrorCode.AUTHENTICATION_REQUIRED));
 
-        TaskAssignmentDetailDTO assignment =
-            taskAssignmentFacade
-                .findAssignmentById(taskAssignmentId)
-                .orElseThrow(() -> new TaskAssignmentNotFoundException(
-                    taskAssignmentId));
+        TaskAssignmentDetailDTO assignment = taskAssignmentFacade.findAssignmentById(taskAssignmentId)
+            .orElseThrow(() -> new TaskAssignmentNotFoundException(taskAssignmentId));
 
-        TourDetail tour = competitionFacade
-            .findTourById(assignment.tourId())
-            .orElseThrow(() -> new TourNotFoundException(
-                assignment.tourId()));
+        TourDetail tour = competitionFacade.findTourById(assignment.tourId())
+            .orElseThrow(() -> new TourNotFoundException(assignment.tourId()));
 
-        StageDetail stage = competitionFacade
-            .findStageById(tour.stageId())
-            .orElseThrow(() -> new StageNotFoundException(
-                tour.stageId()));
+        StageDetail stage = competitionFacade.findStageById(tour.stageId())
+            .orElseThrow(() -> new StageNotFoundException(tour.stageId()));
+
+        /*
+         * Administrators bypass assignment visibility and participation checks, but
+         * only after the complete assignment hierarchy has been validated.
+         */
+        if (isAdministrator()) {
+            return new TaskAssignmentAccessContext(
+                currentUserId,
+                assignment,
+                tour,
+                stage);
+        }
+
+        if (assignment.visibility() != VISIBLE) {
+            throw new QuestionForumAccessRestrictedException(taskAssignmentId);
+        }
+
+        boolean isParticipant = participationFacade.isUserParticipant(
+            currentUserId,
+            stage.competitionId(),
+            stage.id());
+
+        if (!isParticipant) {
+            throw new QuestionForumAccessRestrictedException(taskAssignmentId);
+        }
 
         return new TaskAssignmentAccessContext(
             currentUserId,
@@ -242,9 +310,7 @@ public class QuestionAccessPolicy {
         }
 
         return securityFacade.getCurrentUserId()
-            .map(currentUserId -> Objects.equals(
-                currentUserId,
-                expectedUserId))
+            .map(currentUserId -> Objects.equals(currentUserId, expectedUserId))
             .orElse(false);
     }
 
