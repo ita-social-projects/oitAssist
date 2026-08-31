@@ -19,6 +19,10 @@ spring:
     show-sql: ${JPA_SHOW_SQL}
     open-in-view: false
     properties:
+      jakarta:
+        persistence:
+          lock:
+            timeout: 3000
       hibernate.default_batch_fetch_size: 50
     hibernate:
       ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:validate}

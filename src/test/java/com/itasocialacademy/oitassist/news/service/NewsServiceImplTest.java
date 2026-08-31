@@ -270,7 +270,8 @@ class NewsServiceImplTest {
         when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(newsPage);
         when(newsMapper.toAdminListItemDto(news)).thenReturn(dto);
 
-        Page<ResponseNewsAdminListItemDto> result = newsService.getAllNewsForAdmin(pageable, null);
+        Page<ResponseNewsAdminListItemDto> result = newsService.getAllNewsForAdmin(
+            pageable, null, null, null, null);
 
         assertThat(result.getContent()).hasSize(1);
 
@@ -309,7 +310,8 @@ class NewsServiceImplTest {
         when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(newsPage);
         when(newsMapper.toAdminListItemDto(news)).thenReturn(dto);
 
-        Page<ResponseNewsAdminListItemDto> result = newsService.getAllNewsForAdmin(pageable, search);
+        Page<ResponseNewsAdminListItemDto> result = newsService.getAllNewsForAdmin(
+            pageable, search, null, null, null);
 
         assertThat(result.getContent()).hasSize(1);
 
@@ -329,7 +331,8 @@ class NewsServiceImplTest {
 
         when(newsRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
 
-        Page<ResponseNewsAdminListItemDto> result = newsService.getAllNewsForAdmin(pageable, null);
+        Page<ResponseNewsAdminListItemDto> result = newsService.getAllNewsForAdmin(
+            pageable, null, null, null, null);
 
         assertThat(result.getContent()).isEmpty();
         assertThat(result.getTotalElements()).isEqualTo(0);

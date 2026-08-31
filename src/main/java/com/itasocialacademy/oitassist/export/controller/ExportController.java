@@ -42,11 +42,12 @@ public class ExportController {
         @RequestParam Long olympiadId,
         @RequestParam(required = false) List<Long> stageIds,
         @RequestParam(required = false) List<Long> tourIds,
+        @RequestParam(required = false) String search,
         @RequestParam ExportFormat format) {
-        ExportData data = exportService.getExportData(olympiadId, stageIds, tourIds);
+        ExportData data = exportService.getExportData(olympiadId, stageIds, tourIds, search);
         byte[] file = exporterResolver.resolve(format).export(data);
 
-        String fileName = data.olympiadName() + "." + format.getExtension();
+        String fileName = data.fileName() + "." + format.getExtension();
         ContentDisposition contentDisposition = ContentDisposition.attachment()
             .filename(fileName, StandardCharsets.UTF_8)
             .build();

@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.competition.service.interfaces;
 
-import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
@@ -32,14 +32,17 @@ public interface CompetitionService {
     CompetitionResponse getVisibleById(Long competitionId);
 
     /**
-     * Transitions the competition to a new status. Publishing requires at least one
-     * Stage and one Tour.
+     * Transitions the competition to a new status. Publishing (ENROLLMENT or
+     * PUBLISHED) requires at least one Stage and one Tour; finishing (FINISHED)
+     * additionally requires every Stage to be completed. The request's
+     * {@code version} must match the competition's current version, or the
+     * transition is rejected as a stale-version conflict.
      *
      * @param competitionId Competition ID
-     * @param status        a status of a Competition
+     * @param request       the target status and the expected current version
      * @return {@link CompetitionResponse}
      */
-    CompetitionResponse changeStatus(Long competitionId, CompetitionStatus status);
+    CompetitionResponse changeStatus(Long competitionId, ChangeCompetitionStatusRequest request);
 
     /**
      * Retrieves a paginated list of competitions visible to the current user,

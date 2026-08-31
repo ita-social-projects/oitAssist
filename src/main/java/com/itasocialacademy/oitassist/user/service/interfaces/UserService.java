@@ -40,6 +40,13 @@ public interface UserService {
     Optional<UserProfileDetails> findProfileDetailsById(Long userId);
 
     /**
+     * Bulk variant of {@link #findProfileDetailsById} — returns the display-side
+     * projections for all matching users. IDs with no matching user are simply
+     * omitted from the result, consistent with {@link #findAuthDetailsByIds}.
+     */
+    List<UserProfileDetails> findProfilesDetailsByIds(List<Long> userIds);
+
+    /**
      * Searches for the list of users by their IDs and returns the list of auth-side
      * projections required by {@code UserFacade.findByIds}. Returns empty if no
      * users were found.
@@ -89,15 +96,27 @@ public interface UserService {
 
     /**
      * Returns a paginated list of users for the admin dashboard. Supports optional
-     * search by name or email.
+     * search by name or email and filter by roles.
      *
      * @param pageable pagination parameters
      * @param search   optional search query
+     * @param roles    optional roles filter
      * @return paginated list of users
      * @throws InsufficientPermissionsException if user does not have admin role
      */
     @NonNull
-    Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search);
+    Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search, List<Role> roles);
+
+    /**
+     * Returns a paginated list of users with given ids. Available only for admins
+     *
+     * @param pageable pagination parameters
+     * @param ids      ids to search users by
+     * @return paginated list of users
+     * @throws InsufficientPermissionsException if user does not have admin role
+     */
+    @NonNull
+    Page<ResponseUserDTO> getUsersByIds(@NonNull Pageable pageable, List<Long> ids);
 
     /**
      * Changes the status of an existing user.
@@ -115,4 +134,21 @@ public interface UserService {
      */
     @NonNull
     ResponseUserDTO changeUserStatus(@NonNull Long userId, @NonNull UserStatus newStatus);
+
+    /**
+     * Filters a provided list of candidate user IDs based on a text search against
+     * the user's first name, surname or email, required by
+     * {@code UserFacade.findUserIdsBySearchWithinIds}.
+     * <p>
+     * This method is designed to perform a constrained search. Instead of searching
+     * the entire database, it only searches within the provided
+     * {@code candidateIds}.
+     * </p>
+     *
+     * @param search       the text search query (e.g., "Ivan", "ivan@email.com").
+     * @param candidateIds the pool of user IDs to restrict the search to.
+     * @return an {@code Optional} containing the filtered list of matching user
+     *         IDs, or {@code Optional.empty()} if the search string is null/blank.
+     */
+    Optional<List<Long>> findUserIdsBySearch(String search, List<Long> candidateIds);
 }

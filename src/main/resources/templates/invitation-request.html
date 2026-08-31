@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Сповіщення про підтверджену заявку</title>
+    <style>
+        <#include "fragments/participation-template-style.ftl">
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Привіт, ${firstName}!</h1>
+    <p>Вас було запрошено для участі в олімпіаді <strong>"${competitionTitle}"</strong>,
+        етапі <strong>"${stageTitle}"</strong>!🎉<br>
+        Вам потрібно підтвердити вашу участь в особистому кабінеті.
+        Щоб перейти в кабінет, натисніть на кнопку нижче:</p>
+    <a href="${profileLink}" class="button">Особистий кабінет ↗</a>
+    <p>Або можете переглянути деталі олімпіади:</p>
+    <a href="${competitionLink}" class="button">Переглянути деталі ↗</a>
+    <h3>Бажаємо успіхів!</h3>
+
+    <p>Якщо вам цей лист було надіслано помилково — проігноруйте його.</p>
+
+    <div class="footer">
+        © 2026 OIT Assist. Усі права захищені.
+    </div>
+</div>
+</body>
+</html>

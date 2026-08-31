@@ -1,9 +1,11 @@
 package com.itasocialacademy.oitassist.taskassignment.controller;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
+import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.dao.model.TaskRequirements;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssignTaskRequestDTO;
@@ -11,6 +13,7 @@ import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssig
 import com.itasocialacademy.oitassist.taskassignment.dto.request.TaskRequirementsRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.DetailedTaskAssignmentResponseDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.response.LinkedToursResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssignedException;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
@@ -71,7 +74,7 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
 
         mockDetailedResponse = new DetailedTaskAssignmentResponseDTO(
             1L, 3L, "PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
-            10L, AssignmentVisibility.VISIBLE, 25, requirements, testFiles, 100L);
+            10L, AssignmentVisibility.VISIBLE, 25, requirements, testFiles, 100L, 0L);
     }
 
     // POST /api/v1/tours/{tourId}/task-assignments — assignTask
@@ -274,12 +277,55 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
             .andExpect(status().isNotFound());
     }
 
+    // GET /api/v1/tasks/{taskId}/linked-tours — getLinkedTours
+
+    @Test
+    void getLinkedTours_shouldReturnListAnd200() throws Exception {
+        LinkedToursResponseDTO mockTourResponse = LinkedToursResponseDTO.builder()
+            .tourId(10L)
+            .title("Tour 1")
+            .description("Description")
+            .location("Location")
+            .executionStatus(ExecutionStatus.SCHEDULED)
+            .build();
+
+        when(assignmentService.getLinkedToursByTaskId(3L))
+            .thenReturn(List.of(mockTourResponse));
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}/linked-tours", 3L))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isArray())
+            .andExpect(jsonPath("$[0].tourId").value(10L))
+            .andExpect(jsonPath("$[0].title").value("Tour 1"))
+            .andExpect(jsonPath("$[0].description").value("Description"))
+            .andExpect(jsonPath("$[0].location").value("Location"))
+            .andExpect(jsonPath("$[0].executionStatus").value("SCHEDULED"));
+    }
+
+    @Test
+    void getLinkedTours_taskNotFound_shouldReturn404() throws Exception {
+        when(assignmentService.getLinkedToursByTaskId(99L))
+            .thenThrow(new TaskNotFoundException(99L));
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}/linked-tours", 99L))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getLinkedTours_tourNotFound_shouldReturn404() throws Exception {
+        when(assignmentService.getLinkedToursByTaskId(3L))
+            .thenThrow(new TourNotFoundException(10L));
+
+        mockMvc.perform(get("/api/v1/tasks/{taskId}/linked-tours", 3L))
+            .andExpect(status().isNotFound());
+    }
+
     // PATCH /api/v1/task-assignments/{assignmentId} — update
 
     @Test
     void update_validRequest_shouldReturn200() throws Exception {
         UpdateTaskAssignmentRequestDTO request = new UpdateTaskAssignmentRequestDTO(
-            AssignmentVisibility.HIDDEN, 30, validRequirements);
+            AssignmentVisibility.HIDDEN, 30, validRequirements, 0L);
 
         when(assignmentService.updateTaskAssignment(eq(1L), any(UpdateTaskAssignmentRequestDTO.class)))
             .thenReturn(mockDetailedResponse);
@@ -296,7 +342,7 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
     @Test
     void update_notFound_shouldReturn404() throws Exception {
         UpdateTaskAssignmentRequestDTO request = new UpdateTaskAssignmentRequestDTO(
-            AssignmentVisibility.HIDDEN, 30, validRequirements);
+            AssignmentVisibility.HIDDEN, 30, validRequirements, 0L);
 
         when(assignmentService.updateTaskAssignment(eq(99L), any(UpdateTaskAssignmentRequestDTO.class)))
             .thenThrow(new TaskAssignmentNotFoundException(99L));
@@ -310,7 +356,7 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
     @Test
     void update_tourNotScheduled_shouldReturn400() throws Exception {
         UpdateTaskAssignmentRequestDTO request = new UpdateTaskAssignmentRequestDTO(
-            AssignmentVisibility.HIDDEN, 30, validRequirements);
+            AssignmentVisibility.HIDDEN, 30, validRequirements, 0L);
 
         when(assignmentService.updateTaskAssignment(eq(1L), any(UpdateTaskAssignmentRequestDTO.class)))
             .thenThrow(

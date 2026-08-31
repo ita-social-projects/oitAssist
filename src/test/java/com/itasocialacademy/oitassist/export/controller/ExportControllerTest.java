@@ -13,6 +13,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -40,7 +42,7 @@ class ExportControllerTest extends ControllerUnitTest<ExportController> {
     @Test
     void export_ShouldReturnOk_WhenFormatIsValid() throws Exception {
         ExportData data = new ExportData("Олімпіада", List.of());
-        when(exportService.getExportData(any(), any(), any())).thenReturn(data);
+        when(exportService.getExportData(any(), any(), any(), any())).thenReturn(data);
         when(exporterResolver.resolve(ExportFormat.EXCEL)).thenReturn(exporter);
         when(exporter.export(data)).thenReturn(new byte[] {1, 2, 3});
 
@@ -53,7 +55,7 @@ class ExportControllerTest extends ControllerUnitTest<ExportController> {
     @Test
     void export_ShouldReturnBadRequest_WhenExportFormatIsUnsupported() throws Exception {
         ExportData data = new ExportData("Олімпіада", List.of());
-        when(exportService.getExportData(any(), any(), any())).thenReturn(data);
+        when(exportService.getExportData(any(), any(), any(), any())).thenReturn(data);
         when(exporterResolver.resolve(any()))
             .thenThrow(new UnsupportedExportFormatException("Unsupported export format: EXCEL"));
 
@@ -61,5 +63,21 @@ class ExportControllerTest extends ControllerUnitTest<ExportController> {
             .param("olympiadId", "1")
             .param("format", "EXCEL"))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void export_ShouldPassSearchToService_WhenSearchProvided() throws Exception {
+        ExportData data = new ExportData("Олімпіада", List.of());
+        when(exportService.getExportData(any(), any(), any(), any())).thenReturn(data);
+        when(exporterResolver.resolve(ExportFormat.EXCEL)).thenReturn(exporter);
+        when(exporter.export(data)).thenReturn(new byte[] {1, 2, 3});
+
+        mockMvc.perform(get(EXPORT_URL)
+            .param("olympiadId", "1")
+            .param("search", "Ігор")
+            .param("format", "EXCEL"))
+            .andExpect(status().isOk());
+
+        verify(exportService).getExportData(eq(1L), any(), any(), eq("Ігор"));
     }
 }

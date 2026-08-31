@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.competition.dto.request;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.NotNull;
 
 @Schema(description = "DTO for changing the lifecycle status of a Competition")
@@ -10,5 +11,8 @@ public record ChangeCompetitionStatusRequest(
         description = "The target status to transition the competition into (e.g., PUBLISHED, FINISHED, ARCHIVED)",
         example = "PUBLISHED",
         requiredMode = Schema.RequiredMode.REQUIRED) @NotNull(
-            message = "New status cannot be null") CompetitionStatus status) {
+            message = "New status cannot be null") CompetitionStatus status,
+
+    @Schema(description = "Optimistic locking version; must be echoed back on updates",
+        requiredMode = RequiredMode.REQUIRED) @NotNull Long version) {
 }

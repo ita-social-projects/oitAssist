@@ -9,6 +9,7 @@ import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -69,7 +70,7 @@ public class TaskController {
 
     @Operation(
         summary = "Get all tasks",
-        description = "Retrieves all tasks with pagination support. Requires ADMIN role.")
+        description = "Retrieves all tasks with pagination support and optional search by title. Requires ADMIN role.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Tasks retrieved successfully",
             content = @Content(mediaType = "application/json",
@@ -80,14 +81,17 @@ public class TaskController {
     @GetMapping()
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PageResponse<TaskResponseDTO>> getAllTasks(
-        @ParameterObject @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
-        return ResponseEntity.ok(PageResponse.from(taskService.getAllTasks(pageable)));
+        @ParameterObject @PageableDefault(size = 15, sort = "createdAt") Pageable pageable,
+        @Parameter(
+            description = "Optional search query for filtering tasks by title",
+            example = "PowerPoint") @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(PageResponse.from(taskService.getAllTasks(pageable, search)));
     }
 
     @Operation(
         summary = "Get current user's tasks",
-        description = "Retrieves all tasks owned by the currently authenticated user with pagination support."
-            + "Requires ADMIN or ORG role.")
+        description = "Retrieves all tasks owned by the currently authenticated user "
+            + "with pagination support and optional search by title. Requires ADMIN or ORG role.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "User's tasks retrieved successfully",
             content = @Content(mediaType = "application/json",
@@ -100,8 +104,11 @@ public class TaskController {
     @GetMapping("/my")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<PageResponse<TaskResponseDTO>> getMyTasks(
-        @ParameterObject @PageableDefault(size = 15, sort = "createdAt") Pageable pageable) {
-        return ResponseEntity.ok(PageResponse.from(taskService.getAllMyTasks(pageable)));
+        @ParameterObject @PageableDefault(size = 15, sort = "createdAt") Pageable pageable,
+        @Parameter(
+            description = "Optional search query for filtering tasks by title",
+            example = "PowerPoint") @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(PageResponse.from(taskService.getAllMyTasks(pageable, search)));
     }
 
     @Operation(
@@ -120,7 +127,11 @@ public class TaskController {
                 schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Task not found",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)))
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PutMapping("/{taskId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
@@ -145,7 +156,11 @@ public class TaskController {
                 schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Task or user not found",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)))
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{taskId}/add-owner")
     @PreAuthorize("hasRole('ADMIN')")
@@ -170,7 +185,11 @@ public class TaskController {
                 schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Task or user not found",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)))
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{taskId}/remove-owner")
     @PreAuthorize("hasRole('ADMIN')")

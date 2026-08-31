@@ -61,6 +61,15 @@ public class UserServiceImpl implements UserService {
             .map(mapper::toUserProfileDetails);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<UserProfileDetails> findProfilesDetailsByIds(List<Long> userIds) {
+        return repository.findAllById(userIds)
+            .stream().map(mapper::toUserProfileDetails).toList();
+    }
+
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {
         Optional<User> user = repository.findUserByEmail(username);
         return user.map(mapper::toUserDetails).orElse(null);
@@ -105,20 +114,33 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public @NonNull Page<ResponseUserDTO> getUsers(@NonNull Pageable pageable, String search) {
+    public @NonNull Page<ResponseUserDTO> getUsers(
+        @NonNull Pageable pageable,
+        String search,
+        List<Role> roles) {
         if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
             throw new InsufficientPermissionsException();
         }
-        if (search != null && !search.isBlank()) {
-            String normalizedSearch = search.trim()
-                .replaceAll("\\s+", " ")
-                .replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
-            return repository.findAllBySearch(normalizedSearch, pageable).map(mapper::toResponseUserDTO);
-        } else {
-            return repository.findAll(pageable).map(mapper::toResponseUserDTO);
+
+        String normalizedSearch = normalizeSearch(search);
+
+        List<Role> normalizedRoles = roles == null || roles.isEmpty()
+            ? null
+            : roles;
+
+        return repository.findAllBySearchAndRoles(
+            normalizedSearch,
+            normalizedRoles,
+            pageable)
+            .map(mapper::toResponseUserDTO);
+    }
+
+    @Override
+    public @NonNull Page<ResponseUserDTO> getUsersByIds(@NonNull Pageable pageable, List<Long> ids) {
+        if (!securityFacade.hasRole(String.valueOf(Role.ADMIN))) {
+            throw new InsufficientPermissionsException();
         }
+        return repository.findAllByIdIn(ids, pageable).map(mapper::toResponseUserDTO);
     }
 
     @Override
@@ -138,5 +160,24 @@ public class UserServiceImpl implements UserService {
         }
         user.setUserStatus(newStatus);
         return mapper.toResponseUserDTO(repository.save(user));
+    }
+
+    @Override
+    public Optional<List<Long>> findUserIdsBySearch(String search, List<Long> candidateIds) {
+        String normalizedSearch = normalizeSearch(search);
+        if (normalizedSearch == null) {
+            return Optional.empty();
+        }
+        return Optional.of(repository.findIdsBySearch(normalizedSearch, candidateIds));
+    }
+
+    private String normalizeSearch(String search) {
+        return search == null || search.isBlank()
+            ? null
+            : search.trim()
+                .replaceAll("\\s+", " ")
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 }

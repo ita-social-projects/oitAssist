@@ -29,6 +29,12 @@ public record TaskResponseDTO(
         example = "1") Long createdBy,
 
     @Schema(
+        description = "Email of task creator",
+        example = "example@gmail.com") String createdByEmail,
+
+    @Schema(
         description = "Ids of task's current owners",
-        example = "[1,2,3]") Set<Long> ownerIds) {
+        example = "[1,2,3]") Set<Long> ownerIds,
+
+    @Schema(description = "Optimistic locking version; must be echoed back on updates") Long version) {
 }

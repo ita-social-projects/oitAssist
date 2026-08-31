@@ -78,6 +78,18 @@ class CompetitionFacadeImpl implements CompetitionFacade {
             .map(this::buildTreeDetail);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<TourDetail> findToursByIds(List<Long> tourIds) {
+        Objects.requireNonNull(tourIds, "tourIds must not be null");
+        if (tourIds.isEmpty()) {
+            return List.of();
+        }
+        return tourRepository.findAllById(tourIds).stream()
+            .map(tourMapper::toTourDetail)
+            .toList();
+    }
+
     private CompetitionTreeDetail buildTreeDetail(Competition competitionEntity) {
         CompetitionDetail competitionDetail = competitionMapper.toCompetitionDetail(competitionEntity);
 

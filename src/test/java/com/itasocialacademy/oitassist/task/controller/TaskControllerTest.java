@@ -144,11 +144,12 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
     @Test
     void getAllTasks_asAdmin_shouldReturnPageResponseAnd200() throws Exception {
         Page<TaskResponseDTO> page = new PageImpl<>(List.of(mockTaskResponse));
-        when(taskService.getAllTasks(any(Pageable.class))).thenReturn(page);
+        when(taskService.getAllTasks(any(Pageable.class), eq("scratch"))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/tasks")
             .param("page", "0")
-            .param("size", "15"))
+            .param("size", "15")
+            .param("search", "scratch"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isArray())
             .andExpect(jsonPath("$.content[0].id").value(1L))
@@ -156,12 +157,12 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .andExpect(jsonPath("$.pageNumber").value(0))
             .andExpect(jsonPath("$.totalElements").value(1));
 
-        verify(taskService).getAllTasks(any(Pageable.class));
+        verify(taskService).getAllTasks(any(Pageable.class), eq("scratch"));
     }
 
     @Test
     void getAllTasks_nonAdmin_shouldReturn403() throws Exception {
-        when(taskService.getAllTasks(any(Pageable.class)))
+        when(taskService.getAllTasks(any(Pageable.class), eq(null)))
             .thenThrow(new TaskAccessRestrictedException(0L));
 
         mockMvc.perform(get("/api/v1/tasks")
@@ -175,7 +176,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
     @Test
     void getMyTasks_shouldReturnPageResponseAnd200() throws Exception {
         Page<TaskResponseDTO> page = new PageImpl<>(List.of(mockTaskResponse));
-        when(taskService.getAllMyTasks(any(Pageable.class))).thenReturn(page);
+        when(taskService.getAllMyTasks(any(Pageable.class), eq(null))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/tasks/my")
             .param("page", "0")
@@ -187,7 +188,26 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .andExpect(jsonPath("$.pageNumber").value(0))
             .andExpect(jsonPath("$.totalElements").value(1));
 
-        verify(taskService).getAllMyTasks(any(Pageable.class));
+        verify(taskService).getAllMyTasks(any(Pageable.class), eq(null));
+    }
+
+    @Test
+    void getMyTasks_withSearch_shouldReturnFilteredPageResponseAnd200() throws Exception {
+        Page<TaskResponseDTO> page = new PageImpl<>(List.of(mockTaskResponse));
+        when(taskService.getAllMyTasks(any(Pageable.class), eq("PowerPoint"))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/tasks/my")
+            .param("page", "0")
+            .param("size", "15")
+            .param("search", "PowerPoint"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content[0].id").value(1L))
+            .andExpect(jsonPath("$.content[0].title").value("PowerPoint Різдвяна зірка"))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(taskService).getAllMyTasks(any(Pageable.class), eq("PowerPoint"));
     }
 
     // ---- updateTask ----
@@ -198,7 +218,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             "Оновлена назва завдання",
             "Оновлений опис завдання",
             List.of(51L, 62L),
-            List.of(52L));
+            List.of(52L),
+            0L);
 
         TaskResponseDTO updatedResponse = TaskResponseDTO.builder()
             .id(1L)
@@ -224,7 +245,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
     @Test
     void updateTask_notOwnerNotAdmin_shouldReturn403() throws Exception {
         UpdateTaskRequestDTO request = new UpdateTaskRequestDTO(
-            "Title", "Description", null, null);
+            "Title", "Description", null, null, 0L);
 
         when(taskService.updateTask(eq(1L), any(UpdateTaskRequestDTO.class)))
             .thenThrow(new TaskAccessRestrictedException(1L));
@@ -238,7 +259,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
     @Test
     void updateTask_taskNotFound_shouldReturn404() throws Exception {
         UpdateTaskRequestDTO request = new UpdateTaskRequestDTO(
-            "Title", "Description", null, null);
+            "Title", "Description", null, null, 0L);
 
         when(taskService.updateTask(eq(99L), any(UpdateTaskRequestDTO.class)))
             .thenThrow(new TaskNotFoundException(99L));
@@ -255,7 +276,8 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             "",
             "Оновлений опис завдання",
             null,
-            null);
+            null,
+            0L);
 
         mockMvc.perform(put("/api/v1/tasks/{taskId}", 1L)
             .contentType(MediaType.APPLICATION_JSON)
@@ -267,7 +289,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void addOwner_validRequest_shouldReturn200() throws Exception {
-        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com");
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com", 0L);
 
         when(taskService.addTaskOwner(eq(1L), any(AddOwnerRequestDTO.class)))
             .thenReturn(mockTaskResponse);
@@ -284,7 +306,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void addOwner_nonAdmin_shouldReturn403() throws Exception {
-        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com");
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com", 0L);
 
         when(taskService.addTaskOwner(eq(1L), any(AddOwnerRequestDTO.class)))
             .thenThrow(new TaskAccessRestrictedException(1L));
@@ -297,7 +319,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void addOwner_invalidEmail_shouldReturn400() throws Exception {
-        AddOwnerRequestDTO request = new AddOwnerRequestDTO("not-an-email");
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("not-an-email", 0L);
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/add-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)
@@ -307,7 +329,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void addOwner_blankEmail_shouldReturn400() throws Exception {
-        AddOwnerRequestDTO request = new AddOwnerRequestDTO("");
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("", 0L);
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/add-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)
@@ -317,7 +339,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void removeOwner_validRequest_shouldReturn200() throws Exception {
-        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("owner@mail.com");
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("owner@mail.com", 0L);
 
         when(taskService.removeTaskOwner(eq(1L), any(RemoveOwnerRequestDTO.class)))
             .thenReturn(mockTaskResponse);
@@ -334,7 +356,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void removeOwner_nonAdmin_shouldReturn403() throws Exception {
-        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("owner@mail.com");
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("owner@mail.com", 0L);
 
         when(taskService.removeTaskOwner(eq(1L), any(RemoveOwnerRequestDTO.class)))
             .thenThrow(new TaskAccessRestrictedException(1L));
@@ -347,7 +369,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void removeOwner_invalidEmail_shouldReturn400() throws Exception {
-        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("not-an-email");
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("not-an-email", 0L);
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/remove-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)
@@ -357,7 +379,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void removeOwner_blankEmail_shouldReturn400() throws Exception {
-        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("");
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("", 0L);
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/remove-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)
