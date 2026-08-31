@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorConfirmRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorEnrollRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorEnrollResponse;
+import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorStatusResponse;
 import com.itasocialacademy.oitassist.security.dao.enums.TwoFactorMethod;
 import com.itasocialacademy.oitassist.security.dao.model.UserRecoveryCode;
 import com.itasocialacademy.oitassist.security.dao.model.UserTwoFactorAuth;
@@ -174,6 +175,17 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         persistRecoveryCodes(entity.getId(), plaintextRecoveryCodes);
 
         return plaintextRecoveryCodes;
+    }
+
+    @Override
+    public TwoFactorStatusResponse getStatus(Long userId) {
+        return twoFactorAuthRepository.findByUserId(userId)
+            .filter(UserTwoFactorAuth::isEnabled)
+            .map(entity -> TwoFactorStatusResponse.builder()
+                .enabled(true)
+                .method(entity.getMethod().name())
+                .build())
+            .orElse(TwoFactorStatusResponse.builder().enabled(false).build());
     }
 
     private UserTwoFactorAuth findEnabledTwoFactorAuth(Long userId) {

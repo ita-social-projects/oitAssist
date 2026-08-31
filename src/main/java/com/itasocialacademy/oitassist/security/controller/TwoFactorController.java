@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorConfirmR
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorEnrollRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorEnrollResponse;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorRecoveryCodesResponse;
+import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorStatusResponse;
 import com.itasocialacademy.oitassist.security.jwt.JwtTokenIssuer;
 import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
 import com.itasocialacademy.oitassist.security.service.interfaces.TwoFactorService;
@@ -16,6 +17,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -110,6 +112,23 @@ public class TwoFactorController {
                 "Authentication required", ErrorCode.AUTHENTICATION_REQUIRED));
         List<String> codes = twoFactorService.regenerateRecoveryCodes(userId);
         return TwoFactorRecoveryCodesResponse.builder().recoveryCodes(codes).build();
+    }
+
+    @Operation(
+        summary = "Get current 2FA status",
+        description = "Reports whether 2FA is enabled and, if so, which method. An unconfirmed "
+            + "enrollment in progress is reported the same as no enrollment. Always requires a "
+            + "normal authenticated session — never a pendingTwoFactorToken.",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Status returned"),
+            @ApiResponse(responseCode = "401", description = "Not authenticated")
+        })
+    @GetMapping("/status")
+    public TwoFactorStatusResponse status() {
+        Long userId = securityService.getCurrentUserId()
+            .orElseThrow(() -> new AuthenticationException(
+                "Authentication required", ErrorCode.AUTHENTICATION_REQUIRED));
+        return twoFactorService.getStatus(userId);
     }
 
     /**

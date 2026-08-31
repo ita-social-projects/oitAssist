@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.security.service.interfaces;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorConfirmRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorEnrollRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorEnrollResponse;
+import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorStatusResponse;
 import com.itasocialacademy.oitassist.security.exceptions.InvalidTwoFactorCodeException;
 import com.itasocialacademy.oitassist.security.exceptions.TwoFactorEnrollmentNotFoundException;
 import java.util.List;
@@ -101,4 +102,16 @@ public interface TwoFactorService {
      *                                              setup
      */
     List<String> regenerateRecoveryCodes(Long userId);
+
+    /**
+     * Reports current 2FA status for account-settings pages. An unconfirmed
+     * enrollment attempt (enabled = false) is deliberately reported the same as "no
+     * enrollment" — it isn't protecting the account yet, so there's nothing
+     * meaningful to distinguish from the caller's point of view.
+     *
+     * @param userId the user checking their own status
+     * @return enabled=false with method=null if no confirmed 2FA setup exists;
+     *         otherwise enabled=true with the confirmed method
+     */
+    TwoFactorStatusResponse getStatus(Long userId);
 }
