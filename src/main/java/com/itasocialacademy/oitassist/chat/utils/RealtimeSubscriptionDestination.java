@@ -5,19 +5,19 @@ import java.util.Objects;
 public record RealtimeSubscriptionDestination(Type type, Long resourceId) {
     public RealtimeSubscriptionDestination {
         Objects.requireNonNull(
-                type,
-                "Realtime subscription type must not be null");
+            type,
+            "Realtime subscription type must not be null");
 
         if (type.resourceScoped()
-                && (resourceId == null || resourceId <= 0)) {
+            && (resourceId == null || resourceId <= 0)) {
             throw new IllegalArgumentException(
-                    "Resource-scoped destination requires a positive identifier");
+                "Resource-scoped destination requires a positive identifier");
         }
 
         if (!type.resourceScoped()
-                && resourceId != null) {
+            && resourceId != null) {
             throw new IllegalArgumentException(
-                    "Fixed destination must not contain a resource identifier");
+                "Fixed destination must not contain a resource identifier");
         }
     }
 

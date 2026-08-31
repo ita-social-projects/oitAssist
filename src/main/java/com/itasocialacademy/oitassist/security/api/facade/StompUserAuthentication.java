@@ -9,9 +9,9 @@ final class StompUserAuthentication extends AbstractAuthenticationToken {
 
     StompUserAuthentication(UserDetailsImpl principal) {
         super(Objects.requireNonNull(
-                        principal,
-                        "STOMP principal must not be null")
-                .getAuthorities());
+            principal,
+            "STOMP principal must not be null")
+            .getAuthorities());
 
         this.principal = principal;
         setAuthenticated(true);

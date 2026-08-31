@@ -14,16 +14,16 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class StompAuthenticationFacadeImpl
-        implements StompAuthenticationFacade {
+    implements StompAuthenticationFacade {
     private static final String INVALID_AUTHENTICATION =
-            "Invalid STOMP authentication";
+        "Invalid STOMP authentication";
 
     private final JwtHelper jwtHelper;
     private final SecurityUserProvider securityUserProvider;
 
     @Override
     public Authentication authenticateAccessToken(
-            String accessToken) {
+        String accessToken) {
         if (accessToken == null || accessToken.isBlank()) {
             throw invalidAuthentication();
         }
@@ -35,9 +35,9 @@ public class StompAuthenticationFacadeImpl
         }
 
         UserDetailsImpl userDetails = securityUserProvider
-                .findByEmail(username)
-                .orElseThrow(
-                        StompAuthenticationFacadeImpl::invalidAuthentication);
+            .findByEmail(username)
+            .orElseThrow(
+                StompAuthenticationFacadeImpl::invalidAuthentication);
 
         validateUserDetails(userDetails);
 
@@ -47,25 +47,25 @@ public class StompAuthenticationFacadeImpl
     private String extractUsername(String accessToken) {
         try {
             String encryptedToken =
-                    jwtHelper.extractEncryptedToken(accessToken);
+                jwtHelper.extractEncryptedToken(accessToken);
 
             return jwtHelper.extractUsername(
-                    encryptedToken,
-                    JwtHelper.ACCESS_TOKEN);
+                encryptedToken,
+                JwtHelper.ACCESS_TOKEN);
         } catch (JwtException
-                 | IllegalArgumentException
-                 | AuthenticationException exception) {
+            | IllegalArgumentException
+            | AuthenticationException exception) {
             throw invalidAuthentication();
         }
     }
 
     private void validateUserDetails(
-            UserDetailsImpl userDetails) {
+        UserDetailsImpl userDetails) {
         boolean valid = userDetails.getId() != null
-                && userDetails.isEnabled()
-                && userDetails.isAccountNonLocked()
-                && userDetails.isAccountNonExpired()
-                && userDetails.isCredentialsNonExpired();
+            && userDetails.isEnabled()
+            && userDetails.isAccountNonLocked()
+            && userDetails.isAccountNonExpired()
+            && userDetails.isCredentialsNonExpired();
 
         if (!valid) {
             throw invalidAuthentication();
@@ -74,6 +74,6 @@ public class StompAuthenticationFacadeImpl
 
     private static BadCredentialsException invalidAuthentication() {
         return new BadCredentialsException(
-                INVALID_AUTHENTICATION);
+            INVALID_AUTHENTICATION);
     }
 }

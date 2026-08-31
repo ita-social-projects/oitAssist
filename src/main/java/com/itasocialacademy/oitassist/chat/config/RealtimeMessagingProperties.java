@@ -11,13 +11,13 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "app.realtime")
 public record RealtimeMessagingProperties(
-        @NotEmpty List<@NotBlank String> allowedOrigins,
-        @PositiveOrZero long serverHeartbeat,
-        @PositiveOrZero long clientHeartbeat) {
+    @NotEmpty List<@NotBlank String> allowedOrigins,
+    @PositiveOrZero long serverHeartbeat,
+    @PositiveOrZero long clientHeartbeat) {
     public RealtimeMessagingProperties {
         Objects.requireNonNull(
-                allowedOrigins,
-                "Realtime allowed origins must not be null");
+            allowedOrigins,
+            "Realtime allowed origins must not be null");
         allowedOrigins = List.copyOf(allowedOrigins);
     }
 }

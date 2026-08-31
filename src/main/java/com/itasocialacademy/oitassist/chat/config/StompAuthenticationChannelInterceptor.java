@@ -17,22 +17,22 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class StompAuthenticationChannelInterceptor
-        implements ChannelInterceptor {
+    implements ChannelInterceptor {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private static final String INVALID_AUTHENTICATION =
-            "Invalid STOMP authentication";
+        "Invalid STOMP authentication";
 
     private final StompAuthenticationFacade stompAuthenticationFacade;
 
     @Override
     public Message<?> preSend(
-            Message<?> message,
-            MessageChannel channel) {
+        Message<?> message,
+        MessageChannel channel) {
         StompHeaderAccessor accessor =
-                MessageHeaderAccessor.getAccessor(
-                        message,
-                        StompHeaderAccessor.class);
+            MessageHeaderAccessor.getAccessor(
+                message,
+                StompHeaderAccessor.class);
 
         if (accessor == null) {
             return message;
@@ -41,7 +41,7 @@ public class StompAuthenticationChannelInterceptor
         StompCommand command = accessor.getCommand();
 
         if (command == StompCommand.CONNECT
-                || command == StompCommand.STOMP) {
+            || command == StompCommand.STOMP) {
             authenticate(accessor);
         }
 
@@ -49,40 +49,40 @@ public class StompAuthenticationChannelInterceptor
     }
 
     private void authenticate(
-            StompHeaderAccessor accessor) {
+        StompHeaderAccessor accessor) {
         List<String> authorizationHeaders =
-                accessor.getNativeHeader(AUTHORIZATION);
+            accessor.getNativeHeader(AUTHORIZATION);
 
         if (authorizationHeaders == null
-                || authorizationHeaders.size() != 1) {
+            || authorizationHeaders.size() != 1) {
             throw invalidAuthentication();
         }
 
         String authorizationHeader =
-                authorizationHeaders.get(0);
+            authorizationHeaders.get(0);
 
         if (authorizationHeader == null
-                || !authorizationHeader.startsWith(BEARER_PREFIX)) {
+            || !authorizationHeader.startsWith(BEARER_PREFIX)) {
             throw invalidAuthentication();
         }
 
         String accessToken = authorizationHeader
-                .substring(BEARER_PREFIX.length());
+            .substring(BEARER_PREFIX.length());
 
         if (accessToken.isBlank()
-                || !accessToken.equals(accessToken.strip())) {
+            || !accessToken.equals(accessToken.strip())) {
             throw invalidAuthentication();
         }
 
         Authentication authentication =
-                stompAuthenticationFacade
-                        .authenticateAccessToken(accessToken);
+            stompAuthenticationFacade
+                .authenticateAccessToken(accessToken);
 
         accessor.setUser(authentication);
     }
 
     private static BadCredentialsException invalidAuthentication() {
         return new BadCredentialsException(
-                INVALID_AUTHENTICATION);
+            INVALID_AUTHENTICATION);
     }
 }

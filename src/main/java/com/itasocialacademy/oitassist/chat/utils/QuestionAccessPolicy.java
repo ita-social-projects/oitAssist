@@ -44,9 +44,9 @@ public class QuestionAccessPolicy {
      * Determines whether the current user is assigned to review the question.
      */
     public boolean isAssignedReviewer(
-            QuestionThread questionThread) {
+        QuestionThread questionThread) {
         return currentUserMatches(
-                questionThread.getAssignedReviewerId());
+            questionThread.getAssignedReviewerId());
     }
 
     /**
@@ -64,9 +64,9 @@ public class QuestionAccessPolicy {
      * @return current authenticated user's identifier
      */
     public Long requireTaskAssignmentForumAccess(
-            Long taskAssignmentId) {
+        Long taskAssignmentId) {
         return requireTaskAssignmentParticipantAccess(
-                taskAssignmentId).userId();
+            taskAssignmentId).userId();
     }
 
     /**
@@ -81,15 +81,15 @@ public class QuestionAccessPolicy {
      * @return current authenticated user's identifier
      */
     public Long requireTaskAssignmentQuestionCreationAccess(
-            Long taskAssignmentId) {
+        Long taskAssignmentId) {
         TaskAssignmentAccessContext context =
-                requireTaskAssignmentParticipantAccess(
-                        taskAssignmentId);
+            requireTaskAssignmentParticipantAccess(
+                taskAssignmentId);
 
         if (context.tour().executionStatus() != IN_PROGRESS) {
             throw new QuestionCreationNotAllowedException(
-                    taskAssignmentId,
-                    context.tour().executionStatus());
+                taskAssignmentId,
+                context.tour().executionStatus());
         }
 
         return context.userId();
@@ -101,7 +101,7 @@ public class QuestionAccessPolicy {
      * @param question question whose details or messages are requested
      */
     public void requireQuestionViewAccess(
-            QuestionThread question) {
+        QuestionThread question) {
         requireQuestionAccess(question);
     }
 
@@ -119,15 +119,15 @@ public class QuestionAccessPolicy {
      * @return identifier of the authenticated and authorized user
      */
     public Long requireQuestionCommentAccess(
-            QuestionThread question) {
+        QuestionThread question) {
         return requireQuestionAccess(question).userId();
     }
 
     private TaskAssignmentAccessContext requireQuestionAccess(
-            QuestionThread question) {
+        QuestionThread question) {
         TaskAssignmentAccessContext context =
-                resolveTaskAssignmentContext(
-                        question.getTaskAssignmentId());
+            resolveTaskAssignmentContext(
+                question.getTaskAssignmentId());
 
         /*
          * Administrators bypass assignment visibility and participation checks, but
@@ -138,22 +138,22 @@ public class QuestionAccessPolicy {
         }
 
         boolean author = Objects.equals(
-                context.userId(),
-                question.getAuthorId());
+            context.userId(),
+            question.getAuthorId());
 
         boolean assignedReviewer = Objects.equals(
-                context.userId(),
-                question.getAssignedReviewerId());
+            context.userId(),
+            question.getAssignedReviewerId());
 
         /*
          * Another participant's private question is masked before checking
          * participation, preventing disclosure of protected thread data.
          */
         if (question.getVisibility() == PRIVATE
-                && !author
-                && !assignedReviewer) {
+            && !author
+            && !assignedReviewer) {
             throw new QuestionNotFoundException(
-                    question.getId());
+                question.getId());
         }
 
         requireVisibleAssignment(context);
@@ -163,10 +163,10 @@ public class QuestionAccessPolicy {
     }
 
     private TaskAssignmentAccessContext requireTaskAssignmentParticipantAccess(
-            Long taskAssignmentId) {
+        Long taskAssignmentId) {
         TaskAssignmentAccessContext context =
-                resolveTaskAssignmentContext(
-                        taskAssignmentId);
+            resolveTaskAssignmentContext(
+                taskAssignmentId);
 
         /*
          * Administrators bypass assignment visibility and participation checks, but
@@ -183,75 +183,75 @@ public class QuestionAccessPolicy {
     }
 
     private TaskAssignmentAccessContext resolveTaskAssignmentContext(
-            Long taskAssignmentId) {
+        Long taskAssignmentId) {
         Long currentUserId = securityFacade
-                .getCurrentUserId()
-                .orElseThrow(() -> new AuthenticationException(
-                        "Authentication is required to access the question forum",
-                        ErrorCode.AUTHENTICATION_REQUIRED));
+            .getCurrentUserId()
+            .orElseThrow(() -> new AuthenticationException(
+                "Authentication is required to access the question forum",
+                ErrorCode.AUTHENTICATION_REQUIRED));
 
         TaskAssignmentDetailDTO assignment =
-                taskAssignmentFacade
-                        .findAssignmentById(taskAssignmentId)
-                        .orElseThrow(() -> new TaskAssignmentNotFoundException(
-                                taskAssignmentId));
+            taskAssignmentFacade
+                .findAssignmentById(taskAssignmentId)
+                .orElseThrow(() -> new TaskAssignmentNotFoundException(
+                    taskAssignmentId));
 
         TourDetail tour = competitionFacade
-                .findTourById(assignment.tourId())
-                .orElseThrow(() -> new TourNotFoundException(
-                        assignment.tourId()));
+            .findTourById(assignment.tourId())
+            .orElseThrow(() -> new TourNotFoundException(
+                assignment.tourId()));
 
         StageDetail stage = competitionFacade
-                .findStageById(tour.stageId())
-                .orElseThrow(() -> new StageNotFoundException(
-                        tour.stageId()));
+            .findStageById(tour.stageId())
+            .orElseThrow(() -> new StageNotFoundException(
+                tour.stageId()));
 
         return new TaskAssignmentAccessContext(
-                currentUserId,
-                assignment,
-                tour,
-                stage);
+            currentUserId,
+            assignment,
+            tour,
+            stage);
     }
 
     private void requireVisibleAssignment(
-            TaskAssignmentAccessContext context) {
+        TaskAssignmentAccessContext context) {
         if (context.assignment().visibility() != VISIBLE) {
             throw new QuestionForumAccessRestrictedException(
-                    context.assignment().id());
+                context.assignment().id());
         }
     }
 
     private void requireParticipation(
-            TaskAssignmentAccessContext context) {
+        TaskAssignmentAccessContext context) {
         boolean participant =
-                participationFacade.isUserParticipant(
-                        context.userId(),
-                        context.stage().competitionId(),
-                        context.stage().id());
+            participationFacade.isUserParticipant(
+                context.userId(),
+                context.stage().competitionId(),
+                context.stage().id());
 
         if (!participant) {
             throw new QuestionForumAccessRestrictedException(
-                    context.assignment().id());
+                context.assignment().id());
         }
     }
 
     private boolean currentUserMatches(
-            Long expectedUserId) {
+        Long expectedUserId) {
         if (expectedUserId == null) {
             return false;
         }
 
         return securityFacade.getCurrentUserId()
-                .map(currentUserId -> Objects.equals(
-                        currentUserId,
-                        expectedUserId))
-                .orElse(false);
+            .map(currentUserId -> Objects.equals(
+                currentUserId,
+                expectedUserId))
+            .orElse(false);
     }
 
     private record TaskAssignmentAccessContext(
-            Long userId,
-            TaskAssignmentDetailDTO assignment,
-            TourDetail tour,
-            StageDetail stage) {
+        Long userId,
+        TaskAssignmentDetailDTO assignment,
+        TourDetail tour,
+        StageDetail stage) {
     }
 }

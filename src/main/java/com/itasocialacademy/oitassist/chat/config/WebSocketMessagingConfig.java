@@ -33,9 +33,9 @@ public class WebSocketMessagingConfig implements WebSocketMessageBrokerConfigure
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint(WEBSOCKET_ENDPOINT)
-                .setAllowedOrigins(
-                        properties.allowedOrigins()
-                                .toArray(String[]::new));
+            .setAllowedOrigins(
+                properties.allowedOrigins()
+                    .toArray(String[]::new));
     }
 
     @Override
@@ -44,17 +44,17 @@ public class WebSocketMessagingConfig implements WebSocketMessageBrokerConfigure
         registry.setUserDestinationPrefix(USER_PREFIX);
 
         SimpleBrokerRegistration brokerRegistration =
-                registry.enableSimpleBroker(
-                        TOPIC_PREFIX,
-                        QUEUE_PREFIX);
+            registry.enableSimpleBroker(
+                TOPIC_PREFIX,
+                QUEUE_PREFIX);
 
         brokerRegistration.setTaskScheduler(realtimeMessageBrokerTaskScheduler());
 
         brokerRegistration.setHeartbeatValue(
-                new long[] {
-                        properties.serverHeartbeat(),
-                        properties.clientHeartbeat()
-                });
+            new long[] {
+                properties.serverHeartbeat(),
+                properties.clientHeartbeat()
+            });
     }
 
     @Bean
@@ -70,10 +70,10 @@ public class WebSocketMessagingConfig implements WebSocketMessageBrokerConfigure
 
     @Override
     public void configureClientInboundChannel(
-            ChannelRegistration registration) {
+        ChannelRegistration registration) {
         registration.interceptors(
-                stompAuthenticationChannelInterceptor,
-                new SecurityContextChannelInterceptor(),
-                stompAuthorizationChannelInterceptor);
+            stompAuthenticationChannelInterceptor,
+            new SecurityContextChannelInterceptor(),
+            stompAuthorizationChannelInterceptor);
     }
 }
