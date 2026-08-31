@@ -212,10 +212,9 @@ public class TwoFactorServiceImpl implements TwoFactorService {
                         + "use /2fa/change-method to switch methods",
                     ErrorCode.TWO_FACTOR_ALREADY_ENABLED);
             }
-            // Unconfirmed attempt — nothing was ever protected by it, safe to replace
-            // outright.
             recoveryCodeRepository.deleteByTwoFactorAuthId(existing.getId());
             twoFactorAuthRepository.delete(existing);
+            twoFactorAuthRepository.flush();
         });
     }
 
