@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.chat.mapper;
 
 import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateQuestionRequestDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadSummaryResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
@@ -14,6 +15,8 @@ public interface QuestionThreadMapper {
     QuestionThreadResponseDTO toResponse(QuestionThread questionThread);
 
     QuestionThreadSummaryResponseDTO toSummaryResponse(QuestionThread questionThread);
+
+    QuestionReviewInboxItemResponseDTO toReviewInboxItemResponse(QuestionThread questionThread);
 
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "title", source = "title")
