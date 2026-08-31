@@ -25,7 +25,7 @@ public class ParticipationFacadeImpl implements ParticipationFacade, Participati
     public boolean isUserParticipant(Long userId, Long competitionId, Long stageId) {
         return participationRepository.existsByUserIdAndCompetitionIdAndStageId(userId, competitionId, stageId);
     }
-      
+
     @Override
     public boolean isUserAStageParticipant(Long userId, Long stageId) {
         return participationRepository.existsByUserIdAndStageId(userId, stageId);
