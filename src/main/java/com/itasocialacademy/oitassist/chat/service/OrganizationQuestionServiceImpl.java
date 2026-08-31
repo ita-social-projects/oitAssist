@@ -12,11 +12,18 @@ import com.itasocialacademy.oitassist.chat.dao.dto.request.UpdateQuestionVisibil
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
+import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.OfficialAnswerPublishedDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.QuestionClaimedDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.QuestionStateChangedDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.QuestionStatusChangedDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.QuestionVisibilityChangedDomainEvent;
 import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
@@ -33,6 +40,7 @@ import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -73,6 +81,8 @@ public class OrganizationQuestionServiceImpl
     private final OrganizationQuestionClaimCoordinator organizationQuestionClaimCoordinator;
 
     private final OrganizationQuestionModerationCoordinator organizationQuestionModerationCoordinator;
+
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -178,6 +188,13 @@ public class OrganizationQuestionServiceImpl
             questionThreadMapper.toResponse(
                 claimedQuestion);
 
+        applicationEventPublisher.publishEvent(
+            new QuestionClaimedDomainEvent(
+                response,
+                null,
+                responderUserId,
+                claimTime));
+
         return response;
     }
 
@@ -220,6 +237,8 @@ public class OrganizationQuestionServiceImpl
             OFFICIAL_ANSWER);
         officialAnswer.setCreatedAt(null);
 
+        QuestionStatus previousStatus = question.getStatus();
+
         if (question.getStatus() != ANSWERED) {
             question.setStatus(
                 ANSWERED);
@@ -234,6 +253,18 @@ public class OrganizationQuestionServiceImpl
         QuestionMessageResponseDTO messageResponse =
             questionMessageMapper.toResponse(
                 savedAnswer);
+
+        QuestionThreadResponseDTO questionResponse =
+            questionThreadMapper.toResponse(
+                question);
+
+        applicationEventPublisher.publishEvent(
+            new OfficialAnswerPublishedDomainEvent(
+                questionResponse,
+                messageResponse,
+                previousStatus,
+                questionResponse.status(),
+                Instant.now()));
 
         return messageResponse;
     }
@@ -261,6 +292,9 @@ public class OrganizationQuestionServiceImpl
             loadQuestion(
                 questionId);
 
+        QuestionVisibility previousVisibility =
+            currentQuestion.getVisibility();
+
         Instant mutationTime =
             Instant.now();
 
@@ -276,6 +310,13 @@ public class OrganizationQuestionServiceImpl
         QuestionThreadResponseDTO response =
             questionThreadMapper.toResponse(
                 updatedQuestion);
+
+        applicationEventPublisher.publishEvent(
+            new QuestionVisibilityChangedDomainEvent(
+                response,
+                previousVisibility,
+                response.visibility(),
+                mutationTime));
 
         return response;
     }
@@ -303,6 +344,9 @@ public class OrganizationQuestionServiceImpl
             loadQuestion(
                 questionId);
 
+        QuestionStatus previousStatus =
+            currentQuestion.getStatus();
+
         Instant mutationTime =
             Instant.now();
 
@@ -318,6 +362,13 @@ public class OrganizationQuestionServiceImpl
         QuestionThreadResponseDTO response =
             questionThreadMapper.toResponse(
                 updatedQuestion);
+
+        applicationEventPublisher.publishEvent(
+            new QuestionStatusChangedDomainEvent(
+                response,
+                previousStatus,
+                response.status(),
+                mutationTime));
 
         return response;
     }
@@ -345,6 +396,9 @@ public class OrganizationQuestionServiceImpl
             loadQuestion(
                 questionId);
 
+        QuestionState previousState =
+            currentQuestion.getState();
+
         Instant mutationTime =
             Instant.now();
 
@@ -360,6 +414,13 @@ public class OrganizationQuestionServiceImpl
         QuestionThreadResponseDTO response =
             questionThreadMapper.toResponse(
                 updatedQuestion);
+
+        applicationEventPublisher.publishEvent(
+            new QuestionStateChangedDomainEvent(
+                response,
+                previousState,
+                response.state(),
+                mutationTime));
 
         return response;
     }

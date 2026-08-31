@@ -10,6 +10,7 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.CommentCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
@@ -20,12 +21,14 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +44,7 @@ public class ParticipantQuestionServiceImpl
     private final QuestionThreadMapper questionThreadMapper;
     private final QuestionMessageMapper questionMessageMapper;
     private final QuestionAccessPolicy questionAccessPolicy;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -101,9 +105,7 @@ public class ParticipantQuestionServiceImpl
 
     @Override
     @Transactional
-    public QuestionMessageResponseDTO addComment(
-        Long questionId,
-        CreateCommentRequestDTO request) {
+    public QuestionMessageResponseDTO addComment(Long questionId, CreateCommentRequestDTO request) {
         log.debug(
             "Creating participant comment: questionId={}",
             questionId);
@@ -117,14 +119,11 @@ public class ParticipantQuestionServiceImpl
          * Access is checked before state validation and persistence so that protected
          * question information is not exposed to unauthorized users.
          */
-        Long authorId =
-            questionAccessPolicy
-                .requireQuestionCommentAccess(question);
+        Long authorId = questionAccessPolicy.requireQuestionCommentAccess(question);
 
         validateQuestionAcceptsComments(question);
 
-        QuestionMessage comment =
-            questionMessageMapper.toEntity(request);
+        QuestionMessage comment = questionMessageMapper.toEntity(request);
 
         /*
          * All fields except content are controlled by the backend.
@@ -135,18 +134,29 @@ public class ParticipantQuestionServiceImpl
         comment.setType(COMMENT);
         comment.setCreatedAt(null);
 
-        QuestionMessage savedComment =
-            questionMessageRepository.save(comment);
+        QuestionMessage savedComment = questionMessageRepository.save(comment);
 
         log.info(
-            "Participant comment created: "
-                + "messageId={}, questionId={}, authorId={}",
+            "Participant comment created: messageId={}, questionId={}, authorId={}",
             savedComment.getId(),
             questionId,
             authorId);
 
-        return questionMessageMapper.toResponse(
-            savedComment);
+        QuestionMessageResponseDTO messageResponse =
+            questionMessageMapper.toResponse(
+                savedComment);
+
+        QuestionThreadResponseDTO questionResponse =
+            questionThreadMapper.toResponse(
+                question);
+
+        applicationEventPublisher.publishEvent(
+            new CommentCreatedDomainEvent(
+                questionResponse,
+                messageResponse,
+                Instant.now()));
+
+        return messageResponse;
     }
 
     private QuestionThread loadAuthorizedQuestion(

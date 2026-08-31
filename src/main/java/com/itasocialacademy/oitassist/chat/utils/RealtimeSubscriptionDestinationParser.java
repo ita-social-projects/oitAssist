@@ -11,10 +11,15 @@ public class RealtimeSubscriptionDestinationParser {
     private static final String ADMINISTRATOR_INBOX_DESTINATION =
         "/topic/admin/questions/inbox";
 
+    private static final String ADMINISTRATOR_ALL_QUESTIONS_DESTINATION =
+        "/topic/admin/questions/all";
+
     private static final String PARTICIPANT_QUESTIONS_DESTINATION =
         "/user/queue/questions";
 
     private static final String ADMINISTRATOR_REVIEWS_DESTINATION =
+
+    private static final String PERSONAL_REVIEWS_DESTINATION =
         "/user/queue/reviews";
 
     private static final Pattern TASK_ASSIGNMENT_FORUM_PATTERN =
@@ -40,6 +45,12 @@ public class RealtimeSubscriptionDestinationParser {
                 null);
         }
 
+        if (ADMINISTRATOR_ALL_QUESTIONS_DESTINATION.equals(destination)) {
+            return new RealtimeSubscriptionDestination(
+                ADMINISTRATOR_ALL_QUESTIONS,
+                null);
+        }
+
         if (PARTICIPANT_QUESTIONS_DESTINATION.equals(destination)) {
             return new RealtimeSubscriptionDestination(
                 PARTICIPANT_QUESTIONS,
@@ -48,9 +59,15 @@ public class RealtimeSubscriptionDestinationParser {
 
         if (ADMINISTRATOR_REVIEWS_DESTINATION.equals(destination)) {
             return new RealtimeSubscriptionDestination(
-                ADMINISTRATOR_REVIEWS,
-                null);
+                    ADMINISTRATOR_REVIEWS,
+                    null);
         }
+
+            if (PERSONAL_REVIEWS_DESTINATION.equals(destination)) {
+                return new RealtimeSubscriptionDestination(
+                        PERSONAL_REVIEWS,
+                        null);
+            }
 
         Matcher taskAssignmentMatcher =
             TASK_ASSIGNMENT_FORUM_PATTERN.matcher(destination);
