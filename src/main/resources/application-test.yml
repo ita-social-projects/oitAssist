@@ -1,0 +1,44 @@
+spring:
+  # Testcontainers підмінить ці дані під капотом, але Spring'у потрібні заглушки для старту
+  datasource:
+    url: jdbc:postgresql://localhost:5432/test_dummy
+    username: test
+    password: test
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    drop-first: true # Дуже корисно для тестів, щоб кожен запуск БД була чистою (опціонально)
+
+  jpa:
+    show-sql: false # Щоб не засмічувати консоль під час прогону тестів
+    hibernate:
+      ddl-auto: validate
+
+  mail:
+    username: dummy@test.com
+    password: dummyPassword
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: dummy-google-id
+            client-secret: dummy-google-secret
+          microsoft:
+            client-id: dummy-microsoft-id
+            client-secret: dummy-microsoft-secret
+
+jwt:
+  encrypted-key: dummyEncryptedKey1234567890123456
+  sign-key: dummySignKey123456789012345678901234567890
+
+graph:
+  tenant-id: dummy-tenant
+  client-id: dummy-client
+  client-secret: dummy-secret
+  drive-id: dummy-drive
+
+web_client:
+  origin: http://localhost:3000
