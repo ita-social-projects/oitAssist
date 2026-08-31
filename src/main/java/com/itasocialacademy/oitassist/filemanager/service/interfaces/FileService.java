@@ -87,8 +87,8 @@ public interface FileService {
     void detachAllFilesByEntityId(RelatedEntityType entityType, Long entityId, Long userId);
 
     /**
-     * Returns all {@link FileStatus#ATTACHED} files for the given entity, enriched with
-     * unified download endpoint URLs ({@code /api/v1/files/download/{id}}).
+     * Returns all {@link FileStatus#ATTACHED} files for the given entity, enriched
+     * with unified download endpoint URLs ({@code /api/v1/files/download/{id}}).
      *
      * @param entityType the type of the related entity
      * @param entityId   the ID of the related entity
@@ -111,12 +111,14 @@ public interface FileService {
     /**
      * Returns all {@link FileStatus#ATTACHED} files for the given entities,
      * filtered by the specified file roles. Returns a map of entity ID to a list of
-     * cross-module DTOs enriched with unified download endpoint URLs ({@code /api/v1/files/download/{id}}).
+     * cross-module DTOs enriched with unified download endpoint URLs
+     * ({@code /api/v1/files/download/{id}}).
      *
      * @param entityType the type of the related entity
      * @param entityIds  the IDs of the related entities
      * @param roles      the set of file roles to include
-     * @return map of entity ID to list of {@link FileDetailsDTO} with resolved download URLs
+     * @return map of entity ID to list of {@link FileDetailsDTO} with resolved
+     *         download URLs
      */
     Map<Long, List<FileDetailsDTO>> getFilesByEntities(RelatedEntityType entityType, List<Long> entityIds,
         Set<FileRole> roles);
@@ -133,12 +135,33 @@ public interface FileService {
 
     /**
      * Resolves and returns the file download DTO, verifying access control rules
-     * and providing the Spring {@link org.springframework.core.io.Resource} and file metadata for presentation.
+     * and providing the Spring {@link org.springframework.core.io.Resource} and
+     * file metadata for presentation.
      *
      * @param id the ID of the file to download
-     * @return {@link FileDownloadDto} containing the resource stream and file metadata
-     * @throws com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException if the file is not found in the DB or storage
-     * @throws com.itasocialacademy.oitassist.core.exceptions.AuthorizationException           if the user is not authorized to access this file
+     * @return {@link FileDownloadDto} containing the resource stream and file
+     *         metadata
+     * @throws com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException if
+     *                                                                                          the
+     *                                                                                          file
+     *                                                                                          is
+     *                                                                                          not
+     *                                                                                          found
+     *                                                                                          in
+     *                                                                                          the
+     *                                                                                          DB
+     *                                                                                          or
+     *                                                                                          storage
+     * @throws com.itasocialacademy.oitassist.core.exceptions.AuthorizationException            if
+     *                                                                                          the
+     *                                                                                          user
+     *                                                                                          is
+     *                                                                                          not
+     *                                                                                          authorized
+     *                                                                                          to
+     *                                                                                          access
+     *                                                                                          this
+     *                                                                                          file
      */
     FileDownloadDto downloadFile(Long id);
 }

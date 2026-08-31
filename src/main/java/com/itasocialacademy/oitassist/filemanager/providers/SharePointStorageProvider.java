@@ -277,15 +277,16 @@ public class SharePointStorageProvider implements StorageProvider {
 
     /**
      * <p>
-     * Fetches the file content stream directly from the configured Microsoft Graph SharePoint drive
-     * and wraps it in an {@link InputStreamResource}.
+     * Fetches the file content stream directly from the configured Microsoft Graph
+     * SharePoint drive and wraps it in an {@link InputStreamResource}.
      * </p>
      *
      * @param storageKey the relative path of the file within the SharePoint drive
      * @return the {@link Resource} streaming the SharePoint file contents
      * @throws InvalidFilePathException   if the storage key is blank
      * @throws FileAssetNotFoundException if Microsoft Graph returns a 404 Not Found
-     * @throws FileListingException       if reading or streaming from SharePoint fails
+     * @throws FileListingException       if reading or streaming from SharePoint
+     *                                    fails
      */
     @Override
     public Resource getResource(String storageKey) {

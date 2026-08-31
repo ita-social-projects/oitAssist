@@ -24,11 +24,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -256,7 +252,8 @@ public class FileController {
      * Downloads a file by its ID.
      *
      * @param id the ID of the file to download
-     * @return HTTP 200 with the file resource and appropriate headers, or error response
+     * @return HTTP 200 with the file resource and appropriate headers, or error
+     *         response
      */
     @Operation(
         summary = "Download or view file",
@@ -289,8 +286,9 @@ public class FileController {
     }
 
     /**
-     * Builds the HTTP response entity for a file download, configuring content type,
-     * inline content disposition, content length (if known), and the body stream.
+     * Builds the HTTP response entity for a file download, configuring content
+     * type, inline content disposition, content length (if known), and the body
+     * stream.
      *
      * @param dto the file download DTO containing resource and metadata
      * @return a {@link ResponseEntity} configured for file streaming
@@ -318,11 +316,17 @@ public class FileController {
         if (mimeType == null || mimeType.isBlank()) {
             return MediaType.APPLICATION_OCTET_STREAM;
         }
-        return MediaType.parseMediaType(mimeType);
+        try {
+            return MediaType.parseMediaType(mimeType);
+        } catch (InvalidMediaTypeException e) {
+            log.warn("Malformed MIME type '{}', falling back to APPLICATION_OCTET_STREAM", mimeType);
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
     }
 
     /**
-     * Constructs an inline {@code Content-Disposition} header value with UTF-8 filename encoding.
+     * Constructs an inline {@code Content-Disposition} header value with UTF-8
+     * filename encoding.
      *
      * @param filename the original filename, or fallback to default if blank
      * @return the formatted {@code Content-Disposition} header string

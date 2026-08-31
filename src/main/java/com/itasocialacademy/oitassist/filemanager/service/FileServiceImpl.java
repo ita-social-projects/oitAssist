@@ -61,6 +61,12 @@ public class FileServiceImpl implements FileService {
     private static final String ROLE_ADMIN = "ADMIN";
 
     /**
+     * Role identifier for organizational users. Used for role-based access control
+     * checks throughout this service.
+     */
+    private static final String ROLE_ORG = "ORG";
+
+    /**
      * Error message indicating that the user is not authenticated. Used when an
      * operation requires authentication, but it is invalid.
      */
@@ -297,7 +303,8 @@ public class FileServiceImpl implements FileService {
      * <p>
      * Uses JPA Specifications to filter by entity type, entity IDs, ATTACHED
      * status, and the provided set of file roles. Maps results directly to
-     * {@link FileDetailsDTO} via the file mapper and groups them by entity ID with unified download URLs.
+     * {@link FileDetailsDTO} via the file mapper and groups them by entity ID with
+     * unified download URLs.
      * </p>
      */
     @Override
@@ -433,7 +440,8 @@ public class FileServiceImpl implements FileService {
      * @param id the ID of the file to download
      * @return FileDownloadDto containing the resource, metadata or redirect details
      * @throws FileAssetNotFoundException if the file is not found with the given ID
-     * @throws AuthorizationException     if the user does not have permission to view this file
+     * @throws AuthorizationException     if the user does not have permission to
+     *                                    view this file
      */
     @Override
     @Transactional(readOnly = true)
@@ -662,9 +670,10 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Validates whether the currently authenticated or anonymous user is authorized to access the given file.
-     * Temporary files are checked based on ownership or admin roles, while attached files are checked via
-     * the entity-specific {@link FileAccessValidator}.
+     * Validates whether the currently authenticated or anonymous user is authorized
+     * to access the given file. Temporary files are checked based on ownership or
+     * admin roles, while attached files are checked via the entity-specific
+     * {@link FileAccessValidator}.
      *
      * @param file the {@link FileAsset} to check access for
      * @throws AuthorizationException if access is denied
@@ -675,6 +684,10 @@ public class FileServiceImpl implements FileService {
         if (file.getStatus() == FileStatus.TEMPORARY) {
             validateTemporaryFileAccess(file, currentUserId);
             return;
+        }
+
+        if (file.getStatus() != FileStatus.ATTACHED) {
+            throw new AuthorizationException("Access denied to this file", ErrorCode.ACCESS_DENIED);
         }
 
         FileAccessValidator validator = accessValidatorResolver.resolve(file.getRelatedEntityType());
@@ -688,16 +701,19 @@ public class FileServiceImpl implements FileService {
     /**
      * Temporary files aren't linked to any entity yet ({@code relatedEntityId} is
      * {@code null}), so a per-entity {@link FileAccessValidator} has nothing to
-     * check against. Access is granted only to the uploader or privileged roles — used e.g. when the
-     * editor previews an image right after upload, before the entity post is saved.
+     * check against. Access is granted only to the uploader or privileged roles —
+     * used e.g. when the editor previews an image right after upload, before the
+     * entity post is saved.
      *
      * @param file          the temporary file asset
-     * @param currentUserId the ID of the current user, or {@code null} if unauthenticated
-     * @throws AuthorizationException if the user is not the owner and lacks admin/org privileges
+     * @param currentUserId the ID of the current user, or {@code null} if
+     *                      unauthenticated
+     * @throws AuthorizationException if the user is not the owner and lacks
+     *                                admin/org privileges
      */
     private void validateTemporaryFileAccess(FileAsset file, Long currentUserId) {
         boolean isOwner = currentUserId != null && currentUserId.equals(file.getUserId());
-        boolean isAdmin = securityFacade.hasRole("ADMIN") || securityFacade.hasRole("ORG");
+        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN) || securityFacade.hasRole(ROLE_ORG);
         if (!isOwner && !isAdmin) {
             log.warn("Security Breach: user {} attempted to access temporary file {} they don't own",
                 currentUserId, file.getId());
@@ -712,7 +728,8 @@ public class FileServiceImpl implements FileService {
      * computed here once instead of duplicated per provider.
      *
      * @param id the database ID of the file asset
-     * @return the unified relative download URL (e.g., {@code "/api/v1/files/download/123"})
+     * @return the unified relative download URL (e.g.,
+     *         {@code "/api/v1/files/download/123"})
      */
     private String buildDownloadUrl(Long id) {
         return "/api/v1/files/download/" + id;
