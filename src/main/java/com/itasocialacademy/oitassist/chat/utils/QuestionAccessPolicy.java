@@ -1,10 +1,12 @@
 package com.itasocialacademy.oitassist.chat.utils;
 
+import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
 import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.IN_PROGRESS;
 import static com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.VISIBLE;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionCreationNotAllowedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionForumAccessRestrictedException;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
@@ -41,8 +43,10 @@ public class QuestionAccessPolicy {
     /**
      * Determines whether the current user is assigned to review the question.
      */
-    public boolean isAssignedReviewer(QuestionThread questionThread) {
-        return currentUserMatches(questionThread.getAssignedReviewerId());
+    public boolean isAssignedReviewer(
+        QuestionThread questionThread) {
+        return currentUserMatches(
+            questionThread.getAssignedReviewerId());
     }
 
     /**
@@ -56,10 +60,13 @@ public class QuestionAccessPolicy {
      * Validates that the authenticated user may view the forum belonging to the
      * specified task assignment.
      *
+     * @param taskAssignmentId identifier of the task assignment
      * @return current authenticated user's identifier
      */
-    public Long requireTaskAssignmentForumAccess(Long taskAssignmentId) {
-        return resolveTaskAssignmentAccess(taskAssignmentId).userId();
+    public Long requireTaskAssignmentForumAccess(
+        Long taskAssignmentId) {
+        return requireTaskAssignmentParticipantAccess(
+            taskAssignmentId).userId();
     }
 
     /**
@@ -70,10 +77,14 @@ public class QuestionAccessPolicy {
      * Question creation is allowed only while the related tour is in progress.
      * </p>
      *
+     * @param taskAssignmentId identifier of the task assignment
      * @return current authenticated user's identifier
      */
-    public Long requireTaskAssignmentQuestionCreationAccess(Long taskAssignmentId) {
-        TaskAssignmentAccessContext context = resolveTaskAssignmentAccess(taskAssignmentId);
+    public Long requireTaskAssignmentQuestionCreationAccess(
+        Long taskAssignmentId) {
+        TaskAssignmentAccessContext context =
+            requireTaskAssignmentParticipantAccess(
+                taskAssignmentId);
 
         if (context.tour().executionStatus() != IN_PROGRESS) {
             throw new QuestionCreationNotAllowedException(
@@ -84,45 +95,116 @@ public class QuestionAccessPolicy {
         return context.userId();
     }
 
-    private TaskAssignmentAccessContext resolveTaskAssignmentAccess(Long taskAssignmentId) {
-        Long currentUserId = securityFacade.getCurrentUserId()
+    /**
+     * Validates that the current user may view the supplied question thread.
+     *
+     * @param question question whose details or messages are requested
+     */
+    public void requireQuestionViewAccess(
+        QuestionThread question) {
+        requireQuestionAccess(question);
+    }
+
+    /**
+     * Validates that the current user may participate in the supplied question by
+     * adding a comment.
+     *
+     * <p>
+     * The method applies the same assignment, visibility, authorship, reviewer and
+     * administrator rules as question viewing and returns the authenticated user
+     * identifier for server-controlled message authorship.
+     * </p>
+     *
+     * @param question question to which a comment is being added
+     * @return identifier of the authenticated and authorized user
+     */
+    public Long requireQuestionCommentAccess(
+        QuestionThread question) {
+        return requireQuestionAccess(question).userId();
+    }
+
+    private TaskAssignmentAccessContext requireQuestionAccess(
+        QuestionThread question) {
+        TaskAssignmentAccessContext context =
+            resolveTaskAssignmentContext(
+                question.getTaskAssignmentId());
+
+        /*
+         * Administrators bypass assignment visibility and participation checks, but
+         * only after the complete hierarchy has been validated.
+         */
+        if (isAdministrator()) {
+            return context;
+        }
+
+        boolean author = Objects.equals(
+            context.userId(),
+            question.getAuthorId());
+
+        boolean assignedReviewer = Objects.equals(
+            context.userId(),
+            question.getAssignedReviewerId());
+
+        /*
+         * Another participant's private question is masked before checking
+         * participation, preventing disclosure of protected thread data.
+         */
+        if (question.getVisibility() == PRIVATE
+            && !author
+            && !assignedReviewer) {
+            throw new QuestionNotFoundException(
+                question.getId());
+        }
+
+        requireVisibleAssignment(context);
+        requireParticipation(context);
+
+        return context;
+    }
+
+    private TaskAssignmentAccessContext requireTaskAssignmentParticipantAccess(
+        Long taskAssignmentId) {
+        TaskAssignmentAccessContext context =
+            resolveTaskAssignmentContext(
+                taskAssignmentId);
+
+        /*
+         * Administrators bypass assignment visibility and participation checks, but
+         * only after the complete hierarchy has been validated.
+         */
+        if (isAdministrator()) {
+            return context;
+        }
+
+        requireVisibleAssignment(context);
+        requireParticipation(context);
+
+        return context;
+    }
+
+    private TaskAssignmentAccessContext resolveTaskAssignmentContext(
+        Long taskAssignmentId) {
+        Long currentUserId = securityFacade
+            .getCurrentUserId()
             .orElseThrow(() -> new AuthenticationException(
                 "Authentication is required to access the question forum",
                 ErrorCode.AUTHENTICATION_REQUIRED));
 
-        TaskAssignmentDetailDTO assignment = taskAssignmentFacade.findAssignmentById(taskAssignmentId)
-            .orElseThrow(() -> new TaskAssignmentNotFoundException(taskAssignmentId));
+        TaskAssignmentDetailDTO assignment =
+            taskAssignmentFacade
+                .findAssignmentById(taskAssignmentId)
+                .orElseThrow(() -> new TaskAssignmentNotFoundException(
+                    taskAssignmentId));
 
-        TourDetail tour = competitionFacade.findTourById(assignment.tourId())
-            .orElseThrow(() -> new TourNotFoundException(assignment.tourId()));
+        TourDetail tour = competitionFacade
+            .findTourById(assignment.tourId())
+            .orElseThrow(() -> new TourNotFoundException(
+                assignment.tourId()));
 
-        StageDetail stage = competitionFacade.findStageById(tour.stageId())
-            .orElseThrow(() -> new StageNotFoundException(tour.stageId()));
-
-        /*
-         * Administrators bypass assignment visibility and participation checks, but
-         * only after the complete assignment hierarchy has been validated.
-         */
-        if (isAdministrator()) {
-            return new TaskAssignmentAccessContext(
-                currentUserId,
-                assignment,
-                tour,
-                stage);
-        }
-
-        if (assignment.visibility() != VISIBLE) {
-            throw new QuestionForumAccessRestrictedException(taskAssignmentId);
-        }
-
-        boolean isParticipant = participationFacade.isUserParticipant(
-            currentUserId,
-            stage.competitionId(),
-            stage.id());
-
-        if (!isParticipant) {
-            throw new QuestionForumAccessRestrictedException(taskAssignmentId);
-        }
+        StageDetail stage = competitionFacade
+            .findStageById(tour.stageId())
+            .orElseThrow(() -> new StageNotFoundException(
+                tour.stageId()));
 
         return new TaskAssignmentAccessContext(
             currentUserId,
@@ -131,13 +213,38 @@ public class QuestionAccessPolicy {
             stage);
     }
 
-    private boolean currentUserMatches(Long expectedUserId) {
+    private void requireVisibleAssignment(
+        TaskAssignmentAccessContext context) {
+        if (context.assignment().visibility() != VISIBLE) {
+            throw new QuestionForumAccessRestrictedException(
+                context.assignment().id());
+        }
+    }
+
+    private void requireParticipation(
+        TaskAssignmentAccessContext context) {
+        boolean participant =
+            participationFacade.isUserParticipant(
+                context.userId(),
+                context.stage().competitionId(),
+                context.stage().id());
+
+        if (!participant) {
+            throw new QuestionForumAccessRestrictedException(
+                context.assignment().id());
+        }
+    }
+
+    private boolean currentUserMatches(
+        Long expectedUserId) {
         if (expectedUserId == null) {
             return false;
         }
 
         return securityFacade.getCurrentUserId()
-            .map(currentUserId -> Objects.equals(currentUserId, expectedUserId))
+            .map(currentUserId -> Objects.equals(
+                currentUserId,
+                expectedUserId))
             .orElse(false);
     }
 
