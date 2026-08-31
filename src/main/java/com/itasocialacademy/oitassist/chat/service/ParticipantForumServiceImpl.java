@@ -8,17 +8,20 @@ import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.QuestionCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
 import com.itasocialacademy.oitassist.chat.service.interfaces.ParticipantForumService;
 import com.itasocialacademy.oitassist.chat.utils.QuestionAccessPolicy;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +38,7 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
     private final QuestionThreadRepository questionThreadRepository;
     private final QuestionThreadMapper questionThreadMapper;
     private final QuestionAccessPolicy questionAccessPolicy;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -45,12 +49,22 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
             size);
         validateRequest(taskAssignmentId, page, size);
 
-        Long participantId = questionAccessPolicy.requireTaskAssignmentForumAccess(taskAssignmentId);
-
         Pageable pageable = PageRequest.of(
             page,
             size,
             FORUM_SORT);
+
+        if (questionAccessPolicy.isAdministrator()
+            || questionAccessPolicy.isOrganizationResponder(taskAssignmentId)) {
+            return questionThreadRepository
+                .findAllQuestionsByTaskAssignmentId(
+                    taskAssignmentId,
+                    pageable)
+                .map(questionThreadMapper::toSummaryResponse);
+        }
+
+        Long participantId =
+            questionAccessPolicy.requireTaskAssignmentForumAccess(taskAssignmentId);
 
         return questionThreadRepository.findParticipantVisibleQuestions(
             taskAssignmentId,
@@ -83,7 +97,15 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
             taskAssignmentId,
             authorId);
 
-        return questionThreadMapper.toResponse(savedQuestion);
+        QuestionThreadResponseDTO response =
+            questionThreadMapper.toResponse(savedQuestion);
+
+        applicationEventPublisher.publishEvent(
+            new QuestionCreatedDomainEvent(
+                response,
+                Instant.now()));
+
+        return response;
     }
 
     private void validateRequest(Long taskAssignmentId, int page, int size) {
