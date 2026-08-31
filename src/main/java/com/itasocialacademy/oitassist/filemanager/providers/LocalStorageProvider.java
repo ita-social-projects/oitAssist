@@ -199,14 +199,16 @@ public class LocalStorageProvider implements StorageProvider {
     /**
      *
      * <p>
-     * Resolves the storage key against the configured local storage root, checks for path traversal,
-     * and wraps the file URI in a {@link UrlResource}.
+     * Resolves the storage key against the configured local storage root, checks
+     * for path traversal, and wraps the file URI in a {@link UrlResource}.
      * </p>
      *
      * @param storageKey the relative path of the file on local disk
      * @return the {@link Resource} representing the local file
-     * @throws InvalidFilePathException   if the storage key escapes the root directory
-     * @throws FileAssetNotFoundException if the file does not exist or cannot be read
+     * @throws InvalidFilePathException   if the storage key escapes the root
+     *                                    directory
+     * @throws FileAssetNotFoundException if the file does not exist or cannot be
+     *                                    read
      * @throws FileListingException       if creating the URL resource fails
      */
     @Override

@@ -29,9 +29,10 @@ public class NewsFileAccessValidator implements FileAccessValidator {
     }
 
     /**
-     * Checks if the user is authorized to access the file attached to the specified news entity.
-     * Access is granted to everyone (including guests) if the news is {@link NewsStatus#PUBLISHED}.
-     * For non-published news (drafts/archived), access is restricted to the news author, ADMIN, or ORG roles.
+     * Checks if the user is authorized to access the file attached to the specified
+     * news entity. Access is granted to everyone (including guests) if the news is
+     * {@link NewsStatus#PUBLISHED}. For non-published news (drafts/archived),
+     * access is restricted to the news author, ADMIN, or ORG roles.
      *
      * @param newsId  the ID of the news entity
      * @param userId  the ID of the current user, or {@code null} if unauthenticated

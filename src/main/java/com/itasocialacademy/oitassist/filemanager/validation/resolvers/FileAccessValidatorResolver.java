@@ -10,8 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * Resolver component responsible for selecting the appropriate {@link FileAccessValidator}
- * strategy based on the target entity type ({@link RelatedEntityType}).
+ * Resolver component responsible for selecting the appropriate
+ * {@link FileAccessValidator} strategy based on the target entity type
+ * ({@link RelatedEntityType}).
  */
 @Slf4j
 @Component
