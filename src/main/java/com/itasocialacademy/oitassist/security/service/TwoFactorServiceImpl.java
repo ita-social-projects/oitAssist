@@ -109,7 +109,7 @@ public class TwoFactorServiceImpl implements TwoFactorService {
     @Override
     @Transactional
     public void confirmEnrollment(Long userId, TwoFactorConfirmRequest request) {
-        UserTwoFactorAuth entity = twoFactorAuthRepository.findByUserId(userId)
+        UserTwoFactorAuth entity = twoFactorAuthRepository.findByUserIdForUpdate(userId)
             .orElseThrow(() -> new TwoFactorEnrollmentNotFoundException(
                 "No two-factor enrollment in progress for this user", ErrorCode.TWO_FACTOR_ENROLLMENT_NOT_FOUND));
 
@@ -177,7 +177,7 @@ public class TwoFactorServiceImpl implements TwoFactorService {
     }
 
     private UserTwoFactorAuth findEnabledTwoFactorAuth(Long userId) {
-        return twoFactorAuthRepository.findByUserId(userId)
+        return twoFactorAuthRepository.findByUserIdForUpdate(userId)
             .filter(UserTwoFactorAuth::isEnabled)
             .orElseThrow(() -> new TwoFactorEnrollmentNotFoundException(
                 "No active two-factor setup found for this user", ErrorCode.TWO_FACTOR_ENROLLMENT_NOT_FOUND));
@@ -221,6 +221,7 @@ public class TwoFactorServiceImpl implements TwoFactorService {
 
     private boolean confirmTotp(UserTwoFactorAuth entity, String code) {
         return totpProvider.verify(entity.getTotpSecret(), code)
+            .filter(bucket -> !entity.isTotpBucketAlreadyUsed(bucket))
             .map(bucket -> {
                 entity.recordTotpUse(bucket);
                 return true;

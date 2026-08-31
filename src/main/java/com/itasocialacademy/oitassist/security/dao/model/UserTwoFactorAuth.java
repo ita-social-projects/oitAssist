@@ -114,8 +114,8 @@ public class UserTwoFactorAuth {
 
     /**
      * Records that a TOTP time-bucket was just consumed, for replay-window
-     * protection (plan section 2.4b): a code must not validate twice within the
-     * accepted clock-drift tolerance.
+     * protection: a code must not validate twice within the accepted clock-drift
+     * tolerance.
      */
     public void recordTotpUse(long timeBucket) {
         this.lastUsedTotpBucket = timeBucket;
