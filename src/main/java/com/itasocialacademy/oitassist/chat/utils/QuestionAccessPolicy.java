@@ -76,7 +76,7 @@ public class QuestionAccessPolicy {
      * @return current authenticated user's identifier
      */
     public Long requireTaskAssignmentForumAccess(Long taskAssignmentId) {
-        return resolveTaskAssignmentAccess(taskAssignmentId).userId();
+        return requireTaskAssignmentParticipantAccess(taskAssignmentId).userId();
     }
 
     /**

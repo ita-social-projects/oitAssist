@@ -18,6 +18,7 @@ public class RealtimeSubscriptionDestinationParser {
         "/user/queue/questions";
 
     private static final String ADMINISTRATOR_REVIEWS_DESTINATION =
+        "/user/queue/reviews";
 
     private static final String PERSONAL_REVIEWS_DESTINATION =
         "/user/queue/reviews";
