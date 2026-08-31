@@ -1397,7 +1397,6 @@ class FileServiceImplTest {
         when(filePolicyResolver.resolve(RelatedEntityType.TASK, FileRole.PROBLEM)).thenReturn(newRolePolicy);
         when(fileRepository.save(any(FileAsset.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(fileMapper.toDto(any(FileAsset.class))).thenReturn(expectedDto);
-        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
 
         FileResponseDto result = fileService.updateRole(fileId, requestDto);
 
