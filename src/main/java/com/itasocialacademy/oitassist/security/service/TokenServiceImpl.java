@@ -101,7 +101,7 @@ public class TokenServiceImpl implements TokenService {
             return buildVerificationRequiredResponse(userDetails, twoFactorAuth.get());
         }
 
-        if (twoFactorAuth.isEmpty() && isMandatoryTwoFactorRole(userDetails)) {
+        if (isMandatoryTwoFactorRole(userDetails)) {
             return buildSetupRequiredResponse(userDetails);
         }
 
