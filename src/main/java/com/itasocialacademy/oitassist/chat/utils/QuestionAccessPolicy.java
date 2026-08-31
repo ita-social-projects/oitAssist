@@ -7,7 +7,6 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionCreationNotAllowedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionForumAccessRestrictedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
-import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.chat.service.interfaces.TaskAssignmentForumResponderService;
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
@@ -157,12 +156,6 @@ public class QuestionAccessPolicy {
         if (isOrganizationResponder(question.getTaskAssignmentId())) {
             return context;
         }
-
-//        if (isAssignedOrganizationResponder(
-//            question,
-//            context.userId())) {
-//            return context;
-//        }
 
         boolean author = Objects.equals(
             context.userId(),

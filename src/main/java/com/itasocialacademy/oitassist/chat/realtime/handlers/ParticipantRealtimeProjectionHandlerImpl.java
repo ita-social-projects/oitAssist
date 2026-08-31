@@ -22,7 +22,6 @@ import com.itasocialacademy.oitassist.chat.realtime.event.QuestionUpsertPayload;
 import com.itasocialacademy.oitassist.chat.realtime.event.RealtimeEventType;
 import com.itasocialacademy.oitassist.chat.realtime.event.RealtimeForumEvent;
 import com.itasocialacademy.oitassist.chat.realtime.event.RealtimePayload;
-
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

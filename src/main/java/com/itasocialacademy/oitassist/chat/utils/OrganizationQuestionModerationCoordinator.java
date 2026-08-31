@@ -33,19 +33,13 @@ public class OrganizationQuestionModerationCoordinator {
         QuestionVisibility visibility,
         Long expectedVersion,
         Instant updatedAt) {
-//        requireAssignedResponder(
-//            currentQuestion,
-//            responderUserId);
-
-        int updatedRows =
-            questionThreadRepository
-                .updateVisibilityAsResponderIfVersionMatches(
-                    currentQuestion.getId(),
-                    currentQuestion.getTaskAssignmentId(),
-                    responderUserId,
-                    visibility,
-                    expectedVersion,
-                    updatedAt);
+        int updatedRows = questionThreadRepository.updateVisibilityAsResponderIfVersionMatches(
+            currentQuestion.getId(),
+            currentQuestion.getTaskAssignmentId(),
+            responderUserId,
+            visibility,
+            expectedVersion,
+            updatedAt);
         return completeUpdate(
             currentQuestion,
             responderUserId,
@@ -60,19 +54,13 @@ public class OrganizationQuestionModerationCoordinator {
         QuestionStatus status,
         Long expectedVersion,
         Instant updatedAt) {
-//        requireAssignedResponder(
-//            currentQuestion,
-//            responderUserId);
-
-        int updatedRows =
-            questionThreadRepository
-                .updateStatusAsResponderIfVersionMatches(
-                    currentQuestion.getId(),
-                    currentQuestion.getTaskAssignmentId(),
-                    responderUserId,
-                    status,
-                    expectedVersion,
-                    updatedAt);
+        int updatedRows = questionThreadRepository.updateStatusAsResponderIfVersionMatches(
+            currentQuestion.getId(),
+            currentQuestion.getTaskAssignmentId(),
+            responderUserId,
+            status,
+            expectedVersion,
+            updatedAt);
         return completeUpdate(
             currentQuestion,
             responderUserId,
@@ -87,19 +75,13 @@ public class OrganizationQuestionModerationCoordinator {
         QuestionState state,
         Long expectedVersion,
         Instant updatedAt) {
-//        requireAssignedResponder(
-//            currentQuestion,
-//            responderUserId);
-
-        int updatedRows =
-            questionThreadRepository
-                .updateStateAsResponderIfVersionMatches(
-                    currentQuestion.getId(),
-                    currentQuestion.getTaskAssignmentId(),
-                    responderUserId,
-                    state,
-                    expectedVersion,
-                    updatedAt);
+        int updatedRows = questionThreadRepository.updateStateAsResponderIfVersionMatches(
+            currentQuestion.getId(),
+            currentQuestion.getTaskAssignmentId(),
+            responderUserId,
+            state,
+            expectedVersion,
+            updatedAt);
         return completeUpdate(
             currentQuestion,
             responderUserId,
