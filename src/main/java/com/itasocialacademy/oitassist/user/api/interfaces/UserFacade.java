@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.user.api.interfaces;
 
 import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
+import com.itasocialacademy.oitassist.user.api.dto.ForumResponderCandidate;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import org.springframework.modulith.NamedInterface;
@@ -152,4 +153,15 @@ public interface UserFacade {
      *         IDs, or {@code Optional.empty()} if the search string is null/blank.
      */
     Optional<List<Long>> findUserIdsBySearchWithinIds(String search, List<Long> candidateIds);
+
+    /**
+     * Resolves the safe user projection required to validate a proposed
+     * TaskAssignment forum responder.
+     *
+     * @param userId target user identifier
+     * @return responder candidate, or empty when the user does not exist
+     */
+    Optional<ForumResponderCandidate> findForumResponderCandidateById(Long userId);
+
+    List<ForumResponderCandidate> findForumResponderCandidatesByIds(List<Long> userIds);
 }

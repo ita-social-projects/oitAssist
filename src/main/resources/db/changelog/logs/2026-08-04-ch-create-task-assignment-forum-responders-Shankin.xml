@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-task-assignment-forum-responders-table" author="Ivan Shankin">
+        <createTable tableName="task_assignment_forum_responders">
+            <column
+                    name="id"
+                    type="BIGINT"
+                    autoIncrement="true">
+                <constraints
+                        primaryKey="true"
+                        primaryKeyName="pk_task_assignment_forum_responders"
+                        nullable="false"/>
+            </column>
+
+            <column
+                    name="task_assignment_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column
+                    name="responder_user_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column
+                    name="assigned_by_user_id"
+                    type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column
+                    name="assigned_at"
+                    type="TIMESTAMPTZ"
+                    defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint
+                tableName="task_assignment_forum_responders"
+                columnNames="task_assignment_id, responder_user_id"
+                constraintName="uk_ta_forum_responders_assignment_responder"/>
+
+        <addForeignKeyConstraint
+                baseTableName="task_assignment_forum_responders"
+                baseColumnNames="task_assignment_id"
+                referencedTableName="task_assignments"
+                referencedColumnNames="id"
+                constraintName="fk_ta_forum_responders_assignment"
+                onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="task_assignment_forum_responders"
+                baseColumnNames="responder_user_id"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                constraintName="fk_ta_forum_responders_responder"
+                onDelete="RESTRICT"/>
+
+        <addForeignKeyConstraint
+                baseTableName="task_assignment_forum_responders"
+                baseColumnNames="assigned_by_user_id"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                constraintName="fk_ta_forum_responders_assigned_by"
+                onDelete="RESTRICT"/>
+
+        <rollback>
+            <dropTable tableName="task_assignment_forum_responders"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="create-task-assignment-forum-responder-indexes" author="Ivan Shankin">
+        <createIndex
+                tableName="task_assignment_forum_responders"
+                indexName="idx_ta_forum_responders_assignment_assigned">
+            <column name="task_assignment_id"/>
+            <column name="assigned_at"/>
+            <column name="id"/>
+        </createIndex>
+
+        <createIndex
+                tableName="task_assignment_forum_responders"
+                indexName="idx_ta_forum_responders_user_assignment">
+            <column name="responder_user_id"/>
+            <column name="task_assignment_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex
+                    tableName="task_assignment_forum_responders"
+                    indexName="idx_ta_forum_responders_user_assignment"/>
+
+            <dropIndex
+                    tableName="task_assignment_forum_responders"
+                    indexName="idx_ta_forum_responders_assignment_assigned"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

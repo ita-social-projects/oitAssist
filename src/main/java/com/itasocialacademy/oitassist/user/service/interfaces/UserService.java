@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.user.service.interfaces;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.dto.ForumResponderCandidate;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
@@ -45,6 +46,10 @@ public interface UserService {
      * omitted from the result, consistent with {@link #findAuthDetailsByIds}.
      */
     List<UserProfileDetails> findProfilesDetailsByIds(List<Long> userIds);
+
+    Optional<ForumResponderCandidate> findForumResponderCandidateById(Long userId);
+
+    List<ForumResponderCandidate> findForumResponderCandidatesByIds(List<Long> userIds);
 
     /**
      * Searches for the list of users by their IDs and returns the list of auth-side

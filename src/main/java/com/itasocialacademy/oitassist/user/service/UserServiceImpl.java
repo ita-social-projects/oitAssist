@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsExc
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.dto.ForumResponderCandidate;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
@@ -59,6 +60,24 @@ public class UserServiceImpl implements UserService {
     public Optional<UserProfileDetails> findProfileDetailsById(Long userId) {
         return repository.findById(userId)
             .map(mapper::toUserProfileDetails);
+    }
+
+    @Override
+    public Optional<ForumResponderCandidate> findForumResponderCandidateById(Long userId) {
+        return repository.findById(userId)
+            .map(mapper::toForumResponderCandidate);
+    }
+
+    @Override
+    public List<ForumResponderCandidate> findForumResponderCandidatesByIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+
+        return repository.findAllById(userIds)
+            .stream()
+            .map(mapper::toForumResponderCandidate)
+            .toList();
     }
 
     /**
