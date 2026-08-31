@@ -175,9 +175,9 @@ public class QuestionAccessPolicy {
          * The remaining branch represents ordinary participant access.
          */
         if (question.getVisibility() == PRIVATE
-                && !author) {
+            && !author) {
             throw new QuestionNotFoundException(
-                    question.getId());
+                question.getId());
         }
 
         requireVisibleAssignment(context);
@@ -211,15 +211,15 @@ public class QuestionAccessPolicy {
     }
 
     private boolean isAssignedOrganizationResponder(
-            QuestionThread question,
-            Long currentUserId) {
+        QuestionThread question,
+        Long currentUserId) {
         /*
          * Check ownership first so ordinary participants and unrelated ORG users do not
          * cause unnecessary responder-assignment queries.
          */
         if (!Objects.equals(
-                currentUserId,
-                question.getAssignedReviewerId())) {
+            currentUserId,
+            question.getAssignedReviewerId())) {
             return false;
         }
 
@@ -228,8 +228,8 @@ public class QuestionAccessPolicy {
         }
 
         return forumResponderService.isResponder(
-                question.getTaskAssignmentId(),
-                currentUserId);
+            question.getTaskAssignmentId(),
+            currentUserId);
     }
 
     private TaskAssignmentAccessContext resolveTaskAssignmentContext(

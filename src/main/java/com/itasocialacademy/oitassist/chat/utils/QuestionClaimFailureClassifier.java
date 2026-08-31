@@ -28,9 +28,9 @@ public class QuestionClaimFailureClassifier {
      * @param expectedVersion version supplied by the claim request
      */
     public void classifyAndThrow(Long questionId, Long expectedVersion) {
-            QuestionThread question = requireQuestion(questionId);
+        QuestionThread question = requireQuestion(questionId);
 
-            classifyPersistedStateAndThrow(question, expectedVersion);
+        classifyPersistedStateAndThrow(question, expectedVersion);
     }
 
     /**
@@ -55,8 +55,8 @@ public class QuestionClaimFailureClassifier {
         QuestionThread question = requireQuestion(questionId);
 
         if (!Objects.equals(
-                question.getTaskAssignmentId(),
-                permittedTaskAssignmentId)) {
+            question.getTaskAssignmentId(),
+            permittedTaskAssignmentId)) {
             throw new QuestionNotFoundException(questionId);
         }
 
@@ -65,22 +65,22 @@ public class QuestionClaimFailureClassifier {
 
     private QuestionThread requireQuestion(Long questionId) {
         return questionThreadRepository.findById(questionId)
-                .orElseThrow(() -> new QuestionNotFoundException(questionId));
+            .orElseThrow(() -> new QuestionNotFoundException(questionId));
     }
 
     private void classifyPersistedStateAndThrow(QuestionThread question, Long expectedVersion) {
         if (question.getState() == CLOSED) {
             throw new InvalidQuestionStateException(
-                    question.getId(),
-                    question.getState(),
-                    CLAIM_OPERATION);
+                question.getId(),
+                question.getState(),
+                CLAIM_OPERATION);
         }
 
         if (question.getStatus() == ANSWERED) {
             throw new InvalidQuestionStateException(
-                    question.getId(),
-                    question.getStatus(),
-                    CLAIM_OPERATION);
+                question.getId(),
+                question.getStatus(),
+                CLAIM_OPERATION);
         }
 
         /*
@@ -95,8 +95,8 @@ public class QuestionClaimFailureClassifier {
         }
 
         if (!Objects.equals(
-                question.getVersion(),
-                expectedVersion)) {
+            question.getVersion(),
+            expectedVersion)) {
             throw new QuestionVersionConflictException(question.getId());
         }
 

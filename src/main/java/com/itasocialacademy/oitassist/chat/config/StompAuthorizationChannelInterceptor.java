@@ -23,15 +23,15 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class StompAuthorizationChannelInterceptor
-        implements ChannelInterceptor {
+    implements ChannelInterceptor {
     private static final String AUTHENTICATION_REQUIRED =
-            "STOMP authentication is required";
+        "STOMP authentication is required";
 
     private static final String SUBSCRIPTION_NOT_ALLOWED =
-            "STOMP subscription is not allowed";
+        "STOMP subscription is not allowed";
 
     private static final String ORG_AUTHORITY =
-            "ROLE_ORG";
+        "ROLE_ORG";
 
     private final RealtimeSubscriptionDestinationParser destinationParser;
 
@@ -40,12 +40,12 @@ public class StompAuthorizationChannelInterceptor
 
     @Override
     public Message<?> preSend(
-            Message<?> message,
-            MessageChannel channel) {
+        Message<?> message,
+        MessageChannel channel) {
         StompHeaderAccessor accessor =
-                MessageHeaderAccessor.getAccessor(
-                        message,
-                        StompHeaderAccessor.class);
+            MessageHeaderAccessor.getAccessor(
+                message,
+                StompHeaderAccessor.class);
 
         if (accessor == null) {
             return message;
@@ -65,35 +65,35 @@ public class StompAuthorizationChannelInterceptor
     }
 
     private void authorizeSubscription(
-            StompHeaderAccessor accessor) {
+        StompHeaderAccessor accessor) {
         Authentication authentication =
-                requireAuthentication(
-                        accessor.getUser());
+            requireAuthentication(
+                accessor.getUser());
 
         RealtimeSubscriptionDestination destination =
-                destinationParser.parse(
-                        accessor.getDestination());
+            destinationParser.parse(
+                accessor.getDestination());
 
         try {
             switch (destination.type()) {
                 case TASK_ASSIGNMENT_FORUM ->
-                        authorizeTaskAssignmentForum(
-                                destination.resourceId());
+                    authorizeTaskAssignmentForum(
+                        destination.resourceId());
 
                 case PUBLIC_QUESTION_THREAD ->
-                        authorizePublicQuestion(
-                                destination.resourceId());
+                    authorizePublicQuestion(
+                        destination.resourceId());
 
                 case ADMINISTRATOR_INBOX,
-                     ADMINISTRATOR_REVIEWS ->
-                        requireAdministrator();
+                    ADMINISTRATOR_REVIEWS ->
+                    requireAdministrator();
 
                 case ADMINISTRATOR_ALL_QUESTIONS ->
-                        requireAdministrator();
+                    requireAdministrator();
 
                 case PERSONAL_REVIEWS ->
-                        requirePersonalReviewAccess(
-                                authentication);
+                    requirePersonalReviewAccess(
+                        authentication);
 
                 case PARTICIPANT_QUESTIONS -> {
                     // Every authenticated user may subscribe to their own
@@ -101,7 +101,7 @@ public class StompAuthorizationChannelInterceptor
                 }
 
                 default ->
-                        throw subscriptionNotAllowed();
+                    throw subscriptionNotAllowed();
             }
         } catch (RuntimeException exception) {
             /*
@@ -116,25 +116,25 @@ public class StompAuthorizationChannelInterceptor
     }
 
     private void authorizeTaskAssignmentForum(
-            Long taskAssignmentId) {
+        Long taskAssignmentId) {
         questionAccessPolicy
-                .requireTaskAssignmentForumAccess(
-                        taskAssignmentId);
+            .requireTaskAssignmentForumAccess(
+                taskAssignmentId);
     }
 
     private void authorizePublicQuestion(
-            Long questionId) {
+        Long questionId) {
         QuestionThread question = questionThreadRepository
-                .findById(questionId)
-                .orElseThrow(
-                        StompAuthorizationChannelInterceptor::subscriptionNotAllowed);
+            .findById(questionId)
+            .orElseThrow(
+                StompAuthorizationChannelInterceptor::subscriptionNotAllowed);
 
         if (question.getVisibility() != PUBLIC) {
             throw subscriptionNotAllowed();
         }
 
         questionAccessPolicy
-                .requireQuestionViewAccess(question);
+            .requireQuestionViewAccess(question);
     }
 
     private void requireAdministrator() {
@@ -144,20 +144,20 @@ public class StompAuthorizationChannelInterceptor
     }
 
     private Authentication requireAuthentication(
-            Principal principal) {
+        Principal principal) {
         if (!(principal instanceof Authentication authentication)
-                || !authentication.isAuthenticated()) {
+            || !authentication.isAuthenticated()) {
             throw new AuthenticationCredentialsNotFoundException(
-                    AUTHENTICATION_REQUIRED);
+                AUTHENTICATION_REQUIRED);
         }
 
         return authentication;
     }
 
     private void requirePersonalReviewAccess(
-            Authentication authentication) {
+        Authentication authentication) {
         if (questionAccessPolicy.isAdministrator()
-                || hasAuthority(
+            || hasAuthority(
                 authentication,
                 ORG_AUTHORITY)) {
             return;
@@ -167,17 +167,17 @@ public class StompAuthorizationChannelInterceptor
     }
 
     private boolean hasAuthority(
-            Authentication authentication,
-            String requiredAuthority) {
+        Authentication authentication,
+        String requiredAuthority) {
         return authentication
-                .getAuthorities()
-                .stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch(requiredAuthority::equals);
+            .getAuthorities()
+            .stream()
+            .map(GrantedAuthority::getAuthority)
+            .anyMatch(requiredAuthority::equals);
     }
 
     private static AccessDeniedException subscriptionNotAllowed() {
         return new AccessDeniedException(
-                SUBSCRIPTION_NOT_ALLOWED);
+            SUBSCRIPTION_NOT_ALLOWED);
     }
 }

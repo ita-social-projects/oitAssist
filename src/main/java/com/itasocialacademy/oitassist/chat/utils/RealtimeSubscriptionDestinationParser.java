@@ -59,15 +59,15 @@ public class RealtimeSubscriptionDestinationParser {
 
         if (ADMINISTRATOR_REVIEWS_DESTINATION.equals(destination)) {
             return new RealtimeSubscriptionDestination(
-                    ADMINISTRATOR_REVIEWS,
-                    null);
+                ADMINISTRATOR_REVIEWS,
+                null);
         }
 
-            if (PERSONAL_REVIEWS_DESTINATION.equals(destination)) {
-                return new RealtimeSubscriptionDestination(
-                        PERSONAL_REVIEWS,
-                        null);
-            }
+        if (PERSONAL_REVIEWS_DESTINATION.equals(destination)) {
+            return new RealtimeSubscriptionDestination(
+                PERSONAL_REVIEWS,
+                null);
+        }
 
         Matcher taskAssignmentMatcher =
             TASK_ASSIGNMENT_FORUM_PATTERN.matcher(destination);
