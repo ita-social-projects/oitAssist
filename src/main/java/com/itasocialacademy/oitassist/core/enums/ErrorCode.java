@@ -43,6 +43,10 @@ public enum ErrorCode {
 
     ENTITY_NOT_FOUND(ErrorCategory.NOT_FOUND),
 
+    SUBMISSION_NOT_FOUND(ErrorCategory.NOT_FOUND),
+    TOUR_NOT_IN_PROGRESS(ErrorCategory.CONFLICT),
+    NOT_A_PARTICIPANT(ErrorCategory.AUTHORIZATION),
+
     TASK_NOT_FOUND(ErrorCategory.NOT_FOUND),
     TASK_ASSIGNMENT_NOT_FOUND(ErrorCategory.NOT_FOUND),
     TASK_ALREADY_COMPLETED(ErrorCategory.CONFLICT),
@@ -75,7 +79,10 @@ public enum ErrorCode {
     LOG_FILE_LISTING_FAILED(ErrorCategory.TECHNICAL),
     INVALID_LOG_FILE_SORT(ErrorCategory.VALIDATION),
 
-    DATA_ACCESS_ERROR(ErrorCategory.TECHNICAL);
+    DATA_ACCESS_ERROR(ErrorCategory.TECHNICAL),
+
+    ENTITY_VERSION_CONFLICT(ErrorCategory.CONFLICT),
+    COMMON_CONFLICT(ErrorCategory.CONFLICT);
 
     private final ErrorCategory category;
 }

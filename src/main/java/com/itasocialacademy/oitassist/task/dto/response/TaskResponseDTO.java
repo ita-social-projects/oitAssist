@@ -34,5 +34,7 @@ public record TaskResponseDTO(
 
     @Schema(
         description = "Ids of task's current owners",
-        example = "[1,2,3]") Set<Long> ownerIds) {
+        example = "[1,2,3]") Set<Long> ownerIds,
+
+    @Schema(description = "Optimistic locking version; must be echoed back on updates") Long version) {
 }

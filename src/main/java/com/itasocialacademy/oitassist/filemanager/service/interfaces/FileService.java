@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,17 @@ public interface FileService {
      * @throws ValidationException if any file fails the policy validation
      */
     List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto);
+
+    /**
+     * Validates and uploads a batch of files, linking them to the specified entity.
+     *
+     * @param files      the files to upload
+     * @param requestDto upload context metadata (entity type and optional entity
+     *                   ID)
+     * @return a list of {@link FileDetailsDTO} with resolved URLs
+     * @throws ValidationException if any file fails the policy validation
+     */
+    List<FileDetailsDTO> uploadToFileDetails(List<MultipartFile> files, FileUploadRequestDto requestDto);
 
     /**
      * Method to mark a file SOFT_DELETED, but keep a physical file intact.
@@ -57,11 +69,21 @@ public interface FileService {
      * content. Validates ownership for each file using the provided userId.
      *
      * @param entityType the type of the related entity
-     * @param entityId   the ID of the entity to detach files to
+     * @param entityId   the ID of the entity to detach files from
      * @param fileIds    the IDs of files to soft-delete
      * @param userId     the ID of the user who triggered detach
      */
     void detachFiles(RelatedEntityType entityType, Long entityId, List<Long> fileIds, Long userId);
+
+    /**
+     * Marks a batch of files as SOFT_DELETED. Called when files are removed from
+     * content. Validates ownership for each file using the provided userId.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity to detach files from
+     * @param userId     the ID of the user who triggered detach
+     */
+    void detachAllFilesByEntityId(RelatedEntityType entityType, Long entityId, Long userId);
 
     /**
      * Returns all {@link FileStatus#ATTACHED} files for the given entity.
@@ -96,4 +118,14 @@ public interface FileService {
      */
     Map<Long, List<FileDetailsDTO>> getFilesByEntities(RelatedEntityType entityType, List<Long> entityIds,
         Set<FileRole> roles);
+
+    /**
+     * Updates the role of a file if it is in ATTACHED state. Only the owner of the
+     * file or an ADMIN can update the role.
+     *
+     * @param fileId     the ID of the file to update
+     * @param requestDto the DTO containing the new role
+     * @return the updated file response DTO
+     */
+    FileResponseDto updateRole(Long fileId, UpdateFileRoleRequestDto requestDto);
 }

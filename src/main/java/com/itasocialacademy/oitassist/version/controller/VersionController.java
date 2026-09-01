@@ -24,8 +24,8 @@ public class VersionController {
     @Operation(
         summary = "Get application build version",
         description = """
-            Returns the build version of the running application: the commit the backend
-            was built from and the date the artifact was built.
+            Returns the build version of the running application: the commits the backend
+            and the bundled frontend were built from, and the date the artifact was built.
             Values that were not available at build time are returned as null.
             Publicly accessible, no authentication required.
             """)

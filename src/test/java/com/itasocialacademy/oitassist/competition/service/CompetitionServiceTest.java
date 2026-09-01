@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,6 +25,7 @@ import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepo
 import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
@@ -32,6 +34,7 @@ import com.itasocialacademy.oitassist.competition.dto.response.StageTreeResponse
 import com.itasocialacademy.oitassist.competition.dto.response.TourResponse;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
+import com.itasocialacademy.oitassist.competition.exceptions.StaleEntityVersionException;
 import com.itasocialacademy.oitassist.competition.mapper.CompetitionMapper;
 import com.itasocialacademy.oitassist.competition.mapper.StageMapper;
 import com.itasocialacademy.oitassist.competition.mapper.TourMapper;
@@ -86,6 +89,7 @@ class CompetitionServiceTest {
             .id(1L)
             .title("Test Olympiad")
             .competitionStatus(CompetitionStatus.DRAFT)
+            .version(1L)
             .build();
     }
 
@@ -93,7 +97,8 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_draftToEnrollment_shouldSucceed() {
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.ENROLLMENT, 1L);
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
 
         when(stageRepository.existsByCompetitionId(1L)).thenReturn(true);
         when(stageRepository.countStagesWithoutTours(1L)).thenReturn(0L);
@@ -101,7 +106,7 @@ class CompetitionServiceTest {
         when(competitionRepository.save(any(Competition.class))).thenReturn(competition);
         when(mapper.toResponse(any(Competition.class))).thenReturn(getCompetitionResponse());
 
-        competitionService.changeStatus(1L, CompetitionStatus.ENROLLMENT);
+        competitionService.changeStatus(1L, request);
 
         assertEquals(CompetitionStatus.ENROLLMENT, competition.getCompetitionStatus());
         verify(competitionRepository).save(competition);
@@ -109,14 +114,15 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_draftToPublished_directly_shouldThrowInvalidTransition() {
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.PUBLISHED, 1L);
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
 
         doThrow(new CompetitionHierarchyValidationException("Invalid status transition from DRAFT to PUBLISHED"))
             .when(validator).validateCompetitionStatusTransition(CompetitionStatus.DRAFT, CompetitionStatus.PUBLISHED);
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
-            () -> competitionService.changeStatus(1L, CompetitionStatus.PUBLISHED));
+            () -> competitionService.changeStatus(1L, request));
 
         assertTrue(exception.getMessage().contains("Invalid status transition"));
         verify(competitionRepository, never()).save(any());
@@ -124,14 +130,17 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_enrollmentToPublished_withValidHierarchy_shouldSucceed() {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.PUBLISHED, 1L);
+
         competition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
+
         when(stageRepository.existsByCompetitionId(1L)).thenReturn(true);
         when(stageRepository.countStagesWithoutTours(1L)).thenReturn(0L);
         when(competitionRepository.save(any(Competition.class))).thenReturn(competition);
         when(mapper.toResponse(any(Competition.class))).thenReturn(getCompetitionResponse());
 
-        competitionService.changeStatus(1L, CompetitionStatus.PUBLISHED);
+        competitionService.changeStatus(1L, request);
 
         assertEquals(CompetitionStatus.PUBLISHED, competition.getCompetitionStatus());
         verify(competitionRepository).save(competition);
@@ -139,13 +148,15 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_enrollmentToPublished_withNoStages_shouldThrowException() {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.PUBLISHED, 1L);
+
         competition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
         when(stageRepository.existsByCompetitionId(1L)).thenReturn(false);
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
-            () -> competitionService.changeStatus(1L, CompetitionStatus.PUBLISHED));
+            () -> competitionService.changeStatus(1L, request));
 
         assertTrue(exception.getMessage().contains("must have at least one stage"));
         verify(competitionRepository, never()).save(any());
@@ -153,14 +164,16 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_enrollmentToPublished_withEmptyStages_shouldThrowException() {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.PUBLISHED, 1L);
+
         competition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
         when(stageRepository.existsByCompetitionId(1L)).thenReturn(true);
         when(stageRepository.countStagesWithoutTours(1L)).thenReturn(2L);
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
-            () -> competitionService.changeStatus(1L, CompetitionStatus.PUBLISHED));
+            () -> competitionService.changeStatus(1L, request));
 
         assertTrue(exception.getMessage().contains("All stages must have at least one tour"));
         verify(competitionRepository, never()).save(any());
@@ -168,14 +181,16 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_enrollmentToDraft_shouldThrowInvalidTransition() {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.DRAFT, 1L);
+
         competition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
 
         doThrow(new CompetitionHierarchyValidationException("Invalid status transition from ENROLLMENT to DRAFT"))
             .when(validator).validateCompetitionStatusTransition(CompetitionStatus.ENROLLMENT, CompetitionStatus.DRAFT);
 
         assertThrows(CompetitionHierarchyValidationException.class,
-            () -> competitionService.changeStatus(1L, CompetitionStatus.DRAFT));
+            () -> competitionService.changeStatus(1L, request));
 
         verify(competitionRepository, never()).save(any());
     }
@@ -183,15 +198,17 @@ class CompetitionServiceTest {
     @Test
     void changeStatus_invalidTransition_publishedToDraft_shouldThrowException() {
         // Arrange
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.DRAFT, 1L);
+
         competition.setCompetitionStatus(CompetitionStatus.PUBLISHED);
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
 
         doThrow(new CompetitionHierarchyValidationException("Invalid status transition from PUBLISHED to DRAFT"))
             .when(validator).validateCompetitionStatusTransition(CompetitionStatus.PUBLISHED, CompetitionStatus.DRAFT);
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
-            () -> competitionService.changeStatus(1L, CompetitionStatus.DRAFT));
+            () -> competitionService.changeStatus(1L, request));
 
         assertTrue(exception.getMessage().contains("Invalid status transition"));
         verify(competitionRepository, never()).save(any());
@@ -199,12 +216,15 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_publishedToFinished_withAllStagesCompleted_shouldSucceed() {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(
+            CompetitionStatus.FINISHED, 1L);
+
         competition.setCompetitionStatus(CompetitionStatus.PUBLISHED);
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
         when(competitionRepository.save(any(Competition.class))).thenReturn(competition);
         when(mapper.toResponse(any(Competition.class))).thenReturn(getCompetitionResponse());
 
-        competitionService.changeStatus(1L, CompetitionStatus.FINISHED);
+        competitionService.changeStatus(1L, request);
 
         assertEquals(CompetitionStatus.FINISHED, competition.getCompetitionStatus());
         verify(validator).validateAllStagesCompletedForCompetition(1L);
@@ -213,8 +233,11 @@ class CompetitionServiceTest {
 
     @Test
     void changeStatus_publishedToFinished_withIncompleteStage_shouldThrowException() {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(
+            CompetitionStatus.FINISHED, 1L);
+
         competition.setCompetitionStatus(CompetitionStatus.PUBLISHED);
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(competition));
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
 
         doThrow(new CompetitionHierarchyValidationException(
             "Cannot finish competition: Not all stages are completed. "
@@ -223,7 +246,7 @@ class CompetitionServiceTest {
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
-            () -> competitionService.changeStatus(1L, CompetitionStatus.FINISHED));
+            () -> competitionService.changeStatus(1L, request));
 
         assertTrue(exception.getMessage().contains("Not all stages are completed"));
         verify(competitionRepository, never()).save(any());
@@ -256,6 +279,44 @@ class CompetitionServiceTest {
         verify(competitionRepository).save(captor.capture());
 
         assertEquals(CompetitionStatus.DRAFT, captor.getValue().getCompetitionStatus());
+    }
+
+    @Test
+    void changeStatus_versionMismatch_shouldThrowStaleEntityVersionException() {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.ENROLLMENT, 5L);
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
+
+        doThrow(new StaleEntityVersionException(Competition.class, 1L))
+            .when(validator).validateEntityVersion(anyLong(), anyLong(), any(), anyLong());
+
+        assertThrows(StaleEntityVersionException.class, () -> competitionService.changeStatus(1L, request));
+
+        verify(competitionRepository, never()).save(any());
+        verify(validator, never()).validateCompetitionStatusTransition(any(), any());
+    }
+
+    @Test
+    void changeStatus_versionMatches_shouldProceedToTransitionValidation() {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.ENROLLMENT, 1L);
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
+        when(stageRepository.existsByCompetitionId(1L)).thenReturn(true);
+        when(stageRepository.countStagesWithoutTours(1L)).thenReturn(0L);
+        when(competitionRepository.save(any(Competition.class))).thenReturn(competition);
+        when(mapper.toResponse(any(Competition.class))).thenReturn(getCompetitionResponse());
+
+        assertDoesNotThrow(() -> competitionService.changeStatus(1L, request));
+
+        verify(validator).validateCompetitionStatusTransition(CompetitionStatus.DRAFT, CompetitionStatus.ENROLLMENT);
+    }
+
+    @Test
+    void changeStatus_competitionNotFound_shouldPropagateFromValidator() {
+        ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.ENROLLMENT, 1L);
+        when(validator.lockCompetitionForUpdate(99L)).thenThrow(new CompetitionNotFoundException(99L));
+
+        assertThrows(CompetitionNotFoundException.class, () -> competitionService.changeStatus(99L, request));
+
+        verify(competitionRepository, never()).save(any());
     }
 
     // ---- getVisibleById ----
@@ -479,7 +540,8 @@ class CompetitionServiceTest {
             ZonedDateTime.now().plusDays(5),
             CompetitionStatus.ARCHIVED,
             100L,
-            100L);
+            100L,
+            1L);
 
         Page<Competition> competitions = new PageImpl<>(List.of(competition, secondCompetition), pageable, 2);
 
@@ -526,7 +588,8 @@ class CompetitionServiceTest {
             testDateStart.plusDays(10),
             CompetitionStatus.DRAFT,
             100L,
-            100L);
+            100L,
+            1L);
     }
 
     private static ZonedDateTime testDateStart() {

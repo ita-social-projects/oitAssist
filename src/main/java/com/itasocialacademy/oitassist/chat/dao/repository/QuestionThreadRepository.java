@@ -13,7 +13,7 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
     @Query("""
         SELECT question
         FROM QuestionThread question
-        WHERE question.taskId = :taskId
+        WHERE question.taskAssignmentId = :taskAssignmentId
           AND (
               question.visibility = PUBLIC
               OR (
@@ -23,7 +23,7 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
           )
         """)
     Page<QuestionThread> findParticipantVisibleQuestions(
-        @Param("taskId") Long taskId,
+        @Param("taskAssignmentId") Long taskAssignmentId,
         @Param("participantId") Long participantId,
         Pageable pageable);
 }

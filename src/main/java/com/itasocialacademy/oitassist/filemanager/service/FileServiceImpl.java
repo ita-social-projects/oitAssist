@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.filemanager.service;
 
+import static com.itasocialacademy.oitassist.filemanager.validation.util.FileValidationUtils.*;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
@@ -12,6 +13,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.dao.specification.FileAssetSpecification;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
@@ -54,6 +56,19 @@ public class FileServiceImpl implements FileService {
     private static final String ROLE_ADMIN = "ADMIN";
 
     /**
+     * Error message indicating that the user is not authenticated. Used when an
+     * operation requires authentication, but it is invalid.
+     */
+    public static final String NOT_AUTHENTICATED = "Not authenticated";
+
+    /**
+     * Error message prefix indicating that a requested file could not be found in
+     * the database. This message is typically appended with the file identifier to
+     * provide context.
+     */
+    public static final String FILE_NOT_FOUND_IN_THE_DATABASE = "File not found in the database: ";
+
+    /**
      * {@inheritDoc}
      *
      * <p>
@@ -67,22 +82,35 @@ public class FileServiceImpl implements FileService {
     public List<FileResponseDto> upload(List<MultipartFile> files, FileUploadRequestDto requestDto) {
         Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException(
-                "Not authenticated", ErrorCode.ACCESS_DENIED));
+                NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
 
-        RelatedEntityType entityType = requestDto.getRelatedEntityType();
-        FileRole role = requestDto.getFileRole();
+        checkValidation(files, requestDto);
 
-        FileValidationStrategy strategy = validationStrategyResolver.resolve(entityType, role);
-        FilePolicy policy = filePolicyResolver.resolve(entityType, role);
-        ValidationResult result = strategy.validate(files, requestDto, policy);
-
-        if (!result.valid()) {
-            throw new ValidationException(
-                String.join(", ", result.violations()),
-                ErrorCode.FILE_VALIDATION_FAILED);
-        }
         return files.stream()
             .map(file -> uploadSingle(file, requestDto, currentUserId))
+            .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Resolves the validation strategy for the given entity type, validates all
+     * files against the applicable policy, then delegates each file to
+     * {@link #uploadSingleToFileDetails}.
+     * </p>
+     */
+    @Override
+    @Transactional
+    public List<FileDetailsDTO> uploadToFileDetails(List<MultipartFile> files, FileUploadRequestDto requestDto) {
+        Long currentUserId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException(
+                NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
+
+        checkValidation(files, requestDto);
+
+        return files.stream()
+            .map(file -> uploadSingleToFileDetails(file, requestDto, currentUserId))
             .toList();
     }
 
@@ -99,10 +127,10 @@ public class FileServiceImpl implements FileService {
     public void deleteSoft(Long fileId) {
         Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException(
-                "Not authenticated", ErrorCode.ACCESS_DENIED));
+                NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
 
         FileAsset file = repository.findById(fileId)
-            .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
+            .orElseThrow(() -> new FileAssetNotFoundException(FILE_NOT_FOUND_IN_THE_DATABASE + fileId));
 
         checkOwnerOrAdmin(file.getUserId(), currentUserId);
 
@@ -121,7 +149,7 @@ public class FileServiceImpl implements FileService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void deleteHard(Long fileId) {
         FileAsset file = repository.findById(fileId)
-            .orElseThrow(() -> new FileAssetNotFoundException("File not found in the database: " + fileId));
+            .orElseThrow(() -> new FileAssetNotFoundException(FILE_NOT_FOUND_IN_THE_DATABASE + fileId));
 
         validateAdmin();
 
@@ -195,21 +223,20 @@ public class FileServiceImpl implements FileService {
             return;
         }
 
-        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
         List<FileAsset> files = repository.findAllById(fileIds);
+        detachFilesHelper(entityType, entityId, userId, files);
+    }
 
-        for (FileAsset file : files) {
-            if (!entityType.equals(file.getRelatedEntityType())
-                || !entityId.equals(file.getRelatedEntityId())) {
-                throw new ValidationException(
-                    "File id=" + file.getId() + " does not belong to " + entityType + " id=" + entityId,
-                    ErrorCode.FILE_VALIDATION_FAILED);
-            }
-            checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
-            file.setStatus(FileStatus.SOFT_DELETED);
-            file.setDeletedAt(OffsetDateTime.now());
-        }
-        repository.saveAll(files);
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void detachAllFilesByEntityId(RelatedEntityType entityType, Long entityId, Long userId) {
+        List<FileAsset> files = repository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                entityType, entityId, FileStatus.ATTACHED);
+        detachFilesHelper(entityType, entityId, userId, files);
     }
 
     /**
@@ -302,6 +329,105 @@ public class FileServiceImpl implements FileService {
         return resultMap;
     }
 
+    @Override
+    @Transactional
+    public FileResponseDto updateRole(Long fileId, UpdateFileRoleRequestDto request) {
+        Long currentUserId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException(NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
+
+        FileAsset file = repository.findById(fileId)
+            .orElseThrow(() -> new FileAssetNotFoundException(FILE_NOT_FOUND_IN_THE_DATABASE + fileId));
+
+        checkOwnerOrAdmin(file.getUserId(), currentUserId);
+
+        if (!file.getStatus().equals(FileStatus.ATTACHED)) {
+            throw new ValidationException(
+                "File must be in ATTACHED state to update its role",
+                ErrorCode.FILE_VALIDATION_FAILED);
+        }
+
+        StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+
+        if (file.getFileRole().equals(request.getNewRole())) {
+            FileAsset saved = repository.save(file);
+            FileResponseDto dto = fileMapper.toDto(saved);
+            dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+            return dto;
+        }
+
+        // Validate if new role is allowed for the file extension
+        FilePolicy newPolicy = filePolicyResolver.resolve(file.getRelatedEntityType(), request.getNewRole());
+        String extension = extractExtension(file.getOriginalFilename());
+
+        if (isExtensionNotAllowed(extension, newPolicy.getAllowedExtensions())) {
+            throw new ValidationException(
+                "File '%s' has extension '%s' which is not allowed for role %s. Allowed: %s.".formatted(
+                    file.getOriginalFilename(), extension, request.getNewRole(),
+                    formatAllowed(newPolicy.getAllowedExtensions())),
+                ErrorCode.FILE_VALIDATION_FAILED);
+        }
+
+        file.setFileRole(request.getNewRole());
+        FileAsset saved = repository.save(file);
+
+        log.debug("Updated file role for id={} to {}", saved.getId(), saved.getFileRole());
+
+        FileResponseDto dto = fileMapper.toDto(saved);
+        dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+
+        return dto;
+    }
+
+    /**
+     * Marks a batch of files as SOFT_DELETED. Called when files are removed from
+     * content. Validates ownership for each file using the provided userId.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity to detach files from
+     * @param userId     the ID of the user who triggered detach
+     * @param files      files to detach
+     */
+    private void detachFilesHelper(RelatedEntityType entityType, Long entityId, Long userId, List<FileAsset> files) {
+        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
+
+        for (FileAsset file : files) {
+            if (!entityType.equals(file.getRelatedEntityType())
+                || !entityId.equals(file.getRelatedEntityId())) {
+                throw new ValidationException(
+                    "File id=" + file.getId() + " does not belong to " + entityType + " id=" + entityId,
+                    ErrorCode.FILE_VALIDATION_FAILED);
+            }
+            checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
+            file.setStatus(FileStatus.SOFT_DELETED);
+            file.setDeletedAt(OffsetDateTime.now());
+        }
+        repository.saveAll(files);
+    }
+
+    /**
+     * Checks if given files are valid according to the validation strategy.
+     *
+     * @param files      the files to upload
+     * @param requestDto upload context metadata (entity type and optional entity
+     *                   ID)
+     * @throws ValidationException if any file fails the policy validation
+     */
+    private void checkValidation(List<MultipartFile> files, FileUploadRequestDto requestDto)
+        throws ValidationException {
+        RelatedEntityType entityType = requestDto.getRelatedEntityType();
+        FileRole role = requestDto.getFileRole();
+
+        FileValidationStrategy strategy = validationStrategyResolver.resolve(entityType, role);
+        FilePolicy policy = filePolicyResolver.resolve(entityType, role);
+        ValidationResult result = strategy.validate(files, requestDto, policy);
+
+        if (!result.valid()) {
+            throw new ValidationException(
+                String.join(", ", result.violations()),
+                ErrorCode.FILE_VALIDATION_FAILED);
+        }
+    }
+
     /**
      * Uploads a single file to the default storage provider and persists its
      * metadata.
@@ -314,11 +440,47 @@ public class FileServiceImpl implements FileService {
      *                             fails
      */
     private FileResponseDto uploadSingle(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
+        StorageProvider provider = providerResolver.resolveDefault();
+        FileAsset saved = uploadFileAndGetFileAsset(file, requestDto, userId, provider);
+        FileResponseDto dto = fileMapper.toDto(saved);
+        dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+        return dto;
+    }
+
+    /**
+     * Uploads a single file to the default storage provider and persists its
+     * metadata.
+     *
+     * @param file       the file to upload
+     * @param requestDto upload context metadata
+     * @param userId     the ID of the uploading user
+     * @return the persisted file record as a {@link FileDetailsDTO}
+     * @throws FileUploadException if the file stream cannot be read or the upload
+     *                             fails
+     */
+    private FileDetailsDTO uploadSingleToFileDetails(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
+        StorageProvider provider = providerResolver.resolveDefault();
+        FileAsset saved = uploadFileAndGetFileAsset(file, requestDto, userId, provider);
+        return fileMapper.toDetails(saved, provider.getFileUrl(saved.getStorageKey()));
+    }
+
+    /**
+     * Uploads a single file to the default storage provider and persists its
+     * metadata.
+     *
+     * @param file       the file to upload
+     * @param requestDto upload context metadata
+     * @param userId     the ID of the uploading user
+     * @param provider   the resolved StorageProvider
+     * @return the persisted file record as a {@link FileAsset}
+     * @throws FileUploadException if the file stream cannot be read or the upload
+     *                             fails
+     */
+    private FileAsset uploadFileAndGetFileAsset(MultipartFile file, FileUploadRequestDto requestDto, Long userId,
+        StorageProvider provider) {
         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
         String storedFilename = generateStoredFilename(originalFilename);
         String relativePath = buildRelativePath(requestDto);
-
-        StorageProvider provider = providerResolver.resolveDefault();
 
         String storageKey;
         try (var inputStream = file.getInputStream()) {
@@ -337,10 +499,7 @@ public class FileServiceImpl implements FileService {
             userId,
             provider.getType());
 
-        FileAsset saved = repository.save(fileAsset);
-        FileResponseDto dto = fileMapper.toDto(saved);
-        dto.setUrl(provider.getFileUrl(storageKey));
-        return dto;
+        return repository.save(fileAsset);
     }
 
     /**
