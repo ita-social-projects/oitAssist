@@ -14,6 +14,7 @@ import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAlreadyAssig
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Optional;
 
@@ -85,15 +86,23 @@ public interface AssignmentService {
      * transactional operation. If no visibility level is provided, it defaults to
      * {@link AssignmentVisibility#HIDDEN}.
      *
-     * @param tourId  the id of the tour to assign the newly created task to
-     * @param request the request containing task body fields (title, description,
-     *                file ids) and assignment fields (visibility, max points,
-     *                requirements)
+     * @param tourId         the id of the tour to assign the newly created task to
+     * @param request        the request containing task body fields (title,
+     *                       description) and assignment fields (visibility, max
+     *                       points, requirements)
+     * @param problemFiles   the new problem files to upload
+     * @param referenceFiles the new reference files to upload
+     * @param solutionFiles  the new solution files to upload
      * @return the created {@link DetailedTaskAssignmentResponseDTO} with the
      *         assignment details
      * @throws TourNotFoundException if the tour does not exist
      */
-    DetailedTaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request);
+    DetailedTaskAssignmentResponseDTO createAndAssignTask(
+        Long tourId,
+        CreateAndAssignTaskRequestDTO request,
+        List<MultipartFile> problemFiles,
+        List<MultipartFile> referenceFiles,
+        List<MultipartFile> solutionFiles);
 
     /**
      * Retrieves detailed information about a task assignment by its id, intended

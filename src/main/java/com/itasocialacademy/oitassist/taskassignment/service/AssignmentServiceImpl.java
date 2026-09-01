@@ -36,6 +36,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.*;
 
 @Service
@@ -177,14 +178,19 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional
-    public DetailedTaskAssignmentResponseDTO createAndAssignTask(Long tourId, CreateAndAssignTaskRequestDTO request) {
+    public DetailedTaskAssignmentResponseDTO createAndAssignTask(
+        Long tourId,
+        CreateAndAssignTaskRequestDTO request,
+        List<MultipartFile> problemFiles,
+        List<MultipartFile> referenceFiles,
+        List<MultipartFile> solutionFiles) {
         TourDetail tour = competitionFacade.findTourById(tourId)
             .orElseThrow(() -> new TourNotFoundException(tourId));
 
         validateTourStatus(tour, "Cannot create task assignment.");
 
         TaskBodyDetail createdTask = taskBodyFacade.createTask(
-            request.title(), request.description(), request.fileIds());
+            request.title(), request.description(), problemFiles, referenceFiles, solutionFiles);
 
         TaskAssignment taskAssignment = TaskAssignment.builder()
             .taskBodyId(createdTask.id())
