@@ -51,7 +51,7 @@ public class TwoFactorOtpListener {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTwoFactorOtpRequested(TwoFactorOtpRequestedEvent event) {
-        log.info("Handling TwoFactorOtpRequestedEvent for email={}", event.email());
+        log.info("Handling TwoFactorOtpRequestedEvent");
 
         long validityMinutes = properties.getEmailOtpValidityMillis() / MILLIS_PER_MINUTE;
 
@@ -61,6 +61,6 @@ public class TwoFactorOtpListener {
 
         emailService.sendTemplateEmail(event.email(), TEMPLATE_PATH, SUBJECT, root);
 
-        log.info("Two-factor OTP email sent to email={}", event.email());
+        log.info("Two-factor OTP email sent");
     }
 }
