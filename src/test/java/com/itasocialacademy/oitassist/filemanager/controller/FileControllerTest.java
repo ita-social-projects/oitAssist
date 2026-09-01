@@ -21,20 +21,22 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
-import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileDownloadDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
+import com.itasocialacademy.oitassist.filemanager.web.FileDownloadResponseFactory;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 
 class FileControllerTest extends ControllerUnitTest<FileController> {
@@ -55,6 +57,9 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
 
     @Mock
     private FileCleanupService cleanupService;
+
+    @Mock
+    private FileDownloadResponseFactory downloadResponseFactory;
 
     @InjectMocks
     private FileController fileController;
@@ -284,7 +289,14 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
             "document.pdf",
             17L);
 
+        ResponseEntity<Resource> expectedResponse = ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_PDF)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"document.pdf\"")
+            .contentLength(17L)
+            .body(resource);
+
         when(fileService.downloadFile(fileId)).thenReturn(dto);
+        when(downloadResponseFactory.build(dto)).thenReturn(expectedResponse);
 
         mockMvc.perform(get(FILE_DOWNLOAD_URL, fileId))
             .andExpect(status().isOk())
@@ -294,6 +306,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
             .andExpect(content().bytes("test-file-content".getBytes()));
 
         verify(fileService).downloadFile(fileId);
+        verify(downloadResponseFactory).build(dto);
     }
 
     @Test

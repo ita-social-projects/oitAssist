@@ -9,6 +9,7 @@ import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequ
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
+import com.itasocialacademy.oitassist.filemanager.web.FileDownloadResponseFactory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,7 +20,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,10 +35,9 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 @Tag(name = "File Manager V1", description = "Operations related to file management")
 public class FileController {
-    private static final String DEFAULT_DOWNLOAD_FILENAME = "download";
-
     private final FileService fileService;
     private final FileCleanupService cleanupService;
+    private final FileDownloadResponseFactory downloadResponseFactory;
 
     /**
      * Validates and uploads a batch of files, persisting their metadata and linking
@@ -282,63 +281,6 @@ public class FileController {
     @GetMapping("/download/{id}")
     public ResponseEntity<Resource> downloadFile(@PathVariable Long id) {
         FileDownloadDto dto = fileService.downloadFile(id);
-        return buildDownloadResponse(dto);
-    }
-
-    /**
-     * Builds the HTTP response entity for a file download, configuring content
-     * type, inline content disposition, content length (if known), and the body
-     * stream.
-     *
-     * @param dto the file download DTO containing resource and metadata
-     * @return a {@link ResponseEntity} configured for file streaming
-     */
-    private ResponseEntity<Resource> buildDownloadResponse(FileDownloadDto dto) {
-        var responseBuilder = ResponseEntity.ok()
-            .contentType(resolveMediaType(dto.mimeType()))
-            .header(HttpHeaders.CONTENT_DISPOSITION, buildContentDisposition(dto.originalFilename()));
-
-        if (dto.contentLength() != null && dto.contentLength() > 0) {
-            responseBuilder.contentLength(dto.contentLength());
-        }
-
-        return responseBuilder.body(dto.resource());
-    }
-
-    /**
-     * Resolves the {@link MediaType} from a MIME type string, falling back to
-     * {@link MediaType#APPLICATION_OCTET_STREAM} if null, empty, or unparseable.
-     *
-     * @param mimeType the MIME type string (e.g., {@code "image/png"})
-     * @return the resolved {@link MediaType}
-     */
-    private MediaType resolveMediaType(String mimeType) {
-        if (mimeType == null || mimeType.isBlank()) {
-            return MediaType.APPLICATION_OCTET_STREAM;
-        }
-        try {
-            return MediaType.parseMediaType(mimeType);
-        } catch (InvalidMediaTypeException e) {
-            log.warn("Malformed MIME type '{}', falling back to APPLICATION_OCTET_STREAM", mimeType);
-            return MediaType.APPLICATION_OCTET_STREAM;
-        }
-    }
-
-    /**
-     * Constructs an inline {@code Content-Disposition} header value with UTF-8
-     * filename encoding.
-     *
-     * @param filename the original filename, or fallback to default if blank
-     * @return the formatted {@code Content-Disposition} header string
-     */
-    private String buildContentDisposition(String filename) {
-        String resolvedFilename = (filename != null && !filename.isBlank())
-            ? filename
-            : DEFAULT_DOWNLOAD_FILENAME;
-
-        return ContentDisposition.inline()
-            .filename(resolvedFilename, StandardCharsets.UTF_8)
-            .build()
-            .toString();
+        return downloadResponseFactory.build(dto);
     }
 }
