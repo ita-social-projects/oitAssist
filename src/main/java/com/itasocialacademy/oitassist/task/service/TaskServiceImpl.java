@@ -5,8 +5,6 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
-import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequestedEvent;
-import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -41,6 +39,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -56,7 +55,11 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
-    public TaskResponseDTO createTask(CreateTaskRequestDTO requestDTO) {
+    public TaskResponseDTO createTask(
+        CreateTaskRequestDTO requestDTO,
+        List<MultipartFile> problemFiles,
+        List<MultipartFile> referenceFiles,
+        List<MultipartFile> solutionFiles) {
         Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be logged in to create tasks",
                 ErrorCode.ACCESS_DENIED));
@@ -72,7 +75,10 @@ public class TaskServiceImpl implements TaskService {
         createdTask.addOwner(owner);
 
         log.debug("Created Task: Id {}; Title - {}", createdTask.getId(), createdTask.getTitle());
-        publishAttachEvent(createdTask.getId(), requestDTO.fileIds(), createdTask.getCreatedBy());
+
+        uploadFilesByRole(createdTask.getId(), problemFiles, FileRole.PROBLEM);
+        uploadFilesByRole(createdTask.getId(), referenceFiles, FileRole.REFERENCE);
+        uploadFilesByRole(createdTask.getId(), solutionFiles, FileRole.SOLUTION);
 
         return getResponse(createdTask);
     }
@@ -122,7 +128,12 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
-    public TaskResponseDTO updateTask(Long taskId, UpdateTaskRequestDTO requestDTO) {
+    public TaskResponseDTO updateTask(
+        Long taskId,
+        UpdateTaskRequestDTO requestDTO,
+        List<MultipartFile> problemFiles,
+        List<MultipartFile> referenceFiles,
+        List<MultipartFile> solutionFiles) {
         TaskBody existingTask = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
@@ -139,11 +150,21 @@ public class TaskServiceImpl implements TaskService {
         log.debug("Updated Task: Id {}, Title - {}", updatedTask.getId(), updatedTask.getTitle());
 
         Long currentUserId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User must be logged in to view created tasks",
+            .orElseThrow(() -> new AuthorizationException("User must be logged in to update tasks",
                 ErrorCode.ACCESS_DENIED));
 
-        publishAttachEvent(updatedTask.getId(), requestDTO.fileIds(), currentUserId);
-        publishDetachEvent(updatedTask.getId(), requestDTO.removedFileIds(), currentUserId);
+        if (requestDTO.removedFileIds() != null && !requestDTO.removedFileIds().isEmpty()) {
+            fileManagerFacade.detachFiles(
+                RelatedEntityType.TASK, updatedTask.getId(), requestDTO.removedFileIds(), currentUserId);
+        }
+
+        if (requestDTO.roleUpdates() != null) {
+            requestDTO.roleUpdates().forEach(fileManagerFacade::updateFileRole);
+        }
+
+        uploadFilesByRole(updatedTask.getId(), problemFiles, FileRole.PROBLEM);
+        uploadFilesByRole(updatedTask.getId(), referenceFiles, FileRole.REFERENCE);
+        uploadFilesByRole(updatedTask.getId(), solutionFiles, FileRole.SOLUTION);
 
         return getResponse(updatedTask);
     }
@@ -257,22 +278,11 @@ public class TaskServiceImpl implements TaskService {
     }
 
     // helpers
-    private void publishAttachEvent(Long taskBodyId, List<Long> fileIds, Long authorId) {
-        if (fileIds == null || fileIds.isEmpty()) {
+    private void uploadFilesByRole(Long taskId, List<MultipartFile> files, FileRole role) {
+        if (files == null || files.isEmpty()) {
             return;
         }
-
-        applicationEventPublisher.publishEvent(
-            new FilesAttachRequestedEvent(taskBodyId, RelatedEntityType.TASK, fileIds, authorId));
-    }
-
-    private void publishDetachEvent(Long taskBodyId, List<Long> removedFileIds, Long authorId) {
-        if (removedFileIds == null || removedFileIds.isEmpty()) {
-            return;
-        }
-
-        applicationEventPublisher.publishEvent(
-            new FilesDetachRequestedEvent(RelatedEntityType.TASK, taskBodyId, removedFileIds, authorId));
+        fileManagerFacade.uploadFiles(files, RelatedEntityType.TASK, taskId, role);
     }
 
     private void checkOwnerOrAdmin(Set<Long> taskBodyOwnerIds, Long taskId) {

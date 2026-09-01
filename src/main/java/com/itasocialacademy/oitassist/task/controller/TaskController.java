@@ -11,6 +11,7 @@ import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -21,9 +22,12 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/tasks")
@@ -34,7 +38,10 @@ public class TaskController {
 
     @Operation(
         summary = "Create a new task body",
-        description = "Creates a new task body.")
+        description = "Creates a new task body.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(encoding = @Encoding(name = "metadata",
+                contentType = "application/json"))))
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Task body created successfully",
             content = @Content(mediaType = "application/json",
@@ -44,10 +51,15 @@ public class TaskController {
         @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
-    public ResponseEntity<TaskResponseDTO> createTask(@Valid @RequestBody CreateTaskRequestDTO request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.createTask(request));
+    public ResponseEntity<TaskResponseDTO> createTask(
+        @RequestPart(value = "problemFiles", required = false) List<MultipartFile> problemFiles,
+        @RequestPart(value = "referenceFiles", required = false) List<MultipartFile> referenceFiles,
+        @RequestPart(value = "solutionFiles", required = false) List<MultipartFile> solutionFiles,
+        @RequestPart("metadata") @Valid CreateTaskRequestDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(taskService.createTask(request, problemFiles, referenceFiles, solutionFiles));
     }
 
     @Operation(
@@ -114,7 +126,10 @@ public class TaskController {
     @Operation(
         summary = "Update a task body",
         description = "Updates the title, description and attached files of an existing task. Only the task owner or "
-            + "admin can update it.")
+            + "admin can update it.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(encoding = @Encoding(name = "metadata",
+                contentType = "application/json"))))
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Task updated successfully",
             content = @Content(mediaType = "application/json",
@@ -133,11 +148,15 @@ public class TaskController {
                 + "(stale version)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PutMapping("/{taskId}")
+    @PutMapping(value = "/{taskId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
     public ResponseEntity<TaskResponseDTO> updateTask(@PathVariable Long taskId,
-        @Valid @RequestBody UpdateTaskRequestDTO request) {
-        return ResponseEntity.ok().body(taskService.updateTask(taskId, request));
+        @RequestPart(value = "problemFiles", required = false) List<MultipartFile> problemFiles,
+        @RequestPart(value = "referenceFiles", required = false) List<MultipartFile> referenceFiles,
+        @RequestPart(value = "solutionFiles", required = false) List<MultipartFile> solutionFiles,
+        @RequestPart("metadata") @Valid UpdateTaskRequestDTO request) {
+        return ResponseEntity.ok()
+            .body(taskService.updateTask(taskId, request, problemFiles, referenceFiles, solutionFiles));
     }
 
     @Operation(
