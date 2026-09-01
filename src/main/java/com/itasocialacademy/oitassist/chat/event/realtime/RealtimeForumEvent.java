@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.chat.realtime.event;
+package com.itasocialacademy.oitassist.chat.event.realtime;
 
 import java.time.Instant;
 import java.util.Objects;

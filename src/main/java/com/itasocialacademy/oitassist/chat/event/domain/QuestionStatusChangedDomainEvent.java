@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.chat.event;
+package com.itasocialacademy.oitassist.chat.event.domain;
 
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;

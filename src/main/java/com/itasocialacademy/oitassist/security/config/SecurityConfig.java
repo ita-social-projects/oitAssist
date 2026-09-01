@@ -57,11 +57,18 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of(
             "http://*:5173",
             "http://localhost:5173"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedMethods(List.of(
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS",
+            "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+            new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
@@ -72,13 +79,16 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.POST,
+                .requestMatchers(
+                    HttpMethod.POST,
                     "/api/v1/registration/**",
                     "/api/v1/security/signIn",
                     "/api/v1/security/refresh",
                     "/api/v1/user-activation/resend")
                 .permitAll()
-                .requestMatchers(HttpMethod.GET,
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/ws",
                     "/api/v1/news/**",
                     "/api/v1/user-activation/verify",
                     "/ui",
@@ -100,15 +110,18 @@ public class SecurityConfig {
                 .permitAll()
                 .anyRequest()
                 .authenticated())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(entryPoint))
             .oauth2Login(oauth2 -> oauth2
                 .authorizationEndpoint(endpoint -> endpoint
-                    .authorizationRequestRepository(cookieAuthorizationRequestRepository))
+                    .authorizationRequestRepository(
+                        cookieAuthorizationRequestRepository))
                 .successHandler(successHandler)
                 .failureHandler(failureHandler))
-            .addFilterBefore(jwtFilter,
+            .addFilterBefore(
+                jwtFilter,
                 UsernamePasswordAuthenticationFilter.class)
             .build();
     }

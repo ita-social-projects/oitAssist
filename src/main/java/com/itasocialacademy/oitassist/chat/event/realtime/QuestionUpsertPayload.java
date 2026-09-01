@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.chat.realtime.event;
+package com.itasocialacademy.oitassist.chat.event.realtime;
 
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import java.util.Objects;

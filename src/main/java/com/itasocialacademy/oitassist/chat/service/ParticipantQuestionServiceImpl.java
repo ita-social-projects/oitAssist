@@ -10,15 +10,15 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
-import com.itasocialacademy.oitassist.chat.event.CommentCreatedDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.domain.CommentCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
 import com.itasocialacademy.oitassist.chat.service.interfaces.ParticipantQuestionService;
-import com.itasocialacademy.oitassist.chat.utils.QuestionAccessPolicy;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -28,7 +28,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -43,21 +42,19 @@ public class ParticipantQuestionServiceImpl
     private final QuestionMessageRepository questionMessageRepository;
     private final QuestionThreadMapper questionThreadMapper;
     private final QuestionMessageMapper questionMessageMapper;
-    private final QuestionAccessPolicy questionAccessPolicy;
+    private final ForumAccessService forumAccessService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     @Transactional(readOnly = true)
-    public QuestionThreadResponseDTO getQuestionDetails(
-        Long questionId) {
+    public QuestionThreadResponseDTO getQuestionDetails(Long questionId) {
         log.debug(
             "Retrieving participant question details: questionId={}",
             questionId);
 
         validateQuestionId(questionId);
 
-        QuestionThread question =
-            loadAuthorizedQuestion(questionId);
+        QuestionThread question = loadAuthorizedQuestion(questionId);
 
         return questionThreadMapper.toResponse(question);
     }
@@ -77,7 +74,6 @@ public class ParticipantQuestionServiceImpl
 
         validateQuestionId(questionId);
         validatePageAndSize(page, size);
-
         loadAuthorizedQuestion(questionId);
 
         Pageable pageable = PageRequest.of(
@@ -85,12 +81,11 @@ public class ParticipantQuestionServiceImpl
             size,
             MESSAGE_HISTORY_SORT);
 
-        Page<QuestionMessageResponseDTO> result =
-            questionMessageRepository
-                .findAllByQuestionThreadId(
-                    questionId,
-                    pageable)
-                .map(questionMessageMapper::toResponse);
+        Page<QuestionMessageResponseDTO> result = questionMessageRepository
+            .findAllByQuestionThreadId(
+                questionId,
+                pageable)
+            .map(questionMessageMapper::toResponse);
 
         log.debug(
             "Participant question messages retrieved: "
@@ -105,29 +100,24 @@ public class ParticipantQuestionServiceImpl
 
     @Override
     @Transactional
-    public QuestionMessageResponseDTO addComment(Long questionId, CreateCommentRequestDTO request) {
+    public QuestionMessageResponseDTO addComment(
+        Long questionId,
+        CreateCommentRequestDTO request) {
         log.debug(
             "Creating participant comment: questionId={}",
             questionId);
 
         validateQuestionId(questionId);
 
-        QuestionThread question =
-            loadQuestion(questionId);
+        QuestionThread question = loadQuestion(questionId);
 
-        /*
-         * Access is checked before state validation and persistence so that protected
-         * question information is not exposed to unauthorized users.
-         */
-        Long authorId = questionAccessPolicy.requireQuestionCommentAccess(question);
+        Long authorId =
+            forumAccessService.requireQuestionCommentAccess(question);
 
         validateQuestionAcceptsComments(question);
 
         QuestionMessage comment = questionMessageMapper.toEntity(request);
 
-        /*
-         * All fields except content are controlled by the backend.
-         */
         comment.setId(null);
         comment.setAuthorId(authorId);
         comment.setQuestionThreadId(questionId);
@@ -137,18 +127,17 @@ public class ParticipantQuestionServiceImpl
         QuestionMessage savedComment = questionMessageRepository.save(comment);
 
         log.info(
-            "Participant comment created: messageId={}, questionId={}, authorId={}",
+            "Participant comment created: "
+                + "messageId={}, questionId={}, authorId={}",
             savedComment.getId(),
             questionId,
             authorId);
 
         QuestionMessageResponseDTO messageResponse =
-            questionMessageMapper.toResponse(
-                savedComment);
+            questionMessageMapper.toResponse(savedComment);
 
         QuestionThreadResponseDTO questionResponse =
-            questionThreadMapper.toResponse(
-                question);
+            questionThreadMapper.toResponse(question);
 
         applicationEventPublisher.publishEvent(
             new CommentCreatedDomainEvent(
@@ -159,27 +148,19 @@ public class ParticipantQuestionServiceImpl
         return messageResponse;
     }
 
-    private QuestionThread loadAuthorizedQuestion(
-        Long questionId) {
-        QuestionThread question =
-            loadQuestion(questionId);
-
-        questionAccessPolicy
-            .requireQuestionViewAccess(question);
-
+    private QuestionThread loadAuthorizedQuestion(Long questionId) {
+        QuestionThread question = loadQuestion(questionId);
+        forumAccessService.requireQuestionViewAccess(question);
         return question;
     }
 
-    private QuestionThread loadQuestion(
-        Long questionId) {
+    private QuestionThread loadQuestion(Long questionId) {
         return questionThreadRepository
             .findById(questionId)
-            .orElseThrow(() -> new QuestionNotFoundException(
-                questionId));
+            .orElseThrow(() -> new QuestionNotFoundException(questionId));
     }
 
-    private void validateQuestionAcceptsComments(
-        QuestionThread question) {
+    private void validateQuestionAcceptsComments(QuestionThread question) {
         if (question.getState() != OPEN) {
             throw new InvalidQuestionStateException(
                 question.getId(),
@@ -188,8 +169,7 @@ public class ParticipantQuestionServiceImpl
         }
     }
 
-    private void validateQuestionId(
-        Long questionId) {
+    private void validateQuestionId(Long questionId) {
         if (questionId == null || questionId <= 0) {
             throw new ValidationException(
                 "Question id must be a positive number",
@@ -208,8 +188,7 @@ public class ParticipantQuestionServiceImpl
 
         if (size < 1 || size > MAX_PAGE_SIZE) {
             throw new ValidationException(
-                "Page size must be between 1 and %d"
-                    .formatted(MAX_PAGE_SIZE),
+                "Page size must be between 1 and %d".formatted(MAX_PAGE_SIZE),
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }

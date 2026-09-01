@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.chat.realtime.event;
+package com.itasocialacademy.oitassist.chat.event.realtime;
 
 /**
  * Contains identifiers required to remove a question from the administrator

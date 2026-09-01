@@ -1,18 +1,18 @@
-package com.itasocialacademy.oitassist.chat.realtime.event;
+package com.itasocialacademy.oitassist.chat.event.realtime;
 
 /**
- * Instructs a client to discard cached question content after access has been
- * revoked.
+ * Contains identifiers required to remove a question from a participant
+ * projection.
  *
  * <p>
- * This payload intentionally contains identifiers only.
+ * This payload intentionally contains no question content or author data.
  * </p>
  */
-public record AccessRevokedPayload(
+public record QuestionRemovalPayload(
     Long taskAssignmentId,
     Long questionId)
     implements RealtimePayload {
-    public AccessRevokedPayload {
+    public QuestionRemovalPayload {
         requirePositive(
             taskAssignmentId,
             "Task assignment id");

@@ -19,25 +19,26 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
-import com.itasocialacademy.oitassist.chat.event.OfficialAnswerPublishedDomainEvent;
-import com.itasocialacademy.oitassist.chat.event.QuestionClaimedDomainEvent;
-import com.itasocialacademy.oitassist.chat.event.QuestionStateChangedDomainEvent;
-import com.itasocialacademy.oitassist.chat.event.QuestionStatusChangedDomainEvent;
-import com.itasocialacademy.oitassist.chat.event.QuestionVisibilityChangedDomainEvent;
+import com.itasocialacademy.oitassist.chat.dao.repository.TaskAssignmentForumResponderRepository;
+import com.itasocialacademy.oitassist.chat.event.domain.OfficialAnswerPublishedDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.domain.QuestionClaimedDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.domain.QuestionStateChangedDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.domain.QuestionStatusChangedDomainEvent;
+import com.itasocialacademy.oitassist.chat.event.domain.QuestionVisibilityChangedDomainEvent;
 import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
+import com.itasocialacademy.oitassist.chat.exceptions.QuestionVersionConflictException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
 import com.itasocialacademy.oitassist.chat.service.interfaces.OrganizationQuestionService;
 import com.itasocialacademy.oitassist.chat.service.interfaces.TaskAssignmentForumResponderService;
-import com.itasocialacademy.oitassist.chat.utils.OrganizationQuestionClaimCoordinator;
-import com.itasocialacademy.oitassist.chat.utils.OrganizationQuestionModerationCoordinator;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.time.Instant;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -53,35 +54,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class OrganizationQuestionServiceImpl
     implements OrganizationQuestionService {
-    private static final String ORG_ROLE =
-        "ORG";
+    private static final String ORG_ROLE = "ORG";
 
-    private static final Sort RESPONDER_INBOX_SORT =
-        Sort.by(
-            Sort.Order.asc("createdAt"),
-            Sort.Order.asc("id"));
+    private static final Sort RESPONDER_INBOX_SORT = Sort.by(
+        Sort.Order.asc("createdAt"),
+        Sort.Order.asc("id"));
 
-    private static final Sort ASSIGNED_TO_ME_SORT =
-        Sort.by(
-            Sort.Order.desc("updatedAt"),
-            Sort.Order.desc("id"));
+    private static final Sort ASSIGNED_TO_ME_SORT = Sort.by(
+        Sort.Order.desc("updatedAt"),
+        Sort.Order.desc("id"));
 
     private final QuestionThreadRepository questionThreadRepository;
-
     private final QuestionMessageRepository questionMessageRepository;
-
+    private final TaskAssignmentForumResponderRepository responderRepository;
     private final QuestionThreadMapper questionThreadMapper;
-
     private final QuestionMessageMapper questionMessageMapper;
-
     private final SecurityFacade securityFacade;
-
     private final TaskAssignmentForumResponderService taskAssignmentForumResponderService;
-
-    private final OrganizationQuestionClaimCoordinator organizationQuestionClaimCoordinator;
-
-    private final OrganizationQuestionModerationCoordinator organizationQuestionModerationCoordinator;
-
+    private final QuestionClaimService questionClaimService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
@@ -89,33 +79,26 @@ public class OrganizationQuestionServiceImpl
     public Page<QuestionReviewInboxItemResponseDTO> getResponderInbox(
         int page,
         int size) {
-        validatePageAndSize(
+        validatePageAndSize(page, size);
+
+        Long responderUserId = requireOrganizationMember();
+
+        Pageable pageable = PageRequest.of(
             page,
-            size);
+            size,
+            RESPONDER_INBOX_SORT);
 
-        Long responderUserId =
-            requireOrganizationMember();
-
-        Pageable pageable =
-            PageRequest.of(
-                page,
-                size,
-                RESPONDER_INBOX_SORT);
-
-        Page<QuestionReviewInboxItemResponseDTO> result =
-            questionThreadRepository
-                .findResponderUnclaimedQuestions(
-                    responderUserId,
-                    OPEN,
-                    NEW,
-                    pageable)
-                .map(
-                    questionThreadMapper::toReviewInboxItemResponse);
+        Page<QuestionReviewInboxItemResponseDTO> result = questionThreadRepository
+            .findResponderUnclaimedQuestions(
+                responderUserId,
+                OPEN,
+                NEW,
+                pageable)
+            .map(questionThreadMapper::toReviewInboxItemResponse);
 
         log.debug(
             "ORG responder inbox retrieved: "
-                + "responderUserId={}, page={}, "
-                + "returnedElements={}, totalElements={}",
+                + "responderUserId={}, page={}, returnedElements={}, totalElements={}",
             responderUserId,
             page,
             result.getNumberOfElements(),
@@ -130,32 +113,24 @@ public class OrganizationQuestionServiceImpl
         QuestionStatus status,
         int page,
         int size) {
-        validatePageAndSize(
+        validatePageAndSize(page, size);
+
+        Long responderUserId = requireOrganizationMember();
+        Pageable pageable = PageRequest.of(
             page,
-            size);
+            size,
+            ASSIGNED_TO_ME_SORT);
 
-        Long responderUserId =
-            requireOrganizationMember();
-
-        Pageable pageable =
-            PageRequest.of(
-                page,
-                size,
-                ASSIGNED_TO_ME_SORT);
-
-        Page<QuestionThread> assignedQuestions =
-            status == null
-                ? questionThreadRepository
-                    .findAllByStateAndAssignedReviewerId(
-                        OPEN,
-                        responderUserId,
-                        pageable)
-                : questionThreadRepository
-                    .findAllByStateAndAssignedReviewerIdAndStatus(
-                        OPEN,
-                        responderUserId,
-                        status,
-                        pageable);
+        Page<QuestionThread> assignedQuestions = status == null
+            ? questionThreadRepository.findAllByStateAndAssignedReviewerId(
+                OPEN,
+                responderUserId,
+                pageable)
+            : questionThreadRepository.findAllByStateAndAssignedReviewerIdAndStatus(
+                OPEN,
+                responderUserId,
+                status,
+                pageable);
 
         return assignedQuestions.map(
             questionThreadMapper::toReviewInboxItemResponse);
@@ -166,27 +141,19 @@ public class OrganizationQuestionServiceImpl
     public QuestionThreadResponseDTO claimQuestion(
         Long questionId,
         Long expectedVersion) {
-        validateClaimInput(
+        validateClaimInput(questionId, expectedVersion);
+
+        Long responderUserId = requireOrganizationMember();
+        Instant claimTime = Instant.now();
+
+        QuestionThread claimedQuestion = questionClaimService.claimAsResponder(
             questionId,
-            expectedVersion);
-
-        Long responderUserId =
-            requireOrganizationMember();
-
-        Instant claimTime =
-            Instant.now();
-
-        QuestionThread claimedQuestion =
-            organizationQuestionClaimCoordinator
-                .claimQuestion(
-                    questionId,
-                    responderUserId,
-                    expectedVersion,
-                    claimTime);
+            responderUserId,
+            expectedVersion,
+            claimTime);
 
         QuestionThreadResponseDTO response =
-            questionThreadMapper.toResponse(
-                claimedQuestion);
+            questionThreadMapper.toResponse(claimedQuestion);
 
         applicationEventPublisher.publishEvent(
             new QuestionClaimedDomainEvent(
@@ -203,60 +170,44 @@ public class OrganizationQuestionServiceImpl
     public QuestionMessageResponseDTO publishOfficialAnswer(
         Long questionId,
         CreateOfficialAnswerRequestDTO request) {
-        validateQuestionId(
-            questionId);
+        validateQuestionId(questionId);
 
-        Long responderUserId =
-            requireOrganizationMember();
+        Long responderUserId = requireOrganizationMember();
 
-        QuestionThread question =
-            questionThreadRepository
-                .findByIdForUpdate(
-                    questionId)
-                .orElseThrow(() -> new QuestionNotFoundException(
-                    questionId));
+        QuestionThread question = questionThreadRepository
+            .findByIdForUpdate(questionId)
+            .orElseThrow(() -> new QuestionNotFoundException(questionId));
 
         requireAssignedResponderAccess(
             question,
             responderUserId);
-
-        validateQuestionAcceptsOfficialAnswers(
-            question);
+        validateQuestionAcceptsOfficialAnswers(question);
 
         QuestionMessage officialAnswer =
-            questionMessageMapper
-                .toOfficialAnswerEntity(
-                    request);
+            questionMessageMapper.toOfficialAnswerEntity(request);
 
         officialAnswer.setId(null);
-        officialAnswer.setQuestionThreadId(
-            questionId);
-        officialAnswer.setAuthorId(
-            responderUserId);
-        officialAnswer.setType(
-            OFFICIAL_ANSWER);
+        officialAnswer.setQuestionThreadId(questionId);
+        officialAnswer.setAuthorId(responderUserId);
+        officialAnswer.setType(OFFICIAL_ANSWER);
         officialAnswer.setCreatedAt(null);
 
         QuestionStatus previousStatus = question.getStatus();
 
         if (question.getStatus() != ANSWERED) {
-            question.setStatus(
-                ANSWERED);
+            question.setStatus(ANSWERED);
         }
 
         QuestionMessage savedAnswer =
-            questionMessageRepository.save(
-                officialAnswer);
+            questionMessageRepository.save(officialAnswer);
 
         questionThreadRepository.flush();
 
         QuestionMessageResponseDTO messageResponse =
-            questionMessageMapper.toResponse(
-                savedAnswer);
+            questionMessageMapper.toResponse(savedAnswer);
 
         QuestionThreadResponseDTO questionResponse =
-            questionThreadMapper.toResponse(
-                question);
+            questionThreadMapper.toResponse(question);
 
         applicationEventPublisher.publishEvent(
             new OfficialAnswerPublishedDomainEvent(
@@ -274,42 +225,33 @@ public class OrganizationQuestionServiceImpl
     public QuestionThreadResponseDTO updateVisibility(
         Long questionId,
         UpdateQuestionVisibilityRequestDTO request) {
-        validateModerationRequest(
-            questionId,
-            request);
-
+        validateModerationRequest(questionId, request);
         validateModerationValue(
             request.visibility(),
             "Question visibility");
+        validateExpectedVersion(request.version());
 
-        validateExpectedVersion(
-            request.version());
+        Long responderUserId = requireOrganizationMember();
+        QuestionThread currentQuestion = loadQuestion(questionId);
+        QuestionVisibility previousVisibility = currentQuestion.getVisibility();
+        Instant mutationTime = Instant.now();
+        int updatedRows = questionThreadRepository
+            .updateVisibilityAsResponderIfVersionMatches(
+                currentQuestion.getId(),
+                currentQuestion.getTaskAssignmentId(),
+                responderUserId,
+                request.visibility(),
+                request.version(),
+                mutationTime);
 
-        Long responderUserId =
-            requireOrganizationMember();
-
-        QuestionThread currentQuestion =
-            loadQuestion(
-                questionId);
-
-        QuestionVisibility previousVisibility =
-            currentQuestion.getVisibility();
-
-        Instant mutationTime =
-            Instant.now();
-
-        QuestionThread updatedQuestion =
-            organizationQuestionModerationCoordinator
-                .updateVisibility(
-                    currentQuestion,
-                    responderUserId,
-                    request.visibility(),
-                    request.version(),
-                    mutationTime);
+        QuestionThread updatedQuestion = completeResponderModerationUpdate(
+            currentQuestion,
+            responderUserId,
+            updatedRows,
+            "visibility");
 
         QuestionThreadResponseDTO response =
-            questionThreadMapper.toResponse(
-                updatedQuestion);
+            questionThreadMapper.toResponse(updatedQuestion);
 
         applicationEventPublisher.publishEvent(
             new QuestionVisibilityChangedDomainEvent(
@@ -326,42 +268,34 @@ public class OrganizationQuestionServiceImpl
     public QuestionThreadResponseDTO updateStatus(
         Long questionId,
         UpdateQuestionStatusRequestDTO request) {
-        validateModerationRequest(
-            questionId,
-            request);
-
+        validateModerationRequest(questionId, request);
         validateModerationValue(
             request.status(),
             "Question status");
+        validateExpectedVersion(request.version());
 
-        validateExpectedVersion(
-            request.version());
+        Long responderUserId = requireOrganizationMember();
+        QuestionThread currentQuestion = loadQuestion(questionId);
+        QuestionStatus previousStatus = currentQuestion.getStatus();
+        Instant mutationTime = Instant.now();
 
-        Long responderUserId =
-            requireOrganizationMember();
+        int updatedRows = questionThreadRepository
+            .updateStatusAsResponderIfVersionMatches(
+                currentQuestion.getId(),
+                currentQuestion.getTaskAssignmentId(),
+                responderUserId,
+                request.status(),
+                request.version(),
+                mutationTime);
 
-        QuestionThread currentQuestion =
-            loadQuestion(
-                questionId);
-
-        QuestionStatus previousStatus =
-            currentQuestion.getStatus();
-
-        Instant mutationTime =
-            Instant.now();
-
-        QuestionThread updatedQuestion =
-            organizationQuestionModerationCoordinator
-                .updateStatus(
-                    currentQuestion,
-                    responderUserId,
-                    request.status(),
-                    request.version(),
-                    mutationTime);
+        QuestionThread updatedQuestion = completeResponderModerationUpdate(
+            currentQuestion,
+            responderUserId,
+            updatedRows,
+            "status");
 
         QuestionThreadResponseDTO response =
-            questionThreadMapper.toResponse(
-                updatedQuestion);
+            questionThreadMapper.toResponse(updatedQuestion);
 
         applicationEventPublisher.publishEvent(
             new QuestionStatusChangedDomainEvent(
@@ -378,42 +312,34 @@ public class OrganizationQuestionServiceImpl
     public QuestionThreadResponseDTO updateState(
         Long questionId,
         UpdateQuestionStateRequestDTO request) {
-        validateModerationRequest(
-            questionId,
-            request);
-
+        validateModerationRequest(questionId, request);
         validateModerationValue(
             request.state(),
             "Question state");
+        validateExpectedVersion(request.version());
 
-        validateExpectedVersion(
-            request.version());
+        Long responderUserId = requireOrganizationMember();
+        QuestionThread currentQuestion = loadQuestion(questionId);
+        QuestionState previousState = currentQuestion.getState();
+        Instant mutationTime = Instant.now();
 
-        Long responderUserId =
-            requireOrganizationMember();
+        int updatedRows = questionThreadRepository
+            .updateStateAsResponderIfVersionMatches(
+                currentQuestion.getId(),
+                currentQuestion.getTaskAssignmentId(),
+                responderUserId,
+                request.state(),
+                request.version(),
+                mutationTime);
 
-        QuestionThread currentQuestion =
-            loadQuestion(
-                questionId);
-
-        QuestionState previousState =
-            currentQuestion.getState();
-
-        Instant mutationTime =
-            Instant.now();
-
-        QuestionThread updatedQuestion =
-            organizationQuestionModerationCoordinator
-                .updateState(
-                    currentQuestion,
-                    responderUserId,
-                    request.state(),
-                    request.version(),
-                    mutationTime);
+        QuestionThread updatedQuestion = completeResponderModerationUpdate(
+            currentQuestion,
+            responderUserId,
+            updatedRows,
+            "state");
 
         QuestionThreadResponseDTO response =
-            questionThreadMapper.toResponse(
-                updatedQuestion);
+            questionThreadMapper.toResponse(updatedQuestion);
 
         applicationEventPublisher.publishEvent(
             new QuestionStateChangedDomainEvent(
@@ -425,24 +351,82 @@ public class OrganizationQuestionServiceImpl
         return response;
     }
 
-    private QuestionThread loadQuestion(
-        Long questionId) {
+    private QuestionThread completeResponderModerationUpdate(
+        QuestionThread previousQuestion,
+        Long responderUserId,
+        int updatedRows,
+        String operation) {
+        if (updatedRows == 0) {
+            classifyResponderModerationFailureAndThrow(
+                previousQuestion.getId(),
+                previousQuestion.getTaskAssignmentId(),
+                responderUserId);
+
+            throw new QuestionVersionConflictException(
+                previousQuestion.getId());
+        }
+
+        if (updatedRows != 1) {
+            throw new IllegalStateException(
+                ("Responder moderation affected an unexpected number of rows: "
+                    + "questionId=%s, operation=%s, rows=%s")
+                    .formatted(
+                        previousQuestion.getId(),
+                        operation,
+                        updatedRows));
+        }
+
         return questionThreadRepository
-            .findById(
-                questionId)
+            .findById(previousQuestion.getId())
             .orElseThrow(() -> new QuestionNotFoundException(
-                questionId));
+                previousQuestion.getId()));
+    }
+
+    private void classifyResponderModerationFailureAndThrow(
+        Long questionId,
+        Long taskAssignmentId,
+        Long responderUserId) {
+        QuestionThread currentQuestion = questionThreadRepository
+            .findById(questionId)
+            .orElseThrow(() -> new QuestionNotFoundException(questionId));
+
+        boolean sameTaskAssignment = Objects.equals(
+            taskAssignmentId,
+            currentQuestion.getTaskAssignmentId());
+
+        boolean stillAssigned = Objects.equals(
+            responderUserId,
+            currentQuestion.getAssignedReviewerId());
+
+        if (!sameTaskAssignment || !stillAssigned) {
+            throw new QuestionNotFoundException(questionId);
+        }
+
+        boolean stillEligible = responderRepository
+            .existsByTaskAssignmentIdAndResponderUserId(
+                taskAssignmentId,
+                responderUserId);
+
+        if (!stillEligible) {
+            throw new QuestionNotFoundException(questionId);
+        }
+
+        throw new QuestionVersionConflictException(questionId);
+    }
+
+    private QuestionThread loadQuestion(Long questionId) {
+        return questionThreadRepository
+            .findById(questionId)
+            .orElseThrow(() -> new QuestionNotFoundException(questionId));
     }
 
     private void requireAssignedResponderAccess(
         QuestionThread question,
         Long responderUserId) {
-        if (!taskAssignmentForumResponderService
-            .isResponder(
-                question.getTaskAssignmentId(),
-                responderUserId)) {
-            throw new QuestionNotFoundException(
-                question.getId());
+        if (!taskAssignmentForumResponderService.isResponder(
+            question.getTaskAssignmentId(),
+            responderUserId)) {
+            throw new QuestionNotFoundException(question.getId());
         }
     }
 
@@ -457,15 +441,14 @@ public class OrganizationQuestionServiceImpl
     }
 
     private Long requireOrganizationMember() {
-        Long currentUserId =
-            securityFacade.getCurrentUserId()
-                .orElseThrow(() -> new AuthenticationException(
-                    "Authentication is required to access "
-                        + "organizing committee question queues",
-                    ErrorCode.AUTHENTICATION_REQUIRED));
+        Long currentUserId = securityFacade
+            .getCurrentUserId()
+            .orElseThrow(() -> new AuthenticationException(
+                "Authentication is required to access "
+                    + "organizing committee question queues",
+                ErrorCode.AUTHENTICATION_REQUIRED));
 
-        if (!securityFacade.hasRole(
-            ORG_ROLE)) {
+        if (!securityFacade.hasRole(ORG_ROLE)) {
             throw new AuthorizationException(
                 "Global ORG role is required to access "
                     + "organizing committee question queues",
@@ -478,8 +461,7 @@ public class OrganizationQuestionServiceImpl
     private void validateModerationRequest(
         Long questionId,
         Object request) {
-        validateQuestionId(
-            questionId);
+        validateQuestionId(questionId);
 
         if (request == null) {
             throw new ValidationException(
@@ -498,20 +480,16 @@ public class OrganizationQuestionServiceImpl
         }
     }
 
-    private void validateExpectedVersion(
-        Long version) {
-        if (version == null
-            || version < 0) {
+    private void validateExpectedVersion(Long version) {
+        if (version == null || version < 0) {
             throw new ValidationException(
                 "Question version must not be negative",
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }
 
-    private void validateQuestionId(
-        Long questionId) {
-        if (questionId == null
-            || questionId <= 0) {
+    private void validateQuestionId(Long questionId) {
+        if (questionId == null || questionId <= 0) {
             throw new ValidationException(
                 "Question id must be a positive number",
                 ErrorCode.COMMON_VALIDATION_FAILED);
@@ -527,12 +505,9 @@ public class OrganizationQuestionServiceImpl
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
 
-        if (size < 1
-            || size > MAX_PAGE_SIZE) {
+        if (size < 1 || size > MAX_PAGE_SIZE) {
             throw new ValidationException(
-                "Page size must be between 1 and %d"
-                    .formatted(
-                        MAX_PAGE_SIZE),
+                "Page size must be between 1 and %d".formatted(MAX_PAGE_SIZE),
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }
@@ -540,10 +515,7 @@ public class OrganizationQuestionServiceImpl
     private void validateClaimInput(
         Long questionId,
         Long expectedVersion) {
-        validateQuestionId(
-            questionId);
-
-        validateExpectedVersion(
-            expectedVersion);
+        validateQuestionId(questionId);
+        validateExpectedVersion(expectedVersion);
     }
 }

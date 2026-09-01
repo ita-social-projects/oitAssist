@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.chat.realtime.event;
+package com.itasocialacademy.oitassist.chat.event.realtime;
 
 /**
  * Marker interface for payloads delivered through realtime forum events.
