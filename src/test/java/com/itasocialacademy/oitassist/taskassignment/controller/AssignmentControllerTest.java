@@ -24,6 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.http.MediaType;
 
 import java.util.List;
@@ -159,15 +160,18 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
 
     @Test
     void createAndAssignTask_validRequest_shouldReturn201() throws Exception {
-        CreateAndAssignTaskRequestDTO request = new CreateAndAssignTaskRequestDTO(
-            "Task Title", "Task Description", List.of(1L, 2L), AssignmentVisibility.VISIBLE, 25, validRequirements);
+        CreateAndAssignTaskRequestDTO metadata = new CreateAndAssignTaskRequestDTO(
+            "Task Title", "Task Description", AssignmentVisibility.VISIBLE, 25, validRequirements);
 
-        when(assignmentService.createAndAssignTask(eq(10L), any(CreateAndAssignTaskRequestDTO.class)))
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
+
+        when(assignmentService.createAndAssignTask(eq(10L), any(), any(), any(), any()))
             .thenReturn(mockDetailedResponse);
 
-        mockMvc.perform(post("/api/v1/tours/{tourId}/task-assignments/new", 10L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart("/api/v1/tours/{tourId}/task-assignments/new", 10L)
+            .file(metadataPart))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(mockDetailedResponse.id()))
             .andExpect(jsonPath("$.taskBodyId").value(mockDetailedResponse.taskBodyId()))
@@ -177,41 +181,50 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
 
     @Test
     void createAndAssignTask_tourNotFound_shouldReturn404() throws Exception {
-        CreateAndAssignTaskRequestDTO request = new CreateAndAssignTaskRequestDTO(
-            "Task Title", "Task Description", List.of(1L, 2L), AssignmentVisibility.VISIBLE, 25, validRequirements);
+        CreateAndAssignTaskRequestDTO metadata = new CreateAndAssignTaskRequestDTO(
+            "Task Title", "Task Description", AssignmentVisibility.VISIBLE, 25, validRequirements);
 
-        when(assignmentService.createAndAssignTask(eq(99L), any(CreateAndAssignTaskRequestDTO.class)))
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
+
+        when(assignmentService.createAndAssignTask(eq(99L), any(), any(), any(), any()))
             .thenThrow(new TourNotFoundException(99L));
 
-        mockMvc.perform(post("/api/v1/tours/{tourId}/task-assignments/new", 99L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart("/api/v1/tours/{tourId}/task-assignments/new", 99L)
+            .file(metadataPart))
             .andExpect(status().isNotFound());
     }
 
     @Test
     void createAndAssignTask_tourNotScheduled_shouldReturn400() throws Exception {
-        CreateAndAssignTaskRequestDTO request = new CreateAndAssignTaskRequestDTO(
-            "Task Title", "Task Description", List.of(1L, 2L), AssignmentVisibility.VISIBLE, 25, validRequirements);
+        CreateAndAssignTaskRequestDTO metadata = new CreateAndAssignTaskRequestDTO(
+            "Task Title", "Task Description", AssignmentVisibility.VISIBLE, 25, validRequirements);
 
-        when(assignmentService.createAndAssignTask(eq(10L), any(CreateAndAssignTaskRequestDTO.class)))
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
+
+        when(assignmentService.createAndAssignTask(eq(10L), any(), any(), any(), any()))
             .thenThrow(
                 new CompetitionHierarchyValidationException("Cannot create task assignment. Tour has already started"));
 
-        mockMvc.perform(post("/api/v1/tours/{tourId}/task-assignments/new", 10L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart("/api/v1/tours/{tourId}/task-assignments/new", 10L)
+            .file(metadataPart))
             .andExpect(status().isBadRequest());
     }
 
     @Test
     void createAndAssignTask_blankTitle_shouldReturn400() throws Exception {
-        CreateAndAssignTaskRequestDTO request = new CreateAndAssignTaskRequestDTO(
-            "   ", "Task Description", List.of(1L, 2L), AssignmentVisibility.VISIBLE, 25, validRequirements);
+        CreateAndAssignTaskRequestDTO metadata = new CreateAndAssignTaskRequestDTO(
+            "   ", "Task Description", AssignmentVisibility.VISIBLE, 25, validRequirements);
 
-        mockMvc.perform(post("/api/v1/tours/{tourId}/task-assignments/new", 10L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
+
+        mockMvc.perform(multipart("/api/v1/tours/{tourId}/task-assignments/new", 10L)
+            .file(metadataPart))
             .andExpect(status().isBadRequest());
 
         verifyNoInteractions(assignmentService);
@@ -219,12 +232,15 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
 
     @Test
     void createAndAssignTask_nullMaxPoints_shouldReturn400() throws Exception {
-        CreateAndAssignTaskRequestDTO request = new CreateAndAssignTaskRequestDTO(
-            "Task Title", "Task Description", List.of(1L, 2L), AssignmentVisibility.VISIBLE, null, validRequirements);
+        CreateAndAssignTaskRequestDTO metadata = new CreateAndAssignTaskRequestDTO(
+            "Task Title", "Task Description", AssignmentVisibility.VISIBLE, null, validRequirements);
 
-        mockMvc.perform(post("/api/v1/tours/{tourId}/task-assignments/new", 10L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
+
+        mockMvc.perform(multipart("/api/v1/tours/{tourId}/task-assignments/new", 10L)
+            .file(metadataPart))
             .andExpect(status().isBadRequest());
 
         verifyNoInteractions(assignmentService);
