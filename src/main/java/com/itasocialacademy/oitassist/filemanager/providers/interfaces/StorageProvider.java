@@ -59,35 +59,6 @@ public interface StorageProvider {
      *
      * @param storageKey the relative path or unique key of the file
      * @return the {@link Resource} representing the file byte stream
-     * @throws com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException if
-     *                                                                                          the
-     *                                                                                          file
-     *                                                                                          does
-     *                                                                                          not
-     *                                                                                          exist
-     *                                                                                          in
-     *                                                                                          storage
-     * @throws com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathException   if
-     *                                                                                          the
-     *                                                                                          storage
-     *                                                                                          key
-     *                                                                                          is
-     *                                                                                          invalid
-     *                                                                                          or
-     *                                                                                          breaches
-     *                                                                                          storage
-     *                                                                                          root
-     * @throws FileListingException                                                             if
-     *                                                                                          reading
-     *                                                                                          the
-     *                                                                                          resource
-     *                                                                                          fails
-     *                                                                                          due
-     *                                                                                          to
-     *                                                                                          I/O
-     *                                                                                          or
-     *                                                                                          client
-     *                                                                                          errors
      */
     Resource getResource(String storageKey);
 }
