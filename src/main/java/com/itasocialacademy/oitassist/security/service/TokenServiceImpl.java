@@ -23,9 +23,11 @@ import io.jsonwebtoken.security.SignatureException;
 import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AccountExpiredException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -91,6 +93,10 @@ public class TokenServiceImpl implements TokenService {
             throw new AuthenticationException("Bad credentials", ErrorCode.BAD_CREDENTIAL);
         } catch (DisabledException e) {
             throw new AuthenticationException("Account is not activated", ErrorCode.USER_NOT_ACTIVATED);
+        } catch (LockedException e) {
+            throw new AuthenticationException("Account is locked", ErrorCode.USER_BLOCKED);
+        } catch (AccountExpiredException e) {
+            throw new AuthenticationException("Account has expired", ErrorCode.USER_BLOCKED);
         }
 
         Objects.requireNonNull(userDetails);
