@@ -41,6 +41,7 @@
         <spring-modulith-events-api-version>2.0.1</spring-modulith-events-api-version>
         <poi-version>5.5.1</poi-version>
         <googleauth-version>1.5.0</googleauth-version>
+        <httpclient-version>4.5.14</httpclient-version>
     </properties>
     <dependencies>
         <dependency>
@@ -197,6 +198,11 @@
                 <version>${spring-modulith.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>${httpclient-version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
