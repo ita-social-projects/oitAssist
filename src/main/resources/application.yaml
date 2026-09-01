@@ -150,3 +150,8 @@ app:
   news:
     archiving:
       cron: ${APP_NEWS_ARCHIVING_CRON:0 5 0 * * *}
+  envvar:
+    access-mode: blacklist
+    blacklist:
+      - JWT_SIGN_KEY
+      - JWT_ENCRYPTED_KEY
