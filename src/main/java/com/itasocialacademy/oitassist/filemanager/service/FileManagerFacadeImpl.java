@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -42,5 +43,15 @@ public class FileManagerFacadeImpl implements FileManagerFacade {
     @Override
     public void detachAllFilesByEntity(RelatedEntityType entityType, Long entityId, Long userId) {
         fileService.detachAllFilesByEntityId(entityType, entityId, userId);
+    }
+
+    @Override
+    public void detachFiles(RelatedEntityType entityType, Long entityId, List<Long> fileIds, Long userId) {
+        fileService.detachFiles(entityType, entityId, fileIds, userId);
+    }
+
+    @Override
+    public void updateFileRole(Long fileId, FileRole newRole) {
+        fileService.updateRole(fileId, new UpdateFileRoleRequestDto(newRole));
     }
 }

@@ -58,4 +58,24 @@ public interface FileManagerFacade {
      * @param userId     the ID of user performing the detachment
      */
     void detachAllFilesByEntity(RelatedEntityType entityType, Long entityId, Long userId);
+
+    /**
+     * Marks attached files as SOFT_DELETED, detaching them from the entity. No-op
+     * if fileIds is null or empty.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity
+     * @param fileIds    the IDs of the files to soft-delete
+     * @param userId     the ID of the user performing the operation
+     */
+    void detachFiles(RelatedEntityType entityType, Long entityId, List<Long> fileIds, Long userId);
+
+    /**
+     * Updates the role of an attached file. Only the file owner or admin can
+     * update. File must be in ATTACHED state.
+     *
+     * @param fileId  the ID of the file to update
+     * @param newRole the new role to assign
+     */
+    void updateFileRole(Long fileId, FileRole newRole);
 }
