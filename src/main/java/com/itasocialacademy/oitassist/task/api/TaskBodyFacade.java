@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.task.api;
 
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -14,5 +15,7 @@ public interface TaskBodyFacade {
 
     Map<Long, String> getTaskTitlesByIds(List<Long> taskBodyIds);
 
-    TaskBodyDetail createTask(String title, String description, List<Long> fileIds);
+    TaskBodyDetail createTask(String title, String description,
+        List<MultipartFile> problemFiles, List<MultipartFile> referenceFiles,
+        List<MultipartFile> solutionFiles);
 }
