@@ -31,49 +31,27 @@ public class ParticipantRealtimeHandler {
 
     public void handle(ForumDomainEvent event) {
         switch (event) {
-            case QuestionCreatedDomainEvent questionCreated ->
-                projectQuestionSnapshot(questionCreated, true);
-
-            case CommentCreatedDomainEvent commentCreated ->
-                projectCommentCreated(commentCreated);
-
-            case QuestionClaimedDomainEvent questionClaimed ->
-                projectQuestionSnapshot(questionClaimed, true);
-
-            case OfficialAnswerPublishedDomainEvent answerPublished ->
-                projectOfficialAnswerPublished(answerPublished);
-
-            case QuestionVisibilityChangedDomainEvent visibilityChanged ->
-                projectVisibilityChanged(visibilityChanged);
-
-            case QuestionStatusChangedDomainEvent statusChanged ->
-                projectQuestionSnapshot(statusChanged, false);
-
-            case QuestionStateChangedDomainEvent stateChanged ->
-                projectQuestionSnapshot(stateChanged, false);
+            case QuestionCreatedDomainEvent questionCreated -> projectQuestionSnapshot(questionCreated, true);
+            case CommentCreatedDomainEvent commentCreated -> projectCommentCreated(commentCreated);
+            case QuestionClaimedDomainEvent questionClaimed -> projectQuestionSnapshot(questionClaimed, true);
+            case OfficialAnswerPublishedDomainEvent answerPublished -> projectOfficialAnswerPublished(answerPublished);
+            case QuestionVisibilityChangedDomainEvent visibilityChanged -> projectVisibilityChanged(visibilityChanged);
+            case QuestionStatusChangedDomainEvent statusChanged -> projectQuestionSnapshot(statusChanged, false);
+            case QuestionStateChangedDomainEvent stateChanged -> projectQuestionSnapshot(stateChanged, false);
         }
     }
 
     private void projectCommentCreated(CommentCreatedDomainEvent event) {
         if (event.question().visibility() == PUBLIC) {
-            publisher.toQuestionThread(
-                event,
-                MESSAGE_CREATED,
-                new MessageCreatedPayload(event.message()));
+            publisher.toQuestionThread(event, MESSAGE_CREATED, new MessageCreatedPayload(event.message()));
         }
-
         sendMessageToAuthor(event, event.message());
         sendMessageToPrivilegedReaders(event, event.message());
     }
 
-    private void projectOfficialAnswerPublished(
-        OfficialAnswerPublishedDomainEvent event) {
+    private void projectOfficialAnswerPublished(OfficialAnswerPublishedDomainEvent event) {
         if (event.question().visibility() == PUBLIC) {
-            publisher.toQuestionThread(
-                event,
-                MESSAGE_CREATED,
-                new MessageCreatedPayload(event.message()));
-
+            publisher.toQuestionThread(event, MESSAGE_CREATED, new MessageCreatedPayload(event.message()));
             sendQuestionUpsertToThread(event);
             sendQuestionUpsertToForum(event);
         }
@@ -84,32 +62,23 @@ public class ParticipantRealtimeHandler {
         sendQuestionUpsertToPrivilegedReaders(event);
     }
 
-    private void projectVisibilityChanged(
-        QuestionVisibilityChangedDomainEvent event) {
-        if (event.previousVisibility() == PRIVATE
-            && event.currentVisibility() == PUBLIC) {
+    private void projectVisibilityChanged(QuestionVisibilityChangedDomainEvent event) {
+        if (event.previousVisibility() == PRIVATE && event.currentVisibility() == PUBLIC) {
             sendQuestionUpsertToForum(event);
             sendQuestionUpsertToThread(event);
             sendQuestionUpsertToAuthor(event);
             return;
         }
 
-        if (event.previousVisibility() == PUBLIC
-            && event.currentVisibility() == PRIVATE) {
+        if (event.previousVisibility() == PUBLIC && event.currentVisibility() == PRIVATE) {
             publisher.toTaskAssignmentForum(
                 event,
                 QUESTION_REMOVED,
-                new QuestionRemovalPayload(
-                    event.taskAssignmentId(),
-                    event.questionId()));
-
+                new QuestionRemovalPayload(event.taskAssignmentId(), event.questionId()));
             publisher.toQuestionThread(
                 event,
                 ACCESS_REVOKED,
-                new AccessRevokedPayload(
-                    event.taskAssignmentId(),
-                    event.questionId()));
-
+                new AccessRevokedPayload(event.taskAssignmentId(), event.questionId()));
             sendQuestionUpsertToAuthor(event);
             sendQuestionUpsertToPrivilegedReaders(event);
             return;
@@ -118,17 +87,13 @@ public class ParticipantRealtimeHandler {
         projectQuestionSnapshot(event, true);
     }
 
-    private void projectQuestionSnapshot(
-        ForumDomainEvent event,
-        boolean notifyAuthorWhenPublic) {
+    private void projectQuestionSnapshot(ForumDomainEvent event, boolean notifyAuthorWhenPublic) {
         if (event.question().visibility() == PUBLIC) {
             sendQuestionUpsertToThread(event);
             sendQuestionUpsertToForum(event);
-
             if (notifyAuthorWhenPublic) {
                 sendQuestionUpsertToAuthor(event);
             }
-
             return;
         }
 
@@ -137,17 +102,11 @@ public class ParticipantRealtimeHandler {
     }
 
     private void sendQuestionUpsertToForum(ForumDomainEvent event) {
-        publisher.toTaskAssignmentForum(
-            event,
-            QUESTION_UPSERTED,
-            new QuestionUpsertPayload(event.question()));
+        publisher.toTaskAssignmentForum(event, QUESTION_UPSERTED, new QuestionUpsertPayload(event.question()));
     }
 
     private void sendQuestionUpsertToThread(ForumDomainEvent event) {
-        publisher.toQuestionThread(
-            event,
-            QUESTION_UPSERTED,
-            new QuestionUpsertPayload(event.question()));
+        publisher.toQuestionThread(event, QUESTION_UPSERTED, new QuestionUpsertPayload(event.question()));
     }
 
     private void sendQuestionUpsertToAuthor(ForumDomainEvent event) {
@@ -158,9 +117,7 @@ public class ParticipantRealtimeHandler {
             new QuestionUpsertPayload(event.question()));
     }
 
-    private void sendMessageToAuthor(
-        ForumDomainEvent event,
-        QuestionMessageResponseDTO message) {
+    private void sendMessageToAuthor(ForumDomainEvent event, QuestionMessageResponseDTO message) {
         publisher.toPersonalQuestions(
             event.question().authorId(),
             event,
@@ -168,19 +125,11 @@ public class ParticipantRealtimeHandler {
             new MessageCreatedPayload(message));
     }
 
-    private void sendQuestionUpsertToPrivilegedReaders(
-        ForumDomainEvent event) {
-        publisher.toAdministratorAllQuestions(
-            event,
-            QUESTION_UPSERTED,
-            new QuestionUpsertPayload(event.question()));
+    private void sendQuestionUpsertToPrivilegedReaders(ForumDomainEvent event) {
+        publisher.toAdministratorAllQuestions(event, QUESTION_UPSERTED, new QuestionUpsertPayload(event.question()));
 
-        organizationRecipientResolver
-            .resolveInboxRecipients(event.taskAssignmentId())
-            .stream()
-            .filter(responderId -> !Objects.equals(
-                responderId,
-                event.question().authorId()))
+        organizationRecipientResolver.resolveInboxRecipients(event.taskAssignmentId()).stream()
+            .filter(responderId -> !Objects.equals(responderId, event.question().authorId()))
             .forEach(responderId -> publisher.toPersonalQuestions(
                 responderId,
                 event,
@@ -188,16 +137,9 @@ public class ParticipantRealtimeHandler {
                 new QuestionUpsertPayload(event.question())));
     }
 
-    private void sendMessageToPrivilegedReaders(
-        ForumDomainEvent event,
-        QuestionMessageResponseDTO message) {
-        publisher.toAdministratorAllQuestions(
-            event,
-            MESSAGE_CREATED,
-            new MessageCreatedPayload(message));
-
-        organizationRecipientResolver
-            .resolveInboxRecipients(event.taskAssignmentId())
+    private void sendMessageToPrivilegedReaders(ForumDomainEvent event, QuestionMessageResponseDTO message) {
+        publisher.toAdministratorAllQuestions(event, MESSAGE_CREATED, new MessageCreatedPayload(message));
+        organizationRecipientResolver.resolveInboxRecipients(event.taskAssignmentId())
             .forEach(responderId -> publisher.toPersonalQuestions(
                 responderId,
                 event,

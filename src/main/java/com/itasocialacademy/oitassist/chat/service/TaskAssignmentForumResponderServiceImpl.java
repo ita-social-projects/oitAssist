@@ -41,11 +41,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentForumResponderService {
     private static final String ADMIN_ROLE = "ADMIN";
-
-    private static final Sort RESPONDER_SORT =
-        Sort.by(
-            Sort.Order.desc("assignedAt"),
-            Sort.Order.desc("id"));
+    private static final Sort RESPONDER_SORT = Sort.by(
+        Sort.Order.desc("assignedAt"),
+        Sort.Order.desc("id"));
 
     private final TaskAssignmentForumResponderRepository responderRepository;
     private final QuestionThreadRepository questionThreadRepository;
@@ -56,60 +54,36 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
 
     @Override
     @Transactional
-    public TaskAssignmentForumResponderGrantResult grantResponder(
-        Long taskAssignmentId,
-        Long responderUserId) {
-        validateIdentifiers(
-            taskAssignmentId,
-            responderUserId);
+    public TaskAssignmentForumResponderGrantResult grantResponder(Long taskAssignmentId, Long responderUserId) {
+        validateIdentifiers(taskAssignmentId, responderUserId);
 
-        Long administratorId =
-            requireAdministrator();
+        Long administratorId = requireAdministrator();
 
-        requireTaskAssignmentExists(
-            taskAssignmentId);
+        requireTaskAssignmentExists(taskAssignmentId);
 
-        ForumResponderCandidate candidate =
-            requireResponderCandidate(
-                responderUserId);
+        ForumResponderCandidate candidate = requireResponderCandidate(responderUserId);
 
-        validateResponderCandidate(
-            candidate);
+        validateResponderCandidate(candidate);
 
         int insertedRows =
-            responderRepository.insertIfAbsent(
-                taskAssignmentId,
-                responderUserId,
-                administratorId,
-                Instant.now());
+            responderRepository.insertIfAbsent(taskAssignmentId, responderUserId, administratorId, Instant.now());
 
         if (insertedRows < 0 || insertedRows > 1) {
             throw new IllegalStateException(
                 ("Unexpected responder assignment insert result: "
                     + "taskAssignmentId=%s, responderUserId=%s, "
-                    + "insertedRows=%s").formatted(
-                        taskAssignmentId,
-                        responderUserId,
-                        insertedRows));
+                    + "insertedRows=%s").formatted(taskAssignmentId, responderUserId, insertedRows));
         }
 
-        TaskAssignmentForumResponder assignment =
-            responderRepository
-                .findByTaskAssignmentIdAndResponderUserId(
-                    taskAssignmentId,
-                    responderUserId)
-                .orElseThrow(() -> new IllegalStateException(
-                    ("Forum responder assignment was not found "
-                        + "after idempotent grant: "
-                        + "taskAssignmentId=%s, "
-                        + "responderUserId=%s").formatted(
-                            taskAssignmentId,
-                            responderUserId)));
+        TaskAssignmentForumResponder assignment = responderRepository
+            .findByTaskAssignmentIdAndResponderUserId(taskAssignmentId, responderUserId)
+            .orElseThrow(() -> new IllegalStateException(
+                ("Forum responder assignment was not found "
+                    + "after idempotent grant: "
+                    + "taskAssignmentId=%s, "
+                    + "responderUserId=%s").formatted(taskAssignmentId, responderUserId)));
 
-        TaskAssignmentForumResponderResponseDTO responder =
-            responderMapper.toResponse(
-                assignment,
-                candidate);
+        TaskAssignmentForumResponderResponseDTO responder = responderMapper.toResponse(assignment, candidate);
 
         boolean created = insertedRows == 1;
 
@@ -122,25 +96,17 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
             administratorId,
             created);
 
-        return new TaskAssignmentForumResponderGrantResult(
-            created,
-            responder);
+        return new TaskAssignmentForumResponderGrantResult(created, responder);
     }
 
     @Override
     @Transactional
-    public void revokeResponder(
-        Long taskAssignmentId,
-        Long responderUserId) {
-        validateIdentifiers(
-            taskAssignmentId,
-            responderUserId);
+    public void revokeResponder(Long taskAssignmentId, Long responderUserId) {
+        validateIdentifiers(taskAssignmentId, responderUserId);
 
-        Long administratorId =
-            requireAdministrator();
+        Long administratorId = requireAdministrator();
 
-        requireTaskAssignmentExists(
-            taskAssignmentId);
+        requireTaskAssignmentExists(taskAssignmentId);
 
         /*
          * Validate only that the user still exists.
@@ -148,14 +114,10 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
          * Do not require ORG + ACTIVE here. An administrator must be able to revoke an
          * assignment after the user's role or account status has changed.
          */
-        requireResponderCandidate(
-            responderUserId);
+        requireResponderCandidate(responderUserId);
 
-        Optional<TaskAssignmentForumResponder> assignment =
-            responderRepository
-                .findByTaskAssignmentIdAndResponderUserIdForUpdate(
-                    taskAssignmentId,
-                    responderUserId);
+        Optional<TaskAssignmentForumResponder> assignment = responderRepository
+            .findByTaskAssignmentIdAndResponderUserIdForUpdate(taskAssignmentId, responderUserId);
 
         if (assignment.isEmpty()) {
             log.debug(
@@ -169,12 +131,8 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
             return;
         }
 
-        boolean ownsActiveReview =
-            questionThreadRepository
-                .existsByTaskAssignmentIdAndAssignedReviewerIdAndState(
-                    taskAssignmentId,
-                    responderUserId,
-                    OPEN);
+        boolean ownsActiveReview = questionThreadRepository
+            .existsByTaskAssignmentIdAndAssignedReviewerIdAndState(taskAssignmentId, responderUserId, OPEN);
 
         if (ownsActiveReview) {
             log.warn(
@@ -185,13 +143,10 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
                 responderUserId,
                 administratorId);
 
-            throw new ForumResponderActiveReviewException(
-                taskAssignmentId,
-                responderUserId);
+            throw new ForumResponderActiveReviewException(taskAssignmentId, responderUserId);
         }
 
-        responderRepository.delete(
-            assignment.orElseThrow());
+        responderRepository.delete(assignment.orElseThrow());
 
         log.info(
             "Forum responder revoked: "
@@ -204,125 +159,77 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
 
     @Override
     @Transactional(readOnly = true)
-    public boolean isResponder(
-        Long taskAssignmentId,
-        Long userId) {
-        validateIdentifiers(
-            taskAssignmentId,
-            userId);
+    public boolean isResponder(Long taskAssignmentId, Long userId) {
+        validateIdentifiers(taskAssignmentId, userId);
 
-        return responderRepository
-            .existsByTaskAssignmentIdAndResponderUserId(
-                taskAssignmentId,
-                userId);
+        return responderRepository.existsByTaskAssignmentIdAndResponderUserId(taskAssignmentId, userId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public void requireResponder(
-        Long taskAssignmentId,
-        Long userId) {
-        validateIdentifiers(
-            taskAssignmentId,
-            userId);
+    public void requireResponder(Long taskAssignmentId, Long userId) {
+        validateIdentifiers(taskAssignmentId, userId);
 
         boolean responderExists =
-            responderRepository
-                .existsByTaskAssignmentIdAndResponderUserId(
-                    taskAssignmentId,
-                    userId);
+            responderRepository.existsByTaskAssignmentIdAndResponderUserId(taskAssignmentId, userId);
 
         if (!responderExists) {
-            throw new ForumResponderAccessRestrictedException(
-                taskAssignmentId,
-                userId);
+            throw new ForumResponderAccessRestrictedException(taskAssignmentId, userId);
         }
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Long> findTaskAssignmentIdsByResponder(
-        Long responderUserId) {
-        validateIdentifier(
-            responderUserId,
-            "Responder user id");
+    public List<Long> findTaskAssignmentIdsByResponder(Long responderUserId) {
+        validateIdentifier(responderUserId, "Responder user id");
 
-        return responderRepository
-            .findTaskAssignmentIdsByResponderUserId(
-                responderUserId);
+        return responderRepository.findTaskAssignmentIdsByResponderUserId(responderUserId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<TaskAssignmentForumResponderResponseDTO> getResponders(
-        Long taskAssignmentId,
-        int page,
-        int size) {
-        validateIdentifier(
-            taskAssignmentId,
-            "Task assignment id");
-
+    public Page<TaskAssignmentForumResponderResponseDTO> getResponders(Long taskAssignmentId, int page, int size) {
+        validateIdentifier(taskAssignmentId, "Task assignment id");
         validatePageAndSize(page, size);
 
-        Long administratorId =
-            requireAdministrator();
+        Long administratorId = requireAdministrator();
 
-        requireTaskAssignmentExists(
-            taskAssignmentId);
+        requireTaskAssignmentExists(taskAssignmentId);
 
-        Pageable pageable =
-            PageRequest.of(
-                page,
-                size,
-                RESPONDER_SORT);
+        Pageable pageable = PageRequest.of(page, size, RESPONDER_SORT);
 
         Page<TaskAssignmentForumResponder> assignments =
-            responderRepository.findAllByTaskAssignmentId(
-                taskAssignmentId,
-                pageable);
+            responderRepository.findAllByTaskAssignmentId(taskAssignmentId, pageable);
 
         if (assignments.isEmpty()) {
             return Page.empty(pageable);
         }
 
-        List<Long> responderIds =
-            assignments.getContent()
-                .stream()
-                .map(
-                    TaskAssignmentForumResponder::getResponderUserId)
-                .distinct()
-                .toList();
+        List<Long> responderIds = assignments.getContent()
+            .stream()
+            .map(TaskAssignmentForumResponder::getResponderUserId)
+            .distinct()
+            .toList();
 
-        Map<Long, ForumResponderCandidate> candidatesById =
-            userFacade
-                .findForumResponderCandidatesByIds(
-                    responderIds)
-                .stream()
-                .collect(
-                    Collectors.toMap(
-                        ForumResponderCandidate::id,
-                        Function.identity()));
+        Map<Long, ForumResponderCandidate> candidatesById = userFacade
+            .findForumResponderCandidatesByIds(responderIds)
+            .stream()
+            .collect(Collectors.toMap(ForumResponderCandidate::id, Function.identity()));
 
-        List<TaskAssignmentForumResponderResponseDTO> content =
-            assignments.getContent()
-                .stream()
-                .map(assignment -> {
-                    ForumResponderCandidate candidate =
-                        candidatesById.get(
-                            assignment.getResponderUserId());
+        List<TaskAssignmentForumResponderResponseDTO> content = assignments.getContent()
+            .stream()
+            .map(assignment -> {
+                ForumResponderCandidate candidate = candidatesById.get(assignment.getResponderUserId());
 
-                    if (candidate == null) {
-                        throw new IllegalStateException(
-                            ("User summary is missing for persisted "
-                                + "forum responder %s").formatted(
-                                    assignment.getResponderUserId()));
-                    }
+                if (candidate == null) {
+                    throw new IllegalStateException(
+                        ("User summary is missing for persisted "
+                            + "forum responder %s").formatted(assignment.getResponderUserId()));
+                }
 
-                    return responderMapper.toResponse(
-                        assignment,
-                        candidate);
-                })
-                .toList();
+                return responderMapper.toResponse(assignment, candidate);
+            })
+            .toList();
 
         log.debug(
             "Forum responders retrieved: "
@@ -334,19 +241,15 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
             content.size(),
             assignments.getTotalElements());
 
-        return new PageImpl<>(
-            content,
-            assignments.getPageable(),
-            assignments.getTotalElements());
+        return new PageImpl<>(content, assignments.getPageable(), assignments.getTotalElements());
     }
 
     private Long requireAdministrator() {
-        Long administratorId =
-            securityFacade.getCurrentUserId()
-                .orElseThrow(() -> new AuthenticationException(
-                    "Authentication is required to manage "
-                        + "TaskAssignment forum responders",
-                    ErrorCode.AUTHENTICATION_REQUIRED));
+        Long administratorId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthenticationException(
+                "Authentication is required to manage "
+                    + "TaskAssignment forum responders",
+                ErrorCode.AUTHENTICATION_REQUIRED));
 
         if (!securityFacade.hasRole(ADMIN_ROLE)) {
             throw new AuthorizationException(
@@ -358,29 +261,20 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
         return administratorId;
     }
 
-    private void requireTaskAssignmentExists(
-        Long taskAssignmentId) {
-        taskAssignmentFacade
-            .findAssignmentById(taskAssignmentId)
-            .orElseThrow(() -> new TaskAssignmentNotFoundException(
-                taskAssignmentId));
+    private void requireTaskAssignmentExists(Long taskAssignmentId) {
+        taskAssignmentFacade.findAssignmentById(taskAssignmentId)
+            .orElseThrow(() -> new TaskAssignmentNotFoundException(taskAssignmentId));
     }
 
-    private ForumResponderCandidate requireResponderCandidate(
-        Long responderUserId) {
-        return userFacade
-            .findForumResponderCandidateById(
-                responderUserId)
+    private ForumResponderCandidate requireResponderCandidate(Long responderUserId) {
+        return userFacade.findForumResponderCandidateById(responderUserId)
             .orElseThrow(() -> new NotFoundException(
-                "User with id %s was not found"
-                    .formatted(responderUserId),
+                "User with id %s was not found".formatted(responderUserId),
                 ErrorCode.USER_NOT_FOUND));
     }
 
-    private void validateResponderCandidate(
-        ForumResponderCandidate candidate) {
-        if (candidate.role() != Role.ORG
-            || candidate.status() != UserStatus.ACTIVE) {
+    private void validateResponderCandidate(ForumResponderCandidate candidate) {
+        if (candidate.role() != Role.ORG || candidate.status() != UserStatus.ACTIVE) {
             throw new InvalidForumResponderCandidateException(
                 candidate.id(),
                 candidate.role(),
@@ -388,32 +282,20 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
         }
     }
 
-    private void validateIdentifiers(
-        Long taskAssignmentId,
-        Long responderUserId) {
-        validateIdentifier(
-            taskAssignmentId,
-            "Task assignment id");
-
-        validateIdentifier(
-            responderUserId,
-            "Responder user id");
+    private void validateIdentifiers(Long taskAssignmentId, Long responderUserId) {
+        validateIdentifier(taskAssignmentId, "Task assignment id");
+        validateIdentifier(responderUserId, "Responder user id");
     }
 
-    private void validateIdentifier(
-        Long identifier,
-        String fieldName) {
+    private void validateIdentifier(Long identifier, String fieldName) {
         if (identifier == null || identifier <= 0) {
             throw new ValidationException(
-                "%s must be a positive number"
-                    .formatted(fieldName),
+                "%s must be a positive number".formatted(fieldName),
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }
 
-    private void validatePageAndSize(
-        int page,
-        int size) {
+    private void validatePageAndSize(int page, int size) {
         if (page < 0) {
             throw new ValidationException(
                 "Page number must not be negative",
@@ -422,8 +304,7 @@ public class TaskAssignmentForumResponderServiceImpl implements TaskAssignmentFo
 
         if (size < 1 || size > MAX_PAGE_SIZE) {
             throw new ValidationException(
-                "Page size must be between 1 and %d"
-                    .formatted(MAX_PAGE_SIZE),
+                "Page size must be between 1 and %d".formatted(MAX_PAGE_SIZE),
                 ErrorCode.COMMON_VALIDATION_FAILED);
         }
     }

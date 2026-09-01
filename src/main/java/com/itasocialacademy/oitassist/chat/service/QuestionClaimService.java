@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class QuestionClaimService {
     private static final String CLAIM_OPERATION = "claim for review";
+
     private final QuestionThreadRepository questionThreadRepository;
     private final TaskAssignmentForumResponderRepository responderRepository;
 
@@ -36,10 +37,7 @@ public class QuestionClaimService {
             updatedAt);
 
         if (updatedRows == 0) {
-            classifyClaimFailureAndThrow(
-                questionId,
-                expectedVersion);
-
+            classifyClaimFailureAndThrow(questionId, expectedVersion);
             throw new QuestionVersionConflictException(questionId);
         }
 
@@ -52,14 +50,10 @@ public class QuestionClaimService {
         Long responderUserId,
         Long expectedVersion,
         Instant updatedAt) {
-        Long taskAssignmentId = questionThreadRepository
-            .findTaskAssignmentIdByQuestionId(questionId)
+        Long taskAssignmentId = questionThreadRepository.findTaskAssignmentIdByQuestionId(questionId)
             .orElseThrow(() -> new QuestionNotFoundException(questionId));
 
-        responderRepository
-            .findByTaskAssignmentIdAndResponderUserIdForUpdate(
-                taskAssignmentId,
-                responderUserId)
+        responderRepository.findByTaskAssignmentIdAndResponderUserIdForUpdate(taskAssignmentId, responderUserId)
             .orElseThrow(() -> new QuestionNotFoundException(questionId));
 
         int updatedRows = questionThreadRepository.claimForReviewAsResponder(
@@ -70,27 +64,19 @@ public class QuestionClaimService {
             updatedAt);
 
         if (updatedRows == 0) {
-            classifyResponderClaimFailureAndThrow(
-                questionId,
-                expectedVersion,
-                taskAssignmentId);
-
+            classifyResponderClaimFailureAndThrow(questionId, expectedVersion, taskAssignmentId);
             throw new QuestionVersionConflictException(questionId);
         }
-
         if (updatedRows != 1) {
             throw new IllegalStateException(
-                ("Question claim affected an unexpected number of rows: "
-                    + "questionId=%s, rows=%s")
+                ("Question claim affected an unexpected number of rows: questionId=%s, rows=%s")
                     .formatted(questionId, updatedRows));
         }
 
         return requireQuestion(questionId);
     }
 
-    private void classifyClaimFailureAndThrow(
-        Long questionId,
-        Long expectedVersion) {
+    private void classifyClaimFailureAndThrow(Long questionId, Long expectedVersion) {
         QuestionThread question = requireQuestion(questionId);
         classifyPersistedStateAndThrow(question, expectedVersion);
     }
@@ -100,50 +86,30 @@ public class QuestionClaimService {
         Long expectedVersion,
         Long permittedTaskAssignmentId) {
         QuestionThread question = requireQuestion(questionId);
-
-        if (!Objects.equals(
-            question.getTaskAssignmentId(),
-            permittedTaskAssignmentId)) {
+        if (!Objects.equals(question.getTaskAssignmentId(), permittedTaskAssignmentId)) {
             throw new QuestionNotFoundException(questionId);
         }
-
         classifyPersistedStateAndThrow(question, expectedVersion);
     }
 
     private QuestionThread requireQuestion(Long questionId) {
-        return questionThreadRepository
-            .findById(questionId)
+        return questionThreadRepository.findById(questionId)
             .orElseThrow(() -> new QuestionNotFoundException(questionId));
     }
 
-    private void classifyPersistedStateAndThrow(
-        QuestionThread question,
-        Long expectedVersion) {
+    private void classifyPersistedStateAndThrow(QuestionThread question, Long expectedVersion) {
         if (question.getState() == CLOSED) {
-            throw new InvalidQuestionStateException(
-                question.getId(),
-                question.getState(),
-                CLAIM_OPERATION);
+            throw new InvalidQuestionStateException(question.getId(), question.getState(), CLAIM_OPERATION);
         }
-
         if (question.getStatus() == ANSWERED) {
-            throw new InvalidQuestionStateException(
-                question.getId(),
-                question.getStatus(),
-                CLAIM_OPERATION);
+            throw new InvalidQuestionStateException(question.getId(), question.getStatus(), CLAIM_OPERATION);
         }
-
-        if (question.getAssignedReviewerId() != null
-            || question.getStatus() == IN_REVIEW) {
+        if (question.getAssignedReviewerId() != null || question.getStatus() == IN_REVIEW) {
             throw new QuestionAlreadyClaimedException(question.getId());
         }
-
-        if (!Objects.equals(
-            question.getVersion(),
-            expectedVersion)) {
+        if (!Objects.equals(question.getVersion(), expectedVersion)) {
             throw new QuestionVersionConflictException(question.getId());
         }
-
         throw new QuestionVersionConflictException(question.getId());
     }
 }

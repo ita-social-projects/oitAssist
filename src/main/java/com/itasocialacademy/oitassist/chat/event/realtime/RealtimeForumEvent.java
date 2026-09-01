@@ -1,10 +1,10 @@
 package com.itasocialacademy.oitassist.chat.event.realtime;
 
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
+import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
-import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionReviewInboxItemResponseDTO;
-import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 
 /**
  * Immutable external envelope delivered to STOMP subscribers.
@@ -24,32 +24,15 @@ public record RealtimeForumEvent(
     Long questionId,
     RealtimePayload payload) {
     public RealtimeForumEvent {
-        eventId = Objects.requireNonNull(
-            eventId,
-            "Realtime event id must not be null");
+        eventId = Objects.requireNonNull(eventId, "Realtime event id must not be null");
+        type = Objects.requireNonNull(type, "Realtime event type must not be null");
+        occurredAt = Objects.requireNonNull(occurredAt, "Realtime event occurrence time must not be null");
 
-        type = Objects.requireNonNull(
-            type,
-            "Realtime event type must not be null");
-
-        occurredAt = Objects.requireNonNull(
-            occurredAt,
-            "Realtime event occurrence time must not be null");
-
-        requirePositiveId(
-            taskAssignmentId,
-            "Task assignment id");
-
-        requirePositiveId(
-            questionId,
-            "Question id");
+        requirePositiveId(taskAssignmentId, "Task assignment id");
+        requirePositiveId(questionId, "Question id");
 
         type.validatePayload(payload);
-
-        validatePayloadScope(
-            taskAssignmentId,
-            questionId,
-            payload);
+        validatePayloadScope(taskAssignmentId, questionId, payload);
     }
 
     /**
@@ -69,36 +52,19 @@ public record RealtimeForumEvent(
             payload);
     }
 
-    private static void validatePayloadScope(
-        Long taskAssignmentId,
-        Long questionId,
-        RealtimePayload payload) {
+    private static void validatePayloadScope(Long taskAssignmentId, Long questionId, RealtimePayload payload) {
         switch (payload) {
             case QuestionUpsertPayload questionUpsert ->
-                validateQuestionSnapshot(
-                    taskAssignmentId,
-                    questionId,
-                    questionUpsert.question());
+                validateQuestionSnapshot(taskAssignmentId, questionId, questionUpsert.question());
 
             case QuestionRemovalPayload questionRemoval -> {
-                requireMatchingId(
-                    taskAssignmentId,
-                    questionRemoval.taskAssignmentId(),
-                    "Task assignment id");
-                requireMatchingId(
-                    questionId,
-                    questionRemoval.questionId(),
-                    "Question id");
+                requireMatchingId(taskAssignmentId, questionRemoval.taskAssignmentId(), "Task assignment id");
+                requireMatchingId(questionId, questionRemoval.questionId(), "Question id");
             }
 
             case MessageCreatedPayload messageCreated -> {
-                requireMatchingId(
-                    questionId,
-                    messageCreated.message().questionThreadId(),
-                    "Question id");
-                requirePositiveId(
-                    messageCreated.message().id(),
-                    "Message id");
+                requireMatchingId(questionId, messageCreated.message().questionThreadId(), "Question id");
+                requirePositiveId(messageCreated.message().id(), "Message id");
 
                 Objects.requireNonNull(
                     messageCreated.message().createdAt(),
@@ -106,37 +72,19 @@ public record RealtimeForumEvent(
             }
 
             case InboxUpsertPayload inboxUpsert ->
-                validateInboxSnapshot(
-                    taskAssignmentId,
-                    questionId,
-                    inboxUpsert.question());
+                validateInboxSnapshot(taskAssignmentId, questionId, inboxUpsert.question());
 
             case InboxRemovalPayload inboxRemoval -> {
-                requireMatchingId(
-                    taskAssignmentId,
-                    inboxRemoval.taskAssignmentId(),
-                    "Task assignment id");
-                requireMatchingId(
-                    questionId,
-                    inboxRemoval.questionId(),
-                    "Question id");
+                requireMatchingId(taskAssignmentId, inboxRemoval.taskAssignmentId(), "Task assignment id");
+                requireMatchingId(questionId, inboxRemoval.questionId(), "Question id");
             }
 
             case ReviewUpdatePayload reviewUpdate ->
-                validateInboxSnapshot(
-                    taskAssignmentId,
-                    questionId,
-                    reviewUpdate.question());
+                validateInboxSnapshot(taskAssignmentId, questionId, reviewUpdate.question());
 
             case AccessRevokedPayload accessRevoked -> {
-                requireMatchingId(
-                    taskAssignmentId,
-                    accessRevoked.taskAssignmentId(),
-                    "Task assignment id");
-                requireMatchingId(
-                    questionId,
-                    accessRevoked.questionId(),
-                    "Question id");
+                requireMatchingId(taskAssignmentId, accessRevoked.taskAssignmentId(), "Task assignment id");
+                requireMatchingId(questionId, accessRevoked.questionId(), "Question id");
             }
         }
     }
@@ -145,68 +93,38 @@ public record RealtimeForumEvent(
         Long taskAssignmentId,
         Long questionId,
         QuestionThreadResponseDTO question) {
-        requireMatchingId(
-            taskAssignmentId,
-            question.taskAssignmentId(),
-            "Task assignment id");
-
-        requireMatchingId(
-            questionId,
-            question.id(),
-            "Question id");
-
-        requireNonNegativeVersion(
-            question.version());
+        requireMatchingId(taskAssignmentId, question.taskAssignmentId(), "Task assignment id");
+        requireMatchingId(questionId, question.id(), "Question id");
+        requireNonNegativeVersion(question.version());
     }
 
     private static void validateInboxSnapshot(
         Long taskAssignmentId,
         Long questionId,
         QuestionReviewInboxItemResponseDTO question) {
-        requireMatchingId(
-            taskAssignmentId,
-            question.taskAssignmentId(),
-            "Task assignment id");
-
-        requireMatchingId(
-            questionId,
-            question.id(),
-            "Question id");
-
-        requireNonNegativeVersion(
-            question.version());
+        requireMatchingId(taskAssignmentId, question.taskAssignmentId(), "Task assignment id");
+        requireMatchingId(questionId, question.id(), "Question id");
+        requireNonNegativeVersion(question.version());
     }
 
-    private static void requireMatchingId(
-        Long expected,
-        Long actual,
-        String fieldName) {
-        requirePositiveId(
-            actual,
-            fieldName);
+    private static void requireMatchingId(Long expected, Long actual, String fieldName) {
+        requirePositiveId(actual, fieldName);
 
         if (!expected.equals(actual)) {
             throw new IllegalArgumentException(
-                "%s in payload does not match event envelope"
-                    .formatted(fieldName));
+                "%s in payload does not match event envelope".formatted(fieldName));
         }
     }
 
-    private static void requirePositiveId(
-        Long identifier,
-        String fieldName) {
+    private static void requirePositiveId(Long identifier, String fieldName) {
         if (identifier == null || identifier <= 0) {
-            throw new IllegalArgumentException(
-                "%s must be a positive number"
-                    .formatted(fieldName));
+            throw new IllegalArgumentException("%s must be a positive number".formatted(fieldName));
         }
     }
 
-    private static void requireNonNegativeVersion(
-        Long version) {
+    private static void requireNonNegativeVersion(Long version) {
         if (version == null || version < 0) {
-            throw new IllegalArgumentException(
-                "Question version must not be negative");
+            throw new IllegalArgumentException("Question version must not be negative");
         }
     }
 }

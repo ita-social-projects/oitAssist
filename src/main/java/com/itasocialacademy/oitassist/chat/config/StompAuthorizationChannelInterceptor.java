@@ -21,35 +21,25 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class StompAuthorizationChannelInterceptor
-    implements ChannelInterceptor {
-    private static final String AUTHENTICATION_REQUIRED =
-        "STOMP authentication is required";
-    private static final String SUBSCRIPTION_NOT_ALLOWED =
-        "STOMP subscription is not allowed";
+public class StompAuthorizationChannelInterceptor implements ChannelInterceptor {
+    private static final String AUTHENTICATION_REQUIRED = "STOMP authentication is required";
+    private static final String SUBSCRIPTION_NOT_ALLOWED = "STOMP subscription is not allowed";
     private static final String ORG_AUTHORITY = "ROLE_ORG";
 
     private final ForumAccessService forumAccessService;
     private final QuestionThreadRepository questionThreadRepository;
 
     @Override
-    public Message<?> preSend(
-        Message<?> message,
-        MessageChannel channel) {
-        StompHeaderAccessor accessor =
-            MessageHeaderAccessor.getAccessor(
-                message,
-                StompHeaderAccessor.class);
-
+    public Message<?> preSend(Message<?> message, MessageChannel channel) {
+        StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
         if (accessor == null) {
             return message;
         }
-        StompCommand command = accessor.getCommand();
 
+        StompCommand command = accessor.getCommand();
         if (command == StompCommand.SEND) {
             throw subscriptionNotAllowed();
         }
-
         if (command == StompCommand.SUBSCRIBE) {
             authorizeSubscription(accessor);
         }
@@ -57,34 +47,20 @@ public class StompAuthorizationChannelInterceptor
         return message;
     }
 
-    private void authorizeSubscription(
-        StompHeaderAccessor accessor) {
-        Authentication authentication =
-            requireAuthentication(accessor.getUser());
-
-        RealtimeDestination destination =
-            RealtimeDestination.parse(accessor.getDestination());
+    private void authorizeSubscription(StompHeaderAccessor accessor) {
+        Authentication authentication = requireAuthentication(accessor.getUser());
+        RealtimeDestination destination = RealtimeDestination.parse(accessor.getDestination());
 
         try {
             switch (destination.type()) {
-                case TASK_ASSIGNMENT_FORUM ->
-                    authorizeTaskAssignmentForum(destination.resourceId());
-
-                case PUBLIC_QUESTION_THREAD ->
-                    authorizePublicQuestion(destination.resourceId());
-
-                case ADMINISTRATOR_INBOX,
-                    ADMINISTRATOR_ALL_QUESTIONS ->
-                    requireAdministrator();
-
-                case PERSONAL_REVIEWS ->
-                    requirePersonalReviewAccess(authentication);
-
+                case TASK_ASSIGNMENT_FORUM -> authorizeTaskAssignmentForum(destination.resourceId());
+                case PUBLIC_QUESTION_THREAD -> authorizePublicQuestion(destination.resourceId());
+                case ADMINISTRATOR_INBOX, ADMINISTRATOR_ALL_QUESTIONS -> requireAdministrator();
+                case PERSONAL_REVIEWS -> requirePersonalReviewAccess(authentication);
                 case PARTICIPANT_QUESTIONS -> {
                     // Every authenticated user may subscribe to their own
                     // Spring-resolved personal destination.
                 }
-
                 default -> throw subscriptionNotAllowed();
             }
         } catch (RuntimeException exception) {
@@ -92,17 +68,13 @@ public class StompAuthorizationChannelInterceptor
         }
     }
 
-    private void authorizeTaskAssignmentForum(
-        Long taskAssignmentId) {
+    private void authorizeTaskAssignmentForum(Long taskAssignmentId) {
         forumAccessService.requireTaskAssignmentForumAccess(taskAssignmentId);
     }
 
-    private void authorizePublicQuestion(
-        Long questionId) {
-        QuestionThread question = questionThreadRepository
-            .findById(questionId)
-            .orElseThrow(
-                StompAuthorizationChannelInterceptor::subscriptionNotAllowed);
+    private void authorizePublicQuestion(Long questionId) {
+        QuestionThread question = questionThreadRepository.findById(questionId)
+            .orElseThrow(StompAuthorizationChannelInterceptor::subscriptionNotAllowed);
 
         if (question.getVisibility() != PUBLIC) {
             throw subscriptionNotAllowed();
@@ -117,33 +89,22 @@ public class StompAuthorizationChannelInterceptor
         }
     }
 
-    private Authentication requireAuthentication(
-        Principal principal) {
-        if (!(principal instanceof Authentication authentication)
-            || !authentication.isAuthenticated()) {
-            throw new AuthenticationCredentialsNotFoundException(
-                AUTHENTICATION_REQUIRED);
+    private Authentication requireAuthentication(Principal principal) {
+        if (!(principal instanceof Authentication authentication) || !authentication.isAuthenticated()) {
+            throw new AuthenticationCredentialsNotFoundException(AUTHENTICATION_REQUIRED);
         }
-
         return authentication;
     }
 
-    private void requirePersonalReviewAccess(
-        Authentication authentication) {
-        if (forumAccessService.isAdministrator()
-            || hasAuthority(authentication, ORG_AUTHORITY)) {
+    private void requirePersonalReviewAccess(Authentication authentication) {
+        if (forumAccessService.isAdministrator() || hasAuthority(authentication, ORG_AUTHORITY)) {
             return;
         }
-
         throw subscriptionNotAllowed();
     }
 
-    private boolean hasAuthority(
-        Authentication authentication,
-        String requiredAuthority) {
-        return authentication
-            .getAuthorities()
-            .stream()
+    private boolean hasAuthority(Authentication authentication, String requiredAuthority) {
+        return authentication.getAuthorities().stream()
             .map(GrantedAuthority::getAuthority)
             .anyMatch(requiredAuthority::equals);
     }

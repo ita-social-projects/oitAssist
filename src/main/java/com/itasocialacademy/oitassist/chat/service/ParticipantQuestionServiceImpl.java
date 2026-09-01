@@ -32,8 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ParticipantQuestionServiceImpl
-    implements ParticipantQuestionService {
+public class ParticipantQuestionServiceImpl implements ParticipantQuestionService {
     private static final Sort MESSAGE_HISTORY_SORT = Sort.by(
         Sort.Order.asc("createdAt"),
         Sort.Order.asc("id"));
@@ -48,26 +47,16 @@ public class ParticipantQuestionServiceImpl
     @Override
     @Transactional(readOnly = true)
     public QuestionThreadResponseDTO getQuestionDetails(Long questionId) {
-        log.debug(
-            "Retrieving participant question details: questionId={}",
-            questionId);
-
+        log.debug("Retrieving participant question details: questionId={}", questionId);
         validateQuestionId(questionId);
-
-        QuestionThread question = loadAuthorizedQuestion(questionId);
-
-        return questionThreadMapper.toResponse(question);
+        return questionThreadMapper.toResponse(loadAuthorizedQuestion(questionId));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<QuestionMessageResponseDTO> getQuestionMessages(
-        Long questionId,
-        int page,
-        int size) {
+    public Page<QuestionMessageResponseDTO> getQuestionMessages(Long questionId, int page, int size) {
         log.debug(
-            "Retrieving participant question messages: "
-                + "questionId={}, page={}, size={}",
+            "Retrieving participant question messages: questionId={}, page={}, size={}",
             questionId,
             page,
             size);
@@ -76,48 +65,31 @@ public class ParticipantQuestionServiceImpl
         validatePageAndSize(page, size);
         loadAuthorizedQuestion(questionId);
 
-        Pageable pageable = PageRequest.of(
-            page,
-            size,
-            MESSAGE_HISTORY_SORT);
-
+        Pageable pageable = PageRequest.of(page, size, MESSAGE_HISTORY_SORT);
         Page<QuestionMessageResponseDTO> result = questionMessageRepository
-            .findAllByQuestionThreadId(
-                questionId,
-                pageable)
+            .findAllByQuestionThreadId(questionId, pageable)
             .map(questionMessageMapper::toResponse);
 
         log.debug(
-            "Participant question messages retrieved: "
-                + "questionId={}, page={}, returnedElements={}, totalElements={}",
+            "Participant question messages retrieved: questionId={}, page={}, returnedElements={}, totalElements={}",
             questionId,
             page,
             result.getNumberOfElements(),
             result.getTotalElements());
-
         return result;
     }
 
     @Override
     @Transactional
-    public QuestionMessageResponseDTO addComment(
-        Long questionId,
-        CreateCommentRequestDTO request) {
-        log.debug(
-            "Creating participant comment: questionId={}",
-            questionId);
-
+    public QuestionMessageResponseDTO addComment(Long questionId, CreateCommentRequestDTO request) {
+        log.debug("Creating participant comment: questionId={}", questionId);
         validateQuestionId(questionId);
 
         QuestionThread question = loadQuestion(questionId);
-
-        Long authorId =
-            forumAccessService.requireQuestionCommentAccess(question);
-
+        Long authorId = forumAccessService.requireQuestionCommentAccess(question);
         validateQuestionAcceptsComments(question);
 
         QuestionMessage comment = questionMessageMapper.toEntity(request);
-
         comment.setId(null);
         comment.setAuthorId(authorId);
         comment.setQuestionThreadId(questionId);
@@ -125,26 +97,16 @@ public class ParticipantQuestionServiceImpl
         comment.setCreatedAt(null);
 
         QuestionMessage savedComment = questionMessageRepository.save(comment);
-
         log.info(
-            "Participant comment created: "
-                + "messageId={}, questionId={}, authorId={}",
+            "Participant comment created: messageId={}, questionId={}, authorId={}",
             savedComment.getId(),
             questionId,
             authorId);
 
-        QuestionMessageResponseDTO messageResponse =
-            questionMessageMapper.toResponse(savedComment);
-
-        QuestionThreadResponseDTO questionResponse =
-            questionThreadMapper.toResponse(question);
-
+        QuestionMessageResponseDTO messageResponse = questionMessageMapper.toResponse(savedComment);
+        QuestionThreadResponseDTO questionResponse = questionThreadMapper.toResponse(question);
         applicationEventPublisher.publishEvent(
-            new CommentCreatedDomainEvent(
-                questionResponse,
-                messageResponse,
-                Instant.now()));
-
+            new CommentCreatedDomainEvent(questionResponse, messageResponse, Instant.now()));
         return messageResponse;
     }
 
@@ -155,17 +117,13 @@ public class ParticipantQuestionServiceImpl
     }
 
     private QuestionThread loadQuestion(Long questionId) {
-        return questionThreadRepository
-            .findById(questionId)
+        return questionThreadRepository.findById(questionId)
             .orElseThrow(() -> new QuestionNotFoundException(questionId));
     }
 
     private void validateQuestionAcceptsComments(QuestionThread question) {
         if (question.getState() != OPEN) {
-            throw new InvalidQuestionStateException(
-                question.getId(),
-                question.getState(),
-                "add comment");
+            throw new InvalidQuestionStateException(question.getId(), question.getState(), "add comment");
         }
     }
 
@@ -177,15 +135,10 @@ public class ParticipantQuestionServiceImpl
         }
     }
 
-    private void validatePageAndSize(
-        int page,
-        int size) {
+    private void validatePageAndSize(int page, int size) {
         if (page < 0) {
-            throw new ValidationException(
-                "Page number must not be negative",
-                ErrorCode.COMMON_VALIDATION_FAILED);
+            throw new ValidationException("Page number must not be negative", ErrorCode.COMMON_VALIDATION_FAILED);
         }
-
         if (size < 1 || size > MAX_PAGE_SIZE) {
             throw new ValidationException(
                 "Page size must be between 1 and %d".formatted(MAX_PAGE_SIZE),

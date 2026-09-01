@@ -5,16 +5,6 @@ import java.time.Instant;
 
 /**
  * Internal immutable event describing a successfully performed forum mutation.
- *
- * <p>
- * These events are published inside the business transaction and consumed only
- * after the transaction commits.
- * </p>
- *
- * <p>
- * Internal events must not be sent directly through STOMP. Participant and
- * administrator projection handlers convert them into external realtime events.
- * </p>
  */
 public sealed interface ForumDomainEvent
     permits QuestionCreatedDomainEvent,

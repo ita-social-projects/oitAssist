@@ -6,10 +6,7 @@ import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 
 public class InvalidForumResponderCandidateException extends ValidationException {
-    public InvalidForumResponderCandidateException(
-        Long userId,
-        Role actualRole,
-        UserStatus actualStatus) {
+    public InvalidForumResponderCandidateException(Long userId, Role actualRole, UserStatus actualStatus) {
         super(
             ("User %s cannot be assigned as a forum responder: "
                 + "required role is ORG and required status "

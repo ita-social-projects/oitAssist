@@ -11,6 +11,5 @@ public record CreateCommentRequestDTO(
         example = "Could you also clarify the memory limit?",
         maxLength = 10_000,
         requiredMode = Schema.RequiredMode.REQUIRED) @NotBlank(message = "Comment content must not be blank") @Size(
-            max = 10_000,
-            message = "Comment content must not exceed 10000 characters") String content) {
+            max = 10_000, message = "Comment content must not exceed 10000 characters") String content) {
 }

@@ -12,53 +12,34 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class ForumRealtimePublisher {
-    private static final String PERSONAL_QUESTIONS_QUEUE =
-        "/queue/questions";
-    private static final String PERSONAL_REVIEWS_QUEUE =
-        "/queue/reviews";
-    private static final String TASK_ASSIGNMENT_FORUM_DESTINATION =
-        "/topic/task-assignments/%d/questions";
-    private static final String QUESTION_THREAD_DESTINATION =
-        "/topic/questions/%d";
-    private static final String ADMINISTRATOR_INBOX_DESTINATION =
-        "/topic/admin/questions/inbox";
-    private static final String ADMINISTRATOR_ALL_QUESTIONS_DESTINATION =
-        "/topic/admin/questions/all";
+    private static final String PERSONAL_QUESTIONS_QUEUE = "/queue/questions";
+    private static final String PERSONAL_REVIEWS_QUEUE = "/queue/reviews";
+    private static final String TASK_ASSIGNMENT_FORUM_DESTINATION = "/topic/task-assignments/%d/questions";
+    private static final String QUESTION_THREAD_DESTINATION = "/topic/questions/%d";
+    private static final String ADMINISTRATOR_INBOX_DESTINATION = "/topic/admin/questions/inbox";
+    private static final String ADMINISTRATOR_ALL_QUESTIONS_DESTINATION = "/topic/admin/questions/all";
 
     private final SimpMessageSendingOperations messagingOperations;
 
-    public void toTaskAssignmentForum(
-        ForumDomainEvent event,
-        RealtimeEventType type,
-        RealtimePayload payload) {
+    public void toTaskAssignmentForum(ForumDomainEvent event, RealtimeEventType type, RealtimePayload payload) {
         messagingOperations.convertAndSend(
-            TASK_ASSIGNMENT_FORUM_DESTINATION.formatted(
-                event.taskAssignmentId()),
+            TASK_ASSIGNMENT_FORUM_DESTINATION.formatted(event.taskAssignmentId()),
             createRealtimeEvent(event, type, payload));
     }
 
-    public void toQuestionThread(
-        ForumDomainEvent event,
-        RealtimeEventType type,
-        RealtimePayload payload) {
+    public void toQuestionThread(ForumDomainEvent event, RealtimeEventType type, RealtimePayload payload) {
         messagingOperations.convertAndSend(
             QUESTION_THREAD_DESTINATION.formatted(event.questionId()),
             createRealtimeEvent(event, type, payload));
     }
 
-    public void toAdministratorInbox(
-        ForumDomainEvent event,
-        RealtimeEventType type,
-        RealtimePayload payload) {
+    public void toAdministratorInbox(ForumDomainEvent event, RealtimeEventType type, RealtimePayload payload) {
         messagingOperations.convertAndSend(
             ADMINISTRATOR_INBOX_DESTINATION,
             createRealtimeEvent(event, type, payload));
     }
 
-    public void toAdministratorAllQuestions(
-        ForumDomainEvent event,
-        RealtimeEventType type,
-        RealtimePayload payload) {
+    public void toAdministratorAllQuestions(ForumDomainEvent event, RealtimeEventType type, RealtimePayload payload) {
         messagingOperations.convertAndSend(
             ADMINISTRATOR_ALL_QUESTIONS_DESTINATION,
             createRealtimeEvent(event, type, payload));
@@ -69,25 +50,12 @@ public class ForumRealtimePublisher {
         ForumDomainEvent event,
         RealtimeEventType type,
         RealtimePayload payload) {
-        sendToUser(
-            userId,
-            PERSONAL_QUESTIONS_QUEUE,
-            event,
-            type,
-            payload);
+        sendToUser(userId, PERSONAL_QUESTIONS_QUEUE, event, type, payload);
     }
 
     public void toPersonalReviews(
-        Long userId,
-        ForumDomainEvent event,
-        RealtimeEventType type,
-        RealtimePayload payload) {
-        sendToUser(
-            userId,
-            PERSONAL_REVIEWS_QUEUE,
-            event,
-            type,
-            payload);
+        Long userId, ForumDomainEvent event, RealtimeEventType type, RealtimePayload payload) {
+        sendToUser(userId, PERSONAL_REVIEWS_QUEUE, event, type, payload);
     }
 
     private void sendToUser(
@@ -97,8 +65,7 @@ public class ForumRealtimePublisher {
         RealtimeEventType type,
         RealtimePayload payload) {
         if (userId == null || userId <= 0) {
-            throw new IllegalArgumentException(
-                "Realtime recipient id must be positive");
+            throw new IllegalArgumentException("Realtime recipient id must be positive");
         }
 
         messagingOperations.convertAndSendToUser(

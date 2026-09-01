@@ -9,20 +9,15 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
-@Mapper(
-    componentModel = "spring",
-    unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface QuestionMessageMapper {
-    QuestionMessageResponseDTO toResponse(
-        QuestionMessage questionMessage);
+    QuestionMessageResponseDTO toResponse(QuestionMessage questionMessage);
 
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "content", source = "content")
-    QuestionMessage toEntity(
-        CreateCommentRequestDTO request);
+    QuestionMessage toEntity(CreateCommentRequestDTO request);
 
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "content", source = "content")
-    QuestionMessage toOfficialAnswerEntity(
-        CreateOfficialAnswerRequestDTO request);
+    QuestionMessage toOfficialAnswerEntity(CreateOfficialAnswerRequestDTO request);
 }

@@ -14,37 +14,22 @@ public class OrganizationRealtimeRecipientResolver {
     @Transactional(readOnly = true)
     public List<Long> resolveInboxRecipients(Long taskAssignmentId) {
         requirePositiveId(taskAssignmentId, "Task assignment id");
-
-        return responderRepository
-            .findDistinctResponderUserIdsByTaskAssignmentId(taskAssignmentId)
-            .stream()
+        return responderRepository.findDistinctResponderUserIdsByTaskAssignmentId(taskAssignmentId).stream()
             .distinct()
             .toList();
     }
 
     @Transactional(readOnly = true)
-    public boolean isOrganizationResponder(
-        Long taskAssignmentId,
-        Long userId) {
-        if (taskAssignmentId == null
-            || taskAssignmentId <= 0
-            || userId == null
-            || userId <= 0) {
+    public boolean isOrganizationResponder(Long taskAssignmentId, Long userId) {
+        if (taskAssignmentId == null || taskAssignmentId <= 0 || userId == null || userId <= 0) {
             return false;
         }
-
-        return responderRepository
-            .existsByTaskAssignmentIdAndResponderUserId(
-                taskAssignmentId,
-                userId);
+        return responderRepository.existsByTaskAssignmentIdAndResponderUserId(taskAssignmentId, userId);
     }
 
-    private void requirePositiveId(
-        Long identifier,
-        String fieldName) {
+    private void requirePositiveId(Long identifier, String fieldName) {
         if (identifier == null || identifier <= 0) {
-            throw new IllegalArgumentException(
-                "%s must be a positive number".formatted(fieldName));
+            throw new IllegalArgumentException("%s must be a positive number".formatted(fieldName));
         }
     }
 }

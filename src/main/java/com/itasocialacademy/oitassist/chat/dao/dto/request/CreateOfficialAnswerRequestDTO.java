@@ -11,7 +11,6 @@ public record CreateOfficialAnswerRequestDTO(
         example = "The memory limit includes the input and output buffers.",
         maxLength = 10_000,
         requiredMode = Schema.RequiredMode.REQUIRED) @NotBlank(
-            message = "Official answer content must not be blank") @Size(
-                max = 10_000,
+            message = "Official answer content must not be blank") @Size(max = 10_000,
                 message = "Official answer content must not exceed 10000 characters") String content) {
 }

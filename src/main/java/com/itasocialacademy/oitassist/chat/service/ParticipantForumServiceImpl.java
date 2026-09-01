@@ -29,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class ParticipantForumServiceImpl implements ParticipantForumService {
     private static final int MAX_PAGE_SIZE = 100;
-
     private static final Sort FORUM_SORT = Sort.by(
         Sort.Order.desc("createdAt"),
         Sort.Order.desc("id"));
@@ -41,60 +40,34 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<QuestionThreadSummaryResponseDTO> getForumQuestions(
-        Long taskAssignmentId,
-        int page,
-        int size) {
+    public Page<QuestionThreadSummaryResponseDTO> getForumQuestions(Long taskAssignmentId, int page, int size) {
         log.debug(
-            "Retrieving participant forum questions: "
-                + "taskAssignmentId={}, page={}, size={}",
+            "Retrieving participant forum questions: taskAssignmentId={}, page={}, size={}",
             taskAssignmentId,
             page,
             size);
 
         validateRequest(taskAssignmentId, page, size);
+        Pageable pageable = PageRequest.of(page, size, FORUM_SORT);
 
-        Pageable pageable = PageRequest.of(
-            page,
-            size,
-            FORUM_SORT);
-
-        if (forumAccessService.isAdministrator()
-            || forumAccessService.isOrganizationResponder(taskAssignmentId)) {
-            return questionThreadRepository
-                .findAllQuestionsByTaskAssignmentId(
-                    taskAssignmentId,
-                    pageable)
+        if (forumAccessService.isAdministrator() || forumAccessService.isOrganizationResponder(taskAssignmentId)) {
+            return questionThreadRepository.findAllQuestionsByTaskAssignmentId(taskAssignmentId, pageable)
                 .map(questionThreadMapper::toSummaryResponse);
         }
 
-        Long participantId =
-            forumAccessService.requireTaskAssignmentForumAccess(taskAssignmentId);
-
-        return questionThreadRepository
-            .findParticipantVisibleQuestions(
-                taskAssignmentId,
-                participantId,
-                pageable)
+        Long participantId = forumAccessService.requireTaskAssignmentForumAccess(taskAssignmentId);
+        return questionThreadRepository.findParticipantVisibleQuestions(taskAssignmentId, participantId, pageable)
             .map(questionThreadMapper::toSummaryResponse);
     }
 
     @Override
     @Transactional
-    public QuestionThreadResponseDTO createQuestion(
-        Long taskAssignmentId,
-        CreateQuestionRequestDTO request) {
+    public QuestionThreadResponseDTO createQuestion(Long taskAssignmentId, CreateQuestionRequestDTO request) {
         validateTaskAssignmentId(taskAssignmentId);
+        log.debug("Creating participant question: taskAssignmentId={}", taskAssignmentId);
 
-        log.debug(
-            "Creating participant question: taskAssignmentId={}",
-            taskAssignmentId);
-
-        Long authorId =
-            forumAccessService.requireTaskAssignmentQuestionCreationAccess(
-                taskAssignmentId);
+        Long authorId = forumAccessService.requireTaskAssignmentQuestionCreationAccess(taskAssignmentId);
         QuestionThread question = questionThreadMapper.toEntity(request);
-
         question.setTaskAssignmentId(taskAssignmentId);
         question.setAuthorId(authorId);
         question.setStatus(QuestionStatus.NEW);
@@ -103,37 +76,22 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
         question.setAssignedReviewerId(null);
 
         QuestionThread savedQuestion = questionThreadRepository.save(question);
-
         log.info(
-            "New participant question created: "
-                + "questionId={}, taskAssignmentId={}, authorId={}",
+            "New participant question created: questionId={}, taskAssignmentId={}, authorId={}",
             savedQuestion.getId(),
             taskAssignmentId,
             authorId);
 
-        QuestionThreadResponseDTO response =
-            questionThreadMapper.toResponse(savedQuestion);
-
-        applicationEventPublisher.publishEvent(
-            new QuestionCreatedDomainEvent(
-                response,
-                Instant.now()));
-
+        QuestionThreadResponseDTO response = questionThreadMapper.toResponse(savedQuestion);
+        applicationEventPublisher.publishEvent(new QuestionCreatedDomainEvent(response, Instant.now()));
         return response;
     }
 
-    private void validateRequest(
-        Long taskAssignmentId,
-        int page,
-        int size) {
+    private void validateRequest(Long taskAssignmentId, int page, int size) {
         validateTaskAssignmentId(taskAssignmentId);
-
         if (page < 0) {
-            throw new ValidationException(
-                "Page number must not be negative",
-                ErrorCode.COMMON_VALIDATION_FAILED);
+            throw new ValidationException("Page number must not be negative", ErrorCode.COMMON_VALIDATION_FAILED);
         }
-
         if (size < 1 || size > MAX_PAGE_SIZE) {
             throw new ValidationException(
                 "Page size must be between 1 and %d".formatted(MAX_PAGE_SIZE),

@@ -4,9 +4,7 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.BusinessException;
 
 public class ForumResponderActiveReviewException extends BusinessException {
-    public ForumResponderActiveReviewException(
-        Long taskAssignmentId,
-        Long responderUserId) {
+    public ForumResponderActiveReviewException(Long taskAssignmentId, Long responderUserId) {
         super(
             ("Forum responder %s cannot be revoked from "
                 + "task assignment %s because the responder "

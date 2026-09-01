@@ -44,9 +44,6 @@ import org.springframework.web.bind.annotation.RequestBody;
     name = "Administrator Questions V1",
     description = "Administrator question inbox and review operations")
 public class AdministratorQuestionController {
-    private static final int DEFAULT_PAGE = 0;
-    private static final int DEFAULT_PAGE_SIZE = 20;
-
     private final AdministratorQuestionService administratorQuestionService;
 
     @Operation(
@@ -99,9 +96,7 @@ public class AdministratorQuestionController {
             description = "Page size within the configured limit",
             example = "20") @RequestParam(
                 defaultValue = "20") int size) {
-        validatePageAndSize(
-            page,
-            size);
+        validatePageAndSize(page, size);
         return ResponseEntity.ok(
             PageResponse.from(
                 administratorQuestionService

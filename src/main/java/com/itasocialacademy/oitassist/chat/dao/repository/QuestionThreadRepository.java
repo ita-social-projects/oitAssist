@@ -4,8 +4,8 @@ import com.itasocialacademy.oitassist.chat.dao.enums.QuestionState;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
-import jakarta.persistence.LockModeType;
 import com.itasocialacademy.oitassist.chat.dao.model.TaskAssignmentForumResponder;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -36,9 +36,7 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         @Param("participantId") Long participantId,
         Pageable pageable);
 
-    @Modifying(
-        clearAutomatically = true,
-        flushAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         UPDATE QuestionThread question
         SET question.assignedReviewerId = :administratorId,
@@ -74,12 +72,9 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         FROM QuestionThread question
         WHERE question.id = :questionId
         """)
-    Optional<QuestionThread> findByIdForUpdate(
-        @Param("questionId") Long questionId);
+    Optional<QuestionThread> findByIdForUpdate(@Param("questionId") Long questionId);
 
-    @Modifying(
-        clearAutomatically = true,
-        flushAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         UPDATE QuestionThread question
         SET question.visibility = :visibility,
@@ -94,9 +89,7 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         @Param("expectedVersion") Long expectedVersion,
         @Param("updatedAt") Instant updatedAt);
 
-    @Modifying(
-        clearAutomatically = true,
-        flushAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         UPDATE QuestionThread question
         SET question.status = :status,
@@ -111,9 +104,7 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         @Param("expectedVersion") Long expectedVersion,
         @Param("updatedAt") Instant updatedAt);
 
-    @Modifying(
-        clearAutomatically = true,
-        flushAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         UPDATE QuestionThread question
         SET question.state = :state,
@@ -152,12 +143,6 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
      * part of the query because eligible responders may review both private and
      * public questions.
      * </p>
-     *
-     * @param responderUserId current authenticated ORG user identifier
-     * @param state           required lifecycle state
-     * @param status          required review status
-     * @param pageable        page and deterministic ordering
-     * @return responder-scoped unclaimed question page
      */
     @Query("""
         SELECT question
@@ -168,19 +153,14 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
           AND EXISTS (
               SELECT responder.id
               FROM TaskAssignmentForumResponder responder
-              WHERE responder.taskAssignmentId =
-                    question.taskAssignmentId
-                AND responder.responderUserId =
-                    :responderUserId
+              WHERE responder.taskAssignmentId = question.taskAssignmentId
+                AND responder.responderUserId = :responderUserId
           )
         """)
     Page<QuestionThread> findResponderUnclaimedQuestions(
         @Param("responderUserId") Long responderUserId,
-
         @Param("state") QuestionState state,
-
         @Param("status") QuestionStatus status,
-
         Pageable pageable);
 
     Page<QuestionThread> findAllByStateAndAssignedReviewerId(
@@ -204,12 +184,9 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         FROM QuestionThread question
         WHERE question.id = :questionId
         """)
-    Optional<Long> findTaskAssignmentIdByQuestionId(
-        @Param("questionId") Long questionId);
+    Optional<Long> findTaskAssignmentIdByQuestionId(@Param("questionId") Long questionId);
 
-    @Modifying(
-        clearAutomatically = true,
-        flushAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         UPDATE QuestionThread question
         SET question.assignedReviewerId = :responderUserId,
@@ -228,12 +205,9 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         @Param("responderUserId") Long responderUserId,
         @Param("taskAssignmentId") Long taskAssignmentId,
         @Param("expectedVersion") Long expectedVersion,
-
         @Param("updatedAt") Instant updatedAt);
 
-    @Modifying(
-        clearAutomatically = true,
-        flushAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         UPDATE QuestionThread question
         SET question.visibility = :visibility,
@@ -243,23 +217,15 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
           AND question.taskAssignmentId = :taskAssignmentId
           AND question.version = :expectedVersion
         """)
-    // AND question.assignedReviewerId = :responderUserId
     int updateVisibilityAsResponderIfVersionMatches(
         @Param("questionId") Long questionId,
-
         @Param("taskAssignmentId") Long taskAssignmentId,
-
         @Param("responderUserId") Long responderUserId,
-
         @Param("visibility") QuestionVisibility visibility,
-
         @Param("expectedVersion") Long expectedVersion,
-
         @Param("updatedAt") Instant updatedAt);
 
-    @Modifying(
-        clearAutomatically = true,
-        flushAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         UPDATE QuestionThread question
         SET question.status = :status,
@@ -269,23 +235,15 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
           AND question.taskAssignmentId = :taskAssignmentId
           AND question.version = :expectedVersion
         """)
-    // AND question.assignedReviewerId = :responderUserId
     int updateStatusAsResponderIfVersionMatches(
         @Param("questionId") Long questionId,
-
         @Param("taskAssignmentId") Long taskAssignmentId,
-
         @Param("responderUserId") Long responderUserId,
-
         @Param("status") QuestionStatus status,
-
         @Param("expectedVersion") Long expectedVersion,
-
         @Param("updatedAt") Instant updatedAt);
 
-    @Modifying(
-        clearAutomatically = true,
-        flushAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         UPDATE QuestionThread question
         SET question.state = :state,
@@ -295,17 +253,11 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
           AND question.taskAssignmentId = :taskAssignmentId
           AND question.version = :expectedVersion
         """)
-    // AND question.assignedReviewerId = :responderUserId
     int updateStateAsResponderIfVersionMatches(
         @Param("questionId") Long questionId,
-
         @Param("taskAssignmentId") Long taskAssignmentId,
-
         @Param("responderUserId") Long responderUserId,
-
         @Param("state") QuestionState state,
-
         @Param("expectedVersion") Long expectedVersion,
-
         @Param("updatedAt") Instant updatedAt);
 }

@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 
 @Schema(description = "Request for creating a participant question")
 public record CreateQuestionRequestDTO(
-
     @Schema(
         description = "Question title",
         example = "Clarification about input format",

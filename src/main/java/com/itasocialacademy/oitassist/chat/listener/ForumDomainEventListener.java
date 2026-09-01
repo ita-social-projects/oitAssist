@@ -27,13 +27,11 @@ public class ForumDomainEventListener {
             PARTICIPANT_PROJECTION,
             participantRealtimeHandler.getClass().getSimpleName(),
             () -> participantRealtimeHandler.handle(event));
-
         dispatch(
             event,
             ADMINISTRATOR_PROJECTION,
             reviewRealtimeHandler.getClass().getSimpleName(),
             () -> reviewRealtimeHandler.projectAdministrator(event));
-
         dispatch(
             event,
             ORGANIZATION_PROJECTION,
@@ -41,11 +39,7 @@ public class ForumDomainEventListener {
             () -> reviewRealtimeHandler.projectOrganization(event));
     }
 
-    private void dispatch(
-        ForumDomainEvent event,
-        String projection,
-        String handlerName,
-        Runnable projectionAction) {
+    private void dispatch(ForumDomainEvent event, String projection, String handlerName, Runnable projectionAction) {
         try {
             projectionAction.run();
         } catch (RuntimeException exception) {
@@ -57,8 +51,7 @@ public class ForumDomainEventListener {
              * contain protected question or message data.
              */
             log.error(
-                "Realtime projection delivery failed: "
-                    + "eventType={}, taskAssignmentId={}, questionId={}, "
+                "Realtime projection delivery failed: eventType={}, taskAssignmentId={}, questionId={}, "
                     + "projection={}, handler={}, exceptionType={}",
                 event.getClass().getSimpleName(),
                 event.taskAssignmentId(),

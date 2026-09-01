@@ -12,8 +12,7 @@ public interface ParticipantQuestionService {
      * @param questionId identifier of the requested question thread
      * @return complete participant-facing question details
      */
-    QuestionThreadResponseDTO getQuestionDetails(
-        Long questionId);
+    QuestionThreadResponseDTO getQuestionDetails(Long questionId);
 
     /**
      * Retrieves a page of messages belonging to a question visible to the current
@@ -29,10 +28,7 @@ public interface ParticipantQuestionService {
      * @param size       requested page size
      * @return page of participant-facing question messages
      */
-    Page<QuestionMessageResponseDTO> getQuestionMessages(
-        Long questionId,
-        int page,
-        int size);
+    Page<QuestionMessageResponseDTO> getQuestionMessages(Long questionId, int page, int size);
 
     /**
      * Creates a participant comment for an accessible open question.
@@ -47,7 +43,5 @@ public interface ParticipantQuestionService {
      * @param request    validated request containing only comment content
      * @return created participant comment
      */
-    QuestionMessageResponseDTO addComment(
-        Long questionId,
-        CreateCommentRequestDTO request);
+    QuestionMessageResponseDTO addComment(Long questionId, CreateCommentRequestDTO request);
 }

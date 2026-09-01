@@ -15,9 +15,7 @@ public record RealtimeMessagingProperties(
     @PositiveOrZero long serverHeartbeat,
     @PositiveOrZero long clientHeartbeat) {
     public RealtimeMessagingProperties {
-        Objects.requireNonNull(
-            allowedOrigins,
-            "Realtime allowed origins must not be null");
+        Objects.requireNonNull(allowedOrigins, "Realtime allowed origins must not be null");
         allowedOrigins = List.copyOf(allowedOrigins);
     }
 }

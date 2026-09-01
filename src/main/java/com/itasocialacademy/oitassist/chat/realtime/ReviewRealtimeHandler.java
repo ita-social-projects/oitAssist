@@ -33,30 +33,19 @@ public class ReviewRealtimeHandler {
 
     public void projectAdministrator(ForumDomainEvent event) {
         switch (event) {
-            case QuestionCreatedDomainEvent questionCreated ->
-                synchronizeAdministratorInbox(questionCreated);
-
+            case QuestionCreatedDomainEvent questionCreated -> synchronizeAdministratorInbox(questionCreated);
             case CommentCreatedDomainEvent commentCreated ->
-                sendAdministratorMessageToAssignedReviewer(
-                    commentCreated,
-                    commentCreated.message());
-
+                sendAdministratorMessageToAssignedReviewer(commentCreated, commentCreated.message());
             case QuestionClaimedDomainEvent questionClaimed -> {
                 synchronizeAdministratorInbox(questionClaimed);
-                sendAdministratorReviewUpdateToReviewer(
-                    questionClaimed,
-                    questionClaimed.currentReviewerId());
+                sendAdministratorReviewUpdateToReviewer(questionClaimed, questionClaimed.currentReviewerId());
             }
-
             case OfficialAnswerPublishedDomainEvent answerPublished ->
                 projectAdministratorOfficialAnswerPublished(answerPublished);
-
             case QuestionVisibilityChangedDomainEvent visibilityChanged ->
                 projectAdministratorVisibilityChanged(visibilityChanged);
-
             case QuestionStatusChangedDomainEvent statusChanged ->
                 projectAdministratorMembershipAndAssignedReview(statusChanged);
-
             case QuestionStateChangedDomainEvent stateChanged ->
                 projectAdministratorMembershipAndAssignedReview(stateChanged);
         }
@@ -64,62 +53,43 @@ public class ReviewRealtimeHandler {
 
     public void projectOrganization(ForumDomainEvent event) {
         switch (event) {
-            case QuestionCreatedDomainEvent questionCreated ->
-                synchronizeOrganizationInbox(questionCreated);
-
+            case QuestionCreatedDomainEvent questionCreated -> synchronizeOrganizationInbox(questionCreated);
             case CommentCreatedDomainEvent commentCreated ->
-                sendOrganizationMessageToAssignedResponder(
-                    commentCreated,
-                    commentCreated.message());
-
+                sendOrganizationMessageToAssignedResponder(commentCreated, commentCreated.message());
             case QuestionClaimedDomainEvent questionClaimed -> {
                 synchronizeOrganizationInbox(questionClaimed);
                 sendOrganizationReviewUpdateToAssignedResponder(questionClaimed);
             }
-
             case OfficialAnswerPublishedDomainEvent answerPublished ->
                 projectOrganizationOfficialAnswerPublished(answerPublished);
-
             case QuestionVisibilityChangedDomainEvent visibilityChanged ->
                 projectOrganizationVisibilityChanged(visibilityChanged);
-
             case QuestionStatusChangedDomainEvent statusChanged ->
                 projectOrganizationMembershipAndAssignedReview(statusChanged);
-
             case QuestionStateChangedDomainEvent stateChanged ->
                 projectOrganizationMembershipAndAssignedReview(stateChanged);
         }
     }
 
-    private void projectAdministratorOfficialAnswerPublished(
-        OfficialAnswerPublishedDomainEvent event) {
+    private void projectAdministratorOfficialAnswerPublished(OfficialAnswerPublishedDomainEvent event) {
         synchronizeAdministratorInbox(event);
-
         Long reviewerId = event.question().assignedReviewerId();
-
         if (reviewerId == null) {
             return;
         }
-
-        sendAdministratorMessageToReviewer(
-            event,
-            reviewerId,
-            event.message());
+        sendAdministratorMessageToReviewer(event, reviewerId, event.message());
         sendAdministratorReviewUpdateToReviewer(event, reviewerId);
     }
 
-    private void projectAdministratorVisibilityChanged(
-        QuestionVisibilityChangedDomainEvent event) {
+    private void projectAdministratorVisibilityChanged(QuestionVisibilityChangedDomainEvent event) {
         if (isInboxEligible(event.question())) {
             sendAdministratorInboxUpsert(event);
             return;
         }
-
         sendAdministratorReviewUpdateToAssignedReviewer(event);
     }
 
-    private void projectAdministratorMembershipAndAssignedReview(
-        ForumDomainEvent event) {
+    private void projectAdministratorMembershipAndAssignedReview(ForumDomainEvent event) {
         synchronizeAdministratorInbox(event);
         sendAdministratorReviewUpdateToAssignedReviewer(event);
     }
@@ -131,59 +101,40 @@ public class ReviewRealtimeHandler {
             publisher.toAdministratorInbox(
                 event,
                 INBOX_REMOVED,
-                new InboxRemovalPayload(
-                    event.taskAssignmentId(),
-                    event.questionId()));
+                new InboxRemovalPayload(event.taskAssignmentId(), event.questionId()));
         }
     }
 
     private void sendAdministratorInboxUpsert(ForumDomainEvent event) {
         publisher.toAdministratorInbox(
-            event,
-            INBOX_UPSERTED,
-            new InboxUpsertPayload(
-                toReviewSummary(event.question())));
+            event, INBOX_UPSERTED, new InboxUpsertPayload(toReviewSummary(event.question())));
     }
 
-    private void sendAdministratorReviewUpdateToAssignedReviewer(
-        ForumDomainEvent event) {
+    private void sendAdministratorReviewUpdateToAssignedReviewer(ForumDomainEvent event) {
         Long reviewerId = event.question().assignedReviewerId();
-
-        if (reviewerId == null) {
-            return;
+        if (reviewerId != null) {
+            sendAdministratorReviewUpdateToReviewer(event, reviewerId);
         }
-
-        sendAdministratorReviewUpdateToReviewer(event, reviewerId);
     }
 
-    private void sendAdministratorReviewUpdateToReviewer(
-        ForumDomainEvent event,
-        Long reviewerId) {
+    private void sendAdministratorReviewUpdateToReviewer(ForumDomainEvent event, Long reviewerId) {
         if (isOrganizationResponder(event, reviewerId)) {
             return;
         }
-
         publisher.toPersonalReviews(
             reviewerId,
             event,
             REVIEW_UPDATED,
-            new ReviewUpdatePayload(
-                toReviewSummary(event.question())));
+            new ReviewUpdatePayload(toReviewSummary(event.question())));
     }
 
     private void sendAdministratorMessageToAssignedReviewer(
         ForumDomainEvent event,
         QuestionMessageResponseDTO message) {
         Long reviewerId = event.question().assignedReviewerId();
-
-        if (reviewerId == null) {
-            return;
+        if (reviewerId != null) {
+            sendAdministratorMessageToReviewer(event, reviewerId, message);
         }
-
-        sendAdministratorMessageToReviewer(
-            event,
-            reviewerId,
-            message);
     }
 
     private void sendAdministratorMessageToReviewer(
@@ -193,52 +144,33 @@ public class ReviewRealtimeHandler {
         if (isOrganizationResponder(event, reviewerId)) {
             return;
         }
-
-        publisher.toPersonalReviews(
-            reviewerId,
-            event,
-            MESSAGE_CREATED,
-            new MessageCreatedPayload(message));
+        publisher.toPersonalReviews(reviewerId, event, MESSAGE_CREATED, new MessageCreatedPayload(message));
     }
 
-    private boolean isOrganizationResponder(
-        ForumDomainEvent event,
-        Long reviewerId) {
+    private boolean isOrganizationResponder(ForumDomainEvent event, Long reviewerId) {
         return reviewerId != null
-            && organizationRecipientResolver.isOrganizationResponder(
-                event.taskAssignmentId(),
-                reviewerId);
+            && organizationRecipientResolver.isOrganizationResponder(event.taskAssignmentId(), reviewerId);
     }
 
-    private void projectOrganizationOfficialAnswerPublished(
-        OfficialAnswerPublishedDomainEvent event) {
+    private void projectOrganizationOfficialAnswerPublished(OfficialAnswerPublishedDomainEvent event) {
         synchronizeOrganizationInbox(event);
-
         Long responderId = resolveAssignedOrganizationResponder(event);
-
         if (responderId == null) {
             return;
         }
-
-        sendOrganizationMessageToResponder(
-            event,
-            responderId,
-            event.message());
+        sendOrganizationMessageToResponder(event, responderId, event.message());
         sendOrganizationReviewUpdateToResponder(event, responderId);
     }
 
-    private void projectOrganizationVisibilityChanged(
-        QuestionVisibilityChangedDomainEvent event) {
+    private void projectOrganizationVisibilityChanged(QuestionVisibilityChangedDomainEvent event) {
         if (isInboxEligible(event.question())) {
             sendOrganizationInboxUpsert(event);
             return;
         }
-
         sendOrganizationReviewUpdateToAssignedResponder(event);
     }
 
-    private void projectOrganizationMembershipAndAssignedReview(
-        ForumDomainEvent event) {
+    private void projectOrganizationMembershipAndAssignedReview(ForumDomainEvent event) {
         synchronizeOrganizationInbox(event);
         sendOrganizationReviewUpdateToAssignedResponder(event);
     }
@@ -252,11 +184,8 @@ public class ReviewRealtimeHandler {
     }
 
     private void sendOrganizationInboxUpsert(ForumDomainEvent event) {
-        QuestionReviewInboxItemResponseDTO summary =
-            toReviewSummary(event.question());
-
-        organizationRecipientResolver
-            .resolveInboxRecipients(event.taskAssignmentId())
+        QuestionReviewInboxItemResponseDTO summary = toReviewSummary(event.question());
+        organizationRecipientResolver.resolveInboxRecipients(event.taskAssignmentId())
             .forEach(responderId -> publisher.toPersonalReviews(
                 responderId,
                 event,
@@ -265,88 +194,58 @@ public class ReviewRealtimeHandler {
     }
 
     private void sendOrganizationInboxRemoval(ForumDomainEvent event) {
-        List<Long> responderIds =
-            organizationRecipientResolver.resolveInboxRecipients(
-                event.taskAssignmentId());
-
+        List<Long> responderIds = organizationRecipientResolver.resolveInboxRecipients(event.taskAssignmentId());
         responderIds.forEach(responderId -> publisher.toPersonalReviews(
             responderId,
             event,
             INBOX_REMOVED,
-            new InboxRemovalPayload(
-                event.taskAssignmentId(),
-                event.questionId())));
+            new InboxRemovalPayload(event.taskAssignmentId(), event.questionId())));
     }
 
-    private void sendOrganizationReviewUpdateToAssignedResponder(
-        ForumDomainEvent event) {
+    private void sendOrganizationReviewUpdateToAssignedResponder(ForumDomainEvent event) {
         Long responderId = resolveAssignedOrganizationResponder(event);
-
-        if (responderId == null) {
-            return;
+        if (responderId != null) {
+            sendOrganizationReviewUpdateToResponder(event, responderId);
         }
-
-        sendOrganizationReviewUpdateToResponder(event, responderId);
     }
 
-    private void sendOrganizationReviewUpdateToResponder(
-        ForumDomainEvent event,
-        Long responderId) {
+    private void sendOrganizationReviewUpdateToResponder(ForumDomainEvent event, Long responderId) {
         publisher.toPersonalReviews(
             responderId,
             event,
             REVIEW_UPDATED,
-            new ReviewUpdatePayload(
-                toReviewSummary(event.question())));
+            new ReviewUpdatePayload(toReviewSummary(event.question())));
     }
 
     private void sendOrganizationMessageToAssignedResponder(
         ForumDomainEvent event,
         QuestionMessageResponseDTO message) {
         Long responderId = resolveAssignedOrganizationResponder(event);
-
-        if (responderId == null) {
-            return;
+        if (responderId != null) {
+            sendOrganizationMessageToResponder(event, responderId, message);
         }
-        sendOrganizationMessageToResponder(
-            event,
-            responderId,
-            message);
     }
 
     private void sendOrganizationMessageToResponder(
         ForumDomainEvent event,
         Long responderId,
         QuestionMessageResponseDTO message) {
-        publisher.toPersonalReviews(
-            responderId,
-            event,
-            MESSAGE_CREATED,
-            new MessageCreatedPayload(message));
+        publisher.toPersonalReviews(responderId, event, MESSAGE_CREATED, new MessageCreatedPayload(message));
     }
 
-    private Long resolveAssignedOrganizationResponder(
-        ForumDomainEvent event) {
+    private Long resolveAssignedOrganizationResponder(ForumDomainEvent event) {
         Long reviewerId = event.question().assignedReviewerId();
-
-        if (!organizationRecipientResolver.isOrganizationResponder(
-            event.taskAssignmentId(),
-            reviewerId)) {
+        if (!organizationRecipientResolver.isOrganizationResponder(event.taskAssignmentId(), reviewerId)) {
             return null;
         }
-
         return reviewerId;
     }
 
-    private boolean isInboxEligible(
-        QuestionThreadResponseDTO question) {
-        return question.state() == OPEN
-            && question.status() == NEW
-            && question.assignedReviewerId() == null;
+    private boolean isInboxEligible(QuestionThreadResponseDTO question) {
+        return question.state() == OPEN && question.status() == NEW && question.assignedReviewerId() == null;
     }
 
-    private QuestionReviewInboxItemResponseDTO toReviewSummary(
-        QuestionThreadResponseDTO question) {
+    private QuestionReviewInboxItemResponseDTO toReviewSummary(QuestionThreadResponseDTO question) {
         return new QuestionReviewInboxItemResponseDTO(
             question.id(),
             question.taskAssignmentId(),

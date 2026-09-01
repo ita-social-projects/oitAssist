@@ -49,14 +49,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class AdministratorQuestionServiceImpl
-    implements AdministratorQuestionService {
+public class AdministratorQuestionServiceImpl implements AdministratorQuestionService {
     private static final String ADMIN_ROLE = "ADMIN";
-
     private static final Sort UNCLAIMED_QUESTION_SORT = Sort.by(
         Sort.Order.asc("createdAt"),
         Sort.Order.asc("id"));
-
     private static final Sort ASSIGNED_QUESTION_SORT = Sort.by(
         Sort.Order.desc("updatedAt"),
         Sort.Order.desc("id"));
@@ -71,9 +68,7 @@ public class AdministratorQuestionServiceImpl
 
     @Override
     @Transactional(readOnly = true)
-    public Page<QuestionReviewInboxItemResponseDTO> getUnclaimedQuestions(
-        int page,
-        int size) {
+    public Page<QuestionReviewInboxItemResponseDTO> getUnclaimedQuestions(int page, int size) {
         validatePageAndSize(page, size);
 
         Long administratorId = requireAdministrator();
@@ -85,16 +80,10 @@ public class AdministratorQuestionServiceImpl
             page,
             size);
 
-        Pageable pageable = PageRequest.of(
-            page,
-            size,
-            UNCLAIMED_QUESTION_SORT);
+        Pageable pageable = PageRequest.of(page, size, UNCLAIMED_QUESTION_SORT);
 
         Page<QuestionReviewInboxItemResponseDTO> result = questionThreadRepository
-            .findAllByStateAndStatusAndAssignedReviewerIdIsNull(
-                OPEN,
-                NEW,
-                pageable)
+            .findAllByStateAndStatusAndAssignedReviewerIdIsNull(OPEN, NEW, pageable)
             .map(questionThreadMapper::toReviewInboxItemResponse);
 
         log.debug(
@@ -111,10 +100,7 @@ public class AdministratorQuestionServiceImpl
 
     @Override
     @Transactional(readOnly = true)
-    public Page<QuestionReviewInboxItemResponseDTO> getAssignedQuestions(
-        QuestionStatus status,
-        int page,
-        int size) {
+    public Page<QuestionReviewInboxItemResponseDTO> getAssignedQuestions(QuestionStatus status, int page, int size) {
         validatePageAndSize(page, size);
         Long administratorId = requireAdministrator();
 
@@ -126,24 +112,15 @@ public class AdministratorQuestionServiceImpl
             page,
             size);
 
-        Pageable pageable = PageRequest.of(
-            page,
-            size,
-            ASSIGNED_QUESTION_SORT);
+        Pageable pageable = PageRequest.of(page, size, ASSIGNED_QUESTION_SORT);
 
         Page<QuestionThread> assignedQuestions = status == null
-            ? questionThreadRepository.findAllByStateAndAssignedReviewerId(
-                OPEN,
-                administratorId,
-                pageable)
+            ? questionThreadRepository.findAllByStateAndAssignedReviewerId(OPEN, administratorId, pageable)
             : questionThreadRepository.findAllByStateAndAssignedReviewerIdAndStatus(
-                OPEN,
-                administratorId,
-                status,
-                pageable);
+                OPEN, administratorId, status, pageable);
 
-        Page<QuestionReviewInboxItemResponseDTO> result = assignedQuestions
-            .map(questionThreadMapper::toReviewInboxItemResponse);
+        Page<QuestionReviewInboxItemResponseDTO> result =
+            assignedQuestions.map(questionThreadMapper::toReviewInboxItemResponse);
 
         log.debug(
             "Assigned administrator questions retrieved: "
@@ -160,9 +137,7 @@ public class AdministratorQuestionServiceImpl
 
     @Override
     @Transactional
-    public QuestionThreadResponseDTO claimQuestion(
-        Long questionId,
-        Long expectedVersion) {
+    public QuestionThreadResponseDTO claimQuestion(Long questionId, Long expectedVersion) {
         validateClaimInput(questionId, expectedVersion);
 
         Long administratorId = requireAdministrator();
@@ -175,10 +150,7 @@ public class AdministratorQuestionServiceImpl
             expectedVersion);
 
         QuestionThread claimedQuestion = questionClaimService.claimAsAdministrator(
-            questionId,
-            administratorId,
-            expectedVersion,
-            Instant.now());
+            questionId, administratorId, expectedVersion, Instant.now());
 
         log.debug(
             "Question claimed successfully: "
@@ -187,24 +159,17 @@ public class AdministratorQuestionServiceImpl
             administratorId,
             claimedQuestion.getVersion());
 
-        QuestionThreadResponseDTO response =
-            questionThreadMapper.toResponse(claimedQuestion);
+        QuestionThreadResponseDTO response = questionThreadMapper.toResponse(claimedQuestion);
 
         applicationEventPublisher.publishEvent(
-            new QuestionClaimedDomainEvent(
-                response,
-                null,
-                administratorId,
-                Instant.now()));
+            new QuestionClaimedDomainEvent(response, null, administratorId, Instant.now()));
 
         return response;
     }
 
     @Override
     @Transactional
-    public QuestionMessageResponseDTO publishOfficialAnswer(
-        Long questionId,
-        CreateOfficialAnswerRequestDTO request) {
+    public QuestionMessageResponseDTO publishOfficialAnswer(Long questionId, CreateOfficialAnswerRequestDTO request) {
         validateQuestionId(questionId);
 
         Long administratorId = requireAdministrator();
@@ -215,14 +180,12 @@ public class AdministratorQuestionServiceImpl
             questionId,
             administratorId);
 
-        QuestionThread question = questionThreadRepository
-            .findByIdForUpdate(questionId)
+        QuestionThread question = questionThreadRepository.findByIdForUpdate(questionId)
             .orElseThrow(() -> new QuestionNotFoundException(questionId));
 
         validateQuestionAcceptsOfficialAnswers(question);
 
-        QuestionMessage officialAnswer =
-            questionMessageMapper.toOfficialAnswerEntity(request);
+        QuestionMessage officialAnswer = questionMessageMapper.toOfficialAnswerEntity(request);
 
         officialAnswer.setId(null);
         officialAnswer.setQuestionThreadId(questionId);
@@ -235,16 +198,13 @@ public class AdministratorQuestionServiceImpl
         if (question.getStatus() != ANSWERED) {
             question.setStatus(ANSWERED);
         }
-        QuestionMessage savedAnswer =
-            questionMessageRepository.save(officialAnswer);
+
+        QuestionMessage savedAnswer = questionMessageRepository.save(officialAnswer);
 
         questionThreadRepository.flush();
 
-        QuestionMessageResponseDTO messageResponse =
-            questionMessageMapper.toResponse(savedAnswer);
-
-        QuestionThreadResponseDTO questionResponse =
-            questionThreadMapper.toResponse(question);
+        QuestionMessageResponseDTO messageResponse = questionMessageMapper.toResponse(savedAnswer);
+        QuestionThreadResponseDTO questionResponse = questionThreadMapper.toResponse(question);
 
         applicationEventPublisher.publishEvent(
             new OfficialAnswerPublishedDomainEvent(
@@ -266,13 +226,9 @@ public class AdministratorQuestionServiceImpl
 
     @Override
     @Transactional
-    public QuestionThreadResponseDTO updateVisibility(
-        Long questionId,
-        UpdateQuestionVisibilityRequestDTO request) {
+    public QuestionThreadResponseDTO updateVisibility(Long questionId, UpdateQuestionVisibilityRequestDTO request) {
         validateModerationRequest(questionId, request);
-        validateModerationValue(
-            request.visibility(),
-            "Question visibility");
+        validateModerationValue(request.visibility(), "Question visibility");
         validateExpectedVersion(request.version());
 
         Long administratorId = requireAdministrator();
@@ -288,12 +244,8 @@ public class AdministratorQuestionServiceImpl
             request.visibility(),
             request.version());
 
-        int updatedRows = questionThreadRepository
-            .updateVisibilityIfVersionMatches(
-                questionId,
-                request.visibility(),
-                request.version(),
-                Instant.now());
+        int updatedRows = questionThreadRepository.updateVisibilityIfVersionMatches(
+            questionId, request.visibility(), request.version(), Instant.now());
 
         QuestionThreadResponseDTO response = completeModerationUpdate(
             questionId,
@@ -315,13 +267,9 @@ public class AdministratorQuestionServiceImpl
 
     @Override
     @Transactional
-    public QuestionThreadResponseDTO updateStatus(
-        Long questionId,
-        UpdateQuestionStatusRequestDTO request) {
+    public QuestionThreadResponseDTO updateStatus(Long questionId, UpdateQuestionStatusRequestDTO request) {
         validateModerationRequest(questionId, request);
-        validateModerationValue(
-            request.status(),
-            "Question status");
+        validateModerationValue(request.status(), "Question status");
         validateExpectedVersion(request.version());
 
         Long administratorId = requireAdministrator();
@@ -337,12 +285,8 @@ public class AdministratorQuestionServiceImpl
             request.status(),
             request.version());
 
-        int updatedRows = questionThreadRepository
-            .updateStatusIfVersionMatches(
-                questionId,
-                request.status(),
-                request.version(),
-                Instant.now());
+        int updatedRows = questionThreadRepository.updateStatusIfVersionMatches(
+            questionId, request.status(), request.version(), Instant.now());
 
         QuestionThreadResponseDTO response = completeModerationUpdate(
             questionId,
@@ -364,13 +308,9 @@ public class AdministratorQuestionServiceImpl
 
     @Override
     @Transactional
-    public QuestionThreadResponseDTO updateState(
-        Long questionId,
-        UpdateQuestionStateRequestDTO request) {
+    public QuestionThreadResponseDTO updateState(Long questionId, UpdateQuestionStateRequestDTO request) {
         validateModerationRequest(questionId, request);
-        validateModerationValue(
-            request.state(),
-            "Question state");
+        validateModerationValue(request.state(), "Question state");
         validateExpectedVersion(request.version());
 
         Long administratorId = requireAdministrator();
@@ -386,12 +326,8 @@ public class AdministratorQuestionServiceImpl
             request.state(),
             request.version());
 
-        int updatedRows = questionThreadRepository
-            .updateStateIfVersionMatches(
-                questionId,
-                request.state(),
-                request.version(),
-                Instant.now());
+        int updatedRows = questionThreadRepository.updateStateIfVersionMatches(
+            questionId, request.state(), request.version(), Instant.now());
 
         QuestionThreadResponseDTO response = completeModerationUpdate(
             questionId,
@@ -412,8 +348,7 @@ public class AdministratorQuestionServiceImpl
     }
 
     private QuestionThread loadQuestion(Long questionId) {
-        return questionThreadRepository
-            .findById(questionId)
+        return questionThreadRepository.findById(questionId)
             .orElseThrow(() -> new QuestionNotFoundException(questionId));
     }
 
@@ -425,8 +360,7 @@ public class AdministratorQuestionServiceImpl
         Object requestedValue,
         int updatedRows) {
         if (updatedRows == 0) {
-            QuestionThread currentQuestion = questionThreadRepository
-                .findById(questionId)
+            QuestionThread currentQuestion = questionThreadRepository.findById(questionId)
                 .orElseThrow(() -> {
                     log.warn(
                         "Question moderation failed because question does not exist: "
@@ -452,8 +386,7 @@ public class AdministratorQuestionServiceImpl
             throw new QuestionVersionConflictException(questionId);
         }
 
-        QuestionThread updatedQuestion = questionThreadRepository
-            .findById(questionId)
+        QuestionThread updatedQuestion = questionThreadRepository.findById(questionId)
             .orElseThrow(() -> new QuestionNotFoundException(questionId));
 
         log.info(
@@ -478,8 +411,7 @@ public class AdministratorQuestionServiceImpl
     }
 
     private Long requireAdministrator() {
-        Long currentUserId = securityFacade
-            .getCurrentUserId()
+        Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthenticationException(
                 "Authentication is required to access "
                     + "the administrator question inbox",
@@ -495,9 +427,7 @@ public class AdministratorQuestionServiceImpl
         return currentUserId;
     }
 
-    private void validatePageAndSize(
-        int page,
-        int size) {
+    private void validatePageAndSize(int page, int size) {
         if (page < 0) {
             throw new ValidationException(
                 "Page number must not be negative",
@@ -511,15 +441,12 @@ public class AdministratorQuestionServiceImpl
         }
     }
 
-    private void validateClaimInput(
-        Long questionId,
-        Long expectedVersion) {
+    private void validateClaimInput(Long questionId, Long expectedVersion) {
         validateQuestionId(questionId);
         validateExpectedVersion(expectedVersion);
     }
 
-    private void validateQuestionAcceptsOfficialAnswers(
-        QuestionThread question) {
+    private void validateQuestionAcceptsOfficialAnswers(QuestionThread question) {
         if (question.getState() != OPEN) {
             throw new InvalidQuestionStateException(
                 question.getId(),
@@ -528,9 +455,7 @@ public class AdministratorQuestionServiceImpl
         }
     }
 
-    private void validateModerationRequest(
-        Long questionId,
-        Object request) {
+    private void validateModerationRequest(Long questionId, Object request) {
         validateQuestionId(questionId);
 
         if (request == null) {
@@ -540,9 +465,7 @@ public class AdministratorQuestionServiceImpl
         }
     }
 
-    private void validateModerationValue(
-        Object value,
-        String valueName) {
+    private void validateModerationValue(Object value, String valueName) {
         if (value == null) {
             throw new ValidationException(
                 "%s must not be null".formatted(valueName),

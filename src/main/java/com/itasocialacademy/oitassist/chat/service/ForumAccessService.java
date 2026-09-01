@@ -42,9 +42,7 @@ public class ForumAccessService {
 
     public boolean isOrganizationResponder(Long taskAssignmentId) {
         return securityFacade.hasRole(ORG_ROLE)
-            && forumResponderService.isResponder(
-                taskAssignmentId,
-                securityFacade.getCurrentUserId().orElse(null));
+            && forumResponderService.isResponder(taskAssignmentId, securityFacade.getCurrentUserId().orElse(null));
     }
 
     public Long requireTaskAssignmentForumAccess(Long taskAssignmentId) {
@@ -52,15 +50,10 @@ public class ForumAccessService {
     }
 
     public Long requireTaskAssignmentQuestionCreationAccess(Long taskAssignmentId) {
-        TaskAssignmentAccessContext context =
-            requireTaskAssignmentParticipantAccess(taskAssignmentId);
-
+        TaskAssignmentAccessContext context = requireTaskAssignmentParticipantAccess(taskAssignmentId);
         if (context.tour().executionStatus() != IN_PROGRESS) {
-            throw new QuestionCreationNotAllowedException(
-                taskAssignmentId,
-                context.tour().executionStatus());
+            throw new QuestionCreationNotAllowedException(taskAssignmentId, context.tour().executionStatus());
         }
-
         return context.userId();
     }
 
@@ -73,81 +66,57 @@ public class ForumAccessService {
     }
 
     private TaskAssignmentAccessContext requireQuestionAccess(QuestionThread question) {
-        TaskAssignmentAccessContext context =
-            resolveTaskAssignmentContext(question.getTaskAssignmentId());
-
+        TaskAssignmentAccessContext context = resolveTaskAssignmentContext(question.getTaskAssignmentId());
         if (isAdministrator()) {
             return context;
         }
-
         if (isOrganizationResponder(question.getTaskAssignmentId())) {
             return context;
         }
 
-        boolean author = Objects.equals(
-            context.userId(),
-            question.getAuthorId());
-
+        boolean author = Objects.equals(context.userId(), question.getAuthorId());
         if (question.getVisibility() == PRIVATE && !author) {
             throw new QuestionNotFoundException(question.getId());
         }
 
         requireVisibleAssignment(context);
         requireParticipation(context);
-
         return context;
     }
 
-    private TaskAssignmentAccessContext requireTaskAssignmentParticipantAccess(
-        Long taskAssignmentId) {
-        TaskAssignmentAccessContext context =
-            resolveTaskAssignmentContext(taskAssignmentId);
-
+    private TaskAssignmentAccessContext requireTaskAssignmentParticipantAccess(Long taskAssignmentId) {
+        TaskAssignmentAccessContext context = resolveTaskAssignmentContext(taskAssignmentId);
         if (isAdministrator()) {
             return context;
         }
-
         if (isOrganizationResponder(taskAssignmentId)) {
             return context;
         }
 
         requireVisibleAssignment(context);
         requireParticipation(context);
-
         return context;
     }
 
-    private TaskAssignmentAccessContext resolveTaskAssignmentContext(
-        Long taskAssignmentId) {
-        Long currentUserId = securityFacade
-            .getCurrentUserId()
+    private TaskAssignmentAccessContext resolveTaskAssignmentContext(Long taskAssignmentId) {
+        Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthenticationException(
                 "Authentication is required to access the question forum",
                 ErrorCode.AUTHENTICATION_REQUIRED));
 
-        TaskAssignmentDetailDTO assignment = taskAssignmentFacade
-            .findAssignmentById(taskAssignmentId)
+        TaskAssignmentDetailDTO assignment = taskAssignmentFacade.findAssignmentById(taskAssignmentId)
             .orElseThrow(() -> new TaskAssignmentNotFoundException(taskAssignmentId));
-
-        TourDetail tour = competitionFacade
-            .findTourById(assignment.tourId())
+        TourDetail tour = competitionFacade.findTourById(assignment.tourId())
             .orElseThrow(() -> new TourNotFoundException(assignment.tourId()));
-
-        StageDetail stage = competitionFacade
-            .findStageById(tour.stageId())
+        StageDetail stage = competitionFacade.findStageById(tour.stageId())
             .orElseThrow(() -> new StageNotFoundException(tour.stageId()));
 
-        return new TaskAssignmentAccessContext(
-            currentUserId,
-            assignment,
-            tour,
-            stage);
+        return new TaskAssignmentAccessContext(currentUserId, assignment, tour, stage);
     }
 
     private void requireVisibleAssignment(TaskAssignmentAccessContext context) {
         if (context.assignment().visibility() != VISIBLE) {
-            throw new QuestionForumAccessRestrictedException(
-                context.assignment().id());
+            throw new QuestionForumAccessRestrictedException(context.assignment().id());
         }
     }
 
@@ -156,10 +125,8 @@ public class ForumAccessService {
             context.userId(),
             context.stage().competitionId(),
             context.stage().id());
-
         if (!participant) {
-            throw new QuestionForumAccessRestrictedException(
-                context.assignment().id());
+            throw new QuestionForumAccessRestrictedException(context.assignment().id());
         }
     }
 
