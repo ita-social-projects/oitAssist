@@ -138,12 +138,8 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public TokenResponse verifyTwoFactor(TwoFactorVerifyRequest request) {
-        JwtTokenIssuer.PendingTwoFactorClaims claims =
-            jwtTokenIssuer.readPendingTwoFactorToken(request.getPendingTwoFactorToken());
-
-        if (!JwtTokenIssuer.PURPOSE_TWO_FACTOR_VERIFY.equals(claims.purpose())) {
-            throw new AuthenticationException("Invalid token type", ErrorCode.INVALID_TOKEN_TYPE);
-        }
+        JwtTokenIssuer.PendingTwoFactorClaims claims = jwtTokenIssuer.readPendingTwoFactorToken(
+            request.getPendingTwoFactorToken(), JwtTokenIssuer.PURPOSE_TWO_FACTOR_VERIFY);
 
         twoFactorService.verify(claims.userId(), request.getCode());
 

@@ -1,5 +1,7 @@
 package com.itasocialacademy.oitassist.security.jwt;
 
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
 import io.jsonwebtoken.Claims;
@@ -124,16 +126,8 @@ public class JwtTokenIssuer {
      *
      * @param rawToken the token exactly as the client submitted it
      * @return the userId, email (JWT subject), and purpose embedded at issuance
-     * @throws com.itasocialacademy.oitassist.core.exceptions.AuthenticationException if
-     *                                                                                the
-     *                                                                                token's
-     *                                                                                signature,
-     *                                                                                encryption,
-     *                                                                                or
-     *                                                                                {@code token_type}
-     *                                                                                don't
-     *                                                                                check
-     *                                                                                out
+     * @throws AuthenticationException if the token's signature, encryption, or
+     *                                 {@code token_type} don't check out
      */
     public PendingTwoFactorClaims readPendingTwoFactorToken(String rawToken) {
         String encryptedJwt = jwtHelper.extractEncryptedToken(rawToken);
@@ -142,6 +136,20 @@ public class JwtTokenIssuer {
             claims.get(CLAIM_ID, Long.class),
             claims.getSubject(),
             claims.get(CLAIM_PURPOSE, String.class));
+    }
+
+    /**
+     * Same as {@link #readPendingTwoFactorToken(String)}, but also validates the
+     * token's {@code purpose} claim matches what the caller expects — e.g. a
+     * {@link #PURPOSE_TWO_FACTOR_SETUP} token must not be usable where a
+     * {@link #PURPOSE_TWO_FACTOR_VERIFY} token is required, and vice versa.
+     */
+    public PendingTwoFactorClaims readPendingTwoFactorToken(String rawToken, String expectedPurpose) {
+        PendingTwoFactorClaims claims = readPendingTwoFactorToken(rawToken);
+        if (!expectedPurpose.equals(claims.purpose())) {
+            throw new AuthenticationException("Invalid token type", ErrorCode.INVALID_TOKEN_TYPE);
+        }
+        return claims;
     }
 
     /**

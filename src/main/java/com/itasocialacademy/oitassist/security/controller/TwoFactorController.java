@@ -7,9 +7,9 @@ import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorEnrollRe
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorEnrollResponse;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorRecoveryCodesResponse;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorStatusResponse;
-import com.itasocialacademy.oitassist.security.jwt.JwtTokenIssuer;
 import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
 import com.itasocialacademy.oitassist.security.service.interfaces.TwoFactorService;
+import com.itasocialacademy.oitassist.security.twofactor.TwoFactorEnrollingIdentityResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,31 +24,43 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Enrollment endpoints for two-factor authentication.
+ * Enrollment, recovery-code, and status endpoints for two-factor
+ * authentication.
  *
  * <p>
- * Both endpoints here serve two different callers, and deliberately resolve
- * identity two different ways depending on which one is calling:
+ * {@code enroll} and {@code enroll/confirm} serve two different callers, and
+ * need identity resolved two different ways depending on which one is calling:
  * </p>
  * <ul>
  * <li><b>Voluntary opt-in</b> — an already-logged-in user (a normal Bearer
  * access token was sent, so {@code JwtFilter} already populated the security
- * context) turning 2FA on via account settings. Identity comes from
- * {@link SecurityService}.</li>
+ * context) turning 2FA on via account settings.</li>
  * <li><b>Forced setup</b> — a mandatory-role user who just received
  * {@code TWO_FA_SETUP_REQUIRED} from {@code /signIn}. They have no normal
- * session yet — only the {@code pendingTwoFactorToken} from that response.
- * Identity comes from that token instead.</li>
+ * session yet — only the {@code pendingTwoFactorToken} from that response.</li>
  * </ul>
+ * <p>
+ * That session-or-pending-token resolution is delegated to
+ * {@link TwoFactorEnrollingIdentityResolver} rather than duplicated here — it's
+ * authentication-resolution logic, not an HTTP-translation concern, so it
+ * doesn't belong in the controller itself.
+ * </p>
  *
  * <p>
- * Both endpoints must be reachable without a Bearer token (see
- * {@code SecurityConfig}'s {@code permitAll} list) to support the forced-setup
- * case. This doesn't weaken the voluntary-opt-in case: {@code JwtFilter} runs
- * on every request regardless of {@code permitAll} and populates the security
- * context whenever a valid Bearer token is actually present — {@code permitAll}
- * only means authentication isn't <i>required</i> to reach the route, not that
- * it's ignored when supplied.
+ * {@code recovery-codes/regenerate} and {@code status} both always require a
+ * normal authenticated session — neither is part of completing a login, so
+ * neither accepts a {@code pendingTwoFactorToken}; identity comes straight from
+ * {@link SecurityService}.
+ * </p>
+ *
+ * <p>
+ * {@code enroll} and {@code enroll/confirm} must be reachable without a Bearer
+ * token (see {@code SecurityConfig}'s {@code permitAll} list) to support the
+ * forced-setup case. This doesn't weaken the voluntary-opt-in case:
+ * {@code JwtFilter} runs on every request regardless of {@code permitAll} and
+ * populates the security context whenever a valid Bearer token is actually
+ * present — {@code permitAll} only means authentication isn't <i>required</i>
+ * to reach the route, not that it's ignored when supplied.
  * </p>
  */
 @Slf4j
@@ -59,7 +71,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TwoFactorController {
     private final TwoFactorService twoFactorService;
     private final SecurityService securityService;
-    private final JwtTokenIssuer jwtTokenIssuer;
+    private final TwoFactorEnrollingIdentityResolver identityResolver;
 
     @Operation(
         summary = "Start 2FA enrollment",
@@ -75,7 +87,7 @@ public class TwoFactorController {
         })
     @PostMapping("/enroll")
     public TwoFactorEnrollResponse enroll(@Valid @RequestBody TwoFactorEnrollRequest request) {
-        EnrollingIdentity identity = resolveEnrollingIdentity(request.getPendingTwoFactorToken());
+        var identity = identityResolver.resolve(request.getPendingTwoFactorToken());
         return twoFactorService.enroll(identity.userId(), identity.email(), request);
     }
 
@@ -91,7 +103,7 @@ public class TwoFactorController {
         })
     @PostMapping("/enroll/confirm")
     public void confirmEnrollment(@Valid @RequestBody TwoFactorConfirmRequest request) {
-        EnrollingIdentity identity = resolveEnrollingIdentity(request.getPendingTwoFactorToken());
+        var identity = identityResolver.resolve(request.getPendingTwoFactorToken());
         twoFactorService.confirmEnrollment(identity.userId(), request);
     }
 
@@ -129,36 +141,5 @@ public class TwoFactorController {
             .orElseThrow(() -> new AuthenticationException(
                 "Authentication required", ErrorCode.AUTHENTICATION_REQUIRED));
         return twoFactorService.getStatus(userId);
-    }
-
-    /**
-     * Resolves who's enrolling, trying the normal authenticated session first and
-     * falling back to a pending {@code 2fa_setup} token. This order matters: an
-     * already-logged-in user opting in voluntarily should never need to carry a
-     * pending token around, so the normal session takes priority whenever one is
-     * actually present.
-     */
-    private EnrollingIdentity resolveEnrollingIdentity(String pendingTwoFactorToken) {
-        var currentUserId = securityService.getCurrentUserId();
-        if (currentUserId.isPresent()) {
-            String email = securityService.getCurrentUserEmail()
-                .orElseThrow(() -> new AuthenticationException(
-                    "Authentication required", ErrorCode.AUTHENTICATION_REQUIRED));
-            return new EnrollingIdentity(currentUserId.get(), email);
-        }
-
-        if (pendingTwoFactorToken == null || pendingTwoFactorToken.isBlank()) {
-            throw new AuthenticationException("Authentication required", ErrorCode.AUTHENTICATION_REQUIRED);
-        }
-
-        JwtTokenIssuer.PendingTwoFactorClaims claims = jwtTokenIssuer.readPendingTwoFactorToken(pendingTwoFactorToken);
-        if (!JwtTokenIssuer.PURPOSE_TWO_FACTOR_SETUP.equals(claims.purpose())) {
-            throw new AuthenticationException("Invalid token type", ErrorCode.INVALID_TOKEN_TYPE);
-        }
-
-        return new EnrollingIdentity(claims.userId(), claims.email());
-    }
-
-    private record EnrollingIdentity(Long userId, String email) {
     }
 }
