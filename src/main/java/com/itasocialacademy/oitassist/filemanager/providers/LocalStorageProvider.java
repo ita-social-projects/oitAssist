@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.filemanager.providers;
 
 import com.itasocialacademy.oitassist.filemanager.dao.enums.StorageProviderType;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileDeleteException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileListingException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
@@ -8,6 +9,7 @@ import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathExce
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,6 +20,8 @@ import java.time.ZoneOffset;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Component;
 
 /**
@@ -193,15 +197,34 @@ public class LocalStorageProvider implements StorageProvider {
     }
 
     /**
-     * Constructs a URL for accessing the file based on its storage key. This
-     * assumes that the application is configured to serve static files from the
-     * "/uploads/**" path, which maps to the local storage root directory.
      *
-     * @param storageKey the relative path of the file as stored in the database
-     * @return a URL string that can be used to access the file via HTTP
+     * <p>
+     * Resolves the storage key against the configured local storage root, checks
+     * for path traversal, and wraps the file URI in a {@link UrlResource}.
+     * </p>
+     *
+     * @param storageKey the relative path of the file on local disk
+     * @return the {@link Resource} representing the local file
+     * @throws InvalidFilePathException   if the storage key escapes the root
+     *                                    directory
+     * @throws FileAssetNotFoundException if the file does not exist or cannot be
+     *                                    read
+     * @throws FileListingException       if creating the URL resource fails
      */
     @Override
-    public String getFileUrl(String storageKey) {
-        return "/uploads/" + storageKey;
+    public Resource getResource(String storageKey) {
+        try {
+            Path targetPath = root.resolve(storageKey).normalize();
+            if (!targetPath.startsWith(root)) {
+                throw new InvalidFilePathException("Path traversal attempt detected: " + storageKey);
+            }
+            Resource resource = new UrlResource(targetPath.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                throw new FileAssetNotFoundException("File not found or not readable: " + storageKey);
+            }
+            return resource;
+        } catch (MalformedURLException e) {
+            throw new FileListingException("Could not read file", e);
+        }
     }
 }

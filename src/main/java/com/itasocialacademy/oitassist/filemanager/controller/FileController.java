@@ -4,10 +4,12 @@ import com.azure.core.annotation.QueryParam;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileResourceDto;
 import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
+import com.itasocialacademy.oitassist.filemanager.web.FileResourceResponseFactory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -21,9 +23,8 @@ import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.Resource;
+import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,6 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileController {
     private final FileService fileService;
     private final FileCleanupService cleanupService;
+    private final FileResourceResponseFactory resourceResponseFactory;
 
     /**
      * Validates and uploads a batch of files, persisting their metadata and linking
@@ -243,5 +245,42 @@ public class FileController {
         @PathVariable Long id,
         @Valid @QueryParam("newRole") UpdateFileRoleRequestDto requestDto) {
         return ResponseEntity.ok(fileService.updateRole(id, requestDto));
+    }
+
+    /**
+     * Retrieves a file by its ID.
+     *
+     * @param id the ID of the file to retrieve
+     * @return HTTP 200 with the file resource and appropriate headers, or error
+     *         response
+     */
+    @Operation(
+        summary = "Get or view file",
+        description = """
+            Streams a file resource by its database ID, enforcing access permissions based on the file status
+            (temporary vs attached) and entity-specific access rules.
+            """)
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "File retrieved successfully",
+            content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE)),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Access denied to the requested file",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "File not found",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<Resource> getFile(@PathVariable Long id) {
+        FileResourceDto dto = fileService.getFileResource(id);
+        return resourceResponseFactory.build(dto);
     }
 }

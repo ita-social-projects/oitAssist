@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.filemanager.exceptions.FileListingExceptio
 import java.io.InputStream;
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.springframework.core.io.Resource;
 
 public interface StorageProvider {
     /**
@@ -53,10 +54,11 @@ public interface StorageProvider {
     OffsetDateTime getLastModified(String storageKey);
 
     /**
-     * Retrieves the publicly accessible URL for a file.
+     * Retrieves the file as a Spring {@link Resource} using its relative storage
+     * key.
      *
-     * @param storageKey the relative path of the file
-     * @return the URL string to access the file
+     * @param storageKey the relative path or unique key of the file
+     * @return the {@link Resource} representing the file byte stream
      */
-    String getFileUrl(String storageKey);
+    Resource getResource(String storageKey);
 }

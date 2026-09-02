@@ -6,6 +6,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileResourceDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import java.util.List;
 import java.util.Map;
@@ -69,7 +70,7 @@ public interface FileService {
      * content. Validates ownership for each file using the provided userId.
      *
      * @param entityType the type of the related entity
-     * @param entityId   the ID of the entity to detach files from
+     * @param entityId   the ID of the entity to detach files to
      * @param fileIds    the IDs of files to soft-delete
      * @param userId     the ID of the user who triggered detach
      */
@@ -86,35 +87,38 @@ public interface FileService {
     void detachAllFilesByEntityId(RelatedEntityType entityType, Long entityId, Long userId);
 
     /**
-     * Returns all {@link FileStatus#ATTACHED} files for the given entity.
+     * Returns all {@link FileStatus#ATTACHED} files for the given entity, enriched
+     * with unified file endpoint URLs ({@code /api/v1/files/{id}}).
      *
      * @param entityType the type of the related entity
      * @param entityId   the ID of the related entity
-     * @return list of file DTOs with resolved URLs
+     * @return list of {@link FileResponseDto} with resolved file URLs
      */
     List<FileResponseDto> getFilesByEntity(RelatedEntityType entityType, Long entityId);
 
     /**
      * Returns all {@link FileStatus#ATTACHED} files for the given entity, filtered
-     * by the specified file roles. Returns cross-module DTOs with resolved download
-     * URLs.
+     * by the specified file roles. Returns cross-module DTOs enriched with unified
+     * file endpoint URLs ({@code /api/v1/files/{id}}).
      *
      * @param entityType the type of the related entity
      * @param entityId   the ID of the related entity
      * @param roles      the set of file roles to include
-     * @return list of {@link FileDetailsDTO} with resolved URLs
+     * @return list of {@link FileDetailsDTO} with resolved file URLs
      */
     List<FileDetailsDTO> getFilesByEntity(RelatedEntityType entityType, Long entityId, Set<FileRole> roles);
 
     /**
      * Returns all {@link FileStatus#ATTACHED} files for the given entities,
      * filtered by the specified file roles. Returns a map of entity ID to a list of
-     * cross-module DTOs with resolved download URLs.
+     * cross-module DTOs enriched with unified file endpoint URLs
+     * ({@code /api/v1/files/{id}}).
      *
      * @param entityType the type of the related entity
      * @param entityIds  the IDs of the related entities
      * @param roles      the set of file roles to include
-     * @return map of entity ID to list of {@link FileDetailsDTO} with resolved URLs
+     * @return map of entity ID to list of {@link FileDetailsDTO} with resolved file
+     *         URLs
      */
     Map<Long, List<FileDetailsDTO>> getFilesByEntities(RelatedEntityType entityType, List<Long> entityIds,
         Set<FileRole> roles);
@@ -128,4 +132,15 @@ public interface FileService {
      * @return the updated file response DTO
      */
     FileResponseDto updateRole(Long fileId, UpdateFileRoleRequestDto requestDto);
+
+    /**
+     * Resolves and returns the file resource DTO, verifying access control rules
+     * and providing the Spring {@link org.springframework.core.io.Resource} and
+     * file metadata for presentation.
+     *
+     * @param id the ID of the file to retrieve
+     * @return {@link FileResourceDto} containing the resource stream and file
+     *         metadata
+     */
+    FileResourceDto getFileResource(Long id);
 }
