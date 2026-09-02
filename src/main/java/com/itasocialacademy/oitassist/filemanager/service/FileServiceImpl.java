@@ -13,7 +13,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.dao.specification.FileAssetSpecification;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
-import com.itasocialacademy.oitassist.filemanager.dto.response.FileDownloadDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileResourceDto;
 import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
@@ -252,11 +252,11 @@ public class FileServiceImpl implements FileService {
 
     /**
      * Returns all {@link FileStatus#ATTACHED} files for the given entity, enriched
-     * with unified download endpoint URLs ({@code /api/v1/files/download/{id}}).
+     * with unified file endpoint URLs ({@code /api/v1/files/{id}}).
      *
      * @param entityType the type of the related entity
      * @param entityId   the ID of the related entity
-     * @return list of file DTOs with resolved download URLs
+     * @return list of file DTOs with resolved file URLs
      */
     @Override
     @Transactional(readOnly = true)
@@ -268,7 +268,7 @@ public class FileServiceImpl implements FileService {
         return files.stream()
             .map(file -> {
                 FileResponseDto dto = fileMapper.toDto(file);
-                dto.setUrl(buildDownloadUrl(file.getId()));
+                dto.setUrl(buildFileUrl(file.getId()));
                 return dto;
             })
             .toList();
@@ -280,7 +280,7 @@ public class FileServiceImpl implements FileService {
      * <p>
      * Uses JPA Specifications to filter by entity type, entity ID, ATTACHED status,
      * and the provided set of file roles. Maps results directly to
-     * {@link FileDetailsDTO} via the file mapper with unified download URLs.
+     * {@link FileDetailsDTO} via the file mapper with unified file URLs.
      * </p>
      */
     @Override
@@ -293,7 +293,7 @@ public class FileServiceImpl implements FileService {
             .and(FileAssetSpecification.hasFileRoleIn(roles));
 
         return repository.findAll(spec).stream()
-            .map(file -> fileMapper.toDetails(file, buildDownloadUrl(file.getId())))
+            .map(file -> fileMapper.toDetails(file, buildFileUrl(file.getId())))
             .toList();
     }
 
@@ -304,7 +304,7 @@ public class FileServiceImpl implements FileService {
      * Uses JPA Specifications to filter by entity type, entity IDs, ATTACHED
      * status, and the provided set of file roles. Maps results directly to
      * {@link FileDetailsDTO} via the file mapper and groups them by entity ID with
-     * unified download URLs.
+     * unified file URLs.
      * </p>
      */
     @Override
@@ -329,7 +329,7 @@ public class FileServiceImpl implements FileService {
         }
 
         for (FileAsset file : files) {
-            FileDetailsDTO dto = fileMapper.toDetails(file, buildDownloadUrl(file.getId()));
+            FileDetailsDTO dto = fileMapper.toDetails(file, buildFileUrl(file.getId()));
             resultMap.computeIfAbsent(file.getRelatedEntityId(), k -> new ArrayList<>()).add(dto);
         }
 
@@ -356,7 +356,7 @@ public class FileServiceImpl implements FileService {
         if (file.getFileRole().equals(request.getNewRole())) {
             FileAsset saved = repository.save(file);
             FileResponseDto dto = fileMapper.toDto(saved);
-            dto.setUrl(buildDownloadUrl(saved.getId()));
+            dto.setUrl(buildFileUrl(saved.getId()));
             return dto;
         }
 
@@ -378,7 +378,7 @@ public class FileServiceImpl implements FileService {
         log.debug("Updated file role for id={} to {}", saved.getId(), saved.getFileRole());
 
         FileResponseDto dto = fileMapper.toDto(saved);
-        dto.setUrl(buildDownloadUrl(saved.getId()));
+        dto.setUrl(buildFileUrl(saved.getId()));
 
         return dto;
     }
@@ -434,18 +434,18 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Resolves and returns the file download DTO, handling access control and
+     * Resolves and returns the file resource DTO, handling access control and
      * providing the resource and file metadata for presentation.
      *
-     * @param id the ID of the file to download
-     * @return FileDownloadDto containing the resource, metadata or redirect details
+     * @param id the ID of the file to retrieve
+     * @return FileResourceDto containing the resource, metadata or redirect details
      * @throws FileAssetNotFoundException if the file is not found with the given ID
      * @throws AuthorizationException     if the user does not have permission to
      *                                    view this file
      */
     @Override
     @Transactional(readOnly = true)
-    public FileDownloadDto downloadFile(Long id) {
+    public FileResourceDto getFileResource(Long id) {
         FileAsset file = repository.findById(id)
             .orElseThrow(() -> new FileAssetNotFoundException("File not found with ID: " + id));
 
@@ -454,7 +454,7 @@ public class FileServiceImpl implements FileService {
         StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
         Resource resource = provider.getResource(file.getStorageKey());
 
-        return new FileDownloadDto(
+        return new FileResourceDto(
             resource,
             file.getMimeType(),
             resolveDisplayFilename(file),
@@ -476,7 +476,7 @@ public class FileServiceImpl implements FileService {
         StorageProvider provider = providerResolver.resolveDefault();
         FileAsset saved = uploadFileAndGetFileAsset(file, requestDto, userId, provider);
         FileResponseDto dto = fileMapper.toDto(saved);
-        dto.setUrl(buildDownloadUrl(saved.getId()));
+        dto.setUrl(buildFileUrl(saved.getId()));
         return dto;
     }
 
@@ -494,7 +494,7 @@ public class FileServiceImpl implements FileService {
     private FileDetailsDTO uploadSingleToFileDetails(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
         StorageProvider provider = providerResolver.resolveDefault();
         FileAsset saved = uploadFileAndGetFileAsset(file, requestDto, userId, provider);
-        return fileMapper.toDetails(saved, buildDownloadUrl(saved.getId()));
+        return fileMapper.toDetails(saved, buildFileUrl(saved.getId()));
     }
 
     /**
@@ -728,7 +728,7 @@ public class FileServiceImpl implements FileService {
      * {@code storedFilename}, so identity is never leaked via HTTP headers to
      * reviewers/admins browsing someone else's submission.
      *
-     * @param file the file asset being downloaded
+     * @param file the file asset being retrieved
      * @return the filename to use for Content-Disposition
      */
     private String resolveDisplayFilename(FileAsset file) {
@@ -740,14 +740,13 @@ public class FileServiceImpl implements FileService {
     /**
      * Builds the URL through which the frontend must always fetch a file's bytes.
      * This is identical for every storage provider — access control happens in
-     * {@link #downloadFile}, not at the physical storage layer — so the URL is
+     * {@link #getFileResource}, not at the physical storage layer — so the URL is
      * computed here once instead of duplicated per provider.
      *
      * @param id the database ID of the file asset
-     * @return the unified relative download URL (e.g.,
-     *         {@code "/api/v1/files/download/123"})
+     * @return the unified relative file URL (e.g., {@code "/api/v1/files/123"})
      */
-    private String buildDownloadUrl(Long id) {
-        return "/api/v1/files/download/" + id;
+    private String buildFileUrl(Long id) {
+        return "/api/v1/files/" + id;
     }
 }

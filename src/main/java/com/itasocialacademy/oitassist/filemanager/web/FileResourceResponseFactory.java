@@ -1,6 +1,6 @@
 package com.itasocialacademy.oitassist.filemanager.web;
 
-import com.itasocialacademy.oitassist.filemanager.dto.response.FileDownloadDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileResourceDto;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -13,13 +13,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 /**
- * Builds the HTTP response for file downloads, enforcing safe Content-Type
+ * Builds the HTTP response for file retrieval, enforcing safe Content-Type
  * resolution and Content-Disposition (inline vs attachment) rules.
  */
 @Slf4j
 @Component
-public class FileDownloadResponseFactory {
-    private static final String DEFAULT_DOWNLOAD_FILENAME = "download";
+public class FileResourceResponseFactory {
+    private static final String DEFAULT_FILE_NAME = "download";
 
     private static final Set<String> SAFE_INLINE_MIME_TYPES = Set.of(
         "image/png",
@@ -28,7 +28,7 @@ public class FileDownloadResponseFactory {
         "image/webp",
         "application/pdf");
 
-    public ResponseEntity<Resource> build(FileDownloadDto dto) {
+    public ResponseEntity<Resource> build(FileResourceDto dto) {
         MediaType mediaType = resolveMediaType(dto.mimeType());
 
         var responseBuilder = ResponseEntity.ok()
@@ -75,7 +75,7 @@ public class FileDownloadResponseFactory {
     private String buildContentDisposition(String filename, MediaType mediaType) {
         String resolvedFilename = (filename != null && !filename.isBlank())
             ? filename
-            : DEFAULT_DOWNLOAD_FILENAME;
+            : DEFAULT_FILE_NAME;
 
         var builder = isSafeForInline(mediaType)
             ? ContentDisposition.inline()

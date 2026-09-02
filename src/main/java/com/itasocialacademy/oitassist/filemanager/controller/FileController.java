@@ -4,12 +4,12 @@ import com.azure.core.annotation.QueryParam;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
-import com.itasocialacademy.oitassist.filemanager.dto.response.FileDownloadDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileResourceDto;
 import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
-import com.itasocialacademy.oitassist.filemanager.web.FileDownloadResponseFactory;
+import com.itasocialacademy.oitassist.filemanager.web.FileResourceResponseFactory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -37,7 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileController {
     private final FileService fileService;
     private final FileCleanupService cleanupService;
-    private final FileDownloadResponseFactory downloadResponseFactory;
+    private final FileResourceResponseFactory resourceResponseFactory;
 
     /**
      * Validates and uploads a batch of files, persisting their metadata and linking
@@ -248,14 +248,14 @@ public class FileController {
     }
 
     /**
-     * Downloads a file by its ID.
+     * Retrieves a file by its ID.
      *
-     * @param id the ID of the file to download
+     * @param id the ID of the file to retrieve
      * @return HTTP 200 with the file resource and appropriate headers, or error
      *         response
      */
     @Operation(
-        summary = "Download or view file",
+        summary = "Get or view file",
         description = """
             Streams a file resource by its database ID, enforcing access permissions based on the file status
             (temporary vs attached) and entity-specific access rules.
@@ -278,9 +278,9 @@ public class FileController {
                 mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @GetMapping("/download/{id}")
-    public ResponseEntity<Resource> downloadFile(@PathVariable Long id) {
-        FileDownloadDto dto = fileService.downloadFile(id);
-        return downloadResponseFactory.build(dto);
+    @GetMapping("/{id}")
+    public ResponseEntity<Resource> getFile(@PathVariable Long id) {
+        FileResourceDto dto = fileService.getFileResource(id);
+        return resourceResponseFactory.build(dto);
     }
 }

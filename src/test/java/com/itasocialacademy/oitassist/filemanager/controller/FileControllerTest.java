@@ -21,13 +21,13 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
-import com.itasocialacademy.oitassist.filemanager.dto.response.FileDownloadDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileResourceDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileCleanupService;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
-import com.itasocialacademy.oitassist.filemanager.web.FileDownloadResponseFactory;
+import com.itasocialacademy.oitassist.filemanager.web.FileResourceResponseFactory;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -44,7 +44,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
     private static final String FILES_URL = "/api/v1/files";
     private static final String FILE_BY_ID_URL = "/api/v1/files/{id}";
     private static final String FILE_BY_ID_HARD_URL = "/api/v1/files/{id}/hard";
-    private static final String FILE_DOWNLOAD_URL = "/api/v1/files/download/{id}";
+    private static final String FILE_DOWNLOAD_URL = "/api/v1/files/{id}";
     private static final String FILES_CLEANUP_URL = "/api/v1/files/cleanup";
     private static final Long EXISTING_FILE_ID = 1L;
     private static final Long NON_EXISTING_FILE_ID = 999L;
@@ -59,7 +59,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
     private FileCleanupService cleanupService;
 
     @Mock
-    private FileDownloadResponseFactory downloadResponseFactory;
+    private FileResourceResponseFactory downloadResponseFactory;
 
     @InjectMocks
     private FileController fileController;
@@ -277,13 +277,13 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
         verifyNoInteractions(fileService);
     }
 
-    // --- Download Tests ---
+    // --- Get File Tests ---
 
     @Test
-    void downloadFile_ShouldReturnOkWithResource_WhenFileExists() throws Exception {
+    void getFile_ShouldReturnOkWithResource_WhenFileExists() throws Exception {
         Long fileId = EXISTING_FILE_ID;
         ByteArrayResource resource = new ByteArrayResource("test-file-content".getBytes());
-        FileDownloadDto dto = new FileDownloadDto(
+        FileResourceDto dto = new FileResourceDto(
             resource,
             MediaType.APPLICATION_PDF_VALUE,
             "document.pdf",
@@ -295,7 +295,7 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
             .contentLength(17L)
             .body(resource);
 
-        when(fileService.downloadFile(fileId)).thenReturn(dto);
+        when(fileService.getFileResource((fileId))).thenReturn(dto);
         when(downloadResponseFactory.build(dto)).thenReturn(expectedResponse);
 
         mockMvc.perform(get(FILE_DOWNLOAD_URL, fileId))
@@ -305,23 +305,23 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
                 header().string(HttpHeaders.CONTENT_DISPOSITION, org.hamcrest.Matchers.containsString("document.pdf")))
             .andExpect(content().bytes("test-file-content".getBytes()));
 
-        verify(fileService).downloadFile(fileId);
+        verify(fileService).getFileResource(fileId);
         verify(downloadResponseFactory).build(dto);
     }
 
     @Test
-    void downloadFile_ShouldReturnNotFound_WhenFileDoesNotExist() throws Exception {
+    void getFile_ShouldReturnNotFound_WhenFileDoesNotExist() throws Exception {
         Long fileId = NON_EXISTING_FILE_ID;
-        when(fileService.downloadFile(fileId)).thenThrow(new FileAssetNotFoundException(FILE_NOT_FOUND_MESSAGE));
+        when(fileService.getFileResource(fileId)).thenThrow(new FileAssetNotFoundException(FILE_NOT_FOUND_MESSAGE));
 
         mockMvc.perform(get(FILE_DOWNLOAD_URL, fileId))
             .andExpect(status().isNotFound());
     }
 
     @Test
-    void downloadFile_ShouldReturnForbidden_WhenAccessDenied() throws Exception {
+    void getFile_ShouldReturnForbidden_WhenAccessDenied() throws Exception {
         Long fileId = EXISTING_FILE_ID;
-        when(fileService.downloadFile(fileId))
+        when(fileService.getFileResource(fileId))
             .thenThrow(new AuthorizationException(ACCESS_DENIED_MESSAGE, ErrorCode.ACCESS_DENIED));
 
         mockMvc.perform(get(FILE_DOWNLOAD_URL, fileId))
