@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,7 +70,14 @@ public class TwoFactorServiceImpl implements TwoFactorService {
             case EMAIL_OTP -> startEmailOtpEnrollment(userId, userEmail);
         };
 
-        UserTwoFactorAuth savedEntity = twoFactorAuthRepository.save(setup.entity());
+        UserTwoFactorAuth savedEntity;
+        try {
+            savedEntity = twoFactorAuthRepository.save(setup.entity());
+        } catch (DataIntegrityViolationException e) {
+            throw new TwoFactorAlreadyEnabledException(
+                "An enrollment attempt is already in progress for this account; please retry",
+                ErrorCode.TWO_FACTOR_ALREADY_ENABLED);
+        }
 
         List<String> plaintextRecoveryCodes = generateRecoveryCodes();
         persistRecoveryCodes(savedEntity.getId(), plaintextRecoveryCodes);
