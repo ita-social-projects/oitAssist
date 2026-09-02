@@ -1,6 +1,8 @@
 package com.itasocialacademy.oitassist.logfile.dao;
 
 import com.itasocialacademy.oitassist.logfile.dao.model.LogFileMetadata;
+import com.itasocialacademy.oitassist.logfile.exceptions.InvalidLogFileNameException;
+import com.itasocialacademy.oitassist.logfile.exceptions.LogFileDownloadException;
 import com.itasocialacademy.oitassist.logfile.exceptions.LogFileListingException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,6 +13,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,7 +22,7 @@ import org.mockito.MockedStatic;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
-import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.*;
 
 class FileSystemLogFileDaoTest {
 
@@ -234,8 +237,7 @@ class FileSystemLogFileDaoTest {
     }
 
     @Test
-    void shouldThrowLogFileListingExceptionWhenDirectoryListingFails()
-        throws IOException {
+    void shouldThrowLogFileListingExceptionWhenDirectoryListingFails(){
 
         Path logDirectory = tempDirectory;
         String configuredLogFile =
@@ -267,8 +269,7 @@ class FileSystemLogFileDaoTest {
     }
 
     @Test
-    void shouldThrowLogFileListingExceptionWhenReadingMetadataFails()
-        throws IOException {
+    void shouldThrowLogFileListingExceptionWhenReadingMetadataFails(){
 
         Path logDirectory = tempDirectory;
         Path logFile = logDirectory.resolve("app.log");
@@ -307,8 +308,7 @@ class FileSystemLogFileDaoTest {
     }
 
     @Test
-    void shouldSkipFileWhenItDisappearsDuringDirectoryScan()
-        throws IOException {
+    void shouldSkipFileWhenItDisappearsDuringDirectoryScan(){
 
         Path logDirectory = tempDirectory;
         Path logFile = logDirectory.resolve("app.log");
@@ -388,6 +388,172 @@ class FileSystemLogFileDaoTest {
             assertThatThrownBy(logFileDao::findAll)
                 .isInstanceOf(LogFileListingException.class);
         }
+    }
+
+    @Test
+    void shouldReturnLogFilePathForDownload() throws IOException {
+        Path logFile =
+            Files.writeString(
+                tempDirectory.resolve("app.log"),
+                "test log content");
+
+        Optional<Path> result =
+            logFileDao.downloadFile("app.log");
+
+        assertThat(result)
+            .contains(
+                logFile.toAbsolutePath().normalize());
+    }
+
+    @Test
+    void shouldReturnEmptyWhenDownloadFileDoesNotExist() {
+        Optional<Path> result =
+            logFileDao.downloadFile("missing.log");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldReturnEmptyWhenDownloadPathIsDirectory()
+        throws IOException {
+
+        Files.createDirectory(
+            tempDirectory.resolve("archive"));
+
+        Optional<Path> result =
+            logFileDao.downloadFile("archive");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldReturnEmptyWhenDownloadFileIsSymbolicLink(){
+
+        Path filePath =
+            tempDirectory
+                .resolve("linked.log")
+                .toAbsolutePath()
+                .normalize();
+
+        BasicFileAttributes attributes =
+            mock(BasicFileAttributes.class);
+
+        when(attributes.isSymbolicLink())
+            .thenReturn(true);
+
+        try (MockedStatic<Files> filesMock =
+            mockStatic(Files.class)) {
+
+            filesMock.when(
+                () -> Files.exists(
+                    tempDirectory,
+                    LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(
+                () -> Files.isDirectory(
+                    tempDirectory,
+                    LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(
+                () -> Files.isReadable(tempDirectory))
+                .thenReturn(true);
+
+            filesMock.when(
+                () -> Files.readAttributes(
+                    filePath,
+                    BasicFileAttributes.class,
+                    LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(attributes);
+
+            Optional<Path> result =
+                logFileDao.downloadFile("linked.log");
+
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Test
+    void shouldRejectDownloadPathOutsideLogDirectory() {
+        assertThatThrownBy(
+            () -> logFileDao.downloadFile("../secret.log"))
+            .isInstanceOf(
+                InvalidLogFileNameException.class);
+    }
+
+    @Test
+    void shouldRejectDownloadFileFromNestedDirectory()
+        throws IOException {
+
+        Path archiveDirectory =
+            Files.createDirectory(
+                tempDirectory.resolve("archive"));
+
+        Files.writeString(
+            archiveDirectory.resolve("app.log"),
+            "archived log");
+
+        assertThatThrownBy(
+            () -> logFileDao.downloadFile(
+                "archive/app.log"))
+            .isInstanceOf(
+                InvalidLogFileNameException.class);
+    }
+
+    @Test
+    void shouldThrowLogFileDownloadExceptionWhenReadingFileAttributesFails() {
+        Path filePath =
+            tempDirectory
+                .resolve("app.log")
+                .toAbsolutePath()
+                .normalize();
+
+        IOException cause =
+            new IOException(
+                "Unable to read file attributes");
+
+        try (MockedStatic<Files> filesMock =
+            mockStatic(Files.class)) {
+
+            filesMock.when(
+                () -> Files.exists(
+                    tempDirectory,
+                    LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(
+                () -> Files.isDirectory(
+                    tempDirectory,
+                    LinkOption.NOFOLLOW_LINKS))
+                .thenReturn(true);
+
+            filesMock.when(
+                () -> Files.isReadable(
+                    tempDirectory))
+                .thenReturn(true);
+
+            filesMock.when(
+                () -> Files.readAttributes(
+                    filePath,
+                    BasicFileAttributes.class,
+                    LinkOption.NOFOLLOW_LINKS))
+                .thenThrow(cause);
+
+            assertThatThrownBy(
+                () -> logFileDao.downloadFile("app.log"))
+                .isInstanceOf(
+                    LogFileDownloadException.class)
+                .hasCause(cause);
+        }
+    }
+
+    @Test
+    void shouldThrowInvalidLogFileNameExceptionForInvalidPath() {
+        assertThatThrownBy(
+            () -> logFileDao.downloadFile("\u0000"))
+            .isInstanceOf(
+                InvalidLogFileNameException.class);
     }
 
     private static LogFileMetadata findByFileName(

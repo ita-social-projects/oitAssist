@@ -70,7 +70,7 @@ public class FileSystemLogFileDao implements LogFileDao {
         } catch (IOException | SecurityException exception) {
             log.error("Failed to access log file for download: {}", filePath, exception);
 
-            throw new LogFileDownloadException();
+            throw new LogFileDownloadException(exception);
         }
     }
 
