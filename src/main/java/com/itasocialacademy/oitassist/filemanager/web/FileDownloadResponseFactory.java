@@ -33,7 +33,7 @@ public class FileDownloadResponseFactory {
 
         var responseBuilder = ResponseEntity.ok()
             .contentType(mediaType)
-            .header(HttpHeaders.CONTENT_DISPOSITION, buildContentDisposition(dto.originalFilename(), mediaType))
+            .header(HttpHeaders.CONTENT_DISPOSITION, buildContentDisposition(dto.displayFilename(), mediaType))
             .header("X-Content-Type-Options", "nosniff");
 
         if (dto.contentLength() != null && dto.contentLength() > 0) {

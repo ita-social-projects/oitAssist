@@ -1475,7 +1475,7 @@ class FileServiceImplTest {
         assertNotNull(result);
         assertEquals(mockResource, result.resource());
         assertEquals("application/pdf", result.mimeType());
-        assertEquals("article.pdf", result.originalFilename());
+        assertEquals("article.pdf", result.displayFilename());
         assertEquals(1024L, result.contentLength());
     }
 

@@ -457,7 +457,7 @@ public class FileServiceImpl implements FileService {
         return new FileDownloadDto(
             resource,
             file.getMimeType(),
-            file.getOriginalFilename(),
+            resolveDisplayFilename(file),
             file.getSize());
     }
 
@@ -719,6 +719,22 @@ public class FileServiceImpl implements FileService {
                 currentUserId, file.getId());
             throw new AuthorizationException("Access denied to this file", ErrorCode.ACCESS_DENIED);
         }
+    }
+
+    /**
+     * Resolves the filename to expose in the Content-Disposition header. The
+     * original, user-provided filename is shown only to the file's owner; everyone
+     * else (regardless of role or entity type) receives the opaque
+     * {@code storedFilename}, so identity is never leaked via HTTP headers to
+     * reviewers/admins browsing someone else's submission.
+     *
+     * @param file the file asset being downloaded
+     * @return the filename to use for Content-Disposition
+     */
+    private String resolveDisplayFilename(FileAsset file) {
+        Long currentUserId = securityFacade.getCurrentUserId().orElse(null);
+        boolean isOwner = currentUserId != null && currentUserId.equals(file.getUserId());
+        return isOwner ? file.getOriginalFilename() : file.getStoredFilename();
     }
 
     /**
