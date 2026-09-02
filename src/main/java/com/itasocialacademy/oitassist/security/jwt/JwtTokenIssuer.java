@@ -5,6 +5,10 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -130,8 +134,21 @@ public class JwtTokenIssuer {
      *                                 {@code token_type} don't check out
      */
     public PendingTwoFactorClaims readPendingTwoFactorToken(String rawToken) {
-        String encryptedJwt = jwtHelper.extractEncryptedToken(rawToken);
-        Claims claims = jwtHelper.extractClaims(encryptedJwt, JwtHelper.TWO_FACTOR_PENDING_TOKEN);
+        Claims claims;
+        try {
+            String encryptedJwt = jwtHelper.extractEncryptedToken(rawToken);
+            claims = jwtHelper.extractClaims(encryptedJwt, JwtHelper.TWO_FACTOR_PENDING_TOKEN);
+        } catch (SignatureException e) {
+            throw new AuthenticationException("Invalid JWT signature", ErrorCode.INVALID_SIGNATURE);
+        } catch (IllegalArgumentException e) {
+            throw new AuthenticationException("JWT claims string is empty", ErrorCode.EMPTY_CLAIMS);
+        } catch (ExpiredJwtException e) {
+            throw new AuthenticationException("Pending two-factor token expired", ErrorCode.TOKEN_EXPIRE);
+        } catch (UnsupportedJwtException e) {
+            throw new AuthenticationException("JWT token is unsupported", ErrorCode.UNSUPPORTED_TOKEN);
+        } catch (MalformedJwtException e) {
+            throw new AuthenticationException("Invalid JWT token", ErrorCode.INVALID_TOKEN);
+        }
         return new PendingTwoFactorClaims(
             claims.get(CLAIM_ID, Long.class),
             claims.getSubject(),
