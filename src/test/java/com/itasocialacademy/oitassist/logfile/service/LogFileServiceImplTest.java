@@ -9,7 +9,7 @@ import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.logfile.api.LogFileResponse;
 import com.itasocialacademy.oitassist.logfile.api.PageResponse;
 import com.itasocialacademy.oitassist.logfile.dao.LogFileDao;
-import com.itasocialacademy.oitassist.logfile.dao.LogFileMetadata;
+import com.itasocialacademy.oitassist.logfile.dao.model.LogFileMetadata;
 import com.itasocialacademy.oitassist.logfile.exceptions.LogFileListingException;
 import com.itasocialacademy.oitassist.logfile.mapper.LogFileMapper;
 import java.time.Instant;

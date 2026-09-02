@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.logfile.dao;
 
+import com.itasocialacademy.oitassist.logfile.dao.model.LogFileMetadata;
 import com.itasocialacademy.oitassist.logfile.exceptions.LogFileListingException;
 import java.io.IOException;
 import java.nio.file.Files;

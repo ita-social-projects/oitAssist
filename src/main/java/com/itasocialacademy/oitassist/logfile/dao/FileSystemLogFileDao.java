@@ -1,5 +1,8 @@
 package com.itasocialacademy.oitassist.logfile.dao;
 
+import com.itasocialacademy.oitassist.logfile.dao.model.LogFileMetadata;
+import com.itasocialacademy.oitassist.logfile.exceptions.InvalidLogFileNameException;
+import com.itasocialacademy.oitassist.logfile.exceptions.LogFileDownloadException;
 import com.itasocialacademy.oitassist.logfile.exceptions.LogFileListingException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -41,6 +44,51 @@ public class FileSystemLogFileDao implements LogFileDao {
             .toString()
             .toLowerCase(Locale.ROOT)
             .contains(normalizedName));
+    }
+
+    @Override
+    public Optional<Path> downloadFile(String fileName) {
+        validateLogDirectory();
+
+        Path filePath = resolveDownloadPath(fileName);
+
+        try {
+            BasicFileAttributes attributes =
+                Files.readAttributes(
+                    filePath,
+                    BasicFileAttributes.class,
+                    LinkOption.NOFOLLOW_LINKS);
+
+            if (attributes.isSymbolicLink() || !attributes.isRegularFile()) {
+                return Optional.empty();
+            }
+            return Optional.of(filePath);
+        } catch (NoSuchFileException exception) {
+            log.debug("Log file not found for download: {}", fileName);
+
+            return Optional.empty();
+        } catch (IOException | SecurityException exception) {
+            log.error("Failed to access log file for download: {}", filePath, exception);
+
+            throw new LogFileDownloadException();
+        }
+    }
+
+    private Path resolveDownloadPath(String fileName) {
+        try {
+            Path filePath = logDirectory
+                .resolve(fileName)
+                .normalize();
+
+            if (!filePath.startsWith(logDirectory)
+                || !logDirectory.equals(filePath.getParent())) {
+                throw new InvalidLogFileNameException();
+            }
+
+            return filePath;
+        } catch (InvalidPathException exception) {
+            throw new InvalidLogFileNameException();
+        }
     }
 
     private List<LogFileMetadata> findFiles(Predicate<Path> filter) {

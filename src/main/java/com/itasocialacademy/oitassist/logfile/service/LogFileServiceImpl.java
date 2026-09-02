@@ -5,16 +5,26 @@ import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.logfile.api.LogFileResponse;
 import com.itasocialacademy.oitassist.logfile.api.PageResponse;
 import com.itasocialacademy.oitassist.logfile.dao.LogFileDao;
-import com.itasocialacademy.oitassist.logfile.dao.LogFileMetadata;
+import com.itasocialacademy.oitassist.logfile.dao.model.LogFileDownloadResult;
+import com.itasocialacademy.oitassist.logfile.dao.model.LogFileMetadata;
+import com.itasocialacademy.oitassist.logfile.exceptions.InvalidLogFileNameException;
+import com.itasocialacademy.oitassist.logfile.exceptions.LogFileDownloadException;
+import com.itasocialacademy.oitassist.logfile.exceptions.LogFileNotFoundException;
 import com.itasocialacademy.oitassist.logfile.mapper.LogFileMapper;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.*;
 import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 
 @Slf4j
 @Service
@@ -30,6 +40,9 @@ public class LogFileServiceImpl implements LogFileService {
 
     private final LogFileDao logFileDao;
     private final LogFileMapper logFileMapper;
+    private static final Pattern SAFE_FILE_NAME =
+        Pattern.compile(
+            "^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$");
 
     public LogFileServiceImpl(LogFileDao logFileDao, LogFileMapper logFileMapper) {
         this.logFileDao = logFileDao;
@@ -68,6 +81,54 @@ public class LogFileServiceImpl implements LogFileService {
             resolveSortOrder(pageable.getSort());
 
         return createPageResponse(logFileDao.findByNameContainingIgnoreCase(searchName), pageable, sortOrder);
+    }
+
+    @Override
+    public LogFileDownloadResult downloadFile(String fileName) {
+        validateDownloadFileName(fileName);
+
+        Path filePath =
+            logFileDao.downloadFile(fileName)
+                .orElseThrow(
+                    () -> new LogFileNotFoundException(fileName));
+
+        Resource resource = createDownloadResource(filePath);
+
+        return new LogFileDownloadResult(
+            filePath
+                .getFileName()
+                .toString(),
+            resource);
+    }
+
+    private void validateDownloadFileName(String fileName) {
+        if (fileName == null
+            || fileName.isBlank()
+            || !fileName.equals(fileName.trim())
+            || fileName.contains("..")
+            || !SAFE_FILE_NAME
+                .matcher(fileName)
+                .matches()) {
+            throw new InvalidLogFileNameException();
+        }
+    }
+
+    private Resource createDownloadResource(Path filePath) {
+        try {
+            InputStream inputStream =
+                Files.newInputStream(
+                    filePath,
+                    StandardOpenOption.READ,
+                    LinkOption.NOFOLLOW_LINKS);
+
+            return new InputStreamResource(inputStream, "Log file " + filePath.getFileName());
+        } catch (NoSuchFileException exception) {
+            throw new LogFileNotFoundException(filePath.getFileName().toString());
+        } catch (IOException | SecurityException exception) {
+            log.error("Failed to open log file for download: {}", filePath, exception);
+
+            throw new LogFileDownloadException();
+        }
     }
 
     private PageResponse<LogFileResponse> createPageResponse(List<LogFileMetadata> files,
