@@ -1,5 +1,4 @@
 spring:
-  # Testcontainers підмінить ці дані під капотом, але Spring'у потрібні заглушки для старту
   datasource:
     url: jdbc:postgresql://localhost:5432/test_dummy
     username: test
@@ -8,12 +7,17 @@ spring:
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.xml
-    drop-first: true # Дуже корисно для тестів, щоб кожен запуск БД була чистою (опціонально)
+    drop-first: true
 
   jpa:
-    show-sql: false # Щоб не засмічувати консоль під час прогону тестів
+    show-sql: true
     hibernate:
       ddl-auto: validate
+    properties:
+      jakarta:
+        persistence:
+          lock:
+            timeout: 500
 
   mail:
     username: dummy@test.com
