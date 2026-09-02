@@ -150,8 +150,21 @@ public class TokenServiceImpl implements TokenService {
         twoFactorService.verify(claims.userId(), request.getCode());
 
         UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserByUsername(claims.email());
+        validateAccountStatus(userDetails);
 
         return jwtTokenIssuer.issueFor(userDetails);
+    }
+
+    private void validateAccountStatus(UserDetailsImpl userDetails) {
+        if (!userDetails.isEnabled()) {
+            throw new AuthenticationException("Account is not activated", ErrorCode.USER_NOT_ACTIVATED);
+        }
+        if (!userDetails.isAccountNonLocked()) {
+            throw new AuthenticationException("Account is locked", ErrorCode.USER_BLOCKED);
+        }
+        if (!userDetails.isAccountNonExpired()) {
+            throw new AuthenticationException("Account has expired", ErrorCode.USER_BLOCKED);
+        }
     }
 
     /**
