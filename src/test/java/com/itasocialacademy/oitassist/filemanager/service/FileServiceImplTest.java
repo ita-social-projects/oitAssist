@@ -11,6 +11,7 @@ import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileResourceDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
@@ -41,7 +42,6 @@ import java.util.Set;
 
 import com.itasocialacademy.oitassist.filemanager.access.FileAccessValidator;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
-import com.itasocialacademy.oitassist.filemanager.dto.response.FileDownloadDto;
 import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileAccessValidatorResolver;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -712,17 +712,17 @@ class FileServiceImplTest {
 
         Set<FileRole> roles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
         FileDetailsDTO expectedDto = new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
-            "/api/v1/files/download/1");
+            "/api/v1/files/1");
 
         when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(problemFile));
-        when(fileMapper.toDetails(problemFile, "/api/v1/files/download/1")).thenReturn(expectedDto);
+        when(fileMapper.toDetails(problemFile, "/api/v1/files/1")).thenReturn(expectedDto);
 
         List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
 
         assertEquals(1, result.size());
         assertEquals(expectedDto, result.getFirst());
         verify(fileRepository).findAll(any(Specification.class));
-        verify(fileMapper).toDetails(problemFile, "/api/v1/files/download/1");
+        verify(fileMapper).toDetails(problemFile, "/api/v1/files/1");
     }
 
     @Test
@@ -754,14 +754,14 @@ class FileServiceImplTest {
 
         Set<FileRole> roles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
         FileDetailsDTO problemDto = new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 1024L, "PROBLEM",
-            "/api/v1/files/download/1");
+            "/api/v1/files/1");
         FileDetailsDTO referenceDto = new FileDetailsDTO(2L, "reference.docx",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 2048L, "REFERENCE",
-            "/api/v1/files/download/2");
+            "/api/v1/files/2");
 
         when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(problemFile, referenceFile));
-        when(fileMapper.toDetails(problemFile, "/api/v1/files/download/1")).thenReturn(problemDto);
-        when(fileMapper.toDetails(referenceFile, "/api/v1/files/download/2")).thenReturn(referenceDto);
+        when(fileMapper.toDetails(problemFile, "/api/v1/files/1")).thenReturn(problemDto);
+        when(fileMapper.toDetails(referenceFile, "/api/v1/files/2")).thenReturn(referenceDto);
 
         List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
 
@@ -781,10 +781,10 @@ class FileServiceImplTest {
 
         Set<FileRole> roles = Set.of(FileRole.SOLUTION);
         FileDetailsDTO solutionDto = new FileDetailsDTO(3L, "solution.zip", "application/zip", 4096L, "SOLUTION",
-            "/api/v1/files/download/3");
+            "/api/v1/files/3");
 
         when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(solutionFile));
-        when(fileMapper.toDetails(solutionFile, "/api/v1/files/download/3")).thenReturn(solutionDto);
+        when(fileMapper.toDetails(solutionFile, "/api/v1/files/3")).thenReturn(solutionDto);
 
         List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
 
@@ -904,7 +904,7 @@ class FileServiceImplTest {
             "image/jpeg",
             512L,
             FileRole.GENERIC.name(),
-            "/api/v1/files/download/10");
+            "/api/v1/files/10");
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any(), any()))
@@ -923,7 +923,7 @@ class FileServiceImplTest {
 
         when(fileMapper.toDetails(
             savedAsset,
-            "/api/v1/files/download/10")).thenReturn(expectedDto);
+            "/api/v1/files/10")).thenReturn(expectedDto);
 
         List<FileDetailsDTO> result =
             fileService.uploadToFileDetails(List.of(file), request);
@@ -946,7 +946,7 @@ class FileServiceImplTest {
         verify(providerResolver).resolveDefault();
         verify(fileMapper).toDetails(
             savedAsset,
-            "/api/v1/files/download/10");
+            "/api/v1/files/10");
 
         assertEquals(List.of(expectedDto), result);
 
@@ -983,7 +983,7 @@ class FileServiceImplTest {
             "image/jpeg",
             256L,
             FileRole.GENERIC.name(),
-            "/api/v1/files/download/1");
+            "/api/v1/files/1");
 
         FileDetailsDTO dto2 = new FileDetailsDTO(
             2L,
@@ -991,7 +991,7 @@ class FileServiceImplTest {
             "image/jpeg",
             512L,
             FileRole.GENERIC.name(),
-            "/api/v1/files/download/2");
+            "/api/v1/files/2");
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any(), any()))
@@ -1016,11 +1016,11 @@ class FileServiceImplTest {
 
         when(fileMapper.toDetails(
             asset1,
-            "/api/v1/files/download/1")).thenReturn(dto1);
+            "/api/v1/files/1")).thenReturn(dto1);
 
         when(fileMapper.toDetails(
             asset2,
-            "/api/v1/files/download/2")).thenReturn(dto2);
+            "/api/v1/files/2")).thenReturn(dto2);
 
         List<FileDetailsDTO> result =
             fileService.uploadToFileDetails(
@@ -1055,7 +1055,7 @@ class FileServiceImplTest {
             "image/jpeg",
             512L,
             FileRole.GENERIC.name(),
-            "/api/v1/files/download/10");
+            "/api/v1/files/10");
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(validationStrategyResolver.resolve(any(), any()))
@@ -1076,7 +1076,7 @@ class FileServiceImplTest {
 
         when(fileMapper.toDetails(
             savedAsset,
-            "/api/v1/files/download/10")).thenReturn(expectedDto);
+            "/api/v1/files/10")).thenReturn(expectedDto);
 
         FileDetailsDTO result =
             fileService.uploadToFileDetails(List.of(file), request)
@@ -1087,7 +1087,7 @@ class FileServiceImplTest {
         verify(fileMapper)
             .toDetails(
                 savedAsset,
-                "/api/v1/files/download/10");
+                "/api/v1/files/10");
     }
 
     // --- detachFiles Tests ---
@@ -1551,10 +1551,10 @@ class FileServiceImplTest {
         verify(fileRepository, never()).save(any());
     }
 
-    // --- downloadFile(Long id) Tests ---
+    // --- getFileResource(Long id) Tests ---
 
     @Test
-    void downloadFile_ShouldReturnDto_WhenAttachedFileAndAccessGranted() {
+    void getFileResource_ShouldReturnDto_WhenAttachedFileAndAccessGranted() {
         existingFile.setStatus(FileStatus.ATTACHED);
         existingFile.setRelatedEntityType(RelatedEntityType.NEWS);
         existingFile.setRelatedEntityId(100L);
@@ -1572,7 +1572,7 @@ class FileServiceImplTest {
         when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
         when(storageProvider.getResource("news/100/article.pdf")).thenReturn(mockResource);
 
-        FileDownloadDto result = fileService.downloadFile(fileId);
+        FileResourceDto result = fileService.getFileResource(fileId);
 
         assertNotNull(result);
         assertEquals(mockResource, result.resource());
@@ -1582,14 +1582,14 @@ class FileServiceImplTest {
     }
 
     @Test
-    void downloadFile_ShouldThrowNotFound_WhenFileDoesNotExist() {
+    void getFileResource_ShouldThrowNotFound_WhenFileDoesNotExist() {
         when(fileRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
-        assertThrows(FileAssetNotFoundException.class, () -> fileService.downloadFile(nonExistentId));
+        assertThrows(FileAssetNotFoundException.class, () -> fileService.getFileResource(nonExistentId));
     }
 
     @Test
-    void downloadFile_ShouldThrowAuthorizationException_WhenAccessDenied() {
+    void getFileResource_ShouldThrowAuthorizationException_WhenAccessDenied() {
         existingFile.setStatus(FileStatus.ATTACHED);
         existingFile.setRelatedEntityType(RelatedEntityType.NEWS);
         existingFile.setRelatedEntityId(100L);
@@ -1599,11 +1599,11 @@ class FileServiceImplTest {
         when(accessValidatorResolver.resolve(RelatedEntityType.NEWS)).thenReturn(accessValidator);
         when(accessValidator.canAccess(eq(100L), eq(userId), any())).thenReturn(false);
 
-        assertThrows(AuthorizationException.class, () -> fileService.downloadFile(fileId));
+        assertThrows(AuthorizationException.class, () -> fileService.getFileResource(fileId));
     }
 
     @Test
-    void downloadFile_ShouldSucceedForTemporaryFile_WhenUserIsOwner() {
+    void getFileResource_ShouldSucceedForTemporaryFile_WhenUserIsOwner() {
         existingFile.setStatus(FileStatus.TEMPORARY);
         existingFile.setUserId(userId);
         existingFile.setStorageKey("temp/preview.png");
@@ -1618,7 +1618,7 @@ class FileServiceImplTest {
         when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
         when(storageProvider.getResource("temp/preview.png")).thenReturn(mockResource);
 
-        FileDownloadDto result = fileService.downloadFile(fileId);
+        FileResourceDto result = fileService.getFileResource(fileId);
 
         assertNotNull(result);
         assertEquals(mockResource, result.resource());
