@@ -15,6 +15,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundExcept
 import com.itasocialacademy.oitassist.competition.exceptions.StaleEntityVersionException;
 import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import jakarta.persistence.EntityManager;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -32,6 +33,7 @@ public class HierarchyValidator {
     private final TourRepository tourRepository;
     private final SecurityFacade securityFacade;
     private final ParticipationInquiryPort participationInquiryPort;
+    private final EntityManager entityManager;
 
     @Transactional(readOnly = true)
     public void checkVisibilityAccess(Long competitionId) {
@@ -371,6 +373,8 @@ public class HierarchyValidator {
      */
     @Transactional
     public Competition lockCompetitionForUpdate(Long competitionId) {
+        entityManager.createNativeQuery(
+            "SET LOCAL lock_timeout = '3000ms'").executeUpdate();
         return competitionRepository.findByIdForUpdate(competitionId)
             .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
     }
