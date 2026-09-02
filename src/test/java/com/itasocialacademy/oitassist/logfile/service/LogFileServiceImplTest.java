@@ -51,7 +51,6 @@ class LogFileServiceImplTest {
     @TempDir
     Path tempDirectory;
 
-
     private LogFileServiceImpl logFileService;
 
     @BeforeEach
@@ -510,7 +509,7 @@ class LogFileServiceImplTest {
             .isNotNull();
 
         try (InputStream inputStream =
-                 result.resource().getInputStream()) {
+            result.resource().getInputStream()) {
 
             String content =
                 new String(

@@ -237,7 +237,7 @@ class FileSystemLogFileDaoTest {
     }
 
     @Test
-    void shouldThrowLogFileListingExceptionWhenDirectoryListingFails(){
+    void shouldThrowLogFileListingExceptionWhenDirectoryListingFails() {
 
         Path logDirectory = tempDirectory;
         String configuredLogFile =
@@ -269,7 +269,7 @@ class FileSystemLogFileDaoTest {
     }
 
     @Test
-    void shouldThrowLogFileListingExceptionWhenReadingMetadataFails(){
+    void shouldThrowLogFileListingExceptionWhenReadingMetadataFails() {
 
         Path logDirectory = tempDirectory;
         Path logFile = logDirectory.resolve("app.log");
@@ -308,7 +308,7 @@ class FileSystemLogFileDaoTest {
     }
 
     @Test
-    void shouldSkipFileWhenItDisappearsDuringDirectoryScan(){
+    void shouldSkipFileWhenItDisappearsDuringDirectoryScan() {
 
         Path logDirectory = tempDirectory;
         Path logFile = logDirectory.resolve("app.log");
@@ -427,7 +427,7 @@ class FileSystemLogFileDaoTest {
     }
 
     @Test
-    void shouldReturnEmptyWhenDownloadFileIsSymbolicLink(){
+    void shouldReturnEmptyWhenDownloadFileIsSymbolicLink() {
 
         Path filePath =
             tempDirectory
