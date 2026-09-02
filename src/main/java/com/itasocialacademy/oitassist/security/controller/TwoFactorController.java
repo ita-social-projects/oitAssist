@@ -4,10 +4,12 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorConfirmRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorEnrollRequest;
+import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorEnrollResponse;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorRecoveryCodesResponse;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TwoFactorStatusResponse;
 import com.itasocialacademy.oitassist.security.service.interfaces.SecurityService;
+import com.itasocialacademy.oitassist.security.service.interfaces.TokenService;
 import com.itasocialacademy.oitassist.security.service.interfaces.TwoFactorService;
 import com.itasocialacademy.oitassist.security.twofactor.TwoFactorEnrollingIdentityResolver;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +19,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -72,6 +75,7 @@ public class TwoFactorController {
     private final TwoFactorService twoFactorService;
     private final SecurityService securityService;
     private final TwoFactorEnrollingIdentityResolver identityResolver;
+    private final TokenService tokenService;
 
     @Operation(
         summary = "Start 2FA enrollment",
@@ -94,17 +98,28 @@ public class TwoFactorController {
     @Operation(
         summary = "Confirm 2FA enrollment",
         description = "Validates a code produced by the just-configured method. Only on success does 2FA "
-            + "actually start being enforced on the account.",
+            + "actually start being enforced on the account. If confirmed via pendingTwoFactorToken (forced "
+            + "setup, no session yet), returns a full access+refresh token pair — completing the login that "
+            + "triggered setup, so no second sign-in is required. If confirmed via an existing authenticated "
+            + "session (voluntary opt-in), returns no content, since the caller's session was already valid.",
         responses = {
-            @ApiResponse(responseCode = "200", description = "Enrollment confirmed; 2FA is now enabled"),
+            @ApiResponse(responseCode = "200", description = "Enrollment confirmed via pendingTwoFactorToken; "
+                + "2FA is now enabled and a full token pair is returned"),
+            @ApiResponse(responseCode = "204", description = "Enrollment confirmed via an existing session; "
+                + "2FA is now enabled, no content returned"),
             @ApiResponse(responseCode = "401", description = "Neither an authenticated session nor a valid "
                 + "pendingTwoFactorToken was supplied, or the code was invalid"),
             @ApiResponse(responseCode = "404", description = "No enrollment is in progress for this user")
         })
     @PostMapping("/enroll/confirm")
-    public void confirmEnrollment(@Valid @RequestBody TwoFactorConfirmRequest request) {
+    public ResponseEntity<TokenResponse> confirmEnrollment(@Valid @RequestBody TwoFactorConfirmRequest request) {
         var identity = identityResolver.resolve(request.getPendingTwoFactorToken());
+        if (identity.viaPendingToken()) {
+            TokenResponse tokens = tokenService.completeTwoFactorSetup(identity.userId(), identity.email(), request);
+            return ResponseEntity.ok(tokens);
+        }
         twoFactorService.confirmEnrollment(identity.userId(), request);
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(

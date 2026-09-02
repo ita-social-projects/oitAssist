@@ -25,7 +25,7 @@ public class TwoFactorEnrollingIdentityResolver {
             String email = securityService.getCurrentUserEmail()
                 .orElseThrow(() -> new AuthenticationException(
                     "Authentication required", ErrorCode.AUTHENTICATION_REQUIRED));
-            return new EnrollingIdentity(currentUserId.get(), email);
+            return new EnrollingIdentity(currentUserId.get(), email, false);
         }
 
         if (pendingTwoFactorToken == null || pendingTwoFactorToken.isBlank()) {
@@ -35,9 +35,9 @@ public class TwoFactorEnrollingIdentityResolver {
         JwtTokenIssuer.PendingTwoFactorClaims claims = jwtTokenIssuer.readPendingTwoFactorToken(
             pendingTwoFactorToken, JwtTokenIssuer.PURPOSE_TWO_FACTOR_SETUP);
 
-        return new EnrollingIdentity(claims.userId(), claims.email());
+        return new EnrollingIdentity(claims.userId(), claims.email(), true);
     }
 
-    public record EnrollingIdentity(Long userId, String email) {
+    public record EnrollingIdentity(Long userId, String email, boolean viaPendingToken) {
     }
 }

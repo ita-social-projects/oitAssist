@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TokenRequest;
+import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorConfirmRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.request.TwoFactorVerifyRequest;
 import com.itasocialacademy.oitassist.security.dao.dto.response.LoginResponse;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
@@ -150,6 +151,16 @@ public class TokenServiceImpl implements TokenService {
         twoFactorService.verify(claims.userId(), request.getCode());
 
         UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserByUsername(claims.email());
+        validateAccountStatus(userDetails);
+
+        return jwtTokenIssuer.issueFor(userDetails);
+    }
+
+    @Override
+    public TokenResponse completeTwoFactorSetup(Long userId, String email, TwoFactorConfirmRequest request) {
+        twoFactorService.confirmEnrollment(userId, request);
+
+        UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserByUsername(email);
         validateAccountStatus(userDetails);
 
         return jwtTokenIssuer.issueFor(userDetails);
