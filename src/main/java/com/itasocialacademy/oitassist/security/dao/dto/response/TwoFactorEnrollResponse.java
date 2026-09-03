@@ -4,11 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import lombok.*;
 
-/**
- * Returned once, immediately after {@code enroll()}. Recovery codes are
- * plaintext here and only here — see plan section 2.3: they are hashed before
- * persistence and are never retrievable again after this response.
- */
 @Getter
 @Setter
 @NoArgsConstructor
