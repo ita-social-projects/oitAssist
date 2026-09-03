@@ -10,16 +10,20 @@ import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFound
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
+import com.itasocialacademy.oitassist.participation.components.saver.ApplicationDecisionsSaver;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.AcceptApplicationsRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Application;
+import com.itasocialacademy.oitassist.participation.dao.model.Participation;
 import com.itasocialacademy.oitassist.participation.dao.repository.ApplicationRepository;
 import com.itasocialacademy.oitassist.participation.dao.repository.ParticipationRepository;
 import com.itasocialacademy.oitassist.participation.dao.specification.ApplicationSpecification;
 import com.itasocialacademy.oitassist.participation.exceptions.ApplicationNotFoundException;
 import com.itasocialacademy.oitassist.participation.exceptions.UnableToProcessApplicationException;
+import com.itasocialacademy.oitassist.participation.exceptions.UnexpectedConstraintViolationException;
 import com.itasocialacademy.oitassist.participation.exceptions.UserApplicationRequestException;
 import com.itasocialacademy.oitassist.participation.mapper.UserEnrollmentAssembler;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ApplicationMapper;
@@ -33,11 +37,13 @@ import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -49,6 +55,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ApplicationServiceImpl implements ApplicationService {
     private static final RequestStatus PENDING_STATUS = RequestStatus.PENDING;
+    private static final String UNIQUE_PARTICIPATION_CONSTRAINT = "uc_participants_competition_id_stage_id";
 
     private final ParticipationRepository participationRepository;
     private final ApplicationRepository applicationRepository;
@@ -62,6 +69,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final AfterCommitScheduler scheduler;
     private final UserEnrollmentAssembler enrollmentAssembler;
     private final UserSummaryMapper userSummaryMapper;
+    private final ApplicationDecisionsSaver applicationSaver;
 
     @Override
     @Transactional
@@ -94,6 +102,55 @@ public class ApplicationServiceImpl implements ApplicationService {
             application.getIssuedBy());
 
         return response;
+    }
+
+    @Override
+    public AcceptedApplicationListResponse acceptApplications(
+        AcceptApplicationsRequest request,
+        Long competitionId,
+        Long stageId) {
+        Long userId = getCurrentUserIdOrThrow();
+        List<Long> applicationIds = validateNoDuplicatesOrThrow(request.applicationIds());
+
+        List<Application> applications = applicationRepository.findAll(
+            ApplicationSpecification.applicationIdIn(applicationIds)
+        );
+        List<SucceededApplicationAcceptingItemResponse> succeeded = new ArrayList<>();
+        List<FailedApplicationDecisionItemResponse> failed = new ArrayList<>();
+
+        Set<Long> foundIds = applications.stream().map(Application::getId).collect(Collectors.toSet());
+        applicationIds.stream()
+            .filter(id -> !foundIds.contains(id))
+            .forEach(id -> failed.add(new FailedApplicationDecisionItemResponse(id, "Application not found")));
+
+        for (Application application : applications) {
+            if (application.getStatus() != PENDING_STATUS) {
+                failed.add(new FailedApplicationDecisionItemResponse(
+                    application.getId(), "Application is not pending")
+                );
+                continue;
+            }
+            try {
+                Participation savedParticipation = applicationSaver.saveAcceptedApplicationData(
+                    userId, application, competitionId, stageId);
+                succeeded.add(new SucceededApplicationAcceptingItemResponse(
+                    application.getId(), savedParticipation.getUserId())
+                );
+            } catch (DataIntegrityViolationException e) {
+                if (isUniqueParticipationConstraint(e)) {
+                    failed.add(new FailedApplicationDecisionItemResponse(
+                        application.getId(), "Application already has a participation record")
+                    );
+                } else {
+                    throw new UnexpectedConstraintViolationException(
+                        "Unexpected database constraint violation while accepting application",
+                        ErrorCode.DATA_ACCESS_ERROR, e);
+                }
+            }
+        }
+
+        return new AcceptedApplicationListResponse(
+            succeeded, failed);
     }
 
     @Override
@@ -272,5 +329,23 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     private void scheduleRejectedEmail(Long competitionId, Long stageId, Long userId, String rejectionReason) {
         scheduleDecisionEmailAfterCommit(competitionId, stageId, userId, rejectionReason, RequestStatus.REJECTED);
+    }
+
+    private List<Long> validateNoDuplicatesOrThrow(List<Long> rawIds) {
+        Set<Long> seen = new HashSet<>();
+        Set<Long> duplicates = rawIds.stream()
+            .filter(id -> !seen.add(id))
+            .collect(Collectors.toSet());
+        if (!duplicates.isEmpty()) {
+            throw new UnableToProcessApplicationException("Duplicate application IDs: " + duplicates);
+        }
+        return rawIds;
+    }
+
+    private boolean isUniqueParticipationConstraint(DataIntegrityViolationException e) {
+        if (e.getCause() instanceof ConstraintViolationException cve) {
+            return UNIQUE_PARTICIPATION_CONSTRAINT.equals(cve.getConstraintName());
+        }
+        return false;
     }
 }
