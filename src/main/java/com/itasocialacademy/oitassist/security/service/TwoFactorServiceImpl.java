@@ -145,9 +145,6 @@ public class TwoFactorServiceImpl implements TwoFactorService {
             case TOTP -> confirmTotp(entity, code);
             case EMAIL_OTP -> confirmEmailOtp(entity, code);
         };
-
-        // A recovery code is always a valid fallback, regardless of the
-        // configured method — this is the entire point of having them.
         if (!valid) {
             valid = tryRecoveryCode(entity, code);
         }
