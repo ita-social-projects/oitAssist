@@ -54,12 +54,12 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            scope: openid, email, profile
+            scope: [openid, email, profile]
           microsoft:
             provider: microsoft
             client-id: ${MICROSOFT_CLIENT_ID}
             client-secret: ${MICROSOFT_CLIENT_SECRET}
-            scope: openid, email, profile
+            scope: [openid, email, profile]
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             client-name: Microsoft
@@ -86,6 +86,15 @@ jwt:
   sign-key: ${JWT_SIGN_KEY}
   validity: ${JWT_VALIDITY:600000}
   refresh-validity: ${JWT_REFRESH_VALIDITY:1209600000}
+
+two-factor:
+  issuer: ${TWO_FACTOR_ISSUER:OITAssist}
+  recovery-code-count: ${TWO_FACTOR_RECOVERY_CODE_COUNT:10}
+  recovery-code-length: ${TWO_FACTOR_RECOVERY_CODE_LENGTH:8}
+  totp-tolerance-steps: ${TWO_FACTOR_TOTP_TOLERANCE_STEPS:1}
+  pending-token-validity-millis: ${TWO_FACTOR_PENDING_TOKEN_VALIDITY_MILLIS:300000}
+  email-otp-validity-millis: ${TWO_FACTOR_EMAIL_OTP_VALIDITY_MILLIS:600000}
+  mandatory-roles: ${TWO_FACTOR_MANDATORY_ROLES:ADMIN,AUTHOR,JURY,ORG}
 
 logging:
   level:

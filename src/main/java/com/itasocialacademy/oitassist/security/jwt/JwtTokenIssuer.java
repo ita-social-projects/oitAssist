@@ -1,7 +1,14 @@
 package com.itasocialacademy.oitassist.security.jwt;
 
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.dao.dto.response.TokenResponse;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +46,18 @@ public class JwtTokenIssuer {
     static final String CLAIM_TOKEN_TYPE = "token_type";
     private static final String ROLE_PREFIX = "ROLE_";
 
+    /**
+     * Claim distinguishing what a {@link JwtHelper#TWO_FACTOR_PENDING_TOKEN} grants
+     * access to: either submitting a verification code
+     * ({@link #PURPOSE_TWO_FACTOR_VERIFY}) or completing enrollment
+     * ({@link #PURPOSE_TWO_FACTOR_SETUP}). The two purposes are not interchangeable
+     * — a setup-purpose token must not be usable at the verify endpoint and vice
+     * versa, since a user with no enrollment yet has nothing to verify against.
+     */
+    static final String CLAIM_PURPOSE = "purpose";
+    public static final String PURPOSE_TWO_FACTOR_VERIFY = "2fa_verify";
+    public static final String PURPOSE_TWO_FACTOR_SETUP = "2fa_setup";
+
     private final JwtHelper jwtHelper;
 
     /**
@@ -68,6 +87,94 @@ public class JwtTokenIssuer {
 
     private Map<String, Object> buildRefreshClaims() {
         return Map.of(CLAIM_TOKEN_TYPE, JwtHelper.REFRESH_TOKEN);
+    }
+
+    /**
+     * Issues a short-lived pending-2FA token, scoped to exactly one purpose.
+     *
+     * <p>
+     * Deliberately omits the {@code role} claim carried by access tokens: this
+     * token grants no general API access (see {@link JwtHelper#extractUsername},
+     * which every protected route relies on and which only accepts
+     * {@link JwtHelper#ACCESS_TOKEN} — a {@code 2fa_pending} token is rejected
+     * there automatically without any change to the existing filter chain).
+     * </p>
+     *
+     * @param userDetails    the principal who just passed password verification
+     * @param purpose        either {@link #PURPOSE_TWO_FACTOR_VERIFY} or
+     *                       {@link #PURPOSE_TWO_FACTOR_SETUP}
+     * @param validityMillis how long the token remains valid, in milliseconds
+     * @return the signed+encrypted pending token
+     */
+    public String issuePendingTwoFactorToken(UserDetailsImpl userDetails, String purpose, long validityMillis) {
+        Map<String, Object> claims = Map.of(
+            CLAIM_ID, Objects.requireNonNull(userDetails.getId(), "user id must not be null"),
+            CLAIM_TOKEN_TYPE, JwtHelper.TWO_FACTOR_PENDING_TOKEN,
+            CLAIM_PURPOSE, purpose);
+        return jwtHelper.createTwoFactorPendingToken(claims, userDetails.getUsername(), validityMillis);
+    }
+
+    /**
+     * Reads back the claims embedded in a pending-2FA token (issued by
+     * {@link #issuePendingTwoFactorToken}), after validating its signature,
+     * decryption, and {@code token_type}.
+     *
+     * <p>
+     * Returns a typed record rather than a raw {@link Claims} map, so callers
+     * outside this package (e.g. {@code TokenServiceImpl}, resolving who's
+     * completing a 2FA challenge) never need to know this class's internal
+     * claim-key vocabulary ({@code CLAIM_ID}, {@code CLAIM_PURPOSE}, etc.) — those
+     * stay {@code package-private}, exactly as they already were before this method
+     * existed.
+     * </p>
+     *
+     * @param rawToken the token exactly as the client submitted it
+     * @return the userId, email (JWT subject), and purpose embedded at issuance
+     * @throws AuthenticationException if the token's signature, encryption, or
+     *                                 {@code token_type} don't check out
+     */
+    public PendingTwoFactorClaims readPendingTwoFactorToken(String rawToken) {
+        Claims claims;
+        try {
+            String encryptedJwt = jwtHelper.extractEncryptedToken(rawToken);
+            claims = jwtHelper.extractClaims(encryptedJwt, JwtHelper.TWO_FACTOR_PENDING_TOKEN);
+        } catch (SignatureException e) {
+            throw new AuthenticationException("Invalid JWT signature", ErrorCode.INVALID_SIGNATURE);
+        } catch (IllegalArgumentException e) {
+            throw new AuthenticationException("JWT claims string is empty", ErrorCode.EMPTY_CLAIMS);
+        } catch (ExpiredJwtException e) {
+            throw new AuthenticationException("Pending two-factor token expired", ErrorCode.TOKEN_EXPIRE);
+        } catch (UnsupportedJwtException e) {
+            throw new AuthenticationException("JWT token is unsupported", ErrorCode.UNSUPPORTED_TOKEN);
+        } catch (MalformedJwtException e) {
+            throw new AuthenticationException("Invalid JWT token", ErrorCode.INVALID_TOKEN);
+        }
+        return new PendingTwoFactorClaims(
+            claims.get(CLAIM_ID, Long.class),
+            claims.getSubject(),
+            claims.get(CLAIM_PURPOSE, String.class));
+    }
+
+    /**
+     * Same as {@link #readPendingTwoFactorToken(String)}, but also validates the
+     * token's {@code purpose} claim matches what the caller expects — e.g. a
+     * {@link #PURPOSE_TWO_FACTOR_SETUP} token must not be usable where a
+     * {@link #PURPOSE_TWO_FACTOR_VERIFY} token is required, and vice versa.
+     */
+    public PendingTwoFactorClaims readPendingTwoFactorToken(String rawToken, String expectedPurpose) {
+        PendingTwoFactorClaims claims = readPendingTwoFactorToken(rawToken);
+        if (!expectedPurpose.equals(claims.purpose())) {
+            throw new AuthenticationException("Invalid token type", ErrorCode.INVALID_TOKEN_TYPE);
+        }
+        return claims;
+    }
+
+    /**
+     * The userId, email, and purpose embedded in a pending-2FA token — everything a
+     * caller needs to act on the token without touching this class's internal
+     * claim-key constants directly.
+     */
+    public record PendingTwoFactorClaims(Long userId, String email, String purpose) {
     }
 
     private String extractRole(UserDetailsImpl userDetails) {
