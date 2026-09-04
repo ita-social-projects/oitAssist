@@ -46,3 +46,6 @@ graph:
 
 web_client:
   origin: http://localhost:3000
+
+competition:
+  hierarchy-lock-timeout-ms: ${LOCK_TIMEOUT:1000}

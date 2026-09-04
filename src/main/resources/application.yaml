@@ -146,3 +146,6 @@ app:
   news:
     archiving:
       cron: ${APP_NEWS_ARCHIVING_CRON:0 5 0 * * *}
+
+competition:
+  hierarchy-lock-timeout-ms: ${LOCK_TIMEOUT:3000}
