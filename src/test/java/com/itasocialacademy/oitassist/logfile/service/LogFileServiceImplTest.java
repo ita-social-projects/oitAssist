@@ -9,14 +9,28 @@ import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.logfile.api.LogFileResponse;
 import com.itasocialacademy.oitassist.logfile.api.PageResponse;
 import com.itasocialacademy.oitassist.logfile.dao.LogFileDao;
-import com.itasocialacademy.oitassist.logfile.dao.LogFileMetadata;
+import com.itasocialacademy.oitassist.logfile.dao.model.LogFileDownloadResult;
+import com.itasocialacademy.oitassist.logfile.dao.model.LogFileMetadata;
+import com.itasocialacademy.oitassist.logfile.exceptions.InvalidLogFileNameException;
+import com.itasocialacademy.oitassist.logfile.exceptions.LogFileDownloadException;
 import com.itasocialacademy.oitassist.logfile.exceptions.LogFileListingException;
+import com.itasocialacademy.oitassist.logfile.exceptions.LogFileNotFoundException;
 import com.itasocialacademy.oitassist.logfile.mapper.LogFileMapper;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +47,9 @@ class LogFileServiceImplTest {
 
     @Mock
     private LogFileMapper logFileMapper;
+
+    @TempDir
+    Path tempDirectory;
 
     private LogFileServiceImpl logFileService;
 
@@ -468,6 +485,112 @@ class LogFileServiceImplTest {
         verifyNoInteractions(
             logFileDao,
             logFileMapper);
+    }
+
+    @Test
+    void shouldReturnDownloadResultForValidFileName()
+        throws IOException {
+
+        Path logFile =
+            Files.writeString(
+                tempDirectory.resolve("app.log"),
+                "test log content");
+
+        when(logFileDao.downloadFile("app.log"))
+            .thenReturn(Optional.of(logFile));
+
+        LogFileDownloadResult result =
+            logFileService.downloadFile("app.log");
+
+        assertThat(result.fileName())
+            .isEqualTo("app.log");
+
+        assertThat(result.resource())
+            .isNotNull();
+
+        try (InputStream inputStream =
+            result.resource().getInputStream()) {
+
+            String content =
+                new String(
+                    inputStream.readAllBytes(),
+                    StandardCharsets.UTF_8);
+
+            assertThat(content)
+                .isEqualTo("test log content");
+        }
+
+        verify(logFileDao)
+            .downloadFile("app.log");
+
+        verifyNoInteractions(logFileMapper);
+    }
+
+    @Test
+    void shouldThrowLogFileNotFoundExceptionWhenDownloadFileDoesNotExist() {
+
+        when(logFileDao.downloadFile("missing.log"))
+            .thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+            () -> logFileService.downloadFile("missing.log"))
+            .isInstanceOf(
+                LogFileNotFoundException.class);
+
+        verify(logFileDao)
+            .downloadFile("missing.log");
+
+        verifyNoInteractions(logFileMapper);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {
+        "",
+        " ",
+        " app.log",
+        "app.log ",
+        "..",
+        "../app.log",
+        "app..log",
+        "app/log",
+        "app\\log",
+        "app;log"
+    })
+    void shouldThrowInvalidLogFileNameExceptionForInvalidDownloadFileName(
+        String fileName) {
+
+        assertThatThrownBy(
+            () -> logFileService.downloadFile(fileName))
+            .isInstanceOf(
+                InvalidLogFileNameException.class);
+
+        verifyNoInteractions(
+            logFileDao,
+            logFileMapper);
+    }
+
+    @Test
+    void shouldPropagateLogFileDownloadExceptionFromDao() {
+
+        IOException cause =
+            new IOException(
+                "Unable to access log file");
+
+        LogFileDownloadException exception =
+            new LogFileDownloadException(cause);
+
+        when(logFileDao.downloadFile("app.log"))
+            .thenThrow(exception);
+
+        assertThatThrownBy(
+            () -> logFileService.downloadFile("app.log"))
+            .isSameAs(exception);
+
+        verify(logFileDao)
+            .downloadFile("app.log");
+
+        verifyNoInteractions(logFileMapper);
     }
 
     private void stubMapper() {
