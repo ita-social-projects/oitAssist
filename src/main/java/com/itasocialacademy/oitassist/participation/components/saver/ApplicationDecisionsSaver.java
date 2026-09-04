@@ -46,4 +46,3 @@ public class ApplicationDecisionsSaver {
         return applicationRepository.save(application);
     }
 }
-

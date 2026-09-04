@@ -12,7 +12,8 @@ import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.components.saver.ApplicationDecisionsSaver;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
-import com.itasocialacademy.oitassist.participation.dao.dto.request.AcceptApplicationsRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.AcceptApplicationListRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationListRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
@@ -106,15 +107,14 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     public AcceptedApplicationListResponse acceptApplications(
-        AcceptApplicationsRequest request,
+        AcceptApplicationListRequest request,
         Long competitionId,
         Long stageId) {
         Long userId = getCurrentUserIdOrThrow();
         List<Long> applicationIds = validateNoDuplicatesOrThrow(request.applicationIds());
 
         List<Application> applications = applicationRepository.findAll(
-            ApplicationSpecification.applicationIdIn(applicationIds)
-        );
+            ApplicationSpecification.applicationIdIn(applicationIds));
         List<SucceededApplicationAcceptingItemResponse> succeeded = new ArrayList<>();
         List<FailedApplicationDecisionItemResponse> failed = new ArrayList<>();
 
@@ -126,21 +126,18 @@ public class ApplicationServiceImpl implements ApplicationService {
         for (Application application : applications) {
             if (application.getStatus() != PENDING_STATUS) {
                 failed.add(new FailedApplicationDecisionItemResponse(
-                    application.getId(), "Application is not pending")
-                );
+                    application.getId(), "Application is not pending"));
                 continue;
             }
             try {
                 Participation savedParticipation = applicationSaver.saveAcceptedApplicationData(
                     userId, application, competitionId, stageId);
                 succeeded.add(new SucceededApplicationAcceptingItemResponse(
-                    application.getId(), savedParticipation.getUserId())
-                );
+                    application.getId(), savedParticipation.getUserId(), RequestStatus.ACCEPTED));
             } catch (DataIntegrityViolationException e) {
                 if (isUniqueParticipationConstraint(e)) {
                     failed.add(new FailedApplicationDecisionItemResponse(
-                        application.getId(), "Application already has a participation record")
-                    );
+                        application.getId(), "Application already has a participation record"));
                 } else {
                     throw new UnexpectedConstraintViolationException(
                         "Unexpected database constraint violation while accepting application",
@@ -148,9 +145,17 @@ public class ApplicationServiceImpl implements ApplicationService {
                 }
             }
         }
+        AcceptedApplicationListResponse response = AcceptedApplicationListResponse.builder()
+            .application(new ApplicationDecisionSummary(competitionId, stageId, userId, Instant.now()))
+            .succeeded(succeeded)
+            .failed(failed)
+            .build();
 
-        return new AcceptedApplicationListResponse(
-            succeeded, failed);
+        if (!succeeded.isEmpty()) {
+
+        }
+
+        return response;
     }
 
     @Override
@@ -170,6 +175,54 @@ public class ApplicationServiceImpl implements ApplicationService {
             application.getStageId(),
             application.getIssuedBy(),
             application.getRejectionReason());
+
+        return response;
+    }
+
+    @Override
+    public RejectedApplicationListResponse rejectApplications(
+        RejectApplicationListRequest request,
+        Long competitionId,
+        Long stageId) {
+        Long userId = getCurrentUserIdOrThrow();
+        List<Long> applicationIds = validateNoDuplicatesOrThrow(request.applicationIds());
+
+        List<Application> applications = applicationRepository.findAll(
+            ApplicationSpecification.applicationIdIn(applicationIds));
+        List<SucceededApplicationRejectingItemResponse> succeeded = new ArrayList<>();
+        List<FailedApplicationDecisionItemResponse> failed = new ArrayList<>();
+
+        Set<Long> foundIds = applications.stream().map(Application::getId).collect(Collectors.toSet());
+        applicationIds.stream()
+            .filter(id -> !foundIds.contains(id))
+            .forEach(id -> failed.add(new FailedApplicationDecisionItemResponse(id, "Application not found")));
+
+        for (Application application : applications) {
+            if (application.getStatus() != PENDING_STATUS) {
+                failed.add(new FailedApplicationDecisionItemResponse(
+                    application.getId(), "Application is not pending"));
+                continue;
+            }
+            try {
+                Application savedApplication = applicationSaver.saveRejectedApplication(
+                    userId, application, request.rejectionReason());
+                succeeded.add(new SucceededApplicationRejectingItemResponse(
+                    savedApplication.getId(), RequestStatus.REJECTED));
+            } catch (DataIntegrityViolationException e) {
+                throw new UnexpectedConstraintViolationException(
+                    "Unexpected database constraint violation while accepting application",
+                    ErrorCode.DATA_ACCESS_ERROR, e);
+            }
+        }
+        RejectedApplicationListResponse response = RejectedApplicationListResponse.builder()
+            .application(new ApplicationDecisionSummary(competitionId, stageId, userId, Instant.now()))
+            .succeeded(succeeded)
+            .failed(failed)
+            .build();
+
+        if (!succeeded.isEmpty()) {
+
+        }
 
         return response;
     }
