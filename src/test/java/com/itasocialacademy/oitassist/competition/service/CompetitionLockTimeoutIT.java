@@ -112,10 +112,11 @@ class CompetitionLockTimeoutIT extends PostgresIntegrationTest {
         ChangeCompetitionStatusRequest request =
             new ChangeCompetitionStatusRequest(CompetitionStatus.ENROLLMENT, competition.getVersion());
 
-        assertNotNull(competition.getId());
+        Long id = competition.getId();
+        assertNotNull(id);
 
         assertThrows(PessimisticLockingFailureException.class,
-            () -> competitionService.changeStatus(competition.getId(), request));
+            () -> competitionService.changeStatus(id, request));
 
         releaseHolder.countDown();
         holderFuture.get(5, TimeUnit.SECONDS);
