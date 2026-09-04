@@ -13,6 +13,7 @@ import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,10 +22,17 @@ public interface TaskService {
     /**
      * Creates a new task based on the provided request data.
      *
-     * @param requestDTO the request containing task details
+     * @param requestDTO     the request containing task details
+     * @param problemFiles   the new problem files to upload
+     * @param referenceFiles the new reference files to upload
+     * @param solutionFiles  the new solution files to upload
      * @return the created task as a {@link TaskResponseDTO}
      */
-    TaskResponseDTO createTask(CreateTaskRequestDTO requestDTO);
+    TaskResponseDTO createTask(
+        CreateTaskRequestDTO requestDTO,
+        List<MultipartFile> problemFiles,
+        List<MultipartFile> referenceFiles,
+        List<MultipartFile> solutionFiles);
 
     /**
      * Retrieves a task by its id.
@@ -61,14 +69,23 @@ public interface TaskService {
      * Updates a task's title, description and manages file attachments. Only the
      * task owner or an admin can update a task.
      *
-     * @param taskId     the task id to update
-     * @param requestDTO the updated task data and file ids
+     * @param taskId         the task id to update
+     * @param requestDTO     the updated task data, removed file ids and role
+     *                       updates
+     * @param problemFiles   the new problem files to upload
+     * @param referenceFiles the new reference files to upload
+     * @param solutionFiles  the new solution files to upload
      * @return the updated task
      * @throws TaskNotFoundException         if the task does not exist
      * @throws TaskAccessRestrictedException if the user is not authorized to update
      *                                       this task
      */
-    TaskResponseDTO updateTask(Long taskId, UpdateTaskRequestDTO requestDTO);
+    TaskResponseDTO updateTask(
+        Long taskId,
+        UpdateTaskRequestDTO requestDTO,
+        List<MultipartFile> problemFiles,
+        List<MultipartFile> referenceFiles,
+        List<MultipartFile> solutionFiles);
 
     /**
      * Adds the owner to an existing task. The new owner must have ADMIN or ORG

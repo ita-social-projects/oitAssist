@@ -13,7 +13,6 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
-import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
@@ -239,13 +238,14 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
         Long fileId = 1L;
         FileResponseDto responseDto = FileResponseDto.builder().id(fileId).build();
 
-        when(fileService.updateRole(
+        when(fileService.updateRoleGeneral(
             eq(fileId),
             argThat(request -> request.getNewRole() == FileRole.PROBLEM)))
             .thenReturn(responseDto);
 
         mockMvc.perform(patch("/api/v1/files/{id}/role", fileId)
-            .param("newRole", "PROBLEM"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"newRole\":\"PROBLEM\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(fileId));
     }
@@ -254,7 +254,9 @@ class FileControllerTest extends ControllerUnitTest<FileController> {
     void updateRole_ShouldReturn400_WhenRoleIsNull() throws Exception {
         Long fileId = 1L;
 
-        mockMvc.perform(patch("/api/v1/files/{id}/role", fileId))
+        mockMvc.perform(patch("/api/v1/files/{id}/role", fileId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
             .andExpect(status().isBadRequest());
 
         verifyNoInteractions(fileService);
