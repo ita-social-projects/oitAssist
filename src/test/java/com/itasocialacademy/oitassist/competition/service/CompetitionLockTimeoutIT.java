@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.service;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -110,6 +111,8 @@ class CompetitionLockTimeoutIT extends PostgresIntegrationTest {
 
         ChangeCompetitionStatusRequest request =
             new ChangeCompetitionStatusRequest(CompetitionStatus.ENROLLMENT, competition.getVersion());
+
+        assertNotNull(competition.getId());
 
         assertThrows(PessimisticLockingFailureException.class,
             () -> competitionService.changeStatus(competition.getId(), request));

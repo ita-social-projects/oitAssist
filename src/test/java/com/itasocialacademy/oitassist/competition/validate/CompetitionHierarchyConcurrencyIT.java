@@ -26,7 +26,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class CompetitionHierarchyConcurrencyIT extends PostgresIntegrationTest {
+class CompetitionHierarchyConcurrencyIT extends PostgresIntegrationTest {
 
     @Autowired
     private CompetitionRepository competitionRepository;
@@ -49,11 +49,10 @@ public class CompetitionHierarchyConcurrencyIT extends PostgresIntegrationTest {
     }
 
     /**
-     * Reproduces the original race: an admin publishing the competition (DRAFT ->
-     * ENROLLMENT) concurrently with another admin deleting the only Tour of its
-     * only Stage. Regardless of which transaction wins the row lock, the
-     * competition must never end up ENROLLMENT with an empty stage — exactly one of
-     * the two operations must succeed, never both, never neither.
+     * Reproduces the original race: an admin publishing the competition (DRAFT -> ENROLLMENT) concurrently with another
+     * admin deleting the only Tour of its only Stage. Regardless of which transaction wins the row lock, the
+     * competition must never end up ENROLLMENT with an empty stage — exactly one of the two operations must succeed,
+     * never both, never neither.
      */
     @RepeatedTest(10)
     void concurrentPublishAndDeleteLastTour_neverLeavesEmptyPublishedStage() throws Exception {
@@ -102,7 +101,7 @@ public class CompetitionHierarchyConcurrencyIT extends PostgresIntegrationTest {
                 ChangeCompetitionStatusRequest request =
                     new ChangeCompetitionStatusRequest(CompetitionStatus.ENROLLMENT, competition.getVersion());
                 competitionService.changeStatus(competition.getId(), request);
-            } catch (RuntimeException ignored) {
+            } catch (RuntimeException _) {
             }
         }, executor);
 
@@ -111,7 +110,7 @@ public class CompetitionHierarchyConcurrencyIT extends PostgresIntegrationTest {
             awaitGo(go);
             try {
                 tourService.delete(stage.getId(), tour.getId());
-            } catch (RuntimeException ignored) {
+            } catch (RuntimeException _) {
             }
         }, executor);
 
@@ -136,7 +135,7 @@ public class CompetitionHierarchyConcurrencyIT extends PostgresIntegrationTest {
     private void awaitGo(CountDownLatch go) {
         try {
             go.await(5, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
         }
     }

@@ -40,6 +40,7 @@
         <azure-core-http-netty-version>1.15.12</azure-core-http-netty-version>
         <spring-modulith-events-api-version>2.0.1</spring-modulith-events-api-version>
         <poi-version>5.5.1</poi-version>
+        <testcontainers-postgres-version>1.20.3</testcontainers-postgres-version>
     </properties>
     <dependencies>
         <dependency>
@@ -186,7 +187,7 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
-            <version>1.19.1</version>
+            <version>${testcontainers-postgres-version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
