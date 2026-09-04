@@ -331,51 +331,87 @@ public class FileServiceImpl implements FileService {
 
     @Override
     @Transactional
-    public FileResponseDto updateRole(Long fileId, UpdateFileRoleRequestDto request) {
+    public FileResponseDto updateRoleGeneral(Long fileId, UpdateFileRoleRequestDto request) {
         Long currentUserId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException(NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
+            .orElseThrow(() -> new AuthorizationException(
+                NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
 
         FileAsset file = repository.findById(fileId)
-            .orElseThrow(() -> new FileAssetNotFoundException(FILE_NOT_FOUND_IN_THE_DATABASE + fileId));
+            .orElseThrow(() -> new FileAssetNotFoundException(
+                FILE_NOT_FOUND_IN_THE_DATABASE + fileId));
 
         checkOwnerOrAdmin(file.getUserId(), currentUserId);
 
+        FileAsset saved = validateAndUpdateRole(file, request.getNewRole(),
+            file.getRelatedEntityType(), file.getRelatedEntityId());
+
+        StorageProvider provider = providerResolver.resolve(saved.getStorageProvider());
+        FileResponseDto dto = fileMapper.toDto(saved);
+        dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+        return dto;
+    }
+
+    @Override
+    @Transactional
+    public void updateRoleForMultiOwnerEntity(Long fileId, FileRole newRole, RelatedEntityType entityType,
+        Long entityId) {
+        FileAsset file = repository.findById(fileId)
+            .orElseThrow(() -> new FileAssetNotFoundException(
+                FILE_NOT_FOUND_IN_THE_DATABASE + fileId));
+
+        validateAndUpdateRole(file, newRole, entityType, entityId);
+    }
+
+    /**
+     * Validates and updates the role of a given file asset. Ensures the file is in
+     * an ATTACHED state, belongs to the specified entity, and that the new role is
+     * allowed for its extension based on the entity's policy.
+     *
+     * @param file       the file asset to update
+     * @param newRole    the new role to assign
+     * @param entityType the expected related entity type
+     * @param entityId   the expected related entity ID
+     * @return the saved file asset (or the original if the role is already set)
+     * @throws ValidationException if the file is not ATTACHED, does not belong to
+     *                             the entity, or the extension is disallowed
+     */
+    private FileAsset validateAndUpdateRole(FileAsset file, FileRole newRole, RelatedEntityType entityType,
+        Long entityId) {
         if (!file.getStatus().equals(FileStatus.ATTACHED)) {
             throw new ValidationException(
                 "File must be in ATTACHED state to update its role",
                 ErrorCode.FILE_VALIDATION_FAILED);
         }
 
-        StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
-
-        if (file.getFileRole().equals(request.getNewRole())) {
-            FileAsset saved = repository.save(file);
-            FileResponseDto dto = fileMapper.toDto(saved);
-            dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
-            return dto;
+        if (!entityType.equals(file.getRelatedEntityType())
+            || !entityId.equals(file.getRelatedEntityId())) {
+            throw new ValidationException(
+                "File id=" + file.getId() + " does not belong to "
+                    + entityType + " id=" + entityId,
+                ErrorCode.FILE_VALIDATION_FAILED);
         }
 
-        // Validate if new role is allowed for the file extension
-        FilePolicy newPolicy = filePolicyResolver.resolve(file.getRelatedEntityType(), request.getNewRole());
+        if (file.getFileRole().equals(newRole)) {
+            return file;
+        }
+
+        FilePolicy newPolicy = filePolicyResolver.resolve(entityType, newRole);
         String extension = extractExtension(file.getOriginalFilename());
 
         if (isExtensionNotAllowed(extension, newPolicy.getAllowedExtensions())) {
             throw new ValidationException(
-                "File '%s' has extension '%s' which is not allowed for role %s. Allowed: %s.".formatted(
-                    file.getOriginalFilename(), extension, request.getNewRole(),
-                    formatAllowed(newPolicy.getAllowedExtensions())),
+                "File '%s' has extension '%s' which is not allowed for role %s. Allowed: %s."
+                    .formatted(file.getOriginalFilename(), extension, newRole,
+                        formatAllowed(newPolicy.getAllowedExtensions())),
                 ErrorCode.FILE_VALIDATION_FAILED);
         }
 
-        file.setFileRole(request.getNewRole());
+        file.setFileRole(newRole);
         FileAsset saved = repository.save(file);
+        log.debug("Updated file role for id={} to {} (entity {}:{})",
+            file.getId(), newRole, entityType, entityId);
 
-        log.debug("Updated file role for id={} to {}", saved.getId(), saved.getFileRole());
-
-        FileResponseDto dto = fileMapper.toDto(saved);
-        dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
-
-        return dto;
+        return saved;
     }
 
     /**

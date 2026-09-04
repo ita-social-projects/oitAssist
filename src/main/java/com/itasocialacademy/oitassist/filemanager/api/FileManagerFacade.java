@@ -78,4 +78,22 @@ public interface FileManagerFacade {
      * @param newRole the new role to assign
      */
     void updateFileRole(Long fileId, FileRole newRole);
+
+    /**
+     * Updates the role of a file that must belong to the specified entity.
+     * Validates that the file is ATTACHED to the given entity type and ID before
+     * updating.
+     *
+     * <p>
+     * <strong>Does NOT perform per-file ownership checks.</strong> The calling
+     * module must verify that the current user is authorized to modify the entity
+     * (e.g. task ownership check) before invoking this method.
+     * </p>
+     *
+     * @param fileId     the ID of the file to update
+     * @param newRole    the new role to assign
+     * @param entityType the expected related entity type
+     * @param entityId   the expected related entity ID
+     */
+    void updateRoleForMultiOwnerEntity(Long fileId, FileRole newRole, RelatedEntityType entityType, Long entityId);
 }

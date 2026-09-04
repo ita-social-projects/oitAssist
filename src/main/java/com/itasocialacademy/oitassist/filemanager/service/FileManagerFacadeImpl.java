@@ -52,6 +52,12 @@ public class FileManagerFacadeImpl implements FileManagerFacade {
 
     @Override
     public void updateFileRole(Long fileId, FileRole newRole) {
-        fileService.updateRole(fileId, new UpdateFileRoleRequestDto(newRole));
+        fileService.updateRoleGeneral(fileId, new UpdateFileRoleRequestDto(newRole));
+    }
+
+    @Override
+    public void updateRoleForMultiOwnerEntity(Long fileId, FileRole newRole, RelatedEntityType entityType,
+        Long entityId) {
+        fileService.updateRoleForMultiOwnerEntity(fileId, newRole, entityType, entityId);
     }
 }

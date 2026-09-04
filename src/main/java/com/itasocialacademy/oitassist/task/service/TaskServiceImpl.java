@@ -159,7 +159,8 @@ public class TaskServiceImpl implements TaskService {
         }
 
         if (requestDTO.roleUpdates() != null) {
-            requestDTO.roleUpdates().forEach(fileManagerFacade::updateFileRole);
+            requestDTO.roleUpdates().forEach((fileId, newRole) -> fileManagerFacade.updateRoleForMultiOwnerEntity(
+                fileId, newRole, RelatedEntityType.TASK, updatedTask.getId()));
         }
 
         uploadFilesByRole(updatedTask.getId(), problemFiles, FileRole.PROBLEM);

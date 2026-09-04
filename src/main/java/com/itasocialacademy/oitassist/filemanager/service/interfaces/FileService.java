@@ -127,5 +127,16 @@ public interface FileService {
      * @param requestDto the DTO containing the new role
      * @return the updated file response DTO
      */
-    FileResponseDto updateRole(Long fileId, UpdateFileRoleRequestDto requestDto);
+    FileResponseDto updateRoleGeneral(Long fileId, UpdateFileRoleRequestDto requestDto);
+
+    /**
+     * Updates the role of a file that must be ATTACHED to the specified entity.
+     * Validates entity boundary. Does NOT check per-file ownership.
+     *
+     * @param fileId     the ID of the file to update
+     * @param newRole    the new role to assign
+     * @param entityType the expected related entity type
+     * @param entityId   the expected related entity ID
+     */
+    void updateRoleForMultiOwnerEntity(Long fileId, FileRole newRole, RelatedEntityType entityType, Long entityId);
 }

@@ -364,7 +364,7 @@ class TaskServiceTest {
         // Verify detach
         verify(fileManagerFacade).detachFiles(RelatedEntityType.TASK, 1L, List.of(51L), 100L);
         // Verify role update
-        verify(fileManagerFacade).updateFileRole(52L, FileRole.SOLUTION);
+        verify(fileManagerFacade).updateRoleForMultiOwnerEntity(52L, FileRole.SOLUTION, RelatedEntityType.TASK, 1L);
         // Verify upload
         verify(fileManagerFacade).uploadFiles(newProblemFiles, RelatedEntityType.TASK, 1L, FileRole.PROBLEM);
     }
