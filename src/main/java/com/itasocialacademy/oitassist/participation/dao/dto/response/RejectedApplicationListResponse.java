@@ -4,8 +4,8 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder
-public record AcceptedApplicationListResponse(
+public record RejectedApplicationListResponse(
     ApplicationDecisionSummary application,
-    List<SucceededApplicationAcceptingItemResponse> succeeded,
+    List<SucceededApplicationRejectingItemResponse> succeeded,
     List<FailedApplicationDecisionItemResponse> failed) {
 }
