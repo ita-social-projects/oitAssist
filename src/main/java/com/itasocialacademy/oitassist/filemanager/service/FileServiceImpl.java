@@ -438,7 +438,6 @@ public class FileServiceImpl implements FileService {
         for (FileAsset file : files) {
             validateEntityBoundary(file, entityType, entityId);
             checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
-            file.setStatus(FileStatus.SOFT_DELETED);
             markAsSoftDeleted(file);
         }
         repository.saveAll(files);
@@ -468,8 +467,10 @@ public class FileServiceImpl implements FileService {
      * @param file the file asset to mark as soft deleted
      */
     private void markAsSoftDeleted(FileAsset file) {
-        file.setStatus(FileStatus.SOFT_DELETED);
-        file.setDeletedAt(OffsetDateTime.now());
+        if (file.getStatus().equals(FileStatus.ATTACHED)) {
+            file.setStatus(FileStatus.SOFT_DELETED);
+            file.setDeletedAt(OffsetDateTime.now());
+        }
     }
 
     /**

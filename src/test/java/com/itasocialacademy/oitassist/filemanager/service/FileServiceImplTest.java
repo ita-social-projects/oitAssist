@@ -34,6 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -1376,6 +1377,64 @@ class FileServiceImplTest {
         assertNull(file.getDeletedAt());
 
         verify(fileRepository, never()).saveAll(any());
+    }
+
+    // --- detachFilesForMultiOwnerEntity Tests ---
+
+    @Test
+    void detachFilesForMultiOwnerEntity_ShouldSoftDelete_WhenFileIsAttached() {
+        FileAsset file = new FileAsset();
+        file.setId(1L);
+        file.setStatus(FileStatus.ATTACHED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(42L);
+        file.setDeletedAt(null);
+
+        when(fileRepository.findAllById(List.of(1L))).thenReturn(List.of(file));
+
+        fileService.detachFilesForMultiOwnerEntity(RelatedEntityType.TASK, 42L, List.of(1L));
+
+        assertEquals(FileStatus.SOFT_DELETED, file.getStatus());
+        assertNotNull(file.getDeletedAt());
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
+    @Test
+    void detachFilesForMultiOwnerEntity_ShouldIgnore_WhenFileIsAlreadySoftDeleted() {
+        OffsetDateTime originalDeletedAt = OffsetDateTime.now().minusDays(1);
+        FileAsset file = new FileAsset();
+        file.setId(1L);
+        file.setStatus(FileStatus.SOFT_DELETED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(42L);
+        file.setDeletedAt(originalDeletedAt);
+
+        when(fileRepository.findAllById(List.of(1L))).thenReturn(List.of(file));
+
+        fileService.detachFilesForMultiOwnerEntity(RelatedEntityType.TASK, 42L, List.of(1L));
+
+        assertEquals(FileStatus.SOFT_DELETED, file.getStatus());
+        assertEquals(originalDeletedAt, file.getDeletedAt()); // Should not be overwritten
+        verify(fileRepository).saveAll(List.of(file)); // Note: saveAll is still called, but entity is unchanged
+    }
+
+    @Test
+    void detachFilesForMultiOwnerEntity_ShouldIgnore_WhenFileIsHardDeleted() {
+        OffsetDateTime originalDeletedAt = OffsetDateTime.now().minusDays(1);
+        FileAsset file = new FileAsset();
+        file.setId(1L);
+        file.setStatus(FileStatus.HARD_DELETED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(42L);
+        file.setDeletedAt(originalDeletedAt);
+
+        when(fileRepository.findAllById(List.of(1L))).thenReturn(List.of(file));
+
+        fileService.detachFilesForMultiOwnerEntity(RelatedEntityType.TASK, 42L, List.of(1L));
+
+        assertEquals(FileStatus.HARD_DELETED, file.getStatus());
+        assertEquals(originalDeletedAt, file.getDeletedAt());
+        verify(fileRepository).saveAll(List.of(file));
     }
 
     // --- Update Role Tests ---
