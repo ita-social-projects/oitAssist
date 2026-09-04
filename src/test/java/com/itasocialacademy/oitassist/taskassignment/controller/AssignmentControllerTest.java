@@ -74,7 +74,7 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
 
         mockDetailedResponse = new DetailedTaskAssignmentResponseDTO(
             1L, 3L, "PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
-            10L, AssignmentVisibility.VISIBLE, 25, requirements, testFiles, 100L);
+            10L, AssignmentVisibility.VISIBLE, 25, requirements, testFiles, 100L, 0L);
     }
 
     // POST /api/v1/tours/{tourId}/task-assignments — assignTask
@@ -325,7 +325,7 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
     @Test
     void update_validRequest_shouldReturn200() throws Exception {
         UpdateTaskAssignmentRequestDTO request = new UpdateTaskAssignmentRequestDTO(
-            AssignmentVisibility.HIDDEN, 30, validRequirements);
+            AssignmentVisibility.HIDDEN, 30, validRequirements, 0L);
 
         when(assignmentService.updateTaskAssignment(eq(1L), any(UpdateTaskAssignmentRequestDTO.class)))
             .thenReturn(mockDetailedResponse);
@@ -342,7 +342,7 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
     @Test
     void update_notFound_shouldReturn404() throws Exception {
         UpdateTaskAssignmentRequestDTO request = new UpdateTaskAssignmentRequestDTO(
-            AssignmentVisibility.HIDDEN, 30, validRequirements);
+            AssignmentVisibility.HIDDEN, 30, validRequirements, 0L);
 
         when(assignmentService.updateTaskAssignment(eq(99L), any(UpdateTaskAssignmentRequestDTO.class)))
             .thenThrow(new TaskAssignmentNotFoundException(99L));
@@ -356,7 +356,7 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
     @Test
     void update_tourNotScheduled_shouldReturn400() throws Exception {
         UpdateTaskAssignmentRequestDTO request = new UpdateTaskAssignmentRequestDTO(
-            AssignmentVisibility.HIDDEN, 30, validRequirements);
+            AssignmentVisibility.HIDDEN, 30, validRequirements, 0L);
 
         when(assignmentService.updateTaskAssignment(eq(1L), any(UpdateTaskAssignmentRequestDTO.class)))
             .thenThrow(

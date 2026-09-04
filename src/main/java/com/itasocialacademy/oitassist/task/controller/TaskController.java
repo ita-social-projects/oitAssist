@@ -127,7 +127,11 @@ public class TaskController {
                 schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Task not found",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)))
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PutMapping("/{taskId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
@@ -152,7 +156,11 @@ public class TaskController {
                 schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Task or user not found",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)))
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{taskId}/add-owner")
     @PreAuthorize("hasRole('ADMIN')")
@@ -177,7 +185,11 @@ public class TaskController {
                 schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Task or user not found",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)))
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{taskId}/remove-owner")
     @PreAuthorize("hasRole('ADMIN')")

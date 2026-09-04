@@ -28,5 +28,7 @@ public record TaskAssignmentResponseDTO(
 
     @Schema(
         description = "Id of the user who created this assignment",
-        example = "3") Long createdBy) {
+        example = "3") Long createdBy,
+
+    @Schema(description = "Optimistic locking version; must be echoed back on updates") Long version) {
 }

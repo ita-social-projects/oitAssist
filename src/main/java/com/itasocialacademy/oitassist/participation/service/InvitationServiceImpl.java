@@ -13,12 +13,14 @@ import com.itasocialacademy.oitassist.participation.dao.dto.event.CompetitionVal
 import com.itasocialacademy.oitassist.participation.dao.dto.event.InvitationRequestEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.FailedInvitationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.SucceededInvitationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.dao.model.Participation;
-import com.itasocialacademy.oitassist.participation.saver.InvitationRequestsSaver;
+import com.itasocialacademy.oitassist.participation.dao.specification.InvitationSpecification;
+import com.itasocialacademy.oitassist.participation.mapper.UserEnrollmentAssembler;
+import com.itasocialacademy.oitassist.participation.mapper.interfaces.UserSummaryMapper;
+import com.itasocialacademy.oitassist.participation.components.saver.InvitationRequestsSaver;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateInvitationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessInvitationResponse;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Invitation;
 import com.itasocialacademy.oitassist.participation.dao.repository.InvitationRepository;
@@ -26,17 +28,20 @@ import com.itasocialacademy.oitassist.participation.dao.repository.Participation
 import com.itasocialacademy.oitassist.participation.exceptions.*;
 import com.itasocialacademy.oitassist.participation.mapper.ParticipationMapper;
 import com.itasocialacademy.oitassist.participation.mapper.interfaces.ProcessInvitationMapper;
-import com.itasocialacademy.oitassist.participation.sender.AsyncEmailSender;
+import com.itasocialacademy.oitassist.participation.components.sender.AsyncEmailSender;
 import com.itasocialacademy.oitassist.participation.service.interfaces.InvitationService;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
-import jakarta.transaction.Transactional;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.*;
@@ -47,6 +52,7 @@ import java.util.stream.Collectors;
 public class InvitationServiceImpl implements InvitationService {
     private static final String ALREADY_PENDING_MESSAGE = "Student already has a pending invitation";
     private static final String PENDING_INVITATION_CONSTRAINT = "idx_unique_pending_invitation";
+    private static final RequestStatus PENDING_STATUS = RequestStatus.PENDING;
 
     private final ParticipationRepository participationRepository;
     private final InvitationRepository invitationRepository;
@@ -57,20 +63,24 @@ public class InvitationServiceImpl implements InvitationService {
     private final ProcessInvitationMapper processInvitationMapper;
     private final CompetitionFacade competitionFacade;
     private final AsyncEmailSender sender;
+    private final UserEnrollmentAssembler enrollmentAssembler;
+    private final UserSummaryMapper userSummaryMapper;
 
     @Override
-    public CreateInvitationResponse sendEnrollmentRequest(CreateInvitationRequest request) {
-        Long competitionId = request.getCompetitionId();
-        Long stageId = request.getStageId();
-        CompetitionValidatedDataEvent competitionData = validateCompetitionAndStageInfo(competitionId, stageId);
+    public CreateInvitationResponse sendInvitationRequests(
+        Long competitionId,
+        Long stageId,
+        CreateInvitationRequest request) {
+        CompetitionValidatedDataEvent competitionData =
+            validateCompetitionAndStageInfoForInviting(competitionId, stageId);
         List<Long> studentIds = validateNoDuplicatesOrThrow(request.getStudentIds());
 
         List<UserAuthDetails> foundUsers = userFacade.findByIds(studentIds);
         Map<Long, UserAuthDetails> foundById = foundUsers.stream()
             .collect(Collectors.toMap(UserAuthDetails::id, u -> u));
 
-        Set<Long> alreadyPending = findStudentsWithPendingInvitations(studentIds, request);
-        Set<Long> alreadyParticipants = findParticipants(studentIds, request);
+        Set<Long> alreadyPending = findStudentsWithPendingInvitations(studentIds, competitionId, stageId);
+        Set<Long> alreadyParticipants = findParticipants(studentIds, competitionId, stageId);
 
         List<SucceededInvitationResponse> succeeded = new ArrayList<>();
         List<FailedInvitationResponse> failed = new ArrayList<>();
@@ -83,7 +93,7 @@ public class InvitationServiceImpl implements InvitationService {
                 continue;
             }
             try {
-                Invitation invitation = invitationRequestsSaver.saveSingleInvitation(studentId, request);
+                Invitation invitation = invitationRequestsSaver.saveSingleInvitation(studentId, competitionId, stageId);
                 succeeded.add(new SucceededInvitationResponse(invitation.getId(), studentId));
             } catch (DataIntegrityViolationException e) {
                 if (isPendingInvitationConstraintViolation(e)) {
@@ -147,20 +157,61 @@ public class InvitationServiceImpl implements InvitationService {
         return processInvitationMapper.toResponse(invitationRepository.saveAndFlush(invitation));
     }
 
-    private Set<Long> findStudentsWithPendingInvitations(List<Long> studentIds, CreateInvitationRequest request) {
+    @Override
+    @Transactional(readOnly = true)
+    public Page<InvitationListItemResponse> getEnrollmentRequests(
+        Long competitionId,
+        Long stageId,
+        String search,
+        Pageable pageable) {
+        validateCompetitionAndStageInfo(competitionId, stageId);
+        List<Long> candidateUserIds = invitationRepository.findAll(
+            InvitationSpecification.hasCompetitionAndStage(competitionId, stageId)
+                .and(InvitationSpecification.hasStatus(PENDING_STATUS)))
+            .stream()
+            .map(Invitation::getStudentId)
+            .distinct()
+            .toList();
+        if (candidateUserIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        Optional<List<Long>> matchingUserIds = userFacade.findUserIdsBySearchWithinIds(search, candidateUserIds);
+        List<Long> filterIds = matchingUserIds.orElse(candidateUserIds);
+
+        if (matchingUserIds.isPresent() && matchingUserIds.get().isEmpty()) {
+            return Page.empty(pageable);
+        }
+        Page<Invitation> invitations = invitationRepository.findAll(
+            InvitationSpecification.hasCompetitionAndStage(competitionId, stageId)
+                .and(InvitationSpecification.studentIdIn(filterIds))
+                .and(InvitationSpecification.hasStatus(PENDING_STATUS)),
+            pageable);
+
+        List<InvitationListItemResponse> responses = enrollmentAssembler.enrichWithUser(
+            invitations.toList(), Invitation::getUserId,
+            (invitation, user) -> new InvitationListItemResponse(
+                invitation.getId(),
+                invitation.getIssuedAt(),
+                invitation.getStatus(),
+                userSummaryMapper.toUserSummary(user)));
+        return new PageImpl<>(responses, pageable, invitations.getTotalElements());
+    }
+
+    private Set<Long> findStudentsWithPendingInvitations(List<Long> studentIds, Long competitionId, Long stageId) {
         List<Invitation> pendingInvitations = invitationRepository.findByStudentIdInAndCompetitionIdAndStageIdAndStatus(
             studentIds,
-            request.getCompetitionId(),
-            request.getStageId(),
-            RequestStatus.PENDING);
+            competitionId,
+            stageId,
+            PENDING_STATUS);
         return pendingInvitations.stream().map(Invitation::getStudentId).collect(Collectors.toSet());
     }
 
-    private Set<Long> findParticipants(List<Long> studentIds, CreateInvitationRequest request) {
+    private Set<Long> findParticipants(List<Long> studentIds, Long competitionId, Long stageId) {
         List<Participation> participationRecords = participationRepository.findAllByUserIdInAndCompetitionIdAndStageId(
             studentIds,
-            request.getCompetitionId(),
-            request.getStageId());
+            competitionId,
+            stageId);
         return participationRecords.stream().map(Participation::getUserId).collect(Collectors.toSet());
     }
 
@@ -175,14 +226,12 @@ public class InvitationServiceImpl implements InvitationService {
         return rawIds;
     }
 
-    private CompetitionValidatedDataEvent validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
+    private CompetitionValidatedDataEvent validateCompetitionAndStageInfoForInviting(Long competitionId, Long stageId) {
         CompetitionDetail competitionDetail = getCompetitionInfoOrThrow(competitionId);
         StageDetail stageDetail = getStageInfoOrThrow(stageId);
+        validateHierarchy(competitionId, stageDetail);
         if (competitionDetail.competitionStatus() != CompetitionStatus.ENROLLMENT) {
             throw new UserInvitationRequestException("The competition cannot be enrolled");
-        }
-        if (!stageDetail.competitionId().equals(competitionId)) {
-            throw new CompetitionHierarchyValidationException("Specified stage does not belong to this competition");
         }
         return CompetitionValidatedDataEvent.builder()
             .competitionTitle(competitionDetail.title())
@@ -190,10 +239,22 @@ public class InvitationServiceImpl implements InvitationService {
             .build();
     }
 
+    private void validateCompetitionAndStageInfo(Long competitionId, Long stageId) {
+        getCompetitionInfoOrThrow(competitionId);
+        StageDetail stageDetail = getStageInfoOrThrow(stageId);
+        validateHierarchy(competitionId, stageDetail);
+    }
+
+    private void validateHierarchy(Long competitionId, StageDetail stageDetail) {
+        if (!stageDetail.competitionId().equals(competitionId)) {
+            throw new CompetitionHierarchyValidationException("Specified stage does not belong to this competition");
+        }
+    }
+
     private Invitation getPendingInvitationOrThrow(Long applicationId) {
         Invitation invitation = invitationRepository.findById(applicationId)
             .orElseThrow(() -> new InvitationNotFoundException("The invitation was not found"));
-        if (invitation.getStatus() != RequestStatus.PENDING) {
+        if (invitation.getStatus() != PENDING_STATUS) {
             throw new UnableToProcessInvitationException("The invitation request is not in the PENDING status");
         }
         return invitation;

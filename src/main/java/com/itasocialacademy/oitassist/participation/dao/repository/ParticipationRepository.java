@@ -20,4 +20,6 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
         List<Long> userId,
         Long competitionId,
         Long stageId);
+
+    boolean existsByUserIdAndStageId(Long userId, Long stageId);
 }
