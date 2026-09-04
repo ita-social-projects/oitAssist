@@ -48,6 +48,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class FileServiceImplTest {
 
+    private static final String ROLE_ADMIN = "ADMIN";
     @Mock
     private FileRepository fileRepository;
 
@@ -788,6 +789,595 @@ class FileServiceImplTest {
         verify(fileRepository).findAll(any(Specification.class));
     }
 
+    // --- uploadToFileDetails Tests ---
+
+    @Test
+    void uploadToFileDetails_ShouldReturnEmptyList_WhenNoFilesProvided() {
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any()))
+            .thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any()))
+            .thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any()))
+            .thenReturn(ValidationResult.ok());
+
+        List<FileDetailsDTO> result =
+            fileService.uploadToFileDetails(List.of(), request);
+
+        assertTrue(result.isEmpty());
+
+        verify(validationStrategyResolver)
+            .resolve(RelatedEntityType.NEWS, FileRole.GENERIC);
+        verify(filePolicyResolver)
+            .resolve(RelatedEntityType.NEWS, FileRole.GENERIC);
+
+        verifyNoInteractions(providerResolver, fileRepository, fileMapper);
+    }
+
+    @Test
+    void uploadToFileDetails_ShouldThrowAuthorizationException_WhenUserNotAuthenticated() {
+        MultipartFile file = new MockMultipartFile(
+            "file",
+            "test.jpg",
+            "image/jpeg",
+            new byte[10]);
+
+        List<MultipartFile> files = List.of(file);
+
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
+
+        assertThrows(
+            AuthorizationException.class,
+            () -> fileService.uploadToFileDetails(files, request));
+
+        verifyNoInteractions(
+            validationStrategyResolver,
+            filePolicyResolver,
+            providerResolver,
+            fileRepository,
+            fileMapper);
+    }
+
+    @Test
+    void uploadToFileDetails_ShouldThrowValidationException_WhenValidationFails() {
+        MultipartFile file = new MockMultipartFile(
+            "file",
+            "photo.jpg",
+            "image/jpeg",
+            new byte[512]);
+
+        List<MultipartFile> files = List.of(file);
+
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any()))
+            .thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any()))
+            .thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any()))
+            .thenReturn(ValidationResult.fail("File size exceeded"));
+
+        ValidationException exception = assertThrows(
+            ValidationException.class,
+            () -> fileService.uploadToFileDetails(files, request));
+
+        assertTrue(exception.getMessage().contains("File size exceeded"));
+
+        verifyNoInteractions(providerResolver);
+        verify(fileRepository, never()).save(any());
+        verify(fileMapper, never()).toDetails(any(), any());
+    }
+
+    @Test
+    void uploadToFileDetails_ShouldReturnMappedDtos_WhenFilesAreValid() {
+        MultipartFile file = new MockMultipartFile(
+            "file",
+            "photo.jpg",
+            "image/jpeg",
+            new byte[512]);
+
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        FileAsset savedAsset = new FileAsset();
+        savedAsset.setId(10L);
+        savedAsset.setStorageKey("news/stored.jpg");
+
+        ArgumentCaptor<FileAsset> captor =
+            ArgumentCaptor.forClass(FileAsset.class);
+
+        FileDetailsDTO expectedDto = new FileDetailsDTO(
+            10L,
+            "photo.jpg",
+            "image/jpeg",
+            512L,
+            FileRole.GENERIC.name(),
+            "https://storage/news/stored.jpg");
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any()))
+            .thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any()))
+            .thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any()))
+            .thenReturn(ValidationResult.ok());
+
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+        when(storageProvider.upload(any(), anyString(), anyString()))
+            .thenReturn("news/stored.jpg");
+        when(storageProvider.getType())
+            .thenReturn(StorageProviderType.LOCAL);
+        when(storageProvider.getFileUrl("news/stored.jpg"))
+            .thenReturn("https://storage/news/stored.jpg");
+
+        when(fileRepository.save(any())).thenReturn(savedAsset);
+
+        when(fileMapper.toDetails(
+            savedAsset,
+            "https://storage/news/stored.jpg")).thenReturn(expectedDto);
+
+        List<FileDetailsDTO> result =
+            fileService.uploadToFileDetails(List.of(file), request);
+
+        assertEquals(List.of(expectedDto), result);
+
+        verify(fileRepository).save(captor.capture());
+
+        FileAsset saved = captor.getValue();
+
+        assertAll(
+            () -> assertEquals("photo.jpg", saved.getOriginalFilename()),
+            () -> assertEquals("image/jpeg", saved.getMimeType()),
+            () -> assertEquals(512L, saved.getSize()),
+            () -> assertEquals(RelatedEntityType.NEWS, saved.getRelatedEntityType()),
+            () -> assertEquals(1L, saved.getRelatedEntityId()),
+            () -> assertEquals(userId, saved.getUserId()),
+            () -> assertEquals(FileStatus.ATTACHED, saved.getStatus()));
+
+        verify(providerResolver).resolveDefault();
+        verify(storageProvider).getFileUrl("news/stored.jpg");
+        verify(fileMapper).toDetails(
+            savedAsset,
+            "https://storage/news/stored.jpg");
+
+        assertEquals(List.of(expectedDto), result);
+
+    }
+
+    @Test
+    void uploadToFileDetails_ShouldProcessEachFileIndependently_WhenMultipleFilesProvided() {
+        MultipartFile file1 = new MockMultipartFile(
+            "file",
+            "a.jpg",
+            "image/jpeg",
+            new byte[256]);
+
+        MultipartFile file2 = new MockMultipartFile(
+            "file",
+            "b.jpg",
+            "image/jpeg",
+            new byte[512]);
+
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        FileAsset asset1 = new FileAsset();
+        asset1.setStorageKey("news/a.jpg");
+
+        FileAsset asset2 = new FileAsset();
+        asset2.setStorageKey("news/b.jpg");
+
+        FileDetailsDTO dto1 = new FileDetailsDTO(
+            1L,
+            "a.jpg",
+            "image/jpeg",
+            256L,
+            FileRole.GENERIC.name(),
+            "https://storage/news/a.jpg");
+
+        FileDetailsDTO dto2 = new FileDetailsDTO(
+            2L,
+            "b.jpg",
+            "image/jpeg",
+            512L,
+            FileRole.GENERIC.name(),
+            "https://storage/news/b.jpg");
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any()))
+            .thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any()))
+            .thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any()))
+            .thenReturn(ValidationResult.ok());
+
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+
+        when(storageProvider.upload(any(), anyString(), anyString()))
+            .thenReturn("news/a.jpg")
+            .thenReturn("news/b.jpg");
+
+        when(storageProvider.getType())
+            .thenReturn(StorageProviderType.LOCAL);
+
+        when(storageProvider.getFileUrl("news/a.jpg"))
+            .thenReturn("https://storage/news/a.jpg");
+        when(storageProvider.getFileUrl("news/b.jpg"))
+            .thenReturn("https://storage/news/b.jpg");
+
+        when(fileRepository.save(any()))
+            .thenReturn(asset1)
+            .thenReturn(asset2);
+
+        when(fileMapper.toDetails(
+            asset1,
+            "https://storage/news/a.jpg")).thenReturn(dto1);
+
+        when(fileMapper.toDetails(
+            asset2,
+            "https://storage/news/b.jpg")).thenReturn(dto2);
+
+        List<FileDetailsDTO> result =
+            fileService.uploadToFileDetails(
+                List.of(file1, file2),
+                request);
+
+        assertEquals(List.of(dto1, dto2), result);
+
+        verify(providerResolver, times(2)).resolveDefault();
+        verify(fileRepository, times(2)).save(any());
+        verify(fileMapper, times(2)).toDetails(any(), anyString());
+    }
+
+    @Test
+    void uploadToFileDetails_ShouldPassGeneratedFileUrlToMapper() {
+        MultipartFile file = new MockMultipartFile(
+            "file",
+            "photo.jpg",
+            "image/jpeg",
+            new byte[100]);
+
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        FileAsset savedAsset = new FileAsset();
+        savedAsset.setStorageKey("news/photo.jpg");
+
+        FileDetailsDTO expectedDto = new FileDetailsDTO(
+            10L,
+            "photo.jpg",
+            "image/jpeg",
+            512L,
+            FileRole.GENERIC.name(),
+            "https://storage/news/stored.jpg");
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any()))
+            .thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any()))
+            .thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any()))
+            .thenReturn(ValidationResult.ok());
+
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+        when(storageProvider.upload(any(), anyString(), anyString()))
+            .thenReturn("news/photo.jpg");
+        when(storageProvider.getType())
+            .thenReturn(StorageProviderType.LOCAL);
+        when(storageProvider.getFileUrl("news/photo.jpg"))
+            .thenReturn("https://cdn.example.com/news/photo.jpg");
+
+        when(fileRepository.save(any()))
+            .thenReturn(savedAsset);
+
+        when(fileMapper.toDetails(
+            savedAsset,
+            "https://cdn.example.com/news/photo.jpg")).thenReturn(expectedDto);
+
+        FileDetailsDTO result =
+            fileService.uploadToFileDetails(List.of(file), request)
+                .getFirst();
+
+        assertSame(expectedDto, result);
+
+        verify(storageProvider)
+            .getFileUrl("news/photo.jpg");
+
+        verify(fileMapper)
+            .toDetails(
+                savedAsset,
+                "https://cdn.example.com/news/photo.jpg");
+    }
+
+    // --- detachFiles Tests ---
+
+    @Test
+    void detachFiles_ShouldDoNothing_WhenFileIdsAreNull() {
+        fileService.detachFiles(
+            RelatedEntityType.NEWS,
+            1L,
+            null,
+            userId);
+
+        verifyNoInteractions(fileRepository, securityFacade);
+    }
+
+    @Test
+    void detachFiles_ShouldDoNothing_WhenFileIdsAreEmpty() {
+        fileService.detachFiles(
+            RelatedEntityType.NEWS,
+            1L,
+            List.of(),
+            userId);
+
+        verifyNoInteractions(fileRepository, securityFacade);
+    }
+
+    @Test
+    void detachFiles_ShouldSoftDeleteFiles_WhenUserIsOwner() {
+        FileAsset file1 = createFile(
+            1L,
+            userId,
+            RelatedEntityType.NEWS,
+            10L);
+        FileAsset file2 = createFile(
+            2L,
+            userId,
+            RelatedEntityType.NEWS,
+            10L);
+
+        List<Long> fileIds = List.of(1L, 2L);
+
+        when(fileRepository.findAllById(fileIds))
+            .thenReturn(List.of(file1, file2));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        fileService.detachFiles(
+            RelatedEntityType.NEWS,
+            10L,
+            fileIds,
+            userId);
+
+        assertAll(
+            () -> assertEquals(FileStatus.SOFT_DELETED, file1.getStatus()),
+            () -> assertEquals(FileStatus.SOFT_DELETED, file2.getStatus()),
+            () -> assertNotNull(file1.getDeletedAt()),
+            () -> assertNotNull(file2.getDeletedAt()));
+
+        verify(fileRepository).findAllById(fileIds);
+        verify(fileRepository).saveAll(List.of(file1, file2));
+    }
+
+    @Test
+    void detachFiles_ShouldAllowAdminToDetachAnotherUsersFiles() {
+        FileAsset file = createFile(
+            fileId,
+            999L,
+            RelatedEntityType.NEWS,
+            10L);
+
+        when(fileRepository.findAllById(List.of(fileId)))
+            .thenReturn(List.of(file));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(true);
+
+        fileService.detachFiles(
+            RelatedEntityType.NEWS,
+            10L,
+            List.of(fileId),
+            userId);
+
+        assertEquals(FileStatus.SOFT_DELETED, file.getStatus());
+        assertNotNull(file.getDeletedAt());
+
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
+    @Test
+    void detachFiles_ShouldThrowValidationException_WhenFileBelongsToAnotherEntity() {
+        FileAsset file = createFile(
+            fileId,
+            userId,
+            RelatedEntityType.TASK,
+            999L);
+
+        List<Long> fileIds = List.of(fileId);
+
+        when(fileRepository.findAllById(fileIds))
+            .thenReturn(List.of(file));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        ValidationException exception = assertThrows(
+            ValidationException.class,
+            () -> fileService.detachFiles(
+                RelatedEntityType.NEWS,
+                10L,
+                fileIds,
+                userId));
+
+        assertTrue(exception.getMessage().contains("does not belong"));
+        assertEquals(FileStatus.ATTACHED, file.getStatus());
+        assertNull(file.getDeletedAt());
+
+        verify(fileRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void detachFiles_ShouldThrowAuthorizationException_WhenUserIsNotOwnerAndNotAdmin() {
+        FileAsset file = createFile(
+            fileId,
+            999L,
+            RelatedEntityType.NEWS,
+            10L);
+
+        List<Long> fileIds = List.of(fileId);
+
+        when(fileRepository.findAllById(fileIds))
+            .thenReturn(List.of(file));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        assertThrows(
+            AuthorizationException.class,
+            () -> fileService.detachFiles(
+                RelatedEntityType.NEWS,
+                10L,
+                fileIds,
+                userId));
+
+        assertEquals(FileStatus.ATTACHED, file.getStatus());
+        assertNull(file.getDeletedAt());
+
+        verify(fileRepository, never()).saveAll(any());
+    }
+
+    // --- detachAllFilesByEntityId Tests ---
+
+    @Test
+    void detachAllFilesByEntityId_ShouldDetachAllAttachedFiles() {
+        FileAsset file1 = createFile(
+            1L,
+            userId,
+            RelatedEntityType.NEWS,
+            10L);
+        FileAsset file2 = createFile(
+            2L,
+            userId,
+            RelatedEntityType.NEWS,
+            10L);
+
+        List<FileAsset> files = List.of(file1, file2);
+
+        when(fileRepository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED))
+            .thenReturn(files);
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        fileService.detachAllFilesByEntityId(
+            RelatedEntityType.NEWS,
+            10L,
+            userId);
+
+        assertAll(
+            () -> assertEquals(FileStatus.SOFT_DELETED, file1.getStatus()),
+            () -> assertEquals(FileStatus.SOFT_DELETED, file2.getStatus()),
+            () -> assertNotNull(file1.getDeletedAt()),
+            () -> assertNotNull(file2.getDeletedAt()));
+
+        verify(fileRepository)
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED);
+
+        verify(fileRepository).saveAll(files);
+    }
+
+    @Test
+    void detachAllFilesByEntityId_ShouldAllowAdminToDetachAnotherUsersFiles() {
+        FileAsset file = createFile(
+            fileId,
+            999L,
+            RelatedEntityType.NEWS,
+            10L);
+
+        when(fileRepository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED))
+            .thenReturn(List.of(file));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(true);
+
+        fileService.detachAllFilesByEntityId(
+            RelatedEntityType.NEWS,
+            10L,
+            userId);
+
+        assertEquals(FileStatus.SOFT_DELETED, file.getStatus());
+        assertNotNull(file.getDeletedAt());
+
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
+    @Test
+    void detachAllFilesByEntityId_ShouldDoNothing_WhenNoAttachedFilesFound() {
+        when(fileRepository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED))
+            .thenReturn(List.of());
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        fileService.detachAllFilesByEntityId(
+            RelatedEntityType.NEWS,
+            10L,
+            userId);
+
+        verify(fileRepository)
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED);
+
+        verify(fileRepository).saveAll(List.of());
+    }
+
+    @Test
+    void detachAllFilesByEntityId_ShouldThrowAuthorizationException_WhenUserIsNotOwner() {
+        FileAsset file = createFile(
+            fileId,
+            999L,
+            RelatedEntityType.NEWS,
+            10L);
+
+        when(fileRepository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED))
+            .thenReturn(List.of(file));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        assertThrows(
+            AuthorizationException.class,
+            () -> fileService.detachAllFilesByEntityId(
+                RelatedEntityType.NEWS,
+                10L,
+                userId));
+
+        assertEquals(FileStatus.ATTACHED, file.getStatus());
+        assertNull(file.getDeletedAt());
+
+        verify(fileRepository, never()).saveAll(any());
+    }
+
     // --- Update Role Tests ---
 
     @Test
@@ -881,5 +1471,19 @@ class FileServiceImplTest {
             .relatedEntityId(relatedEntityId)
             .fileRole(role)
             .build();
+    }
+
+    private FileAsset createFile(
+        Long id,
+        Long ownerId,
+        RelatedEntityType entityType,
+        Long entityId) {
+        FileAsset file = new FileAsset();
+        file.setId(id);
+        file.setUserId(ownerId);
+        file.setRelatedEntityType(entityType);
+        file.setRelatedEntityId(entityId);
+        file.setStatus(FileStatus.ATTACHED);
+        return file;
     }
 }

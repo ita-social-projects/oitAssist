@@ -84,20 +84,33 @@ public class FileServiceImpl implements FileService {
             .orElseThrow(() -> new AuthorizationException(
                 NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
 
-        RelatedEntityType entityType = requestDto.getRelatedEntityType();
-        FileRole role = requestDto.getFileRole();
+        checkValidation(files, requestDto);
 
-        FileValidationStrategy strategy = validationStrategyResolver.resolve(entityType, role);
-        FilePolicy policy = filePolicyResolver.resolve(entityType, role);
-        ValidationResult result = strategy.validate(files, requestDto, policy);
-
-        if (!result.valid()) {
-            throw new ValidationException(
-                String.join(", ", result.violations()),
-                ErrorCode.FILE_VALIDATION_FAILED);
-        }
         return files.stream()
             .map(file -> uploadSingle(file, requestDto, currentUserId))
+            .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Resolves the validation strategy for the given entity type, validates all
+     * files against the applicable policy, then delegates each file to
+     * {@link #uploadSingleToFileDetails}.
+     * </p>
+     */
+    @Override
+    @Transactional
+    public List<FileDetailsDTO> uploadToFileDetails(List<MultipartFile> files, FileUploadRequestDto requestDto) {
+        Long currentUserId = securityFacade.getCurrentUserId()
+            .orElseThrow(() -> new AuthorizationException(
+                NOT_AUTHENTICATED, ErrorCode.ACCESS_DENIED));
+
+        checkValidation(files, requestDto);
+
+        return files.stream()
+            .map(file -> uploadSingleToFileDetails(file, requestDto, currentUserId))
             .toList();
     }
 
@@ -210,21 +223,20 @@ public class FileServiceImpl implements FileService {
             return;
         }
 
-        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
         List<FileAsset> files = repository.findAllById(fileIds);
+        detachFilesHelper(entityType, entityId, userId, files);
+    }
 
-        for (FileAsset file : files) {
-            if (!entityType.equals(file.getRelatedEntityType())
-                || !entityId.equals(file.getRelatedEntityId())) {
-                throw new ValidationException(
-                    "File id=" + file.getId() + " does not belong to " + entityType + " id=" + entityId,
-                    ErrorCode.FILE_VALIDATION_FAILED);
-            }
-            checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
-            file.setStatus(FileStatus.SOFT_DELETED);
-            file.setDeletedAt(OffsetDateTime.now());
-        }
-        repository.saveAll(files);
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void detachAllFilesByEntityId(RelatedEntityType entityType, Long entityId, Long userId) {
+        List<FileAsset> files = repository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                entityType, entityId, FileStatus.ATTACHED);
+        detachFilesHelper(entityType, entityId, userId, files);
     }
 
     /**
@@ -367,6 +379,56 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
+     * Marks a batch of files as SOFT_DELETED. Called when files are removed from
+     * content. Validates ownership for each file using the provided userId.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity to detach files from
+     * @param userId     the ID of the user who triggered detach
+     * @param files      files to detach
+     */
+    private void detachFilesHelper(RelatedEntityType entityType, Long entityId, Long userId, List<FileAsset> files) {
+        boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
+
+        for (FileAsset file : files) {
+            if (!entityType.equals(file.getRelatedEntityType())
+                || !entityId.equals(file.getRelatedEntityId())) {
+                throw new ValidationException(
+                    "File id=" + file.getId() + " does not belong to " + entityType + " id=" + entityId,
+                    ErrorCode.FILE_VALIDATION_FAILED);
+            }
+            checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
+            file.setStatus(FileStatus.SOFT_DELETED);
+            file.setDeletedAt(OffsetDateTime.now());
+        }
+        repository.saveAll(files);
+    }
+
+    /**
+     * Checks if given files are valid according to the validation strategy.
+     *
+     * @param files      the files to upload
+     * @param requestDto upload context metadata (entity type and optional entity
+     *                   ID)
+     * @throws ValidationException if any file fails the policy validation
+     */
+    private void checkValidation(List<MultipartFile> files, FileUploadRequestDto requestDto)
+        throws ValidationException {
+        RelatedEntityType entityType = requestDto.getRelatedEntityType();
+        FileRole role = requestDto.getFileRole();
+
+        FileValidationStrategy strategy = validationStrategyResolver.resolve(entityType, role);
+        FilePolicy policy = filePolicyResolver.resolve(entityType, role);
+        ValidationResult result = strategy.validate(files, requestDto, policy);
+
+        if (!result.valid()) {
+            throw new ValidationException(
+                String.join(", ", result.violations()),
+                ErrorCode.FILE_VALIDATION_FAILED);
+        }
+    }
+
+    /**
      * Uploads a single file to the default storage provider and persists its
      * metadata.
      *
@@ -378,11 +440,47 @@ public class FileServiceImpl implements FileService {
      *                             fails
      */
     private FileResponseDto uploadSingle(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
+        StorageProvider provider = providerResolver.resolveDefault();
+        FileAsset saved = uploadFileAndGetFileAsset(file, requestDto, userId, provider);
+        FileResponseDto dto = fileMapper.toDto(saved);
+        dto.setUrl(provider.getFileUrl(saved.getStorageKey()));
+        return dto;
+    }
+
+    /**
+     * Uploads a single file to the default storage provider and persists its
+     * metadata.
+     *
+     * @param file       the file to upload
+     * @param requestDto upload context metadata
+     * @param userId     the ID of the uploading user
+     * @return the persisted file record as a {@link FileDetailsDTO}
+     * @throws FileUploadException if the file stream cannot be read or the upload
+     *                             fails
+     */
+    private FileDetailsDTO uploadSingleToFileDetails(MultipartFile file, FileUploadRequestDto requestDto, Long userId) {
+        StorageProvider provider = providerResolver.resolveDefault();
+        FileAsset saved = uploadFileAndGetFileAsset(file, requestDto, userId, provider);
+        return fileMapper.toDetails(saved, provider.getFileUrl(saved.getStorageKey()));
+    }
+
+    /**
+     * Uploads a single file to the default storage provider and persists its
+     * metadata.
+     *
+     * @param file       the file to upload
+     * @param requestDto upload context metadata
+     * @param userId     the ID of the uploading user
+     * @param provider   the resolved StorageProvider
+     * @return the persisted file record as a {@link FileAsset}
+     * @throws FileUploadException if the file stream cannot be read or the upload
+     *                             fails
+     */
+    private FileAsset uploadFileAndGetFileAsset(MultipartFile file, FileUploadRequestDto requestDto, Long userId,
+        StorageProvider provider) {
         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
         String storedFilename = generateStoredFilename(originalFilename);
         String relativePath = buildRelativePath(requestDto);
-
-        StorageProvider provider = providerResolver.resolveDefault();
 
         String storageKey;
         try (var inputStream = file.getInputStream()) {
@@ -401,10 +499,7 @@ public class FileServiceImpl implements FileService {
             userId,
             provider.getType());
 
-        FileAsset saved = repository.save(fileAsset);
-        FileResponseDto dto = fileMapper.toDto(saved);
-        dto.setUrl(provider.getFileUrl(storageKey));
-        return dto;
+        return repository.save(fileAsset);
     }
 
     /**
