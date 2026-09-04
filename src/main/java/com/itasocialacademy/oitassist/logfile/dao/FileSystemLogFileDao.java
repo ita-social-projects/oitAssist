@@ -63,7 +63,7 @@ public class FileSystemLogFileDao implements LogFileDao {
                 return Optional.empty();
             }
             return Optional.of(filePath);
-        } catch (NoSuchFileException exception) {
+        } catch (NoSuchFileException _) {
             log.debug("Log file not found for download: {}", fileName);
 
             return Optional.empty();
@@ -86,7 +86,7 @@ public class FileSystemLogFileDao implements LogFileDao {
             }
 
             return filePath;
-        } catch (InvalidPathException exception) {
+        } catch (InvalidPathException _) {
             throw new InvalidLogFileNameException();
         }
     }

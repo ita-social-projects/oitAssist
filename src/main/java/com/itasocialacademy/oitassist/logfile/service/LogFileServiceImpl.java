@@ -122,7 +122,7 @@ public class LogFileServiceImpl implements LogFileService {
                     LinkOption.NOFOLLOW_LINKS);
 
             return new InputStreamResource(inputStream, "Log file " + filePath.getFileName());
-        } catch (NoSuchFileException exception) {
+        } catch (NoSuchFileException _) {
             throw new LogFileNotFoundException(filePath.getFileName().toString());
         } catch (IOException | SecurityException exception) {
             log.error("Failed to open log file for download: {}", filePath, exception);
