@@ -40,12 +40,12 @@ jobs:
           #        -Dsonar.organization=ita-social-projects \
           #        -Dsonar.host.url=https://sonarcloud.io \
 
-      - name: Test Reporter  #v1.5.0
-        uses: dorny/test-reporter@0d00bb14cb0cc2c9b8985df6e81dd333188224e1
+      - name: Test Reporter
+        uses: dorny/test-reporter@v1.9.1
         if: success() || failure()
         with:
           name: Tests Report
-          path: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
+          path: '**/target/surefire-reports/TEST-*.xml,**/target/failsafe-reports/TEST-*.xml'
           reporter: java-junit
 
   build-and-push-backend-image:
