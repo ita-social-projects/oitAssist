@@ -49,10 +49,11 @@ class CompetitionHierarchyConcurrencyIT extends PostgresIntegrationTest {
     }
 
     /**
-     * Reproduces the original race: an admin publishing the competition (DRAFT -> ENROLLMENT) concurrently with another
-     * admin deleting the only Tour of its only Stage. Regardless of which transaction wins the row lock, the
-     * competition must never end up ENROLLMENT with an empty stage — exactly one of the two operations must succeed,
-     * never both, never neither.
+     * Reproduces the original race: an admin publishing the competition (DRAFT ->
+     * ENROLLMENT) concurrently with another admin deleting the only Tour of its
+     * only Stage. Regardless of which transaction wins the row lock, the
+     * competition must never end up ENROLLMENT with an empty stage — exactly one of
+     * the two operations must succeed, never both, never neither.
      */
     @RepeatedTest(10)
     void concurrentPublishAndDeleteLastTour_neverLeavesEmptyPublishedStage() throws Exception {
