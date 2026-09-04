@@ -362,7 +362,7 @@ class TaskServiceTest {
         taskService.updateTask(1L, metadata, newProblemFiles, null, null);
 
         // Verify detach
-        verify(fileManagerFacade).detachFiles(RelatedEntityType.TASK, 1L, List.of(51L), 100L);
+        verify(fileManagerFacade).detachFilesForMultiOwnerEntity(RelatedEntityType.TASK, 1L, List.of(51L));
         // Verify role update
         verify(fileManagerFacade).updateRoleForMultiOwnerEntity(52L, FileRole.SOLUTION, RelatedEntityType.TASK, 1L);
         // Verify upload

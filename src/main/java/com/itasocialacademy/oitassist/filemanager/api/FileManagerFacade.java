@@ -71,6 +71,23 @@ public interface FileManagerFacade {
     void detachFiles(RelatedEntityType entityType, Long entityId, List<Long> fileIds, Long userId);
 
     /**
+     * Marks a batch of files as SOFT_DELETED that must belong to the specified
+     * entity. Validates that the files are attached to the given entity type and ID
+     * before detaching.
+     *
+     * <p>
+     * <strong>Does NOT perform per-file ownership checks.</strong> The calling
+     * module must verify that the current user is authorized to modify the entity
+     * (e.g. task ownership check) before invoking this method.
+     * </p>
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity
+     * @param fileIds    the IDs of the files to soft-delete
+     */
+    void detachFilesForMultiOwnerEntity(RelatedEntityType entityType, Long entityId, List<Long> fileIds);
+
+    /**
      * Updates the role of an attached file. Only the file owner or admin can
      * update. File must be in ATTACHED state.
      *

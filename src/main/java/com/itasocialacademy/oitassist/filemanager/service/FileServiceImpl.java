@@ -227,6 +227,21 @@ public class FileServiceImpl implements FileService {
         detachFilesHelper(entityType, entityId, userId, files);
     }
 
+    @Override
+    @Transactional
+    public void detachFilesForMultiOwnerEntity(RelatedEntityType entityType, Long entityId, List<Long> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return;
+        }
+        List<FileAsset> files = repository.findAllById(fileIds);
+
+        for (FileAsset file : files) {
+            validateEntityBoundary(file, entityType, entityId);
+            markAsSoftDeleted(file);
+        }
+        repository.saveAll(files);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -383,13 +398,7 @@ public class FileServiceImpl implements FileService {
                 ErrorCode.FILE_VALIDATION_FAILED);
         }
 
-        if (!entityType.equals(file.getRelatedEntityType())
-            || !entityId.equals(file.getRelatedEntityId())) {
-            throw new ValidationException(
-                "File id=" + file.getId() + " does not belong to "
-                    + entityType + " id=" + entityId,
-                ErrorCode.FILE_VALIDATION_FAILED);
-        }
+        validateEntityBoundary(file, entityType, entityId);
 
         if (file.getFileRole().equals(newRole)) {
             return file;
@@ -427,17 +436,40 @@ public class FileServiceImpl implements FileService {
         boolean isAdmin = securityFacade.hasRole(ROLE_ADMIN);
 
         for (FileAsset file : files) {
-            if (!entityType.equals(file.getRelatedEntityType())
-                || !entityId.equals(file.getRelatedEntityId())) {
-                throw new ValidationException(
-                    "File id=" + file.getId() + " does not belong to " + entityType + " id=" + entityId,
-                    ErrorCode.FILE_VALIDATION_FAILED);
-            }
+            validateEntityBoundary(file, entityType, entityId);
             checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
             file.setStatus(FileStatus.SOFT_DELETED);
-            file.setDeletedAt(OffsetDateTime.now());
+            markAsSoftDeleted(file);
         }
         repository.saveAll(files);
+    }
+
+    /**
+     * Validates that the given file asset belongs to the specified entity.
+     *
+     * @param file       the file asset to validate
+     * @param entityType the expected related entity type
+     * @param entityId   the expected related entity ID
+     * @throws ValidationException if the file does not belong to the entity
+     */
+    private void validateEntityBoundary(FileAsset file, RelatedEntityType entityType, Long entityId) {
+        if (!entityType.equals(file.getRelatedEntityType()) || !entityId.equals(file.getRelatedEntityId())) {
+            throw new ValidationException(
+                "File id=" + file.getId() + " does not belong to " + entityType + " id=" + entityId,
+                ErrorCode.FILE_VALIDATION_FAILED);
+        }
+    }
+
+    /**
+     * Updates the file status to SOFT_DELETED and sets the deletion timestamp.
+     * Note: This does not persist the changes to the database; the caller must save
+     * the entity.
+     *
+     * @param file the file asset to mark as soft deleted
+     */
+    private void markAsSoftDeleted(FileAsset file) {
+        file.setStatus(FileStatus.SOFT_DELETED);
+        file.setDeletedAt(OffsetDateTime.now());
     }
 
     /**

@@ -51,6 +51,11 @@ public class FileManagerFacadeImpl implements FileManagerFacade {
     }
 
     @Override
+    public void detachFilesForMultiOwnerEntity(RelatedEntityType entityType, Long entityId, List<Long> fileIds) {
+        fileService.detachFilesForMultiOwnerEntity(entityType, entityId, fileIds);
+    }
+
+    @Override
     public void updateFileRole(Long fileId, FileRole newRole) {
         fileService.updateRoleGeneral(fileId, new UpdateFileRoleRequestDto(newRole));
     }

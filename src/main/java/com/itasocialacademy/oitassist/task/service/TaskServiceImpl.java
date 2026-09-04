@@ -149,13 +149,9 @@ public class TaskServiceImpl implements TaskService {
         TaskBody updatedTask = taskBodyRepository.saveAndFlush(existingTask);
         log.debug("Updated Task: Id {}, Title - {}", updatedTask.getId(), updatedTask.getTitle());
 
-        Long currentUserId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User must be logged in to update tasks",
-                ErrorCode.ACCESS_DENIED));
-
         if (requestDTO.removedFileIds() != null && !requestDTO.removedFileIds().isEmpty()) {
-            fileManagerFacade.detachFiles(
-                RelatedEntityType.TASK, updatedTask.getId(), requestDTO.removedFileIds(), currentUserId);
+            fileManagerFacade.detachFilesForMultiOwnerEntity(
+                RelatedEntityType.TASK, updatedTask.getId(), requestDTO.removedFileIds());
         }
 
         if (requestDTO.roleUpdates() != null) {
