@@ -25,4 +25,6 @@ public interface TourRepository extends JpaRepository<Tour, Long> {
     Optional<Tour> findByStageIdAndSortPosition(Long stageId, Short sortPosition);
 
     Optional<Tour> findFirstByStageIdAndSortPositionLessThanOrderBySortPositionDesc(Long stageId, Short sortPosition);
+
+    long countByStageId(Long stageId);
 }

@@ -151,3 +151,6 @@ app:
     blacklist:
       - JWT_SIGN_KEY
       - JWT_ENCRYPTED_KEY
+
+competition:
+  hierarchy-lock-timeout-ms: ${LOCK_TIMEOUT:3000}

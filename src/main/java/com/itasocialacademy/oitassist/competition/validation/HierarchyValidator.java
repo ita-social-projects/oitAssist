@@ -15,11 +15,15 @@ import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundExcept
 import com.itasocialacademy.oitassist.competition.exceptions.StaleEntityVersionException;
 import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import jakarta.annotation.PostConstruct;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +36,22 @@ public class HierarchyValidator {
     private final TourRepository tourRepository;
     private final SecurityFacade securityFacade;
     private final ParticipationInquiryPort participationInquiryPort;
+
+    @PersistenceContext
+    private final EntityManager entityManager;
+
+    @Value("${competition.hierarchy-lock-timeout-ms:3000}")
+    private int hierarchyLockTimeoutMs;
+
+    @PostConstruct
+    void validateLockTimeoutConfig() {
+        if (hierarchyLockTimeoutMs <= 0) {
+            throw new IllegalStateException(
+                "competition.hierarchy-lock-timeout-ms must be positive "
+                    + "(0 disables the Postgres lock timeout entirely, causing indefinite waits); got "
+                    + hierarchyLockTimeoutMs);
+        }
+    }
 
     @Transactional(readOnly = true)
     public void checkVisibilityAccess(Long competitionId) {
@@ -371,7 +391,30 @@ public class HierarchyValidator {
      */
     @Transactional
     public Competition lockCompetitionForUpdate(Long competitionId) {
+        // Postgres does not support bind parameters for SET commands, so the
+        // value must be inlined. Safe — hierarchyLockTimeoutMs is a validated positive
+        // int from server configuration (@Value), never derived from request input.
+        entityManager.createNativeQuery(
+            "SET LOCAL lock_timeout = '%dms'".formatted(hierarchyLockTimeoutMs)).executeUpdate();
         return competitionRepository.findByIdForUpdate(competitionId)
             .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+    }
+
+    @Transactional(readOnly = true)
+    public void validateTourDeletionKeepsStageNonEmpty(Long stageId) {
+        Stage stage = stageRepository.findById(stageId)
+            .orElseThrow(() -> new StageNotFoundException(stageId));
+        Competition competition = competitionRepository.findById(stage.getCompetitionId())
+            .orElseThrow(() -> new CompetitionNotFoundException(stage.getCompetitionId()));
+
+        if (competition.getCompetitionStatus() == CompetitionStatus.DRAFT) {
+            return;
+        }
+
+        if (tourRepository.countByStageId(stageId) <= 1) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot delete tour: it is the last tour of this stage, "
+                    + "and the competition has already left DRAFT status.");
+        }
     }
 }
