@@ -183,6 +183,7 @@ public class TourServiceImpl implements TourService {
 
         validator.validateTourEligibility(pathStageId, tour.getStageId());
         validator.validateImmutabilityByStageId(tour.getStageId());
+        validator.validateTourDeletionKeepsStageNonEmpty(tour.getStageId());
 
         tourRepository.delete(tour);
     }

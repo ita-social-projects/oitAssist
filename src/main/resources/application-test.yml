@@ -1,0 +1,51 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/test_dummy
+    username: test
+    password: test
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    drop-first: true
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: validate
+    properties:
+      jakarta:
+        persistence:
+          lock:
+            timeout: 500
+
+  mail:
+    username: dummy@test.com
+    password: dummyPassword
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: dummy-google-id
+            client-secret: dummy-google-secret
+          microsoft:
+            client-id: dummy-microsoft-id
+            client-secret: dummy-microsoft-secret
+
+jwt:
+  encrypted-key: dummyEncryptedKey1234567890123456
+  sign-key: dummySignKey123456789012345678901234567890
+
+graph:
+  tenant-id: dummy-tenant
+  client-id: dummy-client
+  client-secret: dummy-secret
+  drive-id: dummy-drive
+
+web_client:
+  origin: http://localhost:3000
+
+competition:
+  hierarchy-lock-timeout-ms: ${LOCK_TIMEOUT:1000}
