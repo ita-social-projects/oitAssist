@@ -76,6 +76,17 @@ public interface FileService {
     void detachFiles(RelatedEntityType entityType, Long entityId, List<Long> fileIds, Long userId);
 
     /**
+     * Marks attached files as SOFT_DELETED for a specific entity. Validates the
+     * entity boundary but skips per-file ownership checks. The caller is
+     * responsible for ensuring the user has permission to modify the entity.
+     *
+     * @param entityType the type of the related entity
+     * @param entityId   the ID of the entity
+     * @param fileIds    the IDs of the files to soft-delete
+     */
+    void detachFilesForMultiOwnerEntity(RelatedEntityType entityType, Long entityId, List<Long> fileIds);
+
+    /**
      * Marks a batch of files as SOFT_DELETED. Called when files are removed from
      * content. Validates ownership for each file using the provided userId.
      *
@@ -127,5 +138,16 @@ public interface FileService {
      * @param requestDto the DTO containing the new role
      * @return the updated file response DTO
      */
-    FileResponseDto updateRole(Long fileId, UpdateFileRoleRequestDto requestDto);
+    FileResponseDto updateRoleGeneral(Long fileId, UpdateFileRoleRequestDto requestDto);
+
+    /**
+     * Updates the role of a file that must be ATTACHED to the specified entity.
+     * Validates entity boundary. Does NOT check per-file ownership.
+     *
+     * @param fileId     the ID of the file to update
+     * @param newRole    the new role to assign
+     * @param entityType the expected related entity type
+     * @param entityId   the expected related entity ID
+     */
+    void updateRoleForMultiOwnerEntity(Long fileId, FileRole newRole, RelatedEntityType entityType, Long entityId);
 }
