@@ -38,10 +38,10 @@ jobs:
           #      mvn clean install sonar:sonar \
           #        -Dsonar.projectKey=ita-social-projects_oitAssist \
           #        -Dsonar.organization=ita-social-projects \
-          #        -Dsonar.host.url=https://sonarcloud.io \
+        #        -Dsonar.host.url=https://sonarcloud.io \
 
       - name: Test Reporter
-        uses: dorny/test-reporter@v1.9.1
+        uses: dorny/test-reporter@31a54ee7ebcacc03a09ea97a7e5465a47b84aea5  # v1.9.1
         if: success() || failure()
         with:
           name: Tests Report
