@@ -83,7 +83,7 @@ public class SecurityConfig {
                     "/api/v1/user-activation/verify",
                     "/ui",
                     "/ui/**",
-                    "/api/v1/files/download/**",
+                    "/api/v1/files/**",
                     "/api/v1/version")
                 .permitAll()
                 .requestMatchers(
