@@ -10,13 +10,7 @@ import com.itasocialacademy.oitassist.participation.dao.dto.response.RejectedApp
 public interface ApplicationService extends EnrollmentService<ApplicationListItemResponse> {
     EnrollmentResponse sendApplicationRequest(Long competitionId, Long stageId);
 
-    AcceptedApplicationListResponse acceptApplications(
-        AcceptApplicationListRequest request,
-        Long competitionId,
-        Long stageId);
+    AcceptedApplicationListResponse acceptApplicationList(AcceptApplicationListRequest request);
 
-    RejectedApplicationListResponse rejectApplications(
-        RejectApplicationListRequest request,
-        Long competitionId,
-        Long stageId);
+    RejectedApplicationListResponse rejectApplicationList(RejectApplicationListRequest request);
 }

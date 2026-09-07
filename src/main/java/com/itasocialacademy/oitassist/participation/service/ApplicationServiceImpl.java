@@ -11,6 +11,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundExcept
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.components.saver.ApplicationDecisionsSaver;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionListEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.AcceptApplicationListRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationListRequest;
@@ -106,15 +107,16 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
-    public AcceptedApplicationListResponse acceptApplications(
-        AcceptApplicationListRequest request,
-        Long competitionId,
-        Long stageId) {
+    public AcceptedApplicationListResponse acceptApplicationList(AcceptApplicationListRequest request) {
         Long userId = getCurrentUserIdOrThrow();
         List<Long> applicationIds = validateNoDuplicatesOrThrow(request.applicationIds());
 
         List<Application> applications = applicationRepository.findAll(
             ApplicationSpecification.applicationIdIn(applicationIds));
+        validateApplicationsBelongToTheSameCompetitionAndStage(applications);
+        Long competitionId = applications.getFirst().getCompetitionId();
+        Long stageId = applications.getFirst().getStageId();
+
         List<SucceededApplicationAcceptingItemResponse> succeeded = new ArrayList<>();
         List<FailedApplicationDecisionItemResponse> failed = new ArrayList<>();
 
@@ -152,7 +154,10 @@ public class ApplicationServiceImpl implements ApplicationService {
             .build();
 
         if (!succeeded.isEmpty()) {
-
+            scheduleAcceptedEmailList(
+                competitionId,
+                stageId,
+                succeeded.stream().map(SucceededApplicationAcceptingItemResponse::participantId).toList());
         }
 
         return response;
@@ -180,15 +185,16 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
-    public RejectedApplicationListResponse rejectApplications(
-        RejectApplicationListRequest request,
-        Long competitionId,
-        Long stageId) {
+    public RejectedApplicationListResponse rejectApplicationList(RejectApplicationListRequest request) {
         Long userId = getCurrentUserIdOrThrow();
         List<Long> applicationIds = validateNoDuplicatesOrThrow(request.applicationIds());
 
         List<Application> applications = applicationRepository.findAll(
             ApplicationSpecification.applicationIdIn(applicationIds));
+        validateApplicationsBelongToTheSameCompetitionAndStage(applications);
+        Long competitionId = applications.getFirst().getCompetitionId();
+        Long stageId = applications.getFirst().getStageId();
+
         List<SucceededApplicationRejectingItemResponse> succeeded = new ArrayList<>();
         List<FailedApplicationDecisionItemResponse> failed = new ArrayList<>();
 
@@ -207,7 +213,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                 Application savedApplication = applicationSaver.saveRejectedApplication(
                     userId, application, request.rejectionReason());
                 succeeded.add(new SucceededApplicationRejectingItemResponse(
-                    savedApplication.getId(), RequestStatus.REJECTED));
+                    savedApplication.getId(), savedApplication.getUserId(), RequestStatus.REJECTED));
             } catch (DataIntegrityViolationException e) {
                 throw new UnexpectedConstraintViolationException(
                     "Unexpected database constraint violation while accepting application",
@@ -221,7 +227,11 @@ public class ApplicationServiceImpl implements ApplicationService {
             .build();
 
         if (!succeeded.isEmpty()) {
-
+            scheduleRejectedEmailList(
+                competitionId,
+                stageId,
+                succeeded.stream().map(SucceededApplicationRejectingItemResponse::studentId).toList(),
+                request.rejectionReason());
         }
 
         return response;
@@ -384,6 +394,15 @@ public class ApplicationServiceImpl implements ApplicationService {
         scheduleDecisionEmailAfterCommit(competitionId, stageId, userId, rejectionReason, RequestStatus.REJECTED);
     }
 
+    private void scheduleAcceptedEmailList(Long competitionId, Long stageId, List<Long> userIds) {
+        scheduleApplicationDecisionEmails(competitionId, stageId, userIds, null, RequestStatus.ACCEPTED);
+    }
+
+    private void scheduleRejectedEmailList(
+        Long competitionId, Long stageId, List<Long> userIds, String rejectionReason) {
+        scheduleApplicationDecisionEmails(competitionId, stageId, userIds, rejectionReason, RequestStatus.REJECTED);
+    }
+
     private List<Long> validateNoDuplicatesOrThrow(List<Long> rawIds) {
         Set<Long> seen = new HashSet<>();
         Set<Long> duplicates = rawIds.stream()
@@ -400,5 +419,38 @@ public class ApplicationServiceImpl implements ApplicationService {
             return UNIQUE_PARTICIPATION_CONSTRAINT.equals(cve.getConstraintName());
         }
         return false;
+    }
+
+    private void scheduleApplicationDecisionEmails(
+        Long competitionId,
+        Long stageId,
+        List<Long> succeededIds,
+        String rejectionReason,
+        RequestStatus status) {
+        String competitionTitle = getCompetitionInfoOrThrow(competitionId).title();
+        String stageTitle = getStageInfoOrThrow(stageId).title();
+        List<UserProfileDetails> users = userFacade.findProfilesByIds(succeededIds);
+
+        ApplicationDecisionListEvent event = new ApplicationDecisionListEvent(
+            competitionTitle, stageTitle, users, rejectionReason, status);
+        emailSender.sendDecisionEmailList(event);
+    }
+
+    private void validateApplicationsBelongToTheSameCompetitionAndStage(List<Application> applications) {
+        if (applications.isEmpty()) {
+            throw new ApplicationNotFoundException("None of the requested applications were found");
+        }
+
+        Long expectedCompetitionId = applications.getFirst().getCompetitionId();
+        Long expectedStageId = applications.getFirst().getStageId();
+
+        boolean allMatch =
+            applications.stream().allMatch(app -> Objects.equals(app.getCompetitionId(), expectedCompetitionId)
+                && Objects.equals(app.getStageId(), expectedStageId));
+
+        if (!allMatch) {
+            throw new UnableToProcessApplicationException(
+                "The applications don't belong to the same competition stage");
+        }
     }
 }

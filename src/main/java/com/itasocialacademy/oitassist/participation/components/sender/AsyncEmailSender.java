@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.participation.components.sender;
 
 import com.itasocialacademy.oitassist.core.properties.WebClientProperties;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionListEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.InvitationRequestEvent;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
@@ -50,11 +51,7 @@ public class AsyncEmailSender {
         String profileLink = buildLink(PROFILE_PATH);
         log.info("Handling ApplicationDecisionEvent for email={}, status={}", email, status);
 
-        String template = switch (status) {
-            case ACCEPTED -> "application-accepted.html";
-            case REJECTED -> "application-rejected.html";
-            default -> throw new IllegalArgumentException("No email template for status: " + status);
-        };
+        String template = determineTemplate(status);
         Map<String, String> extraParams = new HashMap<>();
         if (status == RequestStatus.REJECTED) {
             if (event.rejectionReason() != null && !event.rejectionReason().isBlank()) {
@@ -105,11 +102,49 @@ public class AsyncEmailSender {
         }
     }
 
+    @Async
+    public void sendDecisionEmailList(ApplicationDecisionListEvent event) {
+        log.info("Handling ApplicationDecisionListEvent for {} users", event.users().size());
+
+        String competitionLink = buildLink(COMPETITION_PATH);
+        String profileLink = buildLink(PROFILE_PATH);
+        RequestStatus status = event.status();
+        String template = determineTemplate(status);
+        Map<String, String> extraParams = new HashMap<>();
+        if (status == RequestStatus.REJECTED) {
+            if (event.rejectionReason() != null && !event.rejectionReason().isBlank()) {
+                extraParams.put("rejectionReason", event.rejectionReason());
+            }
+            extraParams.put("profileLink", profileLink);
+        }
+        for (UserProfileDetails user : event.users()) {
+            Map<String, String> root = new HashMap<>(Map.of(
+                "firstName", user.firstName(),
+                "competitionTitle", event.competitionTitle(),
+                "stageTitle", event.stageTitle(),
+                "competitionLink", competitionLink));
+            root.putAll(extraParams);
+            emailService.sendTemplateEmail(
+                user.email(),
+                template,
+                "Статус заявки",
+                root);
+        }
+    }
+
     private String buildLink(String link) {
         return UriComponentsBuilder
             .fromUriString(webClientProperties.origin())
             .path(link)
             .build()
             .toUriString();
+    }
+
+    private String determineTemplate(RequestStatus status) {
+        return switch (status) {
+            case ACCEPTED -> "application-accepted.html";
+            case REJECTED -> "application-rejected.html";
+            default -> throw new IllegalArgumentException("No email template for status: " + status);
+        };
     }
 }
