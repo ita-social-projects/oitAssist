@@ -154,7 +154,6 @@ public interface FileService {
      * @param entityId   the expected related entity ID
      */
     void updateRoleForMultiOwnerEntity(Long fileId, FileRole newRole, RelatedEntityType entityType, Long entityId);
-    FileResponseDto updateRole(Long fileId, UpdateFileRoleRequestDto requestDto);
 
     /**
      * Resolves and returns the file resource DTO, verifying access control rules
