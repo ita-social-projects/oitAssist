@@ -211,7 +211,7 @@ public class ApplicationServiceImpl implements ApplicationService {
             Application savedApplication = applicationSaver.saveRejectedApplication(
                 userId, application, request.rejectionReason());
             succeeded.add(
-                new SucceededApplicationRejectingItemResponse(savedApplication.getId(), userId,
+                new SucceededApplicationRejectingItemResponse(savedApplication.getId(), savedApplication.getUserId(),
                     RequestStatus.REJECTED));
         }
         RejectedApplicationListResponse response = RejectedApplicationListResponse.builder()

@@ -116,10 +116,10 @@ public class AsyncEmailSender {
      * <p>
      * According to the request status the corresponding template is sent. In case
      * of the ACCEPTED status the emails contain only the link for specific
-     * {@code competition stage} and the application-accepted templates are sent. In
-     * case of the REJECTED one the emails have links both for the
-     * {@code competition stage} and student's {@code profile} and the
-     * application-rejected templates are sent.
+     * {@code competition} and the application-accepted templates are sent. In case
+     * of the REJECTED one the emails have links both for the {@code competition}
+     * and student's {@code profile} and the application-rejected templates are
+     * sent.
      * </p>
      *
      * @param event the event carrying the titles of competition and stage, the list
