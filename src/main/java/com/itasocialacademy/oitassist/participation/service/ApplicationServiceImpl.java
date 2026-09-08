@@ -205,20 +205,15 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         for (Application application : applications) {
             if (application.getStatus() != PENDING_STATUS) {
-                failed.add(new FailedApplicationDecisionItemResponse(
-                    application.getId(), "Application is not pending"));
+                failed.add(
+                    new FailedApplicationDecisionItemResponse(application.getId(), "Application is not pending"));
                 continue;
             }
-            try {
-                Application savedApplication = applicationSaver.saveRejectedApplication(
-                    userId, application, request.rejectionReason());
-                succeeded.add(new SucceededApplicationRejectingItemResponse(
-                    savedApplication.getId(), savedApplication.getUserId(), RequestStatus.REJECTED));
-            } catch (DataIntegrityViolationException e) {
-                throw new UnexpectedConstraintViolationException(
-                    "Unexpected database constraint violation while accepting application",
-                    ErrorCode.DATA_ACCESS_ERROR, e);
-            }
+            Application savedApplication = applicationSaver.saveRejectedApplication(
+                userId, application, request.rejectionReason());
+            succeeded.add(
+                new SucceededApplicationRejectingItemResponse(savedApplication.getId(), userId,
+                    RequestStatus.REJECTED));
         }
         RejectedApplicationListResponse response = RejectedApplicationListResponse.builder()
             .application(new ApplicationDecisionSummary(competitionId, stageId, userId, Instant.now()))

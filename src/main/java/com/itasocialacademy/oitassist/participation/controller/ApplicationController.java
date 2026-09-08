@@ -108,7 +108,7 @@ public class ApplicationController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PreAuthorize("hasRole('ORG')")
-    @PostMapping("/enrollment/applications/accept/list")
+    @PostMapping("/enrollment/applications/accept-batch")
     public ResponseEntity<AcceptedApplicationListResponse> acceptRequests(
         @Valid @RequestBody AcceptApplicationListRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -161,7 +161,7 @@ public class ApplicationController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PreAuthorize("hasRole('ORG')")
-    @PostMapping("/enrollment/applications/reject/list")
+    @PostMapping("/enrollment/applications/reject-batch")
     public ResponseEntity<RejectedApplicationListResponse> rejectRequests(
         @Valid @RequestBody RejectApplicationListRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
