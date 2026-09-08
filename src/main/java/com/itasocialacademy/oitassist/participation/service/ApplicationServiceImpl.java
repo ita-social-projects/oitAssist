@@ -132,8 +132,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                 continue;
             }
             try {
-                Participation savedParticipation = applicationSaver.saveAcceptedApplicationData(
-                    userId, application, competitionId, stageId);
+                Participation savedParticipation = applicationSaver.saveAcceptedApplicationData(userId, application);
                 succeeded.add(new SucceededApplicationAcceptingItemResponse(
                     application.getId(), savedParticipation.getUserId(), RequestStatus.ACCEPTED));
             } catch (DataIntegrityViolationException e) {
@@ -154,7 +153,7 @@ public class ApplicationServiceImpl implements ApplicationService {
             .build();
 
         if (!succeeded.isEmpty()) {
-            scheduleAcceptedEmailList(
+            sendAcceptedEmailList(
                 competitionId,
                 stageId,
                 succeeded.stream().map(SucceededApplicationAcceptingItemResponse::participantId).toList());
@@ -222,7 +221,7 @@ public class ApplicationServiceImpl implements ApplicationService {
             .build();
 
         if (!succeeded.isEmpty()) {
-            scheduleRejectedEmailList(
+            sendRejectedEmailList(
                 competitionId,
                 stageId,
                 succeeded.stream().map(SucceededApplicationRejectingItemResponse::studentId).toList(),
@@ -389,13 +388,13 @@ public class ApplicationServiceImpl implements ApplicationService {
         scheduleDecisionEmailAfterCommit(competitionId, stageId, userId, rejectionReason, RequestStatus.REJECTED);
     }
 
-    private void scheduleAcceptedEmailList(Long competitionId, Long stageId, List<Long> userIds) {
-        scheduleApplicationDecisionEmails(competitionId, stageId, userIds, null, RequestStatus.ACCEPTED);
+    private void sendAcceptedEmailList(Long competitionId, Long stageId, List<Long> userIds) {
+        sendApplicationDecisionEmails(competitionId, stageId, userIds, null, RequestStatus.ACCEPTED);
     }
 
-    private void scheduleRejectedEmailList(
+    private void sendRejectedEmailList(
         Long competitionId, Long stageId, List<Long> userIds, String rejectionReason) {
-        scheduleApplicationDecisionEmails(competitionId, stageId, userIds, rejectionReason, RequestStatus.REJECTED);
+        sendApplicationDecisionEmails(competitionId, stageId, userIds, rejectionReason, RequestStatus.REJECTED);
     }
 
     private List<Long> validateNoDuplicatesOrThrow(List<Long> rawIds) {
@@ -416,7 +415,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         return false;
     }
 
-    private void scheduleApplicationDecisionEmails(
+    private void sendApplicationDecisionEmails(
         Long competitionId,
         Long stageId,
         List<Long> succeededIds,

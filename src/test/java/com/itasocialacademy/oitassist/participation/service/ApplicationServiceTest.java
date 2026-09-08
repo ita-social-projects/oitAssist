@@ -11,6 +11,7 @@ import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundExcept
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.participation.components.saver.ApplicationDecisionsSaver;
 import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionEvent;
+import com.itasocialacademy.oitassist.participation.dao.dto.event.ApplicationDecisionListEvent;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.AcceptApplicationListRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationListRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
@@ -327,14 +328,23 @@ class ApplicationServiceTest {
         Participation participation1 = Participation.builder().userId(10L).competitionId(2L).stageId(3L).build();
         Participation participation2 = Participation.builder().userId(11L).competitionId(2L).stageId(3L).build();
 
-        when(applicationSaver.saveAcceptedApplicationData(4L, app1, 2L, 3L)).thenReturn(participation1);
-        when(applicationSaver.saveAcceptedApplicationData(4L, app2, 2L, 3L)).thenReturn(participation2);
+        when(applicationSaver.saveAcceptedApplicationData(4L, app1)).thenReturn(participation1);
+        when(applicationSaver.saveAcceptedApplicationData(4L, app2)).thenReturn(participation2);
 
+        when(userFacade.findProfilesByIds(List.of(10L, 11L))).thenReturn(List.of(
+            new UserProfileDetails(10L, "A", "A", "a@mail.com"),
+            new UserProfileDetails(11L, "B", "B", "b@mail.com")));
         AcceptedApplicationListResponse response = applicationService.acceptApplicationList(request);
 
         assertEquals(2, response.succeeded().size());
         assertTrue(response.failed().isEmpty());
-        verify(emailSender).sendDecisionEmailList(any());
+        ArgumentCaptor<ApplicationDecisionListEvent> eventCaptor =
+            ArgumentCaptor.forClass(ApplicationDecisionListEvent.class);
+        verify(emailSender).sendDecisionEmailList(eventCaptor.capture());
+        assertEquals(List.of("a@mail.com", "b@mail.com"),
+            eventCaptor.getValue().users().stream().map(UserProfileDetails::email).toList());
+        assertEquals(RequestStatus.ACCEPTED, eventCaptor.getValue().status());
+        assertNull(eventCaptor.getValue().rejectionReason());
     }
 
     @Test
@@ -389,7 +399,7 @@ class ApplicationServiceTest {
         app1.setStatus(RequestStatus.PENDING);
 
         when(applicationRepository.findAll(any(Specification.class))).thenReturn(List.of(app1));
-        when(applicationSaver.saveAcceptedApplicationData(eq(4L), eq(app1), eq(2L), eq(3L)))
+        when(applicationSaver.saveAcceptedApplicationData(4L, app1))
             .thenReturn(Participation.builder().userId(10L).competitionId(2L).stageId(3L).build());
 
         AcceptedApplicationListResponse response = applicationService.acceptApplicationList(request);
@@ -416,7 +426,7 @@ class ApplicationServiceTest {
 
         assertTrue(response.succeeded().isEmpty());
         assertEquals("Application is not pending", response.failed().getFirst().reason());
-        verify(applicationSaver, never()).saveAcceptedApplicationData(any(), any(), any(), any());
+        verify(applicationSaver, never()).saveAcceptedApplicationData(any(), any());
     }
 
     @Test
@@ -433,7 +443,7 @@ class ApplicationServiceTest {
             "duplicate participation", null, "uc_participants_competition_id_stage_id");
 
         when(applicationRepository.findAll(any(Specification.class))).thenReturn(List.of(app1));
-        when(applicationSaver.saveAcceptedApplicationData(eq(4L), eq(app1), eq(2L), eq(3L)))
+        when(applicationSaver.saveAcceptedApplicationData(4L, app1))
             .thenThrow(new DataIntegrityViolationException("constraint violation", constraintViolation));
 
         AcceptedApplicationListResponse response = applicationService.acceptApplicationList(request);
@@ -533,12 +543,21 @@ class ApplicationServiceTest {
 
         when(applicationSaver.saveRejectedApplication(4L, app1, "Reason")).thenReturn(app1);
         when(applicationSaver.saveRejectedApplication(4L, app2, "Reason")).thenReturn(app2);
+        when(userFacade.findProfilesByIds(List.of(10L, 11L))).thenReturn(List.of(
+            new UserProfileDetails(10L, "A", "A", "a@mail.com"),
+            new UserProfileDetails(11L, "B", "B", "b@mail.com")));
 
         RejectedApplicationListResponse response = applicationService.rejectApplicationList(request);
 
         assertEquals(2, response.succeeded().size());
         assertTrue(response.failed().isEmpty());
-        verify(emailSender).sendDecisionEmailList(any());
+        ArgumentCaptor<ApplicationDecisionListEvent> eventCaptor =
+            ArgumentCaptor.forClass(ApplicationDecisionListEvent.class);
+        verify(emailSender).sendDecisionEmailList(eventCaptor.capture());
+        assertEquals(List.of("a@mail.com", "b@mail.com"),
+            eventCaptor.getValue().users().stream().map(UserProfileDetails::email).toList());
+        assertEquals(RequestStatus.REJECTED, eventCaptor.getValue().status());
+        assertEquals("Reason", eventCaptor.getValue().rejectionReason());
     }
 
     @Test

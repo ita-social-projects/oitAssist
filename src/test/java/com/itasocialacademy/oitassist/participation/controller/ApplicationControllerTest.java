@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 class ApplicationControllerTest extends ControllerUnitTest<ApplicationController> {
     private static final String ENROLLMENT_BASE_LINK = "/api/v1/enrollment/applications/{id}";
-    private static final String ENROLLMENT_BATCH_BASE_LINK = "/api/v1/enrollment/applications/";
+    private static final String ENROLLMENT_BATCH_BASE_LINK = "/api/v1/enrollment/applications";
     private static final String COMPETITION_BASE_LINK = "/api/v1/competitions/{compId}/stages/{stId}/applications";
 
     @Mock

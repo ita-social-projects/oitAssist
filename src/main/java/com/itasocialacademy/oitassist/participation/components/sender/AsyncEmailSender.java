@@ -26,6 +26,12 @@ public class AsyncEmailSender {
     private static final String COMPETITION_PATH = "/competitions";
     private static final String PROFILE_PATH = "/profile";
 
+    private static final String PROFILE_PARAM = "profileLink";
+    private static final String COMPETITION_LINK_PARAM = "competitionLink";
+    private static final String COMPETITION_TITLE_PARAM = "competitionTitle";
+    private static final String STAGE_TITLE_PARAM = "stageTitle";
+    private static final String NAME_PARAM = "firstName";
+
     /**
      * Handles asynchronously an {@link ApplicationDecisionEvent} after the
      * publishing transaction has committed. Builds an URL (or URLs) and sends an
@@ -34,9 +40,9 @@ public class AsyncEmailSender {
      * <p>
      * According to the request status the corresponding template is sent. In case
      * of the ACCEPTED status the email contains only the link for specific
-     * {@code competition} and the application-accepted template is sent. In case of
-     * the REJECTED one the email has links both for the {@code competition} and
-     * student's {@code profile} and the application-rejected template is sent.
+     * {@code competition stage} and the application-accepted template is sent. In
+     * case of the REJECTED one the email has links both for the {@code competition}
+     * and student's {@code profile} and the application-rejected template is sent.
      * </p>
      *
      * @param event the event carrying the titles of competition and stage, the
@@ -57,13 +63,13 @@ public class AsyncEmailSender {
             if (event.rejectionReason() != null && !event.rejectionReason().isBlank()) {
                 extraParams.put("rejectionReason", event.rejectionReason());
             }
-            extraParams.put("profileLink", profileLink);
+            extraParams.put(PROFILE_PARAM, profileLink);
         }
         Map<String, String> root = new HashMap<>(Map.of(
-            "firstName", event.firstName(),
-            "competitionTitle", event.competitionTitle(),
-            "stageTitle", event.stageTitle(),
-            "competitionLink", competitionLink));
+            NAME_PARAM, event.firstName(),
+            COMPETITION_TITLE_PARAM, event.competitionTitle(),
+            STAGE_TITLE_PARAM, event.stageTitle(),
+            COMPETITION_LINK_PARAM, competitionLink));
         root.putAll(extraParams);
 
         emailService.sendTemplateEmail(
@@ -89,11 +95,11 @@ public class AsyncEmailSender {
         String profileLink = buildLink(PROFILE_PATH);
         for (UserProfileDetails user : event.users()) {
             Map<String, String> root = Map.of(
-                "firstName", user.firstName(),
-                "competitionTitle", event.competitionTitle(),
-                "stageTitle", event.stageTitle(),
-                "competitionLink", competitionLink,
-                "profileLink", profileLink);
+                NAME_PARAM, user.firstName(),
+                COMPETITION_TITLE_PARAM, event.competitionTitle(),
+                STAGE_TITLE_PARAM, event.stageTitle(),
+                COMPETITION_LINK_PARAM, competitionLink,
+                PROFILE_PARAM, profileLink);
             emailService.sendTemplateEmail(
                 user.email(),
                 "invitation-request.html",
@@ -101,6 +107,25 @@ public class AsyncEmailSender {
                 root);
         }
     }
+
+    /**
+     * Handles asynchronously an {@link ApplicationDecisionListEvent} after the
+     * publishing transaction has committed. Builds the URLs and sends an
+     * application status email for each student.
+     *
+     * <p>
+     * According to the request status the corresponding template is sent. In case
+     * of the ACCEPTED status the emails contain only the link for specific
+     * {@code competition stage} and the application-accepted templates are sent. In
+     * case of the REJECTED one the emails have links both for the
+     * {@code competition stage} and student's {@code profile} and the
+     * application-rejected templates are sent.
+     * </p>
+     *
+     * @param event the event carrying the titles of competition and stage, the list
+     *              of recipients with emails and first names, the rejection reason
+     *              (for the REJECTED case) and the requests' status
+     */
 
     @Async
     public void sendDecisionEmailList(ApplicationDecisionListEvent event) {
@@ -115,14 +140,14 @@ public class AsyncEmailSender {
             if (event.rejectionReason() != null && !event.rejectionReason().isBlank()) {
                 extraParams.put("rejectionReason", event.rejectionReason());
             }
-            extraParams.put("profileLink", profileLink);
+            extraParams.put(PROFILE_PARAM, profileLink);
         }
         for (UserProfileDetails user : event.users()) {
             Map<String, String> root = new HashMap<>(Map.of(
-                "firstName", user.firstName(),
-                "competitionTitle", event.competitionTitle(),
-                "stageTitle", event.stageTitle(),
-                "competitionLink", competitionLink));
+                NAME_PARAM, user.firstName(),
+                COMPETITION_TITLE_PARAM, event.competitionTitle(),
+                STAGE_TITLE_PARAM, event.stageTitle(),
+                COMPETITION_LINK_PARAM, competitionLink));
             root.putAll(extraParams);
             emailService.sendTemplateEmail(
                 user.email(),

@@ -18,11 +18,7 @@ public class ApplicationDecisionsSaver {
     private final ParticipationRepository participationRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Participation saveAcceptedApplicationData(
-        Long organizerId,
-        Application application,
-        Long competitionId,
-        Long stageId) {
+    public Participation saveAcceptedApplicationData(Long organizerId, Application application) {
         application.setProcessedBy(organizerId);
         application.setProcessedAt(Instant.now());
         application.setStatus(RequestStatus.ACCEPTED);
@@ -30,8 +26,8 @@ public class ApplicationDecisionsSaver {
 
         Participation participation = Participation.builder()
             .userId(application.getUserId())
-            .competitionId(competitionId)
-            .stageId(stageId)
+            .competitionId(application.getCompetitionId())
+            .stageId(application.getStageId())
             .build();
         return participationRepository.save(participation);
     }
