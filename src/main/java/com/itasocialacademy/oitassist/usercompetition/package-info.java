@@ -1,7 +1,5 @@
-@ApplicationModule(allowedDependencies = {
-    "user::UserEntity",
-    "competition::CompetitionEntity"
-})
+@ApplicationModule(
+    allowedDependencies = {"competition :: enums", "competition"})
 package com.itasocialacademy.oitassist.usercompetition;
 
 import org.springframework.modulith.ApplicationModule;
