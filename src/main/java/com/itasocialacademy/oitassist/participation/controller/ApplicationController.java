@@ -1,10 +1,10 @@
 package com.itasocialacademy.oitassist.participation.controller;
 
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.AcceptApplicationListRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationListRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.ApplicationListItemResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -85,8 +86,38 @@ public class ApplicationController {
     }
 
     @Operation(
+        summary = "Accept users' applications",
+        description = "Accepts the application list and creates Participation records.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = """
+            The request was processed. Note that a 201 response does not guarantee \s
+            every application was successfully accepted - check the `succeeded` and `failed` \s
+            fields in the response body for the per-student outcome (possible reasons: \s
+            application not found, the request's status is not PENDING, applicant is already a participant).
+            """,
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = AcceptedApplicationListResponse.class))),
+        @ApiResponse(responseCode = "400", description = """
+            Could not accept applications. Possible reasons:\s
+            - The request contains duplicate application IDs.\s
+            - Applications don't belong to the same competition stage.""",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ORG role)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "No requested application was found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PreAuthorize("hasRole('ORG')")
+    @PostMapping("/enrollment/applications/accept-batch")
+    public ResponseEntity<AcceptedApplicationListResponse> acceptRequests(
+        @Valid @RequestBody AcceptApplicationListRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(applicationService.acceptApplicationList(request));
+    }
+
+    @Operation(
         summary = "Reject user's application",
-        description = "Rejects the application with provided rejection reason. ")
+        description = "Rejects the application with provided rejection reason.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Application rejected successfully",
             content = @Content(mediaType = "application/json",
@@ -105,6 +136,36 @@ public class ApplicationController {
         @RequestBody RejectEnrollmentRequest rejectEnrollmentRequest) {
         return ResponseEntity.status(HttpStatus.OK)
             .body((ProcessApplicationResponse) applicationService.rejectRequest(id, rejectEnrollmentRequest));
+    }
+
+    @Operation(
+        summary = "Reject users' applications",
+        description = "Rejects the application list with provided rejection reason.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = """
+            The request was processed. Note that a 201 response does not guarantee \s
+            every application was successfully rejected - check the `succeeded` and `failed` \s
+            fields in the response body for the per-student outcome (possible reasons: \s
+            application not found, the request's status is not PENDING).
+            """,
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = RejectedApplicationListResponse.class))),
+        @ApiResponse(responseCode = "400", description = """
+            Could not reject applications. Possible reasons:\s
+            - The request contains duplicate application IDs.\s
+            - Applications don't belong to the same competition stage.""",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ORG role)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "No requested application was found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PreAuthorize("hasRole('ORG')")
+    @PostMapping("/enrollment/applications/reject-batch")
+    public ResponseEntity<RejectedApplicationListResponse> rejectRequests(
+        @Valid @RequestBody RejectApplicationListRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(applicationService.rejectApplicationList(request));
     }
 
     @Operation(

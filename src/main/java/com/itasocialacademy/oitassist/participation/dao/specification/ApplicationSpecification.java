@@ -25,4 +25,10 @@ public class ApplicationSpecification {
         return (root, query, cb) -> cb.and(
             cb.equal(root.get("status"), status));
     }
+
+    public static Specification<Application> applicationIdIn(List<Long> applicationIds) {
+        return (root, query, cb) -> applicationIds == null
+            ? cb.conjunction()
+            : root.get("id").in(applicationIds);
+    }
 }

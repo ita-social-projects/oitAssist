@@ -1,11 +1,10 @@
 package com.itasocialacademy.oitassist.participation.controller;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.AcceptApplicationListRequest;
+import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationListRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.ApplicationListItemResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateApplicationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessApplicationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.UserSummary;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ApplicationService;
 import java.time.Instant;
@@ -31,6 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 class ApplicationControllerTest extends ControllerUnitTest<ApplicationController> {
     private static final String ENROLLMENT_BASE_LINK = "/api/v1/enrollment/applications/{id}";
+    private static final String ENROLLMENT_BATCH_BASE_LINK = "/api/v1/enrollment/applications";
     private static final String COMPETITION_BASE_LINK = "/api/v1/competitions/{compId}/stages/{stId}/applications";
 
     @Mock
@@ -102,6 +102,86 @@ class ApplicationControllerTest extends ControllerUnitTest<ApplicationController
     }
 
     @Test
+    void acceptRequests_shouldReturnCreated_whenAllSucceed() throws Exception {
+        AcceptApplicationListRequest request = new AcceptApplicationListRequest(List.of(1L, 2L));
+
+        AcceptedApplicationListResponse response = AcceptedApplicationListResponse.builder()
+            .application(new ApplicationDecisionSummary(2L, 3L, 4L, Instant.parse("2026-07-28T10:00:00Z")))
+            .succeeded(List.of(
+                new SucceededApplicationAcceptingItemResponse(1L, 10L, RequestStatus.ACCEPTED),
+                new SucceededApplicationAcceptingItemResponse(2L, 11L, RequestStatus.ACCEPTED)))
+            .failed(List.of())
+            .build();
+
+        when(applicationService.acceptApplicationList(any(AcceptApplicationListRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post(ENROLLMENT_BATCH_BASE_LINK + "/accept-batch")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.succeeded").isArray())
+            .andExpect(jsonPath("$.succeeded[0].applicationId").value(1L))
+            .andExpect(jsonPath("$.succeeded[0].status").value("ACCEPTED"))
+            .andExpect(jsonPath("$.succeeded[1].applicationId").value(2L))
+            .andExpect(jsonPath("$.failed").isEmpty());
+
+        verify(applicationService).acceptApplicationList(any(AcceptApplicationListRequest.class));
+    }
+
+    @Test
+    void acceptRequests_shouldReturnCreated_withPartialFailures() throws Exception {
+        AcceptApplicationListRequest request = new AcceptApplicationListRequest(List.of(1L, 99L));
+
+        AcceptedApplicationListResponse response = AcceptedApplicationListResponse.builder()
+            .application(new ApplicationDecisionSummary(2L, 3L, 4L, Instant.parse("2026-07-28T10:00:00Z")))
+            .succeeded(List.of(new SucceededApplicationAcceptingItemResponse(1L, 10L, RequestStatus.ACCEPTED)))
+            .failed(List.of(new FailedApplicationDecisionItemResponse(99L, "Application not found")))
+            .build();
+
+        when(applicationService.acceptApplicationList(any(AcceptApplicationListRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post(ENROLLMENT_BATCH_BASE_LINK + "/accept-batch")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.succeeded[0].applicationId").value(1L))
+            .andExpect(jsonPath("$.failed[0].applicationId").value(99L))
+            .andExpect(jsonPath("$.failed[0].reason").value("Application not found"));
+
+        verify(applicationService).acceptApplicationList(any(AcceptApplicationListRequest.class));
+    }
+
+    @Test
+    void acceptRequests_shouldReturnCreated_whenAllFail() throws Exception {
+        AcceptApplicationListRequest request = new AcceptApplicationListRequest(List.of(1L));
+
+        AcceptedApplicationListResponse response = AcceptedApplicationListResponse.builder()
+            .application(new ApplicationDecisionSummary(2L, 3L, 4L, Instant.parse("2026-07-28T10:00:00Z")))
+            .succeeded(List.of())
+            .failed(List.of(new FailedApplicationDecisionItemResponse(1L, "Application is not pending")))
+            .build();
+
+        when(applicationService.acceptApplicationList(any(AcceptApplicationListRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post(ENROLLMENT_BATCH_BASE_LINK + "/accept-batch")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.succeeded").isEmpty())
+            .andExpect(jsonPath("$.failed[0].reason").value("Application is not pending"));
+    }
+
+    @Test
+    void acceptRequests_shouldReturnBadRequest_whenRequestIsInvalid() throws Exception {
+        AcceptApplicationListRequest request = new AcceptApplicationListRequest(List.of());
+
+        mockMvc.perform(post(ENROLLMENT_BATCH_BASE_LINK + "/accept-batch")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void rejectRequest_shouldReturnOk_whenApplicationIsPending() throws Exception {
         Long applicationId = 1L;
         RejectEnrollmentRequest request = new RejectEnrollmentRequest("Does not meet requirements");
@@ -130,6 +210,86 @@ class ApplicationControllerTest extends ControllerUnitTest<ApplicationController
             .andExpect(jsonPath("$.rejectionReason").value("Does not meet requirements"));
 
         verify(applicationService).rejectRequest(eq(applicationId), any(RejectEnrollmentRequest.class));
+    }
+
+    @Test
+    void rejectRequests_shouldReturnCreated_whenAllSucceed() throws Exception {
+        RejectApplicationListRequest request = new RejectApplicationListRequest(List.of(1L, 2L), "Reason");
+
+        RejectedApplicationListResponse response = RejectedApplicationListResponse.builder()
+            .application(new ApplicationDecisionSummary(2L, 3L, 4L, Instant.parse("2026-07-28T10:00:00Z")))
+            .succeeded(List.of(
+                new SucceededApplicationRejectingItemResponse(1L, 10L, RequestStatus.REJECTED),
+                new SucceededApplicationRejectingItemResponse(2L, 11L, RequestStatus.REJECTED)))
+            .failed(List.of())
+            .build();
+
+        when(applicationService.rejectApplicationList(any(RejectApplicationListRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post(ENROLLMENT_BATCH_BASE_LINK + "/reject-batch")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.succeeded").isArray())
+            .andExpect(jsonPath("$.succeeded[0].applicationId").value(1L))
+            .andExpect(jsonPath("$.succeeded[0].status").value("REJECTED"))
+            .andExpect(jsonPath("$.succeeded[1].applicationId").value(2L))
+            .andExpect(jsonPath("$.failed").isEmpty());
+
+        verify(applicationService).rejectApplicationList(any(RejectApplicationListRequest.class));
+    }
+
+    @Test
+    void rejectRequests_shouldReturnCreated_withPartialFailures() throws Exception {
+        RejectApplicationListRequest request = new RejectApplicationListRequest(List.of(1L, 99L), "Reason");
+
+        RejectedApplicationListResponse response = RejectedApplicationListResponse.builder()
+            .application(new ApplicationDecisionSummary(2L, 3L, 4L, Instant.parse("2026-07-28T10:00:00Z")))
+            .succeeded(List.of(new SucceededApplicationRejectingItemResponse(1L, 10L, RequestStatus.REJECTED)))
+            .failed(List.of(new FailedApplicationDecisionItemResponse(99L, "Application not found")))
+            .build();
+
+        when(applicationService.rejectApplicationList(any(RejectApplicationListRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post(ENROLLMENT_BATCH_BASE_LINK + "/reject-batch")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.succeeded[0].applicationId").value(1L))
+            .andExpect(jsonPath("$.failed[0].applicationId").value(99L))
+            .andExpect(jsonPath("$.failed[0].reason").value("Application not found"));
+
+        verify(applicationService).rejectApplicationList(any(RejectApplicationListRequest.class));
+    }
+
+    @Test
+    void rejectRequests_shouldReturnCreated_whenAllFail() throws Exception {
+        RejectApplicationListRequest request = new RejectApplicationListRequest(List.of(1L), "Reason");
+
+        RejectedApplicationListResponse response = RejectedApplicationListResponse.builder()
+            .application(new ApplicationDecisionSummary(2L, 3L, 4L, Instant.parse("2026-07-28T10:00:00Z")))
+            .succeeded(List.of())
+            .failed(List.of(new FailedApplicationDecisionItemResponse(1L, "Application is not pending")))
+            .build();
+
+        when(applicationService.rejectApplicationList(any(RejectApplicationListRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post(ENROLLMENT_BATCH_BASE_LINK + "/reject-batch")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.succeeded").isEmpty())
+            .andExpect(jsonPath("$.failed[0].reason").value("Application is not pending"));
+    }
+
+    @Test
+    void rejectRequests_shouldReturnBadRequest_whenRequestIsInvalid() throws Exception {
+        RejectApplicationListRequest request = new RejectApplicationListRequest(List.of(), "Reason");
+
+        mockMvc.perform(post(ENROLLMENT_BATCH_BASE_LINK + "/reject-batch")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
     }
 
     @Test
