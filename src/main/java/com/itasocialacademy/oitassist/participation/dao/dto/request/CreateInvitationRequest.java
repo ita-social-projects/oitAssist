@@ -20,6 +20,6 @@ public class CreateInvitationRequest {
         type = "array", example = "[1, 3, 4]",
         requiredMode = Schema.RequiredMode.REQUIRED)
     @NotEmpty
-    @Size(max = 200)
+    @Size(max = 3000)
     private List<@NotNull Long> studentIds;
 }
