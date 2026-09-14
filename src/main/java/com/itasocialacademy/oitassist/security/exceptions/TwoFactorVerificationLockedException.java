@@ -1,7 +1,10 @@
 package com.itasocialacademy.oitassist.security.exceptions;
 
-public class TwoFactorVerificationLockedException extends RuntimeException {
-  public TwoFactorVerificationLockedException(String message) {
-    super(message);
-  }
+import com.itasocialacademy.oitassist.core.enums.ErrorCode;
+import com.itasocialacademy.oitassist.core.exceptions.BusinessException;
+
+public class TwoFactorVerificationLockedException extends BusinessException {
+    public TwoFactorVerificationLockedException(String message, ErrorCode errorCode) {
+        super(message, errorCode);
+    }
 }
