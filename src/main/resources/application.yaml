@@ -95,6 +95,8 @@ two-factor:
   pending-token-validity-millis: ${TWO_FACTOR_PENDING_TOKEN_VALIDITY_MILLIS:300000}
   email-otp-validity-millis: ${TWO_FACTOR_EMAIL_OTP_VALIDITY_MILLIS:600000}
   mandatory-roles: ${TWO_FACTOR_MANDATORY_ROLES:ADMIN,AUTHOR,JURY,ORG}
+  max-verify-attempts: 3
+  verify-lockout-duration-millis: 60000   # 1 minute
 
 logging:
   level:

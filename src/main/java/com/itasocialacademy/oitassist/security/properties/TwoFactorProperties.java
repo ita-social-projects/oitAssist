@@ -34,6 +34,8 @@ import org.springframework.stereotype.Component;
  *   pending-token-validity-millis: 300000       # 5 minutes
  *   email-otp-validity-millis: 600000           # 10 minutes
  *   mandatory-roles: ADMIN,AUTHOR,JURY,ORG      # bare role names, no ROLE_ prefix
+ *   max-verify-attempts: 3
+ *   verify-lockout-duration-millis: 60000       # 1 minute
  * }</pre>
  */
 @Setter
@@ -48,4 +50,6 @@ public class TwoFactorProperties {
     private long pendingTokenValidityMillis;
     private long emailOtpValidityMillis;
     private Set<String> mandatoryRoles;
+    private int maxVerifyAttempts;
+    private long verifyLockoutDurationMillis;
 }
