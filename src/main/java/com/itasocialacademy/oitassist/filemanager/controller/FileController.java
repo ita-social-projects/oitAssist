@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.filemanager.controller;
 
-import com.azure.core.annotation.QueryParam;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
@@ -241,7 +240,7 @@ public class FileController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<FileResponseDto> updateRole(
         @PathVariable Long id,
-        @Valid @QueryParam("newRole") UpdateFileRoleRequestDto requestDto) {
-        return ResponseEntity.ok(fileService.updateRole(id, requestDto));
+        @Valid @org.springframework.web.bind.annotation.RequestBody UpdateFileRoleRequestDto requestDto) {
+        return ResponseEntity.ok(fileService.updateRoleGeneral(id, requestDto));
     }
 }

@@ -34,6 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -1378,10 +1379,68 @@ class FileServiceImplTest {
         verify(fileRepository, never()).saveAll(any());
     }
 
+    // --- detachFilesForMultiOwnerEntity Tests ---
+
+    @Test
+    void detachFilesForMultiOwnerEntity_ShouldSoftDelete_WhenFileIsAttached() {
+        FileAsset file = new FileAsset();
+        file.setId(1L);
+        file.setStatus(FileStatus.ATTACHED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(42L);
+        file.setDeletedAt(null);
+
+        when(fileRepository.findAllById(List.of(1L))).thenReturn(List.of(file));
+
+        fileService.detachFilesForMultiOwnerEntity(RelatedEntityType.TASK, 42L, List.of(1L));
+
+        assertEquals(FileStatus.SOFT_DELETED, file.getStatus());
+        assertNotNull(file.getDeletedAt());
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
+    @Test
+    void detachFilesForMultiOwnerEntity_ShouldIgnore_WhenFileIsAlreadySoftDeleted() {
+        OffsetDateTime originalDeletedAt = OffsetDateTime.now().minusDays(1);
+        FileAsset file = new FileAsset();
+        file.setId(1L);
+        file.setStatus(FileStatus.SOFT_DELETED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(42L);
+        file.setDeletedAt(originalDeletedAt);
+
+        when(fileRepository.findAllById(List.of(1L))).thenReturn(List.of(file));
+
+        fileService.detachFilesForMultiOwnerEntity(RelatedEntityType.TASK, 42L, List.of(1L));
+
+        assertEquals(FileStatus.SOFT_DELETED, file.getStatus());
+        assertEquals(originalDeletedAt, file.getDeletedAt()); // Should not be overwritten
+        verify(fileRepository).saveAll(List.of(file)); // Note: saveAll is still called, but entity is unchanged
+    }
+
+    @Test
+    void detachFilesForMultiOwnerEntity_ShouldIgnore_WhenFileIsHardDeleted() {
+        OffsetDateTime originalDeletedAt = OffsetDateTime.now().minusDays(1);
+        FileAsset file = new FileAsset();
+        file.setId(1L);
+        file.setStatus(FileStatus.HARD_DELETED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(42L);
+        file.setDeletedAt(originalDeletedAt);
+
+        when(fileRepository.findAllById(List.of(1L))).thenReturn(List.of(file));
+
+        fileService.detachFilesForMultiOwnerEntity(RelatedEntityType.TASK, 42L, List.of(1L));
+
+        assertEquals(FileStatus.HARD_DELETED, file.getStatus());
+        assertEquals(originalDeletedAt, file.getDeletedAt());
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
     // --- Update Role Tests ---
 
     @Test
-    void updateRole_ShouldUpdateRoleAndReturnDto_WhenValidRequest() {
+    void updateRole_ShouldUpdateRoleGeneralAndReturnDto_WhenValidRequest() {
         UpdateFileRoleRequestDto requestDto = new UpdateFileRoleRequestDto(FileRole.PROBLEM);
 
         FileAsset file = new FileAsset();
@@ -1389,6 +1448,7 @@ class FileServiceImplTest {
         file.setUserId(userId);
         file.setStatus(FileStatus.ATTACHED);
         file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(1L);
         file.setFileRole(FileRole.REFERENCE);
         file.setStorageProvider(StorageProviderType.LOCAL);
         file.setStorageKey("task/problem.docx");
@@ -1408,7 +1468,7 @@ class FileServiceImplTest {
         when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
         when(storageProvider.getFileUrl("task/problem.docx")).thenReturn("/uploads/task/problem.docx");
 
-        FileResponseDto result = fileService.updateRole(fileId, requestDto);
+        FileResponseDto result = fileService.updateRoleGeneral(fileId, requestDto);
 
         assertNotNull(result);
         assertEquals(expectedDto, result);
@@ -1420,7 +1480,7 @@ class FileServiceImplTest {
     }
 
     @Test
-    void updateRole_ShouldThrowValidationException_WhenFileNotAttached() {
+    void updateRole_General_ShouldThrowValidationException_WhenFileNotAttached() {
         UpdateFileRoleRequestDto requestDto = new UpdateFileRoleRequestDto(FileRole.PROBLEM);
 
         FileAsset file = new FileAsset();
@@ -1433,7 +1493,7 @@ class FileServiceImplTest {
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
 
         ValidationException exception =
-            assertThrows(ValidationException.class, () -> fileService.updateRole(fileId, requestDto));
+            assertThrows(ValidationException.class, () -> fileService.updateRoleGeneral(fileId, requestDto));
         assertTrue(exception.getMessage().contains("ATTACHED state"));
 
         verifyNoInteractions(filePolicyResolver, fileMapper);
@@ -1441,7 +1501,7 @@ class FileServiceImplTest {
     }
 
     @Test
-    void updateRole_ShouldThrowAuthorizationException_WhenUserNotOwnerOrAdmin() {
+    void updateRole_General_ShouldThrowAuthorizationException_WhenUserNotOwnerOrAdmin() {
         Long ownerId = 99L;
         UpdateFileRoleRequestDto requestDto = new UpdateFileRoleRequestDto(FileRole.PROBLEM);
 
@@ -1453,9 +1513,51 @@ class FileServiceImplTest {
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
 
-        assertThrows(AuthorizationException.class, () -> fileService.updateRole(fileId, requestDto));
+        assertThrows(AuthorizationException.class, () -> fileService.updateRoleGeneral(fileId, requestDto));
 
         verifyNoInteractions(filePolicyResolver, fileMapper);
+        verify(fileRepository, never()).save(any());
+    }
+
+    @Test
+    void updateRoleForMultiOwnerEntity_ShouldUpdateRole_WhenValidRequest() {
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setStatus(FileStatus.ATTACHED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(2L);
+        file.setFileRole(FileRole.PROBLEM);
+        file.setStorageProvider(StorageProviderType.LOCAL);
+        file.setOriginalFilename("test.docx");
+
+        FilePolicy newRolePolicy = mock(FilePolicy.class);
+        when(newRolePolicy.getAllowedExtensions()).thenReturn(Set.of(AllowedExtension.DOCX));
+
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
+        when(filePolicyResolver.resolve(RelatedEntityType.TASK, FileRole.SOLUTION)).thenReturn(newRolePolicy);
+        when(fileRepository.save(any(FileAsset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        fileService.updateRoleForMultiOwnerEntity(fileId, FileRole.SOLUTION, RelatedEntityType.TASK, 2L);
+
+        assertEquals(FileRole.SOLUTION, file.getFileRole());
+        verify(fileRepository).save(file);
+    }
+
+    @Test
+    void updateRoleForMultiOwnerEntity_ShouldThrowValidationException_WhenWrongEntityBoundary() {
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setStatus(FileStatus.ATTACHED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(99L); // Belongs to task 99
+
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
+
+        // Attempting to update it in the context of task 42 -> should throw
+        ValidationException exception = assertThrows(ValidationException.class,
+            () -> fileService.updateRoleForMultiOwnerEntity(fileId, FileRole.SOLUTION, RelatedEntityType.TASK, 42L));
+
+        assertTrue(exception.getMessage().contains("does not belong to"));
         verify(fileRepository, never()).save(any());
     }
 

@@ -4,7 +4,6 @@ import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibil
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
-import java.util.List;
 
 @Schema(description = "DTO for creating a new task and assigning it to a tour in a single operation")
 public record CreateAndAssignTaskRequestDTO(
@@ -17,11 +16,6 @@ public record CreateAndAssignTaskRequestDTO(
         description = "Detailed description of the task",
         example = "Створити у файлі-розв'язку планарний граф ...",
         requiredMode = Schema.RequiredMode.NOT_REQUIRED) String description,
-
-    @Schema(
-        description = "List of file ids to attach to the task",
-        example = "[1, 2]",
-        requiredMode = Schema.RequiredMode.REQUIRED) @NotEmpty List<Long> fileIds,
 
     @Schema(
         description = "Visibility of the assignment",

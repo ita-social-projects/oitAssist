@@ -7,6 +7,7 @@ import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
 import com.itasocialacademy.oitassist.task.service.interfaces.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,9 +28,11 @@ class TaskBodyFacadeImpl implements TaskBodyFacade {
     }
 
     @Override
-    public TaskBodyDetail createTask(String title, String description, List<Long> fileIds) {
-        CreateTaskRequestDTO request = new CreateTaskRequestDTO(title, description, fileIds);
-        TaskResponseDTO created = taskService.createTask(request);
+    public TaskBodyDetail createTask(String title, String description,
+        List<MultipartFile> problemFiles, List<MultipartFile> referenceFiles,
+        List<MultipartFile> solutionFiles) {
+        CreateTaskRequestDTO request = new CreateTaskRequestDTO(title, description);
+        TaskResponseDTO created = taskService.createTask(request, problemFiles, referenceFiles, solutionFiles);
         return TaskBodyDetail.builder()
             .id(created.id())
             .title(created.title())

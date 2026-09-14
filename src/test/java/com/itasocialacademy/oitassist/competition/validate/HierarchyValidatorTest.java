@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
@@ -23,6 +25,8 @@ import com.itasocialacademy.oitassist.competition.exceptions.StaleEntityVersionE
 import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -50,6 +54,10 @@ class HierarchyValidatorTest {
     private TourRepository tourRepository;
     @Mock
     private ParticipationInquiryPort participationSPI;
+    @Mock
+    private EntityManager entityManager;
+    @Mock
+    private Query nativeQuery;
 
     @InjectMocks
     private HierarchyValidator validator;
@@ -59,6 +67,8 @@ class HierarchyValidatorTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(entityManager.createNativeQuery(anyString())).thenReturn(nativeQuery);
+
         ZonedDateTime start = ZonedDateTime.of(2026, 6, 25, 10, 0, 0, 0, ZoneId.of("UTC"));
 
         draftCompetition = Competition.builder()

@@ -441,10 +441,10 @@ class AssignmentServiceTest {
     void createAndAssignTask_validRequest_shouldCreateTaskAndAssignment() {
         CreateAndAssignTaskRequestDTO request =
             new CreateAndAssignTaskRequestDTO("PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
-                List.of(1L, 2L), AssignmentVisibility.VISIBLE, 25, reqDTO);
+                AssignmentVisibility.VISIBLE, 25, reqDTO);
 
         when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
-        when(taskBodyFacade.createTask(request.title(), request.description(), request.fileIds())).thenReturn(
+        when(taskBodyFacade.createTask(request.title(), request.description(), null, null, null)).thenReturn(
             taskBodyDetail);
         when(taskAssignmentMapper.toRequirements(reqDTO)).thenReturn(requirements);
         when(taskAssignmentRepository.save(any(TaskAssignment.class))).thenReturn(taskAssignment);
@@ -453,10 +453,11 @@ class AssignmentServiceTest {
         when(taskAssignmentMapper.toDetailedResponse(taskAssignment, request.title(), request.description(), testFiles))
             .thenReturn(detailedResponse);
 
-        DetailedTaskAssignmentResponseDTO result = assignmentService.createAndAssignTask(10L, request);
+        DetailedTaskAssignmentResponseDTO result =
+            assignmentService.createAndAssignTask(10L, request, null, null, null);
 
         assertNotNull(result);
-        verify(taskBodyFacade).createTask("PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку", List.of(1L, 2L));
+        verify(taskBodyFacade).createTask("PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку", null, null, null);
 
         ArgumentCaptor<TaskAssignment> captor = ArgumentCaptor.forClass(TaskAssignment.class);
         verify(taskAssignmentRepository).save(captor.capture());
@@ -472,12 +473,13 @@ class AssignmentServiceTest {
     void createAndAssignTask_tourNotFound_shouldThrowTourNotFoundException() {
         CreateAndAssignTaskRequestDTO request =
             new CreateAndAssignTaskRequestDTO("PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
-                List.of(1L, 2L), AssignmentVisibility.VISIBLE, 25, reqDTO);
+                AssignmentVisibility.VISIBLE, 25, reqDTO);
 
         when(competitionFacade.findTourById(10L)).thenReturn(Optional.empty());
 
-        assertThrows(TourNotFoundException.class, () -> assignmentService.createAndAssignTask(10L, request));
-        verify(taskBodyFacade, never()).createTask(any(), any(), any());
+        assertThrows(TourNotFoundException.class,
+            () -> assignmentService.createAndAssignTask(10L, request, null, null, null));
+        verify(taskBodyFacade, never()).createTask(any(), any(), any(), any(), any());
         verify(taskAssignmentRepository, never()).save(any());
     }
 
@@ -485,7 +487,7 @@ class AssignmentServiceTest {
     void createAndAssignTask_tourNotScheduled_shouldThrowCompetitionHierarchyValidationException() {
         CreateAndAssignTaskRequestDTO request =
             new CreateAndAssignTaskRequestDTO("PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
-                List.of(1L, 2L), AssignmentVisibility.VISIBLE, 25, reqDTO);
+                AssignmentVisibility.VISIBLE, 25, reqDTO);
 
         TourDetail activeTour = TourDetail.builder()
             .id(10L)
@@ -496,8 +498,8 @@ class AssignmentServiceTest {
         when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(activeTour));
 
         assertThrows(CompetitionHierarchyValidationException.class,
-            () -> assignmentService.createAndAssignTask(10L, request));
-        verify(taskBodyFacade, never()).createTask(any(), any(), any());
+            () -> assignmentService.createAndAssignTask(10L, request, null, null, null));
+        verify(taskBodyFacade, never()).createTask(any(), any(), any(), any(), any());
         verify(taskAssignmentRepository, never()).save(any());
     }
 
@@ -505,10 +507,10 @@ class AssignmentServiceTest {
     void createAndAssignTask_nullVisibility_shouldDefaultToHidden() {
         CreateAndAssignTaskRequestDTO request =
             new CreateAndAssignTaskRequestDTO("PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",
-                List.of(1L, 2L), null, 25, reqDTO);
+                null, 25, reqDTO);
 
         when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
-        when(taskBodyFacade.createTask(request.title(), request.description(), request.fileIds())).thenReturn(
+        when(taskBodyFacade.createTask(request.title(), request.description(), null, null, null)).thenReturn(
             taskBodyDetail);
         when(taskAssignmentMapper.toRequirements(reqDTO)).thenReturn(requirements);
         when(taskAssignmentRepository.save(any(TaskAssignment.class))).thenReturn(taskAssignment);
@@ -517,7 +519,7 @@ class AssignmentServiceTest {
         when(taskAssignmentMapper.toDetailedResponse(taskAssignment, taskBodyDetail.title(),
             taskBodyDetail.description(), testFiles)).thenReturn(detailedResponse);
 
-        assignmentService.createAndAssignTask(10L, request);
+        assignmentService.createAndAssignTask(10L, request, null, null, null);
 
         ArgumentCaptor<TaskAssignment> captor = ArgumentCaptor.forClass(TaskAssignment.class);
         verify(taskAssignmentRepository).save(captor.capture());
