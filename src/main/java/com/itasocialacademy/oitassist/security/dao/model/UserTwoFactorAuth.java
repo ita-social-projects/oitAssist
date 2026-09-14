@@ -77,6 +77,12 @@ public class UserTwoFactorAuth {
     @Column(name = "pending_email_otp_expires_at")
     private Instant pendingEmailOtpExpiresAt;
 
+    @Column(name = "failed_verify_attempts", nullable = false)
+    private int failedVerifyAttempts;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -140,5 +146,36 @@ public class UserTwoFactorAuth {
 
     public boolean isPendingEmailOtpExpired() {
         return pendingEmailOtpExpiresAt == null || pendingEmailOtpExpiresAt.isBefore(Instant.now());
+    }
+
+    /**
+     * Whether verification is currently locked out due to too many recent failed
+     * attempts. Compares against wall-clock time, so a lock naturally expires once
+     * {@code lockedUntil} passes — no separate "unlock" action needed.
+     */
+    public boolean isVerificationLocked() {
+        return lockedUntil != null && lockedUntil.isAfter(Instant.now());
+    }
+
+    public void incrementFailedVerifyAttempts() {
+        this.failedVerifyAttempts++;
+        this.updatedAt = Instant.now();
+    }
+
+    /**
+     * Locks verification until the given instant. The attempt threshold that
+     * triggers this call is policy (TwoFactorProperties), so it's deliberately not
+     * known to this entity — the service decides when to call it, this just records
+     * the outcome.
+     */
+    public void lockVerificationUntil(Instant until) {
+        this.lockedUntil = until;
+        this.updatedAt = Instant.now();
+    }
+
+    public void resetVerifyAttempts() {
+        this.failedVerifyAttempts = 0;
+        this.lockedUntil = null;
+        this.updatedAt = Instant.now();
     }
 }

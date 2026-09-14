@@ -33,6 +33,12 @@
 
             <column name="pending_email_otp_expires_at" type="TIMESTAMPTZ"/>
 
+            <column name="failed_verify_attempts" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="locked_until" type="TIMESTAMPTZ"/>
+
             <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
