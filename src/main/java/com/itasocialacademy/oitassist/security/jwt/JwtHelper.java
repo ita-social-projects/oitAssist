@@ -22,6 +22,7 @@ import java.util.function.Function;
 public class JwtHelper {
     public static final String ACCESS_TOKEN = "access";
     public static final String REFRESH_TOKEN = "refresh";
+    public static final String TWO_FACTOR_PENDING_TOKEN = "2fa_pending";
 
     private final JwtProperties jwtProperties;
 
@@ -37,6 +38,31 @@ public class JwtHelper {
     public String createRefreshToken(Map<String, Object> claims, String subject) {
         Date expiryDate =
             Date.from(Instant.ofEpochMilli(System.currentTimeMillis() + jwtProperties.getRefreshValidity()));
+        return generateToken(claims, subject, expiryDate);
+    }
+
+    /**
+     * Creates a short-lived token used between password verification and 2FA code
+     * verification/setup (see {@link #TWO_FACTOR_PENDING_TOKEN}).
+     *
+     * <p>
+     * Unlike {@link #createToken} and {@link #createRefreshToken}, validity is
+     * caller-supplied rather than read from {@link JwtProperties}: this token's
+     * lifetime is a 2FA-specific policy concern, not a general JWT concern, so
+     * {@link JwtHelper} stays agnostic about what "2FA" means and simply mints
+     * whatever expiry it's given.
+     * </p>
+     *
+     * @param claims         the claims to embed; callers are expected to set a
+     *                       {@code token_type} claim of
+     *                       {@link #TWO_FACTOR_PENDING_TOKEN}
+     * @param subject        the token subject (the user's email, matching the
+     *                       convention used by {@link #createToken})
+     * @param validityMillis how long the token remains valid, in milliseconds
+     * @return the signed+encrypted token, ready to return to the client
+     */
+    public String createTwoFactorPendingToken(Map<String, Object> claims, String subject, long validityMillis) {
+        Date expiryDate = Date.from(Instant.ofEpochMilli(System.currentTimeMillis() + validityMillis));
         return generateToken(claims, subject, expiryDate);
     }
 
@@ -63,6 +89,35 @@ public class JwtHelper {
             throw new AuthenticationException("Invalid token type", ErrorCode.INVALID_TOKEN_TYPE);
         }
         return extractClaimBody(jwe, Claims::getSubject);
+    }
+
+    /**
+     * Decrypts an already-unwrapped token (see {@link #extractEncryptedToken}) and
+     * returns its full claim set, after verifying it carries the expected
+     * {@code token_type}.
+     *
+     * <p>
+     * Unlike {@link #extractUsername}, which only returns the subject, this exposes
+     * every claim — needed by callers such as the 2FA verify/setup endpoints that
+     * read additional claims (e.g. {@code purpose}, {@code id}) beyond just the
+     * username.
+     * </p>
+     *
+     * @param token             the encrypted (JWE) token, already unwrapped from
+     *                          its outer signature via
+     *                          {@link #extractEncryptedToken}
+     * @param expectedTokenType the {@code token_type} this token must carry
+     * @return the decrypted claim set
+     * @throws AuthenticationException if the token's {@code token_type} does not
+     *                                 match {@code expectedTokenType}
+     */
+    public Claims extractClaims(String token, String expectedTokenType) {
+        Jwe<Claims> jwe = extractEncryptedClaims(token);
+        Claims claims = jwe.getPayload();
+        if (!expectedTokenType.equals(claims.get("token_type"))) {
+            throw new AuthenticationException("Invalid token type", ErrorCode.INVALID_TOKEN_TYPE);
+        }
+        return claims;
     }
 
     public <T> T extractClaimBody(ProtectedJwt<?, Claims> jwsClaims,
