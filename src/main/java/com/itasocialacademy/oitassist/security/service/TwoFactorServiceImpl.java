@@ -13,6 +13,7 @@ import com.itasocialacademy.oitassist.security.dao.repository.UserTwoFactorAuthR
 import com.itasocialacademy.oitassist.security.exceptions.InvalidTwoFactorCodeException;
 import com.itasocialacademy.oitassist.security.exceptions.TwoFactorAlreadyEnabledException;
 import com.itasocialacademy.oitassist.security.exceptions.TwoFactorEnrollmentNotFoundException;
+import com.itasocialacademy.oitassist.security.exceptions.TwoFactorVerificationLockedException;
 import com.itasocialacademy.oitassist.security.properties.TwoFactorProperties;
 import com.itasocialacademy.oitassist.security.service.interfaces.TwoFactorService;
 import com.itasocialacademy.oitassist.security.twofactor.TotpProvider;
@@ -137,24 +138,19 @@ public class TwoFactorServiceImpl implements TwoFactorService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = {InvalidTwoFactorCodeException.class, TwoFactorVerificationLockedException.class})
     public void verify(Long userId, String code) {
         UserTwoFactorAuth entity = findEnabledTwoFactorAuth(userId);
 
-        boolean valid = switch (entity.getMethod()) {
-            case TOTP -> confirmTotp(entity, code);
-            case EMAIL_OTP -> confirmEmailOtp(entity, code);
-        };
-        if (!valid) {
-            valid = tryRecoveryCode(entity, code);
+        requireNotLocked(entity);
+
+        if (isCodeValid(entity, code)) {
+            entity.resetVerifyAttempts();
+            twoFactorAuthRepository.save(entity);
+            return;
         }
 
-        if (!valid) {
-            throw new InvalidTwoFactorCodeException(
-                "Invalid verification code", ErrorCode.INVALID_TWO_FACTOR_CODE);
-        }
-
-        twoFactorAuthRepository.save(entity);
+        registerFailedAttempt(entity);
     }
 
     @Override
@@ -194,6 +190,45 @@ public class TwoFactorServiceImpl implements TwoFactorService {
             .filter(UserTwoFactorAuth::isEnabled)
             .orElseThrow(() -> new TwoFactorEnrollmentNotFoundException(
                 "No active two-factor setup found for this user", ErrorCode.TWO_FACTOR_ENROLLMENT_NOT_FOUND));
+    }
+
+    private void requireNotLocked(UserTwoFactorAuth entity) {
+        if (entity.isVerificationLocked()) {
+            throw new TwoFactorVerificationLockedException(
+                "Too many failed attempts; try again shortly", ErrorCode.TWO_FACTOR_VERIFICATION_LOCKED);
+        }
+    }
+
+    private boolean isCodeValid(UserTwoFactorAuth entity, String code) {
+        boolean valid = switch (entity.getMethod()) {
+            case TOTP -> confirmTotp(entity, code);
+            case EMAIL_OTP -> confirmEmailOtp(entity, code);
+        };
+        return valid || tryRecoveryCode(entity, code);
+    }
+
+    /**
+     * Records one failed verification attempt and always throws — either a plain
+     * "invalid code" error, or, once this attempt crosses the configured threshold,
+     * a lockout error instead. Saves before throwing: {@code verify()} is marked
+     * {@code noRollbackFor} both exception types specifically so this state
+     * survives the throw. If that annotation is ever removed, this method silently
+     * stops working — the save gets rolled back along with everything else in the
+     * transaction, and the counter never actually advances.
+     */
+    private void registerFailedAttempt(UserTwoFactorAuth entity) {
+        entity.incrementFailedVerifyAttempts();
+
+        if (entity.getFailedVerifyAttempts() >= properties.getMaxVerifyAttempts()) {
+            entity.lockVerificationUntil(Instant.now().plusMillis(properties.getVerifyLockoutDurationMillis()));
+            twoFactorAuthRepository.save(entity);
+            throw new TwoFactorVerificationLockedException(
+                "Too many failed attempts; try again shortly", ErrorCode.TWO_FACTOR_VERIFICATION_LOCKED);
+        }
+
+        twoFactorAuthRepository.save(entity);
+        throw new InvalidTwoFactorCodeException(
+            "Invalid verification code", ErrorCode.INVALID_TWO_FACTOR_CODE);
     }
 
     /**
