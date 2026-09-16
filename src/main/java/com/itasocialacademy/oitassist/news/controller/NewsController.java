@@ -109,7 +109,6 @@ public class NewsController {
         @ApiResponse(responseCode = "200", description = "Archived news retrieved successfully")
     })
     @GetMapping("/archive")
-    @PreAuthorize("hasAnyRole('ADMIN','ORG')")
     public ResponseEntity<List<ArchivedNewsByYearDto>> getArchivedNews() {
         return ResponseEntity.ok(newsArchivingService.getArchivedNewsGroupedByYearAndMonth());
     }

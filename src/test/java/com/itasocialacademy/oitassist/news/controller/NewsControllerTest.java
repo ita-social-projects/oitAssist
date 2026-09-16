@@ -246,15 +246,17 @@ class NewsControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
-    void testGetArchivedNews_shouldReturnArchivedNewsByYearAndMonth() throws Exception {
+    void testGetArchivedNews_whenAnonymous_shouldReturnOk() throws Exception {
         ArchivedNewsByYearDto archivedNews = new ArchivedNewsByYearDto(2026, List.of());
         List<ArchivedNewsByYearDto> archivedNewsList = List.of(archivedNews);
 
         when(newsArchivingService.getArchivedNewsGroupedByYearAndMonth()).thenReturn(archivedNewsList);
 
         mockMvc.perform(get("/api/v1/news/archive"))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isArray())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].year").value(2026));
 
         verify(newsArchivingService).getArchivedNewsGroupedByYearAndMonth();
     }

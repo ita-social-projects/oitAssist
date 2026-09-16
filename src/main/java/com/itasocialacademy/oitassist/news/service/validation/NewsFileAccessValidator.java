@@ -31,8 +31,9 @@ public class NewsFileAccessValidator implements FileAccessValidator {
     /**
      * Checks if the user is authorized to access the file attached to the specified
      * news entity. Access is granted to everyone (including guests) if the news is
-     * {@link NewsStatus#PUBLISHED}. For non-published news (drafts/archived),
-     * access is restricted to the news author, ADMIN, or ORG roles.
+     * {@link NewsStatus#PUBLISHED} or {@link NewsStatus#ARCHIVED}. For
+     * non-published news (drafts), access is restricted to the news author, ADMIN,
+     * or ORG roles.
      *
      * @param newsId  the ID of the news entity
      * @param userId  the ID of the current user, or {@code null} if unauthenticated
@@ -45,7 +46,7 @@ public class NewsFileAccessValidator implements FileAccessValidator {
         if (news == null) {
             return false;
         }
-        if (news.getStatus() == NewsStatus.PUBLISHED) {
+        if (news.getStatus() == NewsStatus.PUBLISHED || news.getStatus() == NewsStatus.ARCHIVED) {
             return true;
         }
         return hasRole.test("ADMIN") || hasRole.test("ORG")
