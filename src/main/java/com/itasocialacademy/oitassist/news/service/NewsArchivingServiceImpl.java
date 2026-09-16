@@ -62,7 +62,7 @@ public class NewsArchivingServiceImpl implements NewsArchivingService {
             grouped
                 .computeIfAbsent(yearMonth.getYear(), year -> new TreeMap<>(Comparator.reverseOrder()))
                 .computeIfAbsent(yearMonth.getMonthValue(), month -> new ArrayList<>())
-                .add(toNewsListItemDto(news));
+                .add(toNewsListItemDto(news, targetDate));
         }
         List<ArchivedNewsByYearDto> result = grouped.entrySet().stream()
             .map(yearEntry -> new ArchivedNewsByYearDto(
@@ -86,11 +86,11 @@ public class NewsArchivingServiceImpl implements NewsArchivingService {
         return result;
     }
 
-    private ResponseNewsListItemDto toNewsListItemDto(News news) {
+    private ResponseNewsListItemDto toNewsListItemDto(News news, OffsetDateTime targetDate) {
         return ResponseNewsListItemDto.builder()
             .id(news.getId())
             .title(news.getTitle())
-            .publishedAt(news.getPublishedAt() != null ? news.getPublishedAt() : news.getCreatedAt())
+            .publishedAt(targetDate)
             .contentPreview(news.getContent())
             .archivedAt(news.getArchivedAt())
             .build();
