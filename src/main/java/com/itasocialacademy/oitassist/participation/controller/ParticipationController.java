@@ -51,7 +51,7 @@ public class ParticipationController {
         @PathVariable Long competitionId,
         @PathVariable Long stageId,
         @RequestParam(required = false) String search,
-        @ParameterObject @PageableDefault(size = 20, sort = "participationId") Pageable pageable) {
+        @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
         return ResponseEntity.status(HttpStatus.OK)
             .body(PageResponse.from(
                 participationService.getParticipationList(competitionId, stageId, search, pageable)));
