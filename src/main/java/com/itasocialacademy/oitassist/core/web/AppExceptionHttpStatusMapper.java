@@ -45,6 +45,7 @@ public class AppExceptionHttpStatusMapper {
             case AUTHENTICATION -> HttpStatus.UNAUTHORIZED;
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case CONFLICT -> HttpStatus.CONFLICT;
+            case RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
             case TECHNICAL -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
     }
