@@ -31,6 +31,7 @@ public class AsyncEmailSender {
     private static final String COMPETITION_TITLE_PARAM = "competitionTitle";
     private static final String STAGE_TITLE_PARAM = "stageTitle";
     private static final String NAME_PARAM = "firstName";
+    private static final String REQUEST_STATUS_SUBJECT = "Статус заявки";
 
     /**
      * Handles asynchronously an {@link ApplicationDecisionEvent} after the
@@ -75,7 +76,7 @@ public class AsyncEmailSender {
         emailService.sendTemplateEmail(
             email,
             template,
-            "Статус заявки",
+            REQUEST_STATUS_SUBJECT,
             root);
     }
 
@@ -152,7 +153,7 @@ public class AsyncEmailSender {
             emailService.sendTemplateEmail(
                 user.email(),
                 template,
-                "Статус заявки",
+                REQUEST_STATUS_SUBJECT,
                 root);
         }
     }
