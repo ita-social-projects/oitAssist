@@ -502,6 +502,57 @@ class ForumAccessServiceTest {
             forumResponderService);
     }
 
+    @Test
+    void requireQuestionCommentAccess_publicQuestionAndParticipant_shouldReturnCurrentUserId() {
+        stubParticipantAccess(VISIBLE, IN_PROGRESS);
+
+        Long result = forumAccessService.requireQuestionCommentAccess(
+            createQuestion(OTHER_USER_ID, PUBLIC));
+
+        assertEquals(USER_ID, result);
+    }
+
+    @Test
+    void requireQuestionCommentAccess_ownPrivateQuestion_shouldReturnCurrentUserId() {
+        stubParticipantAccess(VISIBLE, IN_PROGRESS);
+
+        Long result = forumAccessService.requireQuestionCommentAccess(
+            createQuestion(USER_ID, PRIVATE));
+
+        assertEquals(USER_ID, result);
+    }
+
+    @Test
+    void requireQuestionCommentAccess_othersPrivateQuestion_shouldMaskAsNotFound() {
+        stubAuthenticatedHierarchy(VISIBLE, IN_PROGRESS);
+        stubRoles(false, false);
+
+        QuestionThread question = createQuestion(OTHER_USER_ID, PRIVATE);
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> forumAccessService.requireQuestionCommentAccess(question));
+
+        verifyNoInteractions(participationFacade);
+    }
+
+    @Test
+    void requireQuestionCommentAccess_publicQuestionWithoutParticipation_shouldThrowAccessRestrictedException() {
+        stubAuthenticatedHierarchy(VISIBLE, IN_PROGRESS);
+        stubRoles(false, false);
+
+        when(participationFacade.isUserParticipant(
+            USER_ID,
+            COMPETITION_ID,
+            STAGE_ID)).thenReturn(false);
+
+        QuestionThread question = createQuestion(OTHER_USER_ID, PUBLIC);
+
+        assertThrows(
+            QuestionForumAccessRestrictedException.class,
+            () -> forumAccessService.requireQuestionCommentAccess(question));
+    }
+
     private void stubParticipantAccess(
         AssignmentVisibility visibility,
         ExecutionStatus executionStatus) {
