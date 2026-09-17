@@ -6,13 +6,17 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionState.CLOSED
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus.ANSWERED;
 import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.PRIVATE;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.itasocialacademy.oitassist.ControllerUnitTest;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateCommentRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
+import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionForumAccessRestrictedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.chat.service.interfaces.ParticipantQuestionService;
@@ -27,12 +31,16 @@ import org.mockito.Mock;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
 
 class ParticipantQuestionControllerTest
     extends ControllerUnitTest<ParticipantQuestionController> {
 
     private static final String QUESTION_URL = "/api/v1/questions/{questionId}";
     private static final String MESSAGES_URL = "/api/v1/questions/{questionId}/messages";
+    private static final String COMMENTS_URL = "/api/v1/questions/{questionId}/comments";
+
+    private static final String COMMENT_CONTENT = "Could you also clarify the memory limit?";
 
     private static final Long QUESTION_ID = 11L;
     private static final Long TASK_ASSIGNMENT_ID = 1L;
@@ -191,6 +199,107 @@ class ParticipantQuestionControllerTest
         mockMvc.perform(get(MESSAGES_URL, QUESTION_ID))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.code").value("QUESTION_NOT_FOUND"));
+    }
+
+    @Test
+    void addComment_validRequest_shouldReturn201WithCreatedComment() throws Exception {
+        CreateCommentRequestDTO request = new CreateCommentRequestDTO(COMMENT_CONTENT);
+
+        when(participantQuestionService.addComment(QUESTION_ID, request))
+            .thenReturn(new QuestionMessageResponseDTO(
+                31L,
+                QUESTION_ID,
+                AUTHOR_ID,
+                COMMENT,
+                COMMENT_CONTENT,
+                CREATED_AT));
+
+        mockMvc.perform(
+            post(COMMENTS_URL, QUESTION_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(commentJson(COMMENT_CONTENT)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(31))
+            .andExpect(jsonPath("$.questionThreadId").value(QUESTION_ID))
+            .andExpect(jsonPath("$.authorId").value(AUTHOR_ID))
+            .andExpect(jsonPath("$.type").value("COMMENT"))
+            .andExpect(jsonPath("$.content").value(COMMENT_CONTENT))
+            .andExpect(jsonPath("$.createdAt").exists());
+
+        verify(participantQuestionService).addComment(QUESTION_ID, request);
+    }
+
+    @Test
+    void addComment_blankContent_shouldReturn400WithoutCallingService() throws Exception {
+        mockMvc.perform(
+            post(COMMENTS_URL, QUESTION_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(commentJson("   ")))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("COMMON_VALIDATION_FAILED"));
+
+        verifyNoInteractions(participantQuestionService);
+    }
+
+    @Test
+    void addComment_contentOverLimit_shouldReturn400WithoutCallingService() throws Exception {
+        mockMvc.perform(
+            post(COMMENTS_URL, QUESTION_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(commentJson("a".repeat(10_001))))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("COMMON_VALIDATION_FAILED"));
+
+        verifyNoInteractions(participantQuestionService);
+    }
+
+    @Test
+    void addComment_closedQuestion_shouldReturn409() throws Exception {
+        CreateCommentRequestDTO request = new CreateCommentRequestDTO(COMMENT_CONTENT);
+
+        when(participantQuestionService.addComment(QUESTION_ID, request))
+            .thenThrow(new InvalidQuestionStateException(QUESTION_ID, CLOSED, "add comment"));
+
+        mockMvc.perform(
+            post(COMMENTS_URL, QUESTION_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(commentJson(COMMENT_CONTENT)))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("QUESTION_INVALID_STATE"));
+    }
+
+    @Test
+    void addComment_maskedQuestion_shouldReturn404() throws Exception {
+        CreateCommentRequestDTO request = new CreateCommentRequestDTO(COMMENT_CONTENT);
+
+        when(participantQuestionService.addComment(QUESTION_ID, request))
+            .thenThrow(new QuestionNotFoundException(QUESTION_ID));
+
+        mockMvc.perform(
+            post(COMMENTS_URL, QUESTION_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(commentJson(COMMENT_CONTENT)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("QUESTION_NOT_FOUND"));
+    }
+
+    @Test
+    void addComment_restrictedForum_shouldReturn403() throws Exception {
+        CreateCommentRequestDTO request = new CreateCommentRequestDTO(COMMENT_CONTENT);
+
+        when(participantQuestionService.addComment(QUESTION_ID, request))
+            .thenThrow(new QuestionForumAccessRestrictedException(TASK_ASSIGNMENT_ID));
+
+        mockMvc.perform(
+            post(COMMENTS_URL, QUESTION_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(commentJson(COMMENT_CONTENT)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("QUESTION_ACCESS_RESTRICTED"));
+    }
+
+    private String commentJson(String content) {
+        return "{\"content\":\"" + content + "\"}";
     }
 
     private QuestionThreadResponseDTO createQuestionResponse() {

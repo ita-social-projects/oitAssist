@@ -9,15 +9,18 @@ import static com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility.P
 import static com.itasocialacademy.oitassist.core.config.PaginationConfig.MAX_PAGE_SIZE;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import com.itasocialacademy.oitassist.chat.dao.dto.request.CreateCommentRequestDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionMessageResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.dto.response.QuestionThreadResponseDTO;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionMessageType;
@@ -25,6 +28,8 @@ import com.itasocialacademy.oitassist.chat.dao.model.QuestionMessage;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionMessageRepository;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.domain.CommentCreatedDomainEvent;
+import com.itasocialacademy.oitassist.chat.exceptions.InvalidQuestionStateException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionForumAccessRestrictedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionNotFoundException;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionMessageMapper;
@@ -60,6 +65,10 @@ class ParticipantQuestionServiceImplTest {
 
     private static final Instant CREATED_AT = Instant.parse("2026-07-24T10:00:00Z");
     private static final Instant ANSWERED_AT = Instant.parse("2026-07-24T11:00:00Z");
+
+    private static final Long COMMENT_ID = 31L;
+    private static final Long COMMENTER_ID = 150L;
+    private static final String COMMENT_CONTENT = "Could you also clarify the memory limit?";
 
     @Mock
     private QuestionThreadRepository questionThreadRepository;
@@ -327,6 +336,250 @@ class ParticipantQuestionServiceImplTest {
             questionThreadRepository,
             forumAccessService,
             questionMessageRepository);
+    }
+
+    @Test
+    void addComment_accessibleOpenQuestion_shouldPersistCommentWithServerControlledFields() {
+        QuestionThread question = createQuestion();
+        CreateCommentRequestDTO request = new CreateCommentRequestDTO(COMMENT_CONTENT);
+
+        QuestionMessage mappedComment = QuestionMessage.builder()
+            .id(999L)
+            .questionThreadId(999L)
+            .authorId(999L)
+            .type(OFFICIAL_ANSWER)
+            .content(COMMENT_CONTENT)
+            .createdAt(ANSWERED_AT)
+            .build();
+
+        stubCommentCreation(question, request, mappedComment);
+
+        participantQuestionService.addComment(QUESTION_ID, request);
+
+        ArgumentCaptor<QuestionMessage> commentCaptor =
+            ArgumentCaptor.forClass(QuestionMessage.class);
+
+        verify(questionMessageRepository).save(commentCaptor.capture());
+
+        QuestionMessage persistedComment = commentCaptor.getValue();
+
+        assertAll(
+            () -> assertNull(persistedComment.getId()),
+            () -> assertEquals(QUESTION_ID, persistedComment.getQuestionThreadId()),
+            () -> assertEquals(COMMENTER_ID, persistedComment.getAuthorId()),
+            () -> assertEquals(COMMENT, persistedComment.getType()),
+            () -> assertEquals(COMMENT_CONTENT, persistedComment.getContent()),
+            () -> assertNull(persistedComment.getCreatedAt()));
+    }
+
+    @Test
+    void addComment_accessibleOpenQuestion_shouldReturnSavedCommentAndPublishEventAfterSaving() {
+        QuestionThread question = createQuestion();
+        CreateCommentRequestDTO request = new CreateCommentRequestDTO(COMMENT_CONTENT);
+        QuestionMessage mappedComment = QuestionMessage.builder()
+            .content(COMMENT_CONTENT)
+            .build();
+
+        stubCommentCreation(question, request, mappedComment);
+
+        QuestionMessageResponseDTO result =
+            participantQuestionService.addComment(QUESTION_ID, request);
+
+        assertAll(
+            () -> assertEquals(COMMENT_ID, result.id()),
+            () -> assertEquals(COMMENTER_ID, result.authorId()),
+            () -> assertEquals(COMMENT, result.type()));
+
+        ArgumentCaptor<CommentCreatedDomainEvent> eventCaptor =
+            ArgumentCaptor.forClass(CommentCreatedDomainEvent.class);
+
+        InOrder inOrder = inOrder(
+            questionMessageRepository,
+            applicationEventPublisher);
+
+        inOrder.verify(questionMessageRepository).save(mappedComment);
+        inOrder.verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+
+        assertAll(
+            () -> assertSame(result, eventCaptor.getValue().message()),
+            () -> assertEquals(QUESTION_ID, eventCaptor.getValue().question().id()));
+    }
+
+    @Test
+    void addComment_accessibleOpenQuestion_shouldNotChangeQuestionWorkflowFields() {
+        QuestionThread question = createQuestion();
+        CreateCommentRequestDTO request = new CreateCommentRequestDTO(COMMENT_CONTENT);
+
+        stubCommentCreation(
+            question,
+            request,
+            QuestionMessage.builder()
+                .content(COMMENT_CONTENT)
+                .build());
+
+        participantQuestionService.addComment(QUESTION_ID, request);
+
+        assertAll(
+            () -> assertEquals(IN_REVIEW, question.getStatus()),
+            () -> assertEquals(OPEN, question.getState()),
+            () -> assertEquals(PRIVATE, question.getVisibility()),
+            () -> assertEquals(REVIEWER_ID, question.getAssignedReviewerId()),
+            () -> assertEquals(2L, question.getVersion()));
+
+        verify(questionThreadRepository, never()).save(any(QuestionThread.class));
+    }
+
+    @Test
+    void addComment_closedQuestion_shouldRejectWithoutSaving() {
+        QuestionThread question = createQuestion();
+        question.setState(CLOSED);
+
+        when(questionThreadRepository.findById(QUESTION_ID))
+            .thenReturn(Optional.of(question));
+        when(forumAccessService.requireQuestionCommentAccess(question))
+            .thenReturn(COMMENTER_ID);
+
+        assertThrows(
+            InvalidQuestionStateException.class,
+            () -> participantQuestionService.addComment(
+                QUESTION_ID,
+                new CreateCommentRequestDTO(COMMENT_CONTENT)));
+
+        verifyNoInteractions(
+            questionMessageMapper,
+            questionMessageRepository,
+            applicationEventPublisher);
+    }
+
+    @Test
+    void addComment_inaccessibleClosedQuestion_shouldMaskBeforeLifecycleCheck() {
+        QuestionThread question = createQuestion();
+        question.setState(CLOSED);
+
+        when(questionThreadRepository.findById(QUESTION_ID))
+            .thenReturn(Optional.of(question));
+        when(forumAccessService.requireQuestionCommentAccess(question))
+            .thenThrow(new QuestionNotFoundException(QUESTION_ID));
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> participantQuestionService.addComment(
+                QUESTION_ID,
+                new CreateCommentRequestDTO(COMMENT_CONTENT)));
+
+        verifyNoInteractions(
+            questionMessageMapper,
+            questionMessageRepository,
+            applicationEventPublisher);
+    }
+
+    @Test
+    void addComment_restrictedForum_shouldNotSave() {
+        QuestionThread question = createQuestion();
+
+        when(questionThreadRepository.findById(QUESTION_ID))
+            .thenReturn(Optional.of(question));
+        when(forumAccessService.requireQuestionCommentAccess(question))
+            .thenThrow(new QuestionForumAccessRestrictedException(TASK_ASSIGNMENT_ID));
+
+        assertThrows(
+            QuestionForumAccessRestrictedException.class,
+            () -> participantQuestionService.addComment(
+                QUESTION_ID,
+                new CreateCommentRequestDTO(COMMENT_CONTENT)));
+
+        verifyNoInteractions(
+            questionMessageMapper,
+            questionMessageRepository,
+            applicationEventPublisher);
+    }
+
+    @Test
+    void addComment_missingQuestion_shouldNotCheckAccessOrSave() {
+        when(questionThreadRepository.findById(QUESTION_ID))
+            .thenReturn(Optional.empty());
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> participantQuestionService.addComment(
+                QUESTION_ID,
+                new CreateCommentRequestDTO(COMMENT_CONTENT)));
+
+        verifyNoInteractions(
+            forumAccessService,
+            questionMessageMapper,
+            questionMessageRepository,
+            applicationEventPublisher);
+    }
+
+    @Test
+    void addComment_invalidQuestionId_shouldRejectBeforeLoading() {
+        CreateCommentRequestDTO request = new CreateCommentRequestDTO(COMMENT_CONTENT);
+
+        assertAll(
+            () -> assertThrows(
+                ValidationException.class,
+                () -> participantQuestionService.addComment(null, request)),
+            () -> assertThrows(
+                ValidationException.class,
+                () -> participantQuestionService.addComment(0L, request)));
+
+        verifyNoInteractions(
+            questionThreadRepository,
+            forumAccessService,
+            questionMessageRepository,
+            applicationEventPublisher);
+    }
+
+    @Test
+    void addComment_repositoryFailure_shouldNotPublishEvent() {
+        QuestionThread question = createQuestion();
+        CreateCommentRequestDTO request = new CreateCommentRequestDTO(COMMENT_CONTENT);
+        QuestionMessage mappedComment = QuestionMessage.builder()
+            .content(COMMENT_CONTENT)
+            .build();
+
+        when(questionThreadRepository.findById(QUESTION_ID))
+            .thenReturn(Optional.of(question));
+        when(forumAccessService.requireQuestionCommentAccess(question))
+            .thenReturn(COMMENTER_ID);
+        when(questionMessageMapper.toEntity(request))
+            .thenReturn(mappedComment);
+        when(questionMessageRepository.save(mappedComment))
+            .thenThrow(new RuntimeException("Database failure"));
+
+        assertThrows(
+            RuntimeException.class,
+            () -> participantQuestionService.addComment(QUESTION_ID, request));
+
+        verifyNoInteractions(applicationEventPublisher);
+    }
+
+    private void stubCommentCreation(
+        QuestionThread question,
+        CreateCommentRequestDTO request,
+        QuestionMessage mappedComment) {
+        QuestionMessage savedComment = QuestionMessage.builder()
+            .id(COMMENT_ID)
+            .questionThreadId(QUESTION_ID)
+            .authorId(COMMENTER_ID)
+            .type(COMMENT)
+            .content(COMMENT_CONTENT)
+            .createdAt(ANSWERED_AT)
+            .build();
+
+        when(questionThreadRepository.findById(QUESTION_ID))
+            .thenReturn(Optional.of(question));
+        when(forumAccessService.requireQuestionCommentAccess(question))
+            .thenReturn(COMMENTER_ID);
+        when(questionMessageMapper.toEntity(request))
+            .thenReturn(mappedComment);
+        when(questionMessageRepository.save(mappedComment))
+            .thenReturn(savedComment);
+        when(questionMessageMapper.toResponse(savedComment))
+            .thenReturn(createMessageResponse(savedComment));
+        when(questionThreadMapper.toResponse(question))
+            .thenReturn(createQuestionResponse(question));
     }
 
     private QuestionThread createQuestion() {
