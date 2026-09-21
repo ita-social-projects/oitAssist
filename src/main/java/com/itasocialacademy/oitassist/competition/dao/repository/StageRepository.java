@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.competition.dao.repository;
 
+import com.itasocialacademy.oitassist.competition.dao.dto.StageStatusDto;
 import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import java.util.List;
@@ -56,4 +57,8 @@ public interface StageRepository extends JpaRepository<Stage, Long> {
 
     Optional<Stage> findFirstByCompetitionIdAndSortPositionLessThanOrderBySortPositionDesc(Long competitionId,
         Short sortPositionIsLessThan);
+
+    @Query("SELECT new com.itasocialacademy.oitassist.competition.dao.dto.StageStatusDto(s.status) "
+        + "FROM Stage s where s.id=:id ")
+    Optional<StageStatusDto> findStatusViewById(@Param("id") Long id);
 }
