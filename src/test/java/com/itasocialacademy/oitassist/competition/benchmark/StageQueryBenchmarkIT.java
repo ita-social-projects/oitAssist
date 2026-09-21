@@ -99,16 +99,14 @@ class StageQueryBenchmarkIT extends PostgresIntegrationTest {
             BENCHMARK_ROUNDS);
         System.out.println();
 
+        warmupProjection();
+        warmupFindById();
+
         for (int round = 1; round <= BENCHMARK_ROUNDS; round++) {
             boolean findByIdFirst = round % 2 == 1;
 
             if (findByIdFirst) {
                 findByIdFirstCount++;
-
-                warmupFindById();
-                warmupProjection();
-
-                entityManager.clear();
 
                 long findByIdNanos = measureFindById();
                 entityManager.clear();
@@ -125,11 +123,6 @@ class StageQueryBenchmarkIT extends PostgresIntegrationTest {
                     projectionNanos);
             } else {
                 projectionFirstCount++;
-
-                warmupProjection();
-                warmupFindById();
-
-                entityManager.clear();
 
                 long projectionNanos = measureProjection();
                 entityManager.clear();
