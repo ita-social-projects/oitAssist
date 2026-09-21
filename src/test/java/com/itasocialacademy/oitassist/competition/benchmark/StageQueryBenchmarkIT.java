@@ -278,46 +278,4 @@ class StageQueryBenchmarkIT extends PostgresIntegrationTest {
             "overall delta:     %+.2f%%%n",
             deltaPercent);
     }
-    //
-    // @Test
-    // void findByIdBenchmark() {
-    // Random random = new Random(42);
-    // runFindById(WARMUP_ITERATIONS, random);
-    // entityManager.clear();
-    //
-    // long nanos = runFindById(MEASURED_ITERATIONS, random);
-    // System.out.printf("findById avg: %.4f ms/call%n", nanos / 1_000_000.0 /
-    // MEASURED_ITERATIONS);
-    // }
-    //
-    // @Test
-    // void projectionBenchmark() {
-    // Random random = new Random(42);
-    // runProjection(WARMUP_ITERATIONS, random);
-    //
-    // long nanos = runProjection(MEASURED_ITERATIONS, random);
-    // System.out.printf("findStatusViewById avg: %.4f ms/call%n", nanos /
-    // 1_000_000.0 / MEASURED_ITERATIONS);
-    // }
-    //
-    // private long runFindById(int iterations, Random random) {
-    // long start = System.nanoTime();
-    // for (int i = 0; i < iterations; i++) {
-    // Long id = stageIds.get(random.nextInt(stageIds.size()));
-    // stageRepository.findById(id).orElseThrow();
-    // if (i % CLEAR_EVERY == CLEAR_EVERY - 1) {
-    // entityManager.clear();
-    // }
-    // }
-    // return System.nanoTime() - start;
-    // }
-    //
-    // private long runProjection(int iterations, Random random) {
-    // long start = System.nanoTime();
-    // for (int i = 0; i < iterations; i++) {
-    // Long id = stageIds.get(random.nextInt(stageIds.size()));
-    // stageRepository.findStatusViewById(id).orElseThrow();
-    // }
-    // return System.nanoTime() - start;
-    // }
 }
