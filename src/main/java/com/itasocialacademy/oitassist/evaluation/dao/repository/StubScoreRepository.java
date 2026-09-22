@@ -14,6 +14,13 @@ public class StubScoreRepository {
     private static final String IHOR = "Мельник Ігор Васильович";
     private static final String KARINA = "Чорновіл Каріна Олегівна";
 
+    /**
+     * Returns a fixed stub list of participant task scores.
+     *
+     * @param competitionId currently unused; will be used to filter scores once real evaluation scoring is implemented
+     * @param tourIds currently unused; will be used to filter scores once real evaluation scoring is implemented
+     * @return a fixed stub list of scores
+     */
     public List<ParticipantTaskScore> findScores(Long competitionId, Set<Long> tourIds) {
         return List.of(
             new ParticipantTaskScore(1L, IHOR, 1L, 10L, 5),
