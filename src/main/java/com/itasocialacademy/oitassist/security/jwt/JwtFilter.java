@@ -68,22 +68,22 @@ public class JwtFilter extends OncePerRequestFilter {
                         usernamePasswordAuthenticationToken);
                 }
             }
-        } catch (SignatureException e) {
+        } catch (SignatureException _) {
             setError(request, response, "Invalid JWT signature", ErrorCode.INVALID_SIGNATURE);
             return;
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             setError(request, response, "JWT claims string is empty", ErrorCode.EMPTY_CLAIMS);
             return;
-        } catch (ExpiredJwtException jwtException) {
+        } catch (ExpiredJwtException _) {
             setError(request, response, "User token expire", ErrorCode.TOKEN_EXPIRE);
             return;
-        } catch (UsernameNotFoundException e) {
+        } catch (UsernameNotFoundException _) {
             setError(request, response, "Bad credentials", ErrorCode.BAD_CREDENTIAL);
             return;
-        } catch (UnsupportedJwtException e) {
+        } catch (UnsupportedJwtException _) {
             setError(request, response, "JWT token is unsupported", ErrorCode.UNSUPPORTED_TOKEN);
             return;
-        } catch (MalformedJwtException e) {
+        } catch (MalformedJwtException _) {
             setError(request, response, "Invalid JWT token", ErrorCode.INVALID_TOKEN);
             return;
         } catch (AuthenticationException e) {
