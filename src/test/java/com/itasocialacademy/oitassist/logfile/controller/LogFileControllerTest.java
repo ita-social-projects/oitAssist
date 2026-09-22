@@ -73,23 +73,13 @@ class LogFileControllerTest {
 
     @Test
     void shouldDenyAnonymousCaller() throws Exception {
-        mockMvc.perform(get(ENDPOINT))
-            .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
-            .andExpect(jsonPath("$.status").value(403));
-
-        verifyNoInteractions(logFileService);
+        assertAccessDenied();
     }
 
     @Test
     @WithMockUser(roles = "USER")
     void shouldDenyNonAdminCaller() throws Exception {
-        mockMvc.perform(get(ENDPOINT))
-            .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
-            .andExpect(jsonPath("$.status").value(403));
-
-        verifyNoInteractions(logFileService);
+        assertAccessDenied();
     }
 
     @Test
@@ -213,6 +203,15 @@ class LogFileControllerTest {
             .getAll(pageableCaptor.capture());
 
         return pageableCaptor.getValue();
+    }
+
+    private void assertAccessDenied() throws Exception {
+        mockMvc.perform(get(ENDPOINT))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
+            .andExpect(jsonPath("$.status").value(403));
+
+        verifyNoInteractions(logFileService);
     }
 
     @TestConfiguration(proxyBeanMethods = false)
