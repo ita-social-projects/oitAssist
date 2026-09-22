@@ -74,7 +74,7 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         UserTwoFactorAuth savedEntity;
         try {
             savedEntity = twoFactorAuthRepository.save(setup.entity());
-        } catch (DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException _) {
             throw new TwoFactorAlreadyEnabledException(
                 "An enrollment attempt is already in progress for this account; please retry",
                 ErrorCode.TWO_FACTOR_ALREADY_ENABLED);
