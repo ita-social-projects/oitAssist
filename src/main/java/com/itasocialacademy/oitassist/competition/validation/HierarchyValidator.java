@@ -17,6 +17,7 @@ import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
+import org.springframework.context.annotation.Lazy;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.ZonedDateTime;
@@ -45,6 +46,7 @@ public class HierarchyValidator {
     private int hierarchyLockTimeoutMs;
 
     @Resource
+    @Lazy
     private HierarchyValidator self;
 
     @PostConstruct

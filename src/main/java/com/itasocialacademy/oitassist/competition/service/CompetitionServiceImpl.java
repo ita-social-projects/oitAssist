@@ -24,6 +24,7 @@ import com.itasocialacademy.oitassist.competition.service.interfaces.Competition
 import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import jakarta.annotation.Resource;
+import org.springframework.context.annotation.Lazy;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -47,6 +48,7 @@ public class CompetitionServiceImpl implements CompetitionService {
     private final HierarchyValidator validator;
 
     @Resource
+    @Lazy
     private CompetitionServiceImpl self;
 
     @Override
