@@ -125,7 +125,7 @@ public class FileSystemLogFileDao implements LogFileDao {
                 attributes
                     .lastModifiedTime()
                     .toInstant()));
-        } catch (NoSuchFileException exception) {
+        } catch (NoSuchFileException _) {
             log.debug("Log file disappeared during directory scan: {}", path.getFileName());
             return Optional.empty();
         } catch (IOException exception) {
