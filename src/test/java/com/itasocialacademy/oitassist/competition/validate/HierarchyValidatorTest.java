@@ -301,8 +301,11 @@ class HierarchyValidatorTest {
     void validateStageDates_competitionNotFound_shouldThrow() {
         when(competitionRepository.findById(99L)).thenReturn(Optional.empty());
 
+        ZonedDateTime start = ZonedDateTime.now();
+        ZonedDateTime finish = start.plusDays(1);
+
         assertThrows(CompetitionNotFoundException.class,
-            () -> validator.validateStageDates(99L, ZonedDateTime.now(), ZonedDateTime.now().plusDays(1)));
+            () -> validator.validateStageDates(99L, start, finish));
     }
 
     @Test
@@ -340,8 +343,11 @@ class HierarchyValidatorTest {
     void validateTourDates_stageNotFound_shouldThrow() {
         when(stageRepository.findById(99L)).thenReturn(Optional.empty());
 
+        ZonedDateTime start = ZonedDateTime.now();
+        ZonedDateTime finish = start.plusHours(1);
+
         assertThrows(StageNotFoundException.class,
-            () -> validator.validateTourDates(99L, ZonedDateTime.now(), ZonedDateTime.now().plusHours(1)));
+            () -> validator.validateTourDates(99L, start, finish));
     }
 
     @Test
