@@ -40,6 +40,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class HierarchyValidatorTest {
@@ -68,6 +69,7 @@ class HierarchyValidatorTest {
     @BeforeEach
     void setUp() {
         lenient().when(entityManager.createNativeQuery(anyString())).thenReturn(nativeQuery);
+        ReflectionTestUtils.setField(validator, "self", validator);
 
         ZonedDateTime start = ZonedDateTime.of(2026, 6, 25, 10, 0, 0, 0, ZoneId.of("UTC"));
 
