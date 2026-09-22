@@ -90,13 +90,13 @@ public class TokenServiceImpl implements TokenService {
                 new UsernamePasswordAuthenticationToken(
                     tokenRequest.getUsername(), tokenRequest.getPassword()))
                 .getPrincipal();
-        } catch (BadCredentialsException e) {
+        } catch (BadCredentialsException _) {
             throw new AuthenticationException("Bad credentials", ErrorCode.BAD_CREDENTIAL);
-        } catch (DisabledException e) {
+        } catch (DisabledException _) {
             throw new AuthenticationException("Account is not activated", ErrorCode.USER_NOT_ACTIVATED);
-        } catch (LockedException e) {
+        } catch (LockedException _) {
             throw new AuthenticationException("Account is locked", ErrorCode.USER_BLOCKED);
-        } catch (AccountExpiredException e) {
+        } catch (AccountExpiredException _) {
             throw new AuthenticationException("Account has expired", ErrorCode.USER_BLOCKED);
         }
 
@@ -124,17 +124,17 @@ public class TokenServiceImpl implements TokenService {
         try {
             String encryptedJwt = jwtHelper.extractEncryptedToken(token);
             username = jwtHelper.extractUsername(encryptedJwt, JwtHelper.REFRESH_TOKEN);
-        } catch (SignatureException e) {
+        } catch (SignatureException _) {
             throw new AuthenticationException("Invalid JWT signature", ErrorCode.INVALID_SIGNATURE);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             throw new AuthenticationException("JWT claims string is empty", ErrorCode.EMPTY_CLAIMS);
-        } catch (ExpiredJwtException jwtException) {
+        } catch (ExpiredJwtException _) {
             throw new AuthenticationException("User token expire", ErrorCode.TOKEN_EXPIRE);
-        } catch (UsernameNotFoundException e) {
+        } catch (UsernameNotFoundException _) {
             throw new AuthenticationException("Bad credentials", ErrorCode.BAD_CREDENTIAL);
-        } catch (UnsupportedJwtException e) {
+        } catch (UnsupportedJwtException _) {
             throw new AuthenticationException("JWT token is unsupported", ErrorCode.UNSUPPORTED_TOKEN);
-        } catch (MalformedJwtException e) {
+        } catch (MalformedJwtException _) {
             throw new AuthenticationException("Invalid JWT token", ErrorCode.INVALID_TOKEN);
         }
 
