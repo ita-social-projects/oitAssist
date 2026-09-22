@@ -17,8 +17,10 @@ public class StubScoreRepository {
     /**
      * Returns a fixed stub list of participant task scores.
      *
-     * @param competitionId currently unused; will be used to filter scores once real evaluation scoring is implemented
-     * @param tourIds currently unused; will be used to filter scores once real evaluation scoring is implemented
+     * @param competitionId currently unused; will be used to filter scores once
+     *                      real evaluation scoring is implemented
+     * @param tourIds       currently unused; will be used to filter scores once
+     *                      real evaluation scoring is implemented
      * @return a fixed stub list of scores
      */
     public List<ParticipantTaskScore> findScores(Long competitionId, Set<Long> tourIds) {
