@@ -35,7 +35,7 @@ spring:
             client-secret: dummy-microsoft-secret
 
 jwt:
-  encrypted-key: dummyEncryptedKey1234567890123456
+#  encrypted-key: dummyEncryptedKey1234567890123456
   sign-key: dummySignKey123456789012345678901234567890
 
 graph:
