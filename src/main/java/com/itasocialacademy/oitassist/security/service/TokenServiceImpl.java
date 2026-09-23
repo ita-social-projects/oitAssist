@@ -40,25 +40,30 @@ import org.springframework.transaction.annotation.Transactional;
  * {@inheritDoc}
  *
  * <p>
- * {@code generateToken} now branches into three outcomes after password verification succeeds — see
- * {@link LoginOutcome}. The 2FA-status lookup happens <b>after</b> {@code authenticationManager.authenticate(...)}
- * throws or succeeds, never before: checking it earlier would let an unauthenticated caller learn whether an account
- * has 2FA enabled just by submitting a username, which is a small account-enumeration leak. A failed password attempt
- * looks identical regardless of 2FA status this way.
+ * {@code generateToken} now branches into three outcomes after password
+ * verification succeeds — see {@link LoginOutcome}. The 2FA-status lookup
+ * happens <b>after</b> {@code authenticationManager.authenticate(...)} throws
+ * or succeeds, never before: checking it earlier would let an unauthenticated
+ * caller learn whether an account has 2FA enabled just by submitting a
+ * username, which is a small account-enumeration leak. A failed password
+ * attempt looks identical regardless of 2FA status this way.
  * </p>
  *
  * <p>
- * {@code refreshToken} is deliberately untouched by any of this — a refresh token represents an already-established,
- * already-2FA-verified session; requiring 2FA again on every access-token expiry would defeat the point of having a
- * refresh token at all.
+ * {@code refreshToken} is deliberately untouched by any of this — a refresh
+ * token represents an already-established, already-2FA-verified session;
+ * requiring 2FA again on every access-token expiry would defeat the point of
+ * having a refresh token at all.
  * </p>
  *
  * <p>
- * {@code verifyTwoFactor} is the counterpart that completes a {@code TWO_FA_VERIFICATION_REQUIRED} login: it resolves
- * identity from the pending token (never from {@code SecurityContextHolder}, which isn't populated at this point —
- * there's no ongoing authenticated session yet), delegates the actual code check to {@link TwoFactorService#verify},
- * and on success re-fetches a full {@link UserDetailsImpl} the same way {@link #refreshToken} already does, before
- * issuing real tokens.
+ * {@code verifyTwoFactor} is the counterpart that completes a
+ * {@code TWO_FA_VERIFICATION_REQUIRED} login: it resolves identity from the
+ * pending token (never from {@code SecurityContextHolder}, which isn't
+ * populated at this point — there's no ongoing authenticated session yet),
+ * delegates the actual code check to {@link TwoFactorService#verify}, and on
+ * success re-fetches a full {@link UserDetailsImpl} the same way
+ * {@link #refreshToken} already does, before issuing real tokens.
  * </p>
  */
 @Service
@@ -82,8 +87,8 @@ public class TokenServiceImpl implements TokenService {
         UserDetailsImpl userDetails;
         try {
             userDetails = (UserDetailsImpl) authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                        tokenRequest.getUsername(), tokenRequest.getPassword()))
+                new UsernamePasswordAuthenticationToken(
+                    tokenRequest.getUsername(), tokenRequest.getPassword()))
                 .getPrincipal();
         } catch (BadCredentialsException e) {
             throw new AuthenticationException("Bad credentials", ErrorCode.BAD_CREDENTIAL);
@@ -173,11 +178,13 @@ public class TokenServiceImpl implements TokenService {
     }
 
     /**
-     * For {@code EMAIL_OTP} users, there's nothing sitting around for them to submit at login — unlike TOTP, where
-     * their own authenticator app keeps generating codes independently, an email-OTP user's last code (from whenever
-     * they last logged in, if ever) is long since consumed and cleared. So this branch also triggers sending a fresh
-     * one via {@link TwoFactorService#resendLoginOtp} before returning the pending token — otherwise the user would
-     * have a token to submit but no code to put with it.
+     * For {@code EMAIL_OTP} users, there's nothing sitting around for them to
+     * submit at login — unlike TOTP, where their own authenticator app keeps
+     * generating codes independently, an email-OTP user's last code (from whenever
+     * they last logged in, if ever) is long since consumed and cleared. So this
+     * branch also triggers sending a fresh one via
+     * {@link TwoFactorService#resendLoginOtp} before returning the pending token —
+     * otherwise the user would have a token to submit but no code to put with it.
      */
     private LoginResponse buildVerificationRequiredResponse(UserDetailsImpl userDetails,
         UserTwoFactorAuth twoFactorAuth) {
@@ -208,12 +215,15 @@ public class TokenServiceImpl implements TokenService {
     }
 
     /**
-     * Reads the mandatory-role set straight off the just-authenticated principal's authorities — no
-     * {@code SecurityContextHolder} (not populated yet at this point in the flow) and no cross-module import of
-     * {@code user.dao.enums.Role} (the {@code security} module isn't allowed to depend on {@code user}; see
-     * {@code security/package-info.java}). This mirrors the same "strip ROLE_, compare the bare name" pattern
-     * {@link JwtTokenIssuer#issueFor} already uses — a small, acceptable duplication between the two classes rather
-     * than a shared utility extracted for two call sites; worth revisiting if a third one shows up.
+     * Reads the mandatory-role set straight off the just-authenticated principal's
+     * authorities — no {@code SecurityContextHolder} (not populated yet at this
+     * point in the flow) and no cross-module import of {@code user.dao.enums.Role}
+     * (the {@code security} module isn't allowed to depend on {@code user}; see
+     * {@code security/package-info.java}). This mirrors the same "strip ROLE_,
+     * compare the bare name" pattern {@link JwtTokenIssuer#issueFor} already uses —
+     * a small, acceptable duplication between the two classes rather than a shared
+     * utility extracted for two call sites; worth revisiting if a third one shows
+     * up.
      */
     private boolean isMandatoryTwoFactorRole(UserDetailsImpl userDetails) {
         return userDetails.getAuthorities().stream()
