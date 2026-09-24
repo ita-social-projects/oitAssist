@@ -1,9 +1,12 @@
 package com.itasocialacademy.oitassist.security.jwt;
 
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
 import com.itasocialacademy.oitassist.core.web.GlobalExceptionHandler;
+import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
@@ -12,32 +15,28 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
+import java.util.Objects;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.util.Objects;
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 @Component
 @Slf4j
 public class JwtFilter extends OncePerRequestFilter {
-    private final UserDetailsService userDetailsService;
     private final JwtHelper jwtHelper;
     private final GlobalExceptionHandler handler;
     private final ObjectMapper objectMapper;
 
-    public JwtFilter(UserDetailsService userDetailsService, JwtHelper jwtHelper, GlobalExceptionHandler handler,
+    public JwtFilter(JwtHelper jwtHelper, GlobalExceptionHandler handler,
         ObjectMapper objectMapper) {
-        this.userDetailsService = userDetailsService;
         this.jwtHelper = jwtHelper;
         this.handler = handler;
         this.objectMapper = objectMapper;
@@ -49,16 +48,12 @@ public class JwtFilter extends OncePerRequestFilter {
         @NonNull FilterChain filterChain) throws ServletException, IOException {
         try {
             final String authorizationHeader = request.getHeader(AUTHORIZATION);
-            String jwt;
-            String username;
             if (Objects.nonNull(authorizationHeader) && authorizationHeader.startsWith("Bearer ")) {
-                jwt = authorizationHeader.substring(7);
-                String encryptedJwt = jwtHelper.extractEncryptedToken(jwt);
-                username = jwtHelper.extractUsername(encryptedJwt, JwtHelper.ACCESS_TOKEN);
+                String jwt = authorizationHeader.substring(7);
+                Claims claims = jwtHelper.extractClaims(jwt, JwtHelper.ACCESS_TOKEN);
 
-                if (Objects.nonNull(username) && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    UserDetails userDetails =
-                        this.userDetailsService.loadUserByUsername(username);
+                if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                    UserDetailsImpl userDetails = buildUserDetails(claims);
                     UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
                         new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
@@ -77,9 +72,6 @@ public class JwtFilter extends OncePerRequestFilter {
         } catch (ExpiredJwtException _) {
             setError(request, response, "User token expire", ErrorCode.TOKEN_EXPIRE);
             return;
-        } catch (UsernameNotFoundException _) {
-            setError(request, response, "Bad credentials", ErrorCode.BAD_CREDENTIAL);
-            return;
         } catch (UnsupportedJwtException _) {
             setError(request, response, "JWT token is unsupported", ErrorCode.UNSUPPORTED_TOKEN);
             return;
@@ -92,6 +84,28 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Builds the authenticated principal directly from the access token's claims,
+     * with no database lookup. {@code isEnabled}/{@code isAccountNonLocked}/
+     * {@code isAccountNonExpired} are not carried by the token, so they're assumed
+     * {@code true} for the lifetime of the access token — the account was in good
+     * standing when the token was issued. A ban, lock, or deactivation takes effect
+     * only once this token expires and the user is forced through refresh/re-login,
+     * not immediately. See issue #565 for the accepted trade-off.
+     */
+    private UserDetailsImpl buildUserDetails(Claims claims) {
+        Long id = claims.get("id", Long.class);
+        String role = claims.get("role", String.class);
+        return UserDetailsImpl.builder()
+            .id(id)
+            .email(claims.getSubject())
+            .isEnabled(true)
+            .isAccountNonLocked(true)
+            .isAccountNonExpired(true)
+            .authorities(List.of(new SimpleGrantedAuthority("ROLE_" + role)))
+            .build();
     }
 
     @Override

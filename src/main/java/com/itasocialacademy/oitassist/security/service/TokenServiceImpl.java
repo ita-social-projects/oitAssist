@@ -122,8 +122,7 @@ public class TokenServiceImpl implements TokenService {
     public TokenResponse refreshToken(String token) {
         String username;
         try {
-            String encryptedJwt = jwtHelper.extractEncryptedToken(token);
-            username = jwtHelper.extractUsername(encryptedJwt, JwtHelper.REFRESH_TOKEN);
+            username = jwtHelper.extractUsername(token, JwtHelper.REFRESH_TOKEN);
         } catch (SignatureException _) {
             throw new AuthenticationException("Invalid JWT signature", ErrorCode.INVALID_SIGNATURE);
         } catch (IllegalArgumentException _) {
