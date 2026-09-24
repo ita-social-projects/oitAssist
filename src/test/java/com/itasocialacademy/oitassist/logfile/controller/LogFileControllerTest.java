@@ -1,21 +1,25 @@
 package com.itasocialacademy.oitassist.logfile.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.itasocialacademy.oitassist.core.web.AppExceptionHttpStatusMapper;
 import com.itasocialacademy.oitassist.logfile.api.LogFileResponse;
 import com.itasocialacademy.oitassist.logfile.api.PageResponse;
+import com.itasocialacademy.oitassist.logfile.dao.model.LogFileDownloadResult;
+import com.itasocialacademy.oitassist.logfile.exceptions.InvalidLogFileNameException;
+import com.itasocialacademy.oitassist.logfile.exceptions.LogFileNotFoundException;
 import com.itasocialacademy.oitassist.logfile.service.LogFileService;
 import com.itasocialacademy.oitassist.security.jwt.JwtFilter;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -28,8 +32,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -45,7 +51,10 @@ import org.springframework.test.web.servlet.MockMvc;
     excludeFilters = @ComponentScan.Filter(
         type = FilterType.ASSIGNABLE_TYPE,
         classes = JwtFilter.class))
-@Import(LogFileControllerTest.SecurityTestConfiguration.class)
+@Import({
+    LogFileControllerTest.SecurityTestConfiguration.class,
+    AppExceptionHttpStatusMapper.class
+})
 class LogFileControllerTest {
 
     private static final String ENDPOINT =
@@ -61,9 +70,6 @@ class LogFileControllerTest {
 
     @MockitoBean
     private LogFileService logFileService;
-
-    @MockitoBean
-    private AppExceptionHttpStatusMapper appExceptionHttpStatusMapper;
 
     @Test
     void shouldLoadControllerThroughMethodSecurityProxy() {
@@ -476,4 +482,90 @@ class LogFileControllerTest {
 
         verifyNoInteractions(logFileService);
     }
+
+    @Test
+    void shouldDownloadLogFile() throws Exception {
+        byte[] fileContent =
+            "test log content"
+                .getBytes(StandardCharsets.UTF_8);
+
+        LogFileDownloadResult downloadResult =
+            new LogFileDownloadResult(
+                "app.log",
+                new ByteArrayResource(fileContent));
+
+        when(logFileService.downloadFile("app.log"))
+            .thenReturn(downloadResult);
+
+        mockMvc.perform(
+            get("/api/v1/admin/log-files/app.log/download")
+                .with(
+                    user("admin")
+                        .roles("ADMIN")))
+            .andExpect(status().isOk())
+            .andExpect(
+                content().contentType(
+                    MediaType.APPLICATION_OCTET_STREAM))
+            .andExpect(
+                header().string(
+                    HttpHeaders.CONTENT_DISPOSITION,
+                    containsString("attachment")))
+            .andExpect(
+                header().string(
+                    HttpHeaders.CONTENT_DISPOSITION,
+                    containsString("app.log")))
+            .andExpect(
+                content().bytes(fileContent));
+
+        verify(logFileService)
+            .downloadFile("app.log");
+    }
+
+    @Test
+    void shouldReturnBadRequestForInvalidDownloadFileName()
+        throws Exception {
+
+        when(logFileService.downloadFile("app..log"))
+            .thenThrow(
+                new InvalidLogFileNameException());
+
+        mockMvc.perform(
+            get("/api/v1/admin/log-files/app..log/download")
+                .with(
+                    user("admin")
+                        .roles("ADMIN")))
+            .andExpect(
+                status().isBadRequest())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("INVALID_LOG_FILE_NAME"));
+
+        verify(logFileService)
+            .downloadFile("app..log");
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenDownloadFileDoesNotExist()
+        throws Exception {
+
+        when(logFileService.downloadFile("missing.log"))
+            .thenThrow(
+                new LogFileNotFoundException(
+                    "missing.log"));
+
+        mockMvc.perform(
+            get("/api/v1/admin/log-files/missing.log/download")
+                .with(
+                    user("admin")
+                        .roles("ADMIN")))
+            .andExpect(
+                status().isNotFound())
+            .andExpect(
+                jsonPath("$.code")
+                    .value("LOG_FILE_NOT_FOUND"));
+
+        verify(logFileService)
+            .downloadFile("missing.log");
+    }
+
 }
