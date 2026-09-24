@@ -225,7 +225,7 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
             mockCompetitionResponse.updatedBy(),
             1L);
 
-        when(competitionService.changeStatus(eq(1L), eq(request))).thenReturn(publishedResponse);
+        when(competitionService.changeStatus(1L, request)).thenReturn(publishedResponse);
 
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
             .contentType(MediaType.APPLICATION_JSON)
@@ -251,7 +251,7 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
     void changeStatus_staleVersion_shouldReturn409() throws Exception {
         ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.PUBLISHED, 1L);
 
-        when(competitionService.changeStatus(eq(1L), eq(request)))
+        when(competitionService.changeStatus(1L, request))
             .thenThrow(new StaleEntityVersionException(Competition.class, 1L));
 
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)
@@ -264,7 +264,7 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
     void changeStatus_pessimisticLockConflict_shouldReturn409() throws Exception {
         ChangeCompetitionStatusRequest request = new ChangeCompetitionStatusRequest(CompetitionStatus.PUBLISHED, 1L);
 
-        when(competitionService.changeStatus(eq(1L), eq(request)))
+        when(competitionService.changeStatus(1L, request))
             .thenThrow(new PessimisticLockingFailureException("Lock wait timeout exceeded"));
 
         mockMvc.perform(patch("/api/v1/competitions/{id}/status", 1L)

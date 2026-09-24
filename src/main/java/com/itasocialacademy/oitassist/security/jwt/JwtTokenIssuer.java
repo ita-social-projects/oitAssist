@@ -137,15 +137,15 @@ public class JwtTokenIssuer {
         Claims claims;
         try {
             claims = jwtHelper.extractClaims(rawToken, JwtHelper.TWO_FACTOR_PENDING_TOKEN);
-        } catch (SignatureException e) {
+        } catch (SignatureException _) {
             throw new AuthenticationException("Invalid JWT signature", ErrorCode.INVALID_SIGNATURE);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             throw new AuthenticationException("JWT claims string is empty", ErrorCode.EMPTY_CLAIMS);
-        } catch (ExpiredJwtException e) {
+        } catch (ExpiredJwtException _) {
             throw new AuthenticationException("Pending two-factor token expired", ErrorCode.TOKEN_EXPIRE);
-        } catch (UnsupportedJwtException e) {
+        } catch (UnsupportedJwtException _) {
             throw new AuthenticationException("JWT token is unsupported", ErrorCode.UNSUPPORTED_TOKEN);
-        } catch (MalformedJwtException e) {
+        } catch (MalformedJwtException _) {
             throw new AuthenticationException("Invalid JWT token", ErrorCode.INVALID_TOKEN);
         }
         return new PendingTwoFactorClaims(

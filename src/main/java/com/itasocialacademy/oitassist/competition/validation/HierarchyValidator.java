@@ -16,6 +16,8 @@ import com.itasocialacademy.oitassist.competition.exceptions.StaleEntityVersionE
 import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Resource;
+import org.springframework.context.annotation.Lazy;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.ZonedDateTime;
@@ -42,6 +44,10 @@ public class HierarchyValidator {
 
     @Value("${competition.hierarchy-lock-timeout-ms:3000}")
     private int hierarchyLockTimeoutMs;
+
+    @Resource
+    @Lazy
+    private HierarchyValidator self;
 
     @PostConstruct
     void validateLockTimeoutConfig() {
@@ -70,14 +76,14 @@ public class HierarchyValidator {
     public void checkVisibilityAccessByStageId(Long stageId) {
         Stage stage = stageRepository.findById(stageId)
             .orElseThrow(() -> new StageNotFoundException(stageId));
-        checkVisibilityAccess(stage.getCompetitionId());
+        self.checkVisibilityAccess(stage.getCompetitionId());
     }
 
     @Transactional(readOnly = true)
     public void checkIfCompetitionPublishedByStageId(Long stageId) {
         Stage stage = stageRepository.findById(stageId)
             .orElseThrow(() -> new StageNotFoundException(stageId));
-        checkIfCompetitionPublishedByCompetitionId(stage.getCompetitionId());
+        self.checkIfCompetitionPublishedByCompetitionId(stage.getCompetitionId());
     }
 
     @Transactional(readOnly = true)
@@ -115,7 +121,7 @@ public class HierarchyValidator {
      */
     @Transactional
     public void validateImmutabilityByCompetitionId(Long competitionId) {
-        Competition competition = lockCompetitionForUpdate(competitionId);
+        Competition competition = self.lockCompetitionForUpdate(competitionId);
 
         if (competition.getCompetitionStatus() == CompetitionStatus.ARCHIVED) {
             throw new CompetitionHierarchyValidationException(
@@ -136,7 +142,7 @@ public class HierarchyValidator {
     public void validateImmutabilityByStageId(Long stageId) {
         Stage stage = stageRepository.findById(stageId)
             .orElseThrow(() -> new StageNotFoundException(stageId));
-        validateImmutabilityByCompetitionId(stage.getCompetitionId());
+        self.validateImmutabilityByCompetitionId(stage.getCompetitionId());
     }
 
     /**

@@ -23,6 +23,8 @@ import com.itasocialacademy.oitassist.competition.mapper.TourMapper;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import jakarta.annotation.Resource;
+import org.springframework.context.annotation.Lazy;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,6 +47,10 @@ public class CompetitionServiceImpl implements CompetitionService {
     private final TourMapper tourMapper;
     private final HierarchyValidator validator;
 
+    @Resource
+    @Lazy
+    private CompetitionServiceImpl self;
+
     @Override
     @Transactional
     public CompetitionResponse create(CreateCompetitionRequest request) {
@@ -66,7 +72,7 @@ public class CompetitionServiceImpl implements CompetitionService {
     @Transactional(readOnly = true)
     public CompetitionResponse getVisibleById(Long competitionId) {
         validator.checkVisibilityAccess(competitionId);
-        return getById(competitionId);
+        return self.getById(competitionId);
     }
 
     @Override

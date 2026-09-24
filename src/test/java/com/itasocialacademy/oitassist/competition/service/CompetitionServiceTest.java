@@ -57,6 +57,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class CompetitionServiceTest {
@@ -91,6 +92,8 @@ class CompetitionServiceTest {
             .competitionStatus(CompetitionStatus.DRAFT)
             .version(1L)
             .build();
+
+        ReflectionTestUtils.setField(competitionService, "self", competitionService);
     }
 
     // ---- changeStatus ----

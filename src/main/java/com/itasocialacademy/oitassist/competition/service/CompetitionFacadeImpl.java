@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 class CompetitionFacadeImpl implements CompetitionFacade {
+    private static final String COMPETITION_ID_MUST_NOT_BE_NULL = "competitionId must not be null";
     private final CompetitionRepository competitionRepository;
     private final StageRepository stageRepository;
     private final TourRepository tourRepository;
@@ -38,7 +39,7 @@ class CompetitionFacadeImpl implements CompetitionFacade {
     @Override
     @Transactional(readOnly = true)
     public Optional<CompetitionDetail> findCompetitionById(Long competitionId) {
-        Objects.requireNonNull(competitionId, "competitionId must not be null");
+        Objects.requireNonNull(competitionId, COMPETITION_ID_MUST_NOT_BE_NULL);
         return competitionRepository.findById(competitionId)
             .map(competitionMapper::toCompetitionDetail);
     }
@@ -62,7 +63,7 @@ class CompetitionFacadeImpl implements CompetitionFacade {
     @Override
     @Transactional(readOnly = true)
     public List<StageDetail> findStagesByCompetitionId(Long competitionId) {
-        Objects.requireNonNull(competitionId, "competitionId must not be null");
+        Objects.requireNonNull(competitionId, COMPETITION_ID_MUST_NOT_BE_NULL);
         return stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(competitionId)
             .stream()
             .map(stageMapper::toStageDetail)
@@ -72,7 +73,7 @@ class CompetitionFacadeImpl implements CompetitionFacade {
     @Override
     @Transactional(readOnly = true)
     public Optional<CompetitionTreeDetail> findCompetitionTreeByCompetitionId(Long competitionId) {
-        Objects.requireNonNull(competitionId, "competitionId must not be null");
+        Objects.requireNonNull(competitionId, COMPETITION_ID_MUST_NOT_BE_NULL);
 
         return competitionRepository.findById(competitionId)
             .map(this::buildTreeDetail);

@@ -56,7 +56,7 @@ public class FileResourceResponseFactory {
         }
         try {
             return MediaType.parseMediaType(mimeType);
-        } catch (InvalidMediaTypeException e) {
+        } catch (InvalidMediaTypeException _) {
             log.warn("Malformed MIME type '{}', falling back to APPLICATION_OCTET_STREAM", mimeType);
             return MediaType.APPLICATION_OCTET_STREAM;
         }

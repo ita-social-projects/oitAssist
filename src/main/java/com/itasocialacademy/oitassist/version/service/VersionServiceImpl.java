@@ -79,7 +79,7 @@ public class VersionServiceImpl implements VersionService {
         }
         try {
             return OffsetDateTime.parse(commitTime).toInstant();
-        } catch (DateTimeParseException e) {
+        } catch (DateTimeParseException _) {
             log.warn("Frontend commit time '{}' is not a valid date, it will not be reported", commitTime);
             return null;
         }

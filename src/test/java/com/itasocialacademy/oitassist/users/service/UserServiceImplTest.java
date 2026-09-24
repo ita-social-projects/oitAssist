@@ -311,10 +311,11 @@ class UserServiceImplTest {
     @DisplayName("getUsers should throw InsufficientPermissionsException when current user is not admin")
     void getUsers_ShouldThrowInsufficientPermissionsException_WhenCurrentUserIsNotAdmin() {
         Pageable pageable = PageRequest.of(0, 10);
+        List<Role> roles = List.of(Role.ADMIN);
 
         when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(false);
 
-        assertThatThrownBy(() -> userService.getUsers(pageable, "ivan", List.of(Role.ADMIN)))
+        assertThatThrownBy(() -> userService.getUsers(pageable, "ivan", roles))
             .isInstanceOf(InsufficientPermissionsException.class)
             .hasMessage("You do not have enough permissions to perform this action");
 
