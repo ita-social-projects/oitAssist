@@ -136,8 +136,7 @@ public class JwtTokenIssuer {
     public PendingTwoFactorClaims readPendingTwoFactorToken(String rawToken) {
         Claims claims;
         try {
-            String encryptedJwt = jwtHelper.extractEncryptedToken(rawToken);
-            claims = jwtHelper.extractClaims(encryptedJwt, JwtHelper.TWO_FACTOR_PENDING_TOKEN);
+            claims = jwtHelper.extractClaims(rawToken, JwtHelper.TWO_FACTOR_PENDING_TOKEN);
         } catch (SignatureException e) {
             throw new AuthenticationException("Invalid JWT signature", ErrorCode.INVALID_SIGNATURE);
         } catch (IllegalArgumentException e) {
