@@ -82,7 +82,6 @@ oit:
         description: Production
 
 jwt:
-#  encrypted-key: ${JWT_ENCRYPTED_KEY}
   sign-key: ${JWT_SIGN_KEY}
   validity: ${JWT_VALIDITY:600000}
   refresh-validity: ${JWT_REFRESH_VALIDITY:1209600000}
