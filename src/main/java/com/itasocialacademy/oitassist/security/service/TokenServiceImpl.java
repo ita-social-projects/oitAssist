@@ -138,6 +138,7 @@ public class TokenServiceImpl implements TokenService {
         }
 
         UserDetailsImpl userDetails = (UserDetailsImpl) userDetailsService.loadUserByUsername(username);
+        validateAccountStatus(userDetails);
 
         return jwtTokenIssuer.issueFor(userDetails);
     }

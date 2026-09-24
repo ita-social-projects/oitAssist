@@ -93,7 +93,7 @@ public class JwtHelper {
         return claims;
     }
 
-    public Claims parseClaims(String token) {
+    private Claims parseClaims(String token) {
         return Jwts.parser().verifyWith(getSignKey())
             .build().parseSignedClaims(token).getPayload();
     }
