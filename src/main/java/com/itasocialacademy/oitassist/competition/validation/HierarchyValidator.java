@@ -212,6 +212,32 @@ public class HierarchyValidator {
         }
     }
 
+    /**
+     * Validates that narrowing a Competition's date range does not orphan any of
+     * its already-existing Stages — i.e. that every Stage currently under this
+     * Competition would still fall within the proposed new
+     * {@code newStart}/{@code newFinish} window.
+     */
+    @Transactional(readOnly = true)
+    public void validateCompetitionDatesAgainstExistingStages(
+        Long competitionId,
+        ZonedDateTime newStart,
+        ZonedDateTime newFinish) {
+        List<Stage> stages = stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(competitionId);
+
+        List<String> violatingTitles = stages.stream()
+            .filter(stage -> stage.getDateStart().isBefore(newStart) || stage.getDateFinish().isAfter(newFinish))
+            .map(Stage::getTitle)
+            .toList();
+
+        if (!violatingTitles.isEmpty()) {
+            throw new CompetitionHierarchyValidationException(
+                ("Cannot update competition dates to (%s - %s): "
+                    + "%d existing stage(s) would fall outside the new range: %s")
+                    .formatted(newStart, newFinish, violatingTitles.size(), String.join(", ", violatingTitles)));
+        }
+    }
+
     @Transactional(readOnly = true)
     public void validateToursNotStartedByStageId(Long stageId) {
         if (!stageRepository.existsById(stageId)) {

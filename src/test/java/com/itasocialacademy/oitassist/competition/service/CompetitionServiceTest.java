@@ -27,6 +27,7 @@ import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
 import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.StageResponse;
@@ -320,6 +321,73 @@ class CompetitionServiceTest {
         assertThrows(CompetitionNotFoundException.class, () -> competitionService.changeStatus(99L, request));
 
         verify(competitionRepository, never()).save(any());
+    }
+
+    // ---- update ----
+
+    @Test
+    void update_validRequest_shouldUpdateAndReturnResponse() {
+        ZonedDateTime newStart = ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, ZoneId.of("UTC"));
+        ZonedDateTime newFinish = ZonedDateTime.of(2026, 7, 10, 18, 0, 0, 0, ZoneId.of("UTC"));
+        UpdateCompetitionRequest request = new UpdateCompetitionRequest(
+            "Updated Title",
+            "Updated Description",
+            newStart,
+            newFinish,
+            1L);
+
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
+        when(competitionRepository.saveAndFlush(competition)).thenReturn(competition);
+        when(mapper.toResponse(competition)).thenReturn(getCompetitionResponse());
+
+        CompetitionResponse response = competitionService.update(1L, request);
+
+        assertNotNull(response);
+        assertEquals("Updated Title", competition.getTitle());
+        assertEquals("Updated Description", competition.getDescription());
+        assertEquals(newStart, competition.getDateStart());
+        assertEquals(newFinish, competition.getDateFinish());
+
+        verify(validator).validateEntityVersion(1L, 1L, Competition.class, 1L);
+        verify(validator).validateImmutabilityByCompetitionId(1L);
+        verify(validator).validateCompetitionDatesAgainstExistingStages(1L, newStart, newFinish);
+        verify(competitionRepository).saveAndFlush(competition);
+    }
+
+    @Test
+    void update_versionMismatch_shouldThrowStaleEntityVersionException() {
+        UpdateCompetitionRequest request = new UpdateCompetitionRequest(
+            "Updated Title",
+            "Updated Description",
+            ZonedDateTime.now(),
+            ZonedDateTime.now().plusDays(5),
+            2L);
+
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
+        doThrow(new StaleEntityVersionException(Competition.class, 1L))
+            .when(validator).validateEntityVersion(2L, 1L, Competition.class, 1L);
+
+        assertThrows(StaleEntityVersionException.class, () -> competitionService.update(1L, request));
+        verify(competitionRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void update_stageDatesViolated_shouldThrowCompetitionHierarchyValidationException() {
+        ZonedDateTime newStart = ZonedDateTime.now();
+        ZonedDateTime newFinish = newStart.plusDays(5);
+        UpdateCompetitionRequest request = new UpdateCompetitionRequest(
+            "Updated Title",
+            "Updated Description",
+            newStart,
+            newFinish,
+            1L);
+
+        when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
+        doThrow(new CompetitionHierarchyValidationException("Cannot update competition dates"))
+            .when(validator).validateCompetitionDatesAgainstExistingStages(1L, newStart, newFinish);
+
+        assertThrows(CompetitionHierarchyValidationException.class, () -> competitionService.update(1L, request));
+        verify(competitionRepository, never()).saveAndFlush(any());
     }
 
     // ---- getVisibleById ----
