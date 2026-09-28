@@ -1,14 +1,14 @@
 package com.itasocialacademy.oitassist.competition.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -18,6 +18,7 @@ import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
 import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
@@ -172,6 +173,82 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
 
         mockMvc.perform(get("/api/v1/competitions/{competitionId}", 1L))
             .andExpect(status().isForbidden());
+    }
+
+    // ---- updateCompetition ----
+
+    @Test
+    void updateCompetition_validRequest_shouldReturn200() throws Exception {
+        UpdateCompetitionRequest request = new UpdateCompetitionRequest(
+            "Оновлена Олімпіада 2026",
+            "Оновлений опис",
+            testDateStart,
+            testDateFinish,
+            1L);
+
+        when(competitionService.update(eq(1L), any(UpdateCompetitionRequest.class)))
+            .thenReturn(mockCompetitionResponse);
+
+        mockMvc.perform(put("/api/v1/competitions/{competitionId}", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1L))
+            .andExpect(jsonPath("$.title").value("Всеукраїнська Олімпіада 2026"));
+
+        verify(competitionService).update(eq(1L), any(UpdateCompetitionRequest.class));
+    }
+
+    @Test
+    void updateCompetition_blankTitle_shouldReturn400() throws Exception {
+        UpdateCompetitionRequest request = new UpdateCompetitionRequest(
+            "",
+            "Оновлений опис",
+            testDateStart,
+            testDateFinish,
+            1L);
+
+        mockMvc.perform(put("/api/v1/competitions/{competitionId}", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+
+        verify(competitionService, never()).update(anyLong(), any());
+    }
+
+    @Test
+    void updateCompetition_dateFinishBeforeDateStart_shouldReturn400() throws Exception {
+        UpdateCompetitionRequest request = new UpdateCompetitionRequest(
+            "Оновлена Олімпіада 2026",
+            "Оновлений опис",
+            testDateFinish,
+            testDateStart,
+            1L);
+
+        mockMvc.perform(put("/api/v1/competitions/{competitionId}", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+
+        verify(competitionService, never()).update(anyLong(), any());
+    }
+
+    @Test
+    void updateCompetition_notFound_shouldReturn404() throws Exception {
+        UpdateCompetitionRequest request = new UpdateCompetitionRequest(
+            "Оновлена Олімпіада 2026",
+            "Оновлений опис",
+            testDateStart,
+            testDateFinish,
+            1L);
+
+        when(competitionService.update(eq(99L), any(UpdateCompetitionRequest.class)))
+            .thenThrow(new CompetitionNotFoundException(99L));
+
+        mockMvc.perform(put("/api/v1/competitions/{competitionId}", 99L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isNotFound());
     }
 
     // ---- getCompetitionTree ----
