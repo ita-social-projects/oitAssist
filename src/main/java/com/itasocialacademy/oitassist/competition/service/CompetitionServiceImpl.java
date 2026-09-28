@@ -11,6 +11,7 @@ import com.itasocialacademy.oitassist.competition.dao.specification.CompetitionS
 import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
 import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.StageTreeResponse;
@@ -50,6 +51,24 @@ public class CompetitionServiceImpl implements CompetitionService {
     public CompetitionResponse create(CreateCompetitionRequest request) {
         Competition competition = mapper.toEntity(request);
         competition.setCompetitionStatus(CompetitionStatus.DRAFT);
+
+        return mapper.toResponse(competitionRepository.save(competition));
+    }
+
+    @Override
+    @Transactional
+    public CompetitionResponse update(Long competitionId, UpdateCompetitionRequest request) {
+        Competition competition = validator.lockCompetitionForUpdate(competitionId);
+
+        validator.validateEntityVersion(request.version(), competition.getVersion(), Competition.class, competitionId);
+        validator.validateImmutabilityByCompetitionId(competitionId);
+        validator.validateCompetitionDatesAgainstExistingStages(
+            competitionId, request.dateStart(), request.dateFinish());
+
+        competition.setTitle(request.title());
+        competition.setDescription(request.description());
+        competition.setDateStart(request.dateStart());
+        competition.setDateFinish(request.dateFinish());
 
         return mapper.toResponse(competitionRepository.save(competition));
     }
