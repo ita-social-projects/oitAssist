@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.itasocialacademy.oitassist.participation.dao.repository.ParticipationRepository;
+import com.itasocialacademy.oitassist.participation.service.interfaces.ParticipationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,18 +20,17 @@ class ParticipationFacadeImplTest {
     private static final Long STAGE_ID = 300L;
 
     @Mock
-    private ParticipationRepository participationRepository;
+    private ParticipationService participationService;
 
     @InjectMocks
     private ParticipationFacadeImpl participationFacade;
 
     @Test
     void isUserParticipant_existingParticipation_shouldReturnTrue() {
-        when(participationRepository
-            .existsByUserIdAndCompetitionIdAndStageId(
-                USER_ID,
-                COMPETITION_ID,
-                STAGE_ID))
+        when(participationService.isUserParticipant(
+            USER_ID,
+            COMPETITION_ID,
+            STAGE_ID))
             .thenReturn(true);
 
         boolean result = participationFacade.isUserParticipant(
@@ -44,8 +43,8 @@ class ParticipationFacadeImplTest {
 
     @Test
     void isUserParticipant_missingParticipation_shouldReturnFalse() {
-        when(participationRepository
-            .existsByUserIdAndCompetitionIdAndStageId(
+        when(participationService
+            .isUserParticipant(
                 USER_ID,
                 COMPETITION_ID,
                 STAGE_ID))
@@ -66,8 +65,8 @@ class ParticipationFacadeImplTest {
             COMPETITION_ID,
             STAGE_ID);
 
-        verify(participationRepository)
-            .existsByUserIdAndCompetitionIdAndStageId(
+        verify(participationService)
+            .isUserParticipant(
                 USER_ID,
                 COMPETITION_ID,
                 STAGE_ID);

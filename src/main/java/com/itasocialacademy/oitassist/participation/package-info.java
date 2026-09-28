@@ -1,5 +1,5 @@
 @ApplicationModule(
-    displayName = "Participation Requests",
+    displayName = "Participation Manager",
     allowedDependencies = {
         "security::SecurityFacade",
         "core",

@@ -2,11 +2,13 @@ package com.itasocialacademy.oitassist.participation.dao.repository;
 
 import com.itasocialacademy.oitassist.participation.dao.model.Participation;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ParticipationRepository extends JpaRepository<Participation, Long> {
+public interface ParticipationRepository extends JpaRepository<Participation, Long>,
+    JpaSpecificationExecutor<Participation> {
     boolean existsByUserIdAndCompetitionIdAndStageId(
         Long userId,
         Long competitionId,
