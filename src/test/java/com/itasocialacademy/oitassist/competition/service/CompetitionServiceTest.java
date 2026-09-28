@@ -334,7 +334,7 @@ class CompetitionServiceTest {
             1L);
 
         when(validator.lockCompetitionForUpdate(1L)).thenReturn(competition);
-        when(competitionRepository.save(competition)).thenReturn(competition);
+        when(competitionRepository.saveAndFlush(competition)).thenReturn(competition);
         when(mapper.toResponse(competition)).thenReturn(getCompetitionResponse());
 
         CompetitionResponse response = competitionService.update(1L, request);
@@ -348,7 +348,7 @@ class CompetitionServiceTest {
         verify(validator).validateEntityVersion(1L, 1L, Competition.class, 1L);
         verify(validator).validateImmutabilityByCompetitionId(1L);
         verify(validator).validateCompetitionDatesAgainstExistingStages(1L, newStart, newFinish);
-        verify(competitionRepository).save(competition);
+        verify(competitionRepository).saveAndFlush(competition);
     }
 
     @Test
@@ -365,7 +365,7 @@ class CompetitionServiceTest {
             .when(validator).validateEntityVersion(2L, 1L, Competition.class, 1L);
 
         assertThrows(StaleEntityVersionException.class, () -> competitionService.update(1L, request));
-        verify(competitionRepository, never()).save(any());
+        verify(competitionRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -384,7 +384,7 @@ class CompetitionServiceTest {
             .when(validator).validateCompetitionDatesAgainstExistingStages(1L, newStart, newFinish);
 
         assertThrows(CompetitionHierarchyValidationException.class, () -> competitionService.update(1L, request));
-        verify(competitionRepository, never()).save(any());
+        verify(competitionRepository, never()).saveAndFlush(any());
     }
 
     // ---- getVisibleById ----

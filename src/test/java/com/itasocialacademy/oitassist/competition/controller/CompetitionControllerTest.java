@@ -186,15 +186,27 @@ public class CompetitionControllerTest extends ControllerUnitTest<CompetitionCon
             testDateFinish,
             1L);
 
+        CompetitionResponse updatedResponse = CompetitionResponse.builder()
+            .id(1L)
+            .title("Оновлена Олімпіада 2026")
+            .description("Оновлений опис")
+            .dateStart(testDateStart)
+            .dateFinish(testDateFinish)
+            .competitionStatus(CompetitionStatus.DRAFT)
+            .createdBy(100L)
+            .updatedBy(100L)
+            .version(2L)
+            .build();
+
         when(competitionService.update(eq(1L), any(UpdateCompetitionRequest.class)))
-            .thenReturn(mockCompetitionResponse);
+            .thenReturn(updatedResponse);
 
         mockMvc.perform(put("/api/v1/competitions/{competitionId}", 1L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1L))
-            .andExpect(jsonPath("$.title").value("Всеукраїнська Олімпіада 2026"));
+            .andExpect(jsonPath("$.title").value("Оновлена Олімпіада 2026"));
 
         verify(competitionService).update(eq(1L), any(UpdateCompetitionRequest.class));
     }

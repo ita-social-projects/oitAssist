@@ -70,7 +70,7 @@ public class CompetitionServiceImpl implements CompetitionService {
         competition.setDateStart(request.dateStart());
         competition.setDateFinish(request.dateFinish());
 
-        return mapper.toResponse(competitionRepository.save(competition));
+        return mapper.toResponse(competitionRepository.saveAndFlush(competition));
     }
 
     @Override
