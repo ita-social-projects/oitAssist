@@ -24,8 +24,6 @@ import com.itasocialacademy.oitassist.competition.mapper.TourMapper;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
-import jakarta.annotation.Resource;
-import org.springframework.context.annotation.Lazy;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -47,10 +45,6 @@ public class CompetitionServiceImpl implements CompetitionService {
     private final StageMapper stageMapper;
     private final TourMapper tourMapper;
     private final HierarchyValidator validator;
-
-    @Resource
-    @Lazy
-    private CompetitionServiceImpl self;
 
     @Override
     @Transactional
@@ -82,16 +76,14 @@ public class CompetitionServiceImpl implements CompetitionService {
     @Override
     @Transactional(readOnly = true)
     public CompetitionResponse getById(Long competitionId) {
-        Competition competition = competitionRepository.findById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
-        return mapper.toResponse(competition);
+        return findCompetitionResponseById(competitionId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public CompetitionResponse getVisibleById(Long competitionId) {
         validator.checkVisibilityAccess(competitionId);
-        return self.getById(competitionId);
+        return findCompetitionResponseById(competitionId);
     }
 
     @Override
@@ -189,5 +181,11 @@ public class CompetitionServiceImpl implements CompetitionService {
             .and(CompetitionSpecification.finishesAfterOrEqual(filter.dateStart()))
             .and(CompetitionSpecification.startsBeforeOrEqual(filter.dateFinish()))
             .and(CompetitionSpecification.hasAnyStatus(filter.statuses()));
+    }
+
+    private CompetitionResponse findCompetitionResponseById(Long competitionId) {
+        Competition competition = competitionRepository.findById(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+        return mapper.toResponse(competition);
     }
 }
