@@ -27,8 +27,8 @@ import com.itasocialacademy.oitassist.chat.dao.enums.QuestionStatus;
 import com.itasocialacademy.oitassist.chat.dao.enums.QuestionVisibility;
 import com.itasocialacademy.oitassist.chat.dao.model.QuestionThread;
 import com.itasocialacademy.oitassist.chat.dao.repository.QuestionThreadRepository;
+import com.itasocialacademy.oitassist.chat.event.domain.QuestionCreatedDomainEvent;
 import com.itasocialacademy.oitassist.chat.mapper.QuestionThreadMapper;
-import com.itasocialacademy.oitassist.chat.utils.QuestionAccessPolicy;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthenticationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
@@ -42,6 +42,7 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -75,7 +76,10 @@ class ParticipantForumServiceImplTest {
     private QuestionThreadMapper questionThreadMapper;
 
     @Mock
-    private QuestionAccessPolicy questionAccessPolicy;
+    private ForumAccessService forumAccessService;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private ParticipantForumServiceImpl participantForumService;
@@ -95,7 +99,7 @@ class ParticipantForumServiceImplTest {
             PageRequest.of(PAGE, SIZE),
             2);
 
-        when(questionAccessPolicy.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
+        when(forumAccessService.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
 
         when(questionThreadRepository.findParticipantVisibleQuestions(
@@ -125,7 +129,7 @@ class ParticipantForumServiceImplTest {
             () -> assertTrue(result.isFirst()),
             () -> assertTrue(result.isLast()));
 
-        verify(questionAccessPolicy)
+        verify(forumAccessService)
             .requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID);
         verify(questionThreadMapper)
             .toSummaryResponse(publicQuestion);
@@ -196,7 +200,7 @@ class ParticipantForumServiceImplTest {
             PageRequest.of(PAGE, SIZE),
             0);
 
-        when(questionAccessPolicy.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
+        when(forumAccessService.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
 
         when(questionThreadRepository.findParticipantVisibleQuestions(
@@ -227,7 +231,7 @@ class ParticipantForumServiceImplTest {
                 "Authentication is required to access the question forum",
                 ErrorCode.AUTHENTICATION_REQUIRED);
 
-        when(questionAccessPolicy.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
+        when(forumAccessService.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
             .thenThrow(exception);
 
         assertThrows(
@@ -237,7 +241,7 @@ class ParticipantForumServiceImplTest {
                 PAGE,
                 SIZE));
 
-        verify(questionAccessPolicy)
+        verify(forumAccessService)
             .requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID);
         verifyNoInteractions(
             questionThreadRepository,
@@ -246,7 +250,7 @@ class ParticipantForumServiceImplTest {
 
     @Test
     void getForumQuestions_missingTaskAssignment_shouldNotQueryRepository() {
-        when(questionAccessPolicy.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
+        when(forumAccessService.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
             .thenThrow(new TaskAssignmentNotFoundException(TASK_ASSIGNMENT_ID));
 
         assertThrows(
@@ -256,7 +260,7 @@ class ParticipantForumServiceImplTest {
                 PAGE,
                 SIZE));
 
-        verify(questionAccessPolicy)
+        verify(forumAccessService)
             .requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID);
         verifyNoInteractions(
             questionThreadRepository,
@@ -286,7 +290,7 @@ class ParticipantForumServiceImplTest {
                     SIZE)));
 
         verifyNoInteractions(
-            questionAccessPolicy,
+            forumAccessService,
             questionThreadRepository,
             questionThreadMapper);
     }
@@ -301,7 +305,7 @@ class ParticipantForumServiceImplTest {
                 SIZE));
 
         verifyNoInteractions(
-            questionAccessPolicy,
+            forumAccessService,
             questionThreadRepository,
             questionThreadMapper);
     }
@@ -323,9 +327,76 @@ class ParticipantForumServiceImplTest {
                     101)));
 
         verifyNoInteractions(
-            questionAccessPolicy,
+            forumAccessService,
             questionThreadRepository,
             questionThreadMapper);
+    }
+
+    @Test
+    void getForumQuestions_administrator_shouldReturnAllQuestionsWithoutParticipantCheck() {
+        QuestionThread publicQuestion = createPublicQuestion();
+        QuestionThread privateQuestion = createPrivateQuestion();
+
+        QuestionThreadSummaryResponseDTO publicResponse =
+            createPublicQuestionResponse();
+        QuestionThreadSummaryResponseDTO privateResponse =
+            createPrivateQuestionResponse();
+
+        Page<QuestionThread> repositoryPage = new PageImpl<>(
+            List.of(publicQuestion, privateQuestion),
+            PageRequest.of(PAGE, SIZE),
+            2);
+
+        when(forumAccessService.isAdministrator())
+            .thenReturn(true);
+
+        when(questionThreadRepository.findAllQuestionsByTaskAssignmentId(
+            eq(TASK_ASSIGNMENT_ID),
+            any(Pageable.class))).thenReturn(repositoryPage);
+
+        when(questionThreadMapper.toSummaryResponse(publicQuestion))
+            .thenReturn(publicResponse);
+        when(questionThreadMapper.toSummaryResponse(privateQuestion))
+            .thenReturn(privateResponse);
+
+        Page<QuestionThreadSummaryResponseDTO> result =
+            participantForumService.getForumQuestions(
+                TASK_ASSIGNMENT_ID,
+                PAGE,
+                SIZE);
+
+        assertEquals(
+            List.of(publicResponse, privateResponse),
+            result.getContent());
+
+        verify(forumAccessService, never())
+            .requireTaskAssignmentForumAccess(any());
+        verify(questionThreadRepository, never())
+            .findParticipantVisibleQuestions(any(), any(), any());
+    }
+
+    @Test
+    void getForumQuestions_organizationResponder_shouldReturnAllQuestionsWithoutParticipantCheck() {
+        when(forumAccessService.isOrganizationResponder(TASK_ASSIGNMENT_ID))
+            .thenReturn(true);
+
+        when(questionThreadRepository.findAllQuestionsByTaskAssignmentId(
+            eq(TASK_ASSIGNMENT_ID),
+            any(Pageable.class))).thenReturn(Page.empty());
+
+        participantForumService.getForumQuestions(
+            TASK_ASSIGNMENT_ID,
+            PAGE,
+            SIZE);
+
+        verify(questionThreadRepository)
+            .findAllQuestionsByTaskAssignmentId(
+                eq(TASK_ASSIGNMENT_ID),
+                any(Pageable.class));
+        verify(forumAccessService, never())
+            .requireTaskAssignmentForumAccess(any());
+        verify(questionThreadRepository, never())
+            .findParticipantVisibleQuestions(any(), any(), any());
     }
 
     @Test
@@ -336,7 +407,7 @@ class ParticipantForumServiceImplTest {
         QuestionThreadResponseDTO expectedResponse =
             createQuestionResponse();
 
-        when(questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
+        when(forumAccessService.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
         when(questionThreadMapper.toEntity(request))
             .thenReturn(mappedQuestion);
@@ -353,11 +424,11 @@ class ParticipantForumServiceImplTest {
         assertSame(expectedResponse, result);
 
         InOrder inOrder = inOrder(
-            questionAccessPolicy,
+            forumAccessService,
             questionThreadMapper,
             questionThreadRepository);
 
-        inOrder.verify(questionAccessPolicy)
+        inOrder.verify(forumAccessService)
             .requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID);
         inOrder.verify(questionThreadMapper)
             .toEntity(request);
@@ -489,10 +560,44 @@ class ParticipantForumServiceImplTest {
     }
 
     @Test
+    void createQuestion_shouldPublishQuestionCreatedEventWithSavedSnapshot() {
+        CreateQuestionRequestDTO request = createQuestionRequest();
+        QuestionThread savedQuestion = createSavedQuestion();
+        QuestionThreadResponseDTO expectedResponse =
+            createQuestionResponse();
+
+        stubSuccessfulCreation(
+            request,
+            createMappedQuestion(),
+            savedQuestion,
+            expectedResponse);
+
+        participantForumService.createQuestion(
+            TASK_ASSIGNMENT_ID,
+            request);
+
+        ArgumentCaptor<QuestionCreatedDomainEvent> eventCaptor =
+            ArgumentCaptor.forClass(QuestionCreatedDomainEvent.class);
+
+        InOrder inOrder = inOrder(
+            questionThreadRepository,
+            applicationEventPublisher);
+
+        inOrder.verify(questionThreadRepository)
+            .save(any(QuestionThread.class));
+        inOrder.verify(applicationEventPublisher)
+            .publishEvent(eventCaptor.capture());
+
+        assertSame(
+            expectedResponse,
+            eventCaptor.getValue().question());
+    }
+
+    @Test
     void createQuestion_unauthenticated_shouldNotPersist() {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
-        when(questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
+        when(forumAccessService.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
             .thenThrow(new AuthenticationException(
                 "Authentication is required to access the question forum",
                 ErrorCode.AUTHENTICATION_REQUIRED));
@@ -503,19 +608,20 @@ class ParticipantForumServiceImplTest {
                 TASK_ASSIGNMENT_ID,
                 request));
 
-        verify(questionAccessPolicy)
+        verify(forumAccessService)
             .requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID);
 
         verifyNoInteractions(
             questionThreadRepository,
-            questionThreadMapper);
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     @Test
     void createQuestion_missingTaskAssignment_shouldNotPersist() {
         CreateQuestionRequestDTO request = createQuestionRequest();
 
-        when(questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
+        when(forumAccessService.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
             .thenThrow(new TaskAssignmentNotFoundException(TASK_ASSIGNMENT_ID));
 
         assertThrows(
@@ -524,12 +630,13 @@ class ParticipantForumServiceImplTest {
                 TASK_ASSIGNMENT_ID,
                 request));
 
-        verify(questionAccessPolicy)
+        verify(forumAccessService)
             .requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID);
 
         verifyNoInteractions(
             questionThreadRepository,
-            questionThreadMapper);
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     @Test
@@ -555,9 +662,10 @@ class ParticipantForumServiceImplTest {
                 request));
 
         verifyNoInteractions(
-            questionAccessPolicy,
+            forumAccessService,
             questionThreadRepository,
-            questionThreadMapper);
+            questionThreadMapper,
+            applicationEventPublisher);
     }
 
     @Test
@@ -568,7 +676,7 @@ class ParticipantForumServiceImplTest {
         RuntimeException repositoryFailure =
             new RuntimeException("Database failure");
 
-        when(questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
+        when(forumAccessService.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
         when(questionThreadMapper.toEntity(request))
             .thenReturn(mappedQuestion);
@@ -586,6 +694,7 @@ class ParticipantForumServiceImplTest {
         verify(questionThreadRepository).save(mappedQuestion);
         verify(questionThreadMapper, never())
             .toResponse(any(QuestionThread.class));
+        verifyNoInteractions(applicationEventPublisher);
     }
 
     private CreateQuestionRequestDTO createQuestionRequest() {
@@ -639,7 +748,7 @@ class ParticipantForumServiceImplTest {
         QuestionThread mappedQuestion,
         QuestionThread savedQuestion,
         QuestionThreadResponseDTO response) {
-        when(questionAccessPolicy.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
+        when(forumAccessService.requireTaskAssignmentQuestionCreationAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
         when(questionThreadMapper.toEntity(request))
             .thenReturn(mappedQuestion);
@@ -650,7 +759,7 @@ class ParticipantForumServiceImplTest {
     }
 
     private void stubAccessibleEmptyForum() {
-        when(questionAccessPolicy.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
+        when(forumAccessService.requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID))
             .thenReturn(USER_ID);
 
         when(questionThreadRepository.findParticipantVisibleQuestions(

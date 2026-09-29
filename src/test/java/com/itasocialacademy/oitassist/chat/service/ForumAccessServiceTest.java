@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.chat.utils;
+package com.itasocialacademy.oitassist.chat.service;
 
 import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.CLOSED;
 import static com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus.IN_PROGRESS;
@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionCreationNotAllowedException;
 import com.itasocialacademy.oitassist.chat.exceptions.QuestionForumAccessRestrictedException;
+import com.itasocialacademy.oitassist.chat.service.interfaces.TaskAssignmentForumResponderService;
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
@@ -29,7 +30,6 @@ import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetai
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import java.util.Optional;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -37,7 +37,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class QuestionAccessPolicyTest {
+class ForumAccessServiceTest {
 
     private static final String ADMIN_ROLE = "ADMIN";
     private static final String ORG_ROLE = "ORG";
@@ -61,14 +61,17 @@ class QuestionAccessPolicyTest {
     @Mock
     private ParticipationFacade participationFacade;
 
+    @Mock
+    private TaskAssignmentForumResponderService forumResponderService;
+
     @InjectMocks
-    private QuestionAccessPolicy questionAccessPolicy;
+    private ForumAccessService forumAccessService;
 
     @Test
     void requireTaskAssignmentForumAccess_visibleAssignmentAndParticipant_shouldReturnUserId() {
         stubParticipantAccess(VISIBLE, SCHEDULED);
 
-        Long result = questionAccessPolicy
+        Long result = forumAccessService
             .requireTaskAssignmentForumAccess(TASK_ASSIGNMENT_ID);
 
         assertEquals(USER_ID, result);
@@ -81,6 +84,7 @@ class QuestionAccessPolicyTest {
             USER_ID,
             COMPETITION_ID,
             STAGE_ID);
+        verifyNoInteractions(forumResponderService);
     }
 
     @Test
@@ -90,14 +94,15 @@ class QuestionAccessPolicyTest {
 
         assertThrows(
             AuthenticationException.class,
-            () -> questionAccessPolicy
+            () -> forumAccessService
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
         verifyNoInteractions(
             taskAssignmentFacade,
             competitionFacade,
-            participationFacade);
+            participationFacade,
+            forumResponderService);
     }
 
     @Test
@@ -109,7 +114,7 @@ class QuestionAccessPolicyTest {
 
         assertThrows(
             TaskAssignmentNotFoundException.class,
-            () -> questionAccessPolicy
+            () -> forumAccessService
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
@@ -118,7 +123,8 @@ class QuestionAccessPolicyTest {
 
         verifyNoInteractions(
             competitionFacade,
-            participationFacade);
+            participationFacade,
+            forumResponderService);
     }
 
     @Test
@@ -133,14 +139,16 @@ class QuestionAccessPolicyTest {
 
         assertThrows(
             TourNotFoundException.class,
-            () -> questionAccessPolicy
+            () -> forumAccessService
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
         verify(competitionFacade).findTourById(TOUR_ID);
         verify(competitionFacade, never())
             .findStageById(anyLong());
-        verifyNoInteractions(participationFacade);
+        verifyNoInteractions(
+            participationFacade,
+            forumResponderService);
     }
 
     @Test
@@ -158,36 +166,37 @@ class QuestionAccessPolicyTest {
 
         assertThrows(
             StageNotFoundException.class,
-            () -> questionAccessPolicy
+            () -> forumAccessService
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
         verify(competitionFacade).findStageById(STAGE_ID);
-        verifyNoInteractions(participationFacade);
+        verifyNoInteractions(
+            participationFacade,
+            forumResponderService);
     }
 
     @Test
     void requireTaskAssignmentForumAccess_hiddenAssignment_shouldThrowAccessRestrictedException() {
         stubAuthenticatedHierarchy(HIDDEN, SCHEDULED);
-
-        when(securityFacade.hasRole(ADMIN_ROLE))
-            .thenReturn(false);
+        stubRoles(false, false);
 
         assertThrows(
             QuestionForumAccessRestrictedException.class,
-            () -> questionAccessPolicy
+            () -> forumAccessService
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
-        verifyNoInteractions(participationFacade);
+        verifyNoInteractions(
+            participationFacade,
+            forumResponderService);
     }
 
     @Test
     void requireTaskAssignmentForumAccess_withoutParticipation_shouldThrowAccessRestrictedException() {
         stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubRoles(false, false);
 
-        when(securityFacade.hasRole(ADMIN_ROLE))
-            .thenReturn(false);
         when(participationFacade.isUserParticipant(
             USER_ID,
             COMPETITION_ID,
@@ -195,7 +204,7 @@ class QuestionAccessPolicyTest {
 
         assertThrows(
             QuestionForumAccessRestrictedException.class,
-            () -> questionAccessPolicy
+            () -> forumAccessService
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
@@ -208,11 +217,9 @@ class QuestionAccessPolicyTest {
     @Test
     void requireTaskAssignmentForumAccess_adminWithoutParticipation_shouldReturnUserId() {
         stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubRoles(true, false);
 
-        when(securityFacade.hasRole(ADMIN_ROLE))
-            .thenReturn(true);
-
-        Long result = questionAccessPolicy
+        Long result = forumAccessService
             .requireTaskAssignmentForumAccess(
                 TASK_ASSIGNMENT_ID);
 
@@ -220,17 +227,17 @@ class QuestionAccessPolicyTest {
 
         verify(competitionFacade).findTourById(TOUR_ID);
         verify(competitionFacade).findStageById(STAGE_ID);
-        verifyNoInteractions(participationFacade);
+        verifyNoInteractions(
+            participationFacade,
+            forumResponderService);
     }
 
     @Test
     void requireTaskAssignmentForumAccess_adminHiddenAssignment_shouldReturnUserId() {
         stubAuthenticatedHierarchy(HIDDEN, SCHEDULED);
+        stubRoles(true, false);
 
-        when(securityFacade.hasRole(ADMIN_ROLE))
-            .thenReturn(true);
-
-        Long result = questionAccessPolicy
+        Long result = forumAccessService
             .requireTaskAssignmentForumAccess(
                 TASK_ASSIGNMENT_ID);
 
@@ -238,20 +245,19 @@ class QuestionAccessPolicyTest {
 
         verify(competitionFacade).findTourById(TOUR_ID);
         verify(competitionFacade).findStageById(STAGE_ID);
-        verifyNoInteractions(participationFacade);
+        verifyNoInteractions(
+            participationFacade,
+            forumResponderService);
     }
 
     @Test
-    void requireTaskAssignmentForumAccess_orgWithoutParticipation_shouldThrowAccessRestrictedException() {
+    void requireTaskAssignmentForumAccess_orgWithoutResponderGrant_shouldThrowAccessRestrictedException() {
         stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubRoles(false, true);
 
-        /*
-         * This mock represents a user who has ORG but not ADMIN. The policy asks only
-         * whether ADMIN is present.
-         */
-        when(securityFacade.hasRole(anyString()))
-            .thenAnswer(invocation -> ORG_ROLE.equals(invocation.getArgument(0)));
-
+        when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID)).thenReturn(false);
         when(participationFacade.isUserParticipant(
             USER_ID,
             COMPETITION_ID,
@@ -259,11 +265,13 @@ class QuestionAccessPolicyTest {
 
         assertThrows(
             QuestionForumAccessRestrictedException.class,
-            () -> questionAccessPolicy
+            () -> forumAccessService
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
-        verify(securityFacade).hasRole(ADMIN_ROLE);
+        verify(forumResponderService).isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID);
         verify(participationFacade).isUserParticipant(
             USER_ID,
             COMPETITION_ID,
@@ -271,10 +279,46 @@ class QuestionAccessPolicyTest {
     }
 
     @Test
+    void requireTaskAssignmentForumAccess_orgResponderWithoutParticipation_shouldReturnUserId() {
+        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubRoles(false, true);
+
+        when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID)).thenReturn(true);
+
+        Long result = forumAccessService
+            .requireTaskAssignmentForumAccess(
+                TASK_ASSIGNMENT_ID);
+
+        assertEquals(USER_ID, result);
+
+        verifyNoInteractions(participationFacade);
+    }
+
+    @Test
+    void requireTaskAssignmentForumAccess_orgResponderHiddenAssignment_shouldReturnUserId() {
+        stubAuthenticatedHierarchy(HIDDEN, SCHEDULED);
+        stubRoles(false, true);
+
+        when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID)).thenReturn(true);
+
+        Long result = forumAccessService
+            .requireTaskAssignmentForumAccess(
+                TASK_ASSIGNMENT_ID);
+
+        assertEquals(USER_ID, result);
+
+        verifyNoInteractions(participationFacade);
+    }
+
+    @Test
     void requireTaskAssignmentQuestionCreationAccess_inProgressTour_shouldReturnUserId() {
         stubParticipantAccess(VISIBLE, IN_PROGRESS);
 
-        Long result = questionAccessPolicy
+        Long result = forumAccessService
             .requireTaskAssignmentQuestionCreationAccess(
                 TASK_ASSIGNMENT_ID);
 
@@ -292,7 +336,7 @@ class QuestionAccessPolicyTest {
 
         assertThrows(
             QuestionCreationNotAllowedException.class,
-            () -> questionAccessPolicy
+            () -> forumAccessService
                 .requireTaskAssignmentQuestionCreationAccess(
                     TASK_ASSIGNMENT_ID));
 
@@ -308,7 +352,7 @@ class QuestionAccessPolicyTest {
 
         assertThrows(
             QuestionCreationNotAllowedException.class,
-            () -> questionAccessPolicy
+            () -> forumAccessService
                 .requireTaskAssignmentQuestionCreationAccess(
                     TASK_ASSIGNMENT_ID));
 
@@ -325,13 +369,24 @@ class QuestionAccessPolicyTest {
             visibility,
             executionStatus);
 
-        when(securityFacade.hasRole(ADMIN_ROLE))
-            .thenReturn(false);
+        stubRoles(false, false);
 
         when(participationFacade.isUserParticipant(
             USER_ID,
             COMPETITION_ID,
             STAGE_ID)).thenReturn(true);
+    }
+
+    private void stubRoles(
+        boolean administrator,
+        boolean organization) {
+        when(securityFacade.hasRole(anyString()))
+            .thenAnswer(invocation -> {
+                String role = invocation.getArgument(0);
+
+                return ADMIN_ROLE.equals(role) && administrator
+                    || ORG_ROLE.equals(role) && organization;
+            });
     }
 
     private void stubAuthenticatedHierarchy(
