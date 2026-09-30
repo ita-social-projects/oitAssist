@@ -16,8 +16,6 @@ import com.itasocialacademy.oitassist.competition.exceptions.StaleEntityVersionE
 import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.Resource;
-import org.springframework.context.annotation.Lazy;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.ZonedDateTime;
@@ -45,10 +43,6 @@ public class HierarchyValidator {
     @Value("${competition.hierarchy-lock-timeout-ms:3000}")
     private int hierarchyLockTimeoutMs;
 
-    @Resource
-    @Lazy
-    private HierarchyValidator self;
-
     @PostConstruct
     void validateLockTimeoutConfig() {
         if (hierarchyLockTimeoutMs <= 0) {
@@ -61,40 +55,26 @@ public class HierarchyValidator {
 
     @Transactional(readOnly = true)
     public void checkVisibilityAccess(Long competitionId) {
-        Competition competition = competitionRepository.findById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
-
-        if (competition.getCompetitionStatus() == CompetitionStatus.DRAFT) {
-            boolean hasAccessToDraft = securityFacade.hasRole("ADMIN") || securityFacade.hasRole("ORG");
-            if (!hasAccessToDraft) {
-                throw new AccessDeniedException("You do not have permission to view this draft competition");
-            }
-        }
+        verifyVisibility(competitionId);
     }
 
     @Transactional(readOnly = true)
     public void checkVisibilityAccessByStageId(Long stageId) {
         Stage stage = stageRepository.findById(stageId)
             .orElseThrow(() -> new StageNotFoundException(stageId));
-        self.checkVisibilityAccess(stage.getCompetitionId());
+        verifyVisibility(stage.getCompetitionId());
     }
 
     @Transactional(readOnly = true)
     public void checkIfCompetitionPublishedByStageId(Long stageId) {
         Stage stage = stageRepository.findById(stageId)
             .orElseThrow(() -> new StageNotFoundException(stageId));
-        self.checkIfCompetitionPublishedByCompetitionId(stage.getCompetitionId());
+        verifyCompetitionPublished(stage.getCompetitionId());
     }
 
     @Transactional(readOnly = true)
     public void checkIfCompetitionPublishedByCompetitionId(Long competitionId) {
-        Competition competition = competitionRepository.findById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
-        if (competition.getCompetitionStatus() != CompetitionStatus.PUBLISHED) {
-            throw new CompetitionHierarchyValidationException(
-                "Cannot modify execution status: Competition must be PUBLISHED. Current status: %s"
-                    .formatted(competition.getCompetitionStatus()));
-        }
+        verifyCompetitionPublished(competitionId);
     }
 
     @Transactional(readOnly = true)
@@ -121,28 +101,14 @@ public class HierarchyValidator {
      */
     @Transactional
     public void validateImmutabilityByCompetitionId(Long competitionId) {
-        Competition competition = self.lockCompetitionForUpdate(competitionId);
-
-        if (competition.getCompetitionStatus() == CompetitionStatus.ARCHIVED) {
-            throw new CompetitionHierarchyValidationException(
-                "Cannot modify hierarchy: Competition is ARCHIVED (read-only).");
-        }
-        boolean isActiveLifecycleStatus = competition.getCompetitionStatus() == CompetitionStatus.ENROLLMENT
-            || competition.getCompetitionStatus() == CompetitionStatus.PUBLISHED
-            || competition.getCompetitionStatus() == CompetitionStatus.FINISHED;
-
-        if (isActiveLifecycleStatus && participationInquiryPort.competitionHasParticipants(competitionId)) {
-            throw new CompetitionHierarchyValidationException(
-                "Cannot modify hierarchy: The competition is %s and has active participations."
-                    .formatted(competition.getCompetitionStatus()));
-        }
+        verifyHierarchyMutable(competitionId);
     }
 
     @Transactional(readOnly = true)
     public void validateImmutabilityByStageId(Long stageId) {
         Stage stage = stageRepository.findById(stageId)
             .orElseThrow(() -> new StageNotFoundException(stageId));
-        self.validateImmutabilityByCompetitionId(stage.getCompetitionId());
+        verifyHierarchyMutable(stage.getCompetitionId());
     }
 
     /**
@@ -423,13 +389,7 @@ public class HierarchyValidator {
      */
     @Transactional
     public Competition lockCompetitionForUpdate(Long competitionId) {
-        // Postgres does not support bind parameters for SET commands, so the
-        // value must be inlined. Safe — hierarchyLockTimeoutMs is a validated positive
-        // int from server configuration (@Value), never derived from request input.
-        entityManager.createNativeQuery(
-            "SET LOCAL lock_timeout = '%dms'".formatted(hierarchyLockTimeoutMs)).executeUpdate();
-        return competitionRepository.findByIdForUpdate(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+        return acquireCompetitionLock(competitionId);
     }
 
     @Transactional(readOnly = true)
@@ -447,6 +407,56 @@ public class HierarchyValidator {
             throw new CompetitionHierarchyValidationException(
                 "Cannot delete tour: it is the last tour of this stage, "
                     + "and the competition has already left DRAFT status.");
+        }
+    }
+
+    private void verifyVisibility(Long competitionId) {
+        Competition competition = competitionRepository.findById(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+
+        if (competition.getCompetitionStatus() == CompetitionStatus.DRAFT) {
+            boolean hasAccessToDraft = securityFacade.hasRole("ADMIN") || securityFacade.hasRole("ORG");
+            if (!hasAccessToDraft) {
+                throw new AccessDeniedException("You do not have permission to view this draft competition");
+            }
+        }
+    }
+
+    private void verifyCompetitionPublished(Long competitionId) {
+        Competition competition = competitionRepository.findById(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+        if (competition.getCompetitionStatus() != CompetitionStatus.PUBLISHED) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot modify execution status: Competition must be PUBLISHED. Current status: %s"
+                    .formatted(competition.getCompetitionStatus()));
+        }
+    }
+
+    private Competition acquireCompetitionLock(Long competitionId) {
+        // Postgres does not support bind parameters for SET commands, so the
+        // value must be inlined. Safe — hierarchyLockTimeoutMs is a validated positive
+        // int from server configuration (@Value), never derived from request input.
+        entityManager.createNativeQuery(
+            "SET LOCAL lock_timeout = '%dms'".formatted(hierarchyLockTimeoutMs)).executeUpdate();
+        return competitionRepository.findByIdForUpdate(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+    }
+
+    private void verifyHierarchyMutable(Long competitionId) {
+        Competition competition = acquireCompetitionLock(competitionId);
+
+        if (competition.getCompetitionStatus() == CompetitionStatus.ARCHIVED) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot modify hierarchy: Competition is ARCHIVED (read-only).");
+        }
+        boolean isActiveLifecycleStatus = competition.getCompetitionStatus() == CompetitionStatus.ENROLLMENT
+            || competition.getCompetitionStatus() == CompetitionStatus.PUBLISHED
+            || competition.getCompetitionStatus() == CompetitionStatus.FINISHED;
+
+        if (isActiveLifecycleStatus && participationInquiryPort.competitionHasParticipants(competitionId)) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot modify hierarchy: The competition is %s and has active participations."
+                    .formatted(competition.getCompetitionStatus()));
         }
     }
 }
