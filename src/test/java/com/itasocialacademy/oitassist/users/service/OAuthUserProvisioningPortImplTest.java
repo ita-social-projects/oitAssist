@@ -30,8 +30,7 @@ class OAuthUserProvisioningPortImplTest {
     private OAuthUserProvisioningPortImpl provisioningPort;
 
     @Test
-    @DisplayName(
-        "provisionOAuthUser should build command, delegate to registration service and return mapped user details")
+    @DisplayName("provisionOAuthUser should build command, delegate to registration service and return mapped user details")
     void provisionOAuthUser_ShouldReturnMappedUserDetails_WhenUserIsProvisioned() {
         String email = "ivan@example.com";
         String firstName = "Ivan";
