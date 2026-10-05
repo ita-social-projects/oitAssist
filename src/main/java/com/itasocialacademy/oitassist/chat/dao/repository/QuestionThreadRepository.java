@@ -216,6 +216,13 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         WHERE question.id = :questionId
           AND question.taskAssignmentId = :taskAssignmentId
           AND question.version = :expectedVersion
+          AND question.assignedReviewerId = :responderUserId
+          AND EXISTS (
+              SELECT responder.id
+              FROM TaskAssignmentForumResponder responder
+              WHERE responder.taskAssignmentId = :taskAssignmentId
+                AND responder.responderUserId = :responderUserId
+          )
         """)
     int updateVisibilityAsResponderIfVersionMatches(
         @Param("questionId") Long questionId,
@@ -234,6 +241,13 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         WHERE question.id = :questionId
           AND question.taskAssignmentId = :taskAssignmentId
           AND question.version = :expectedVersion
+          AND question.assignedReviewerId = :responderUserId
+          AND EXISTS (
+              SELECT responder.id
+              FROM TaskAssignmentForumResponder responder
+              WHERE responder.taskAssignmentId = :taskAssignmentId
+                AND responder.responderUserId = :responderUserId
+          )
         """)
     int updateStatusAsResponderIfVersionMatches(
         @Param("questionId") Long questionId,
@@ -252,6 +266,13 @@ public interface QuestionThreadRepository extends JpaRepository<QuestionThread, 
         WHERE question.id = :questionId
           AND question.taskAssignmentId = :taskAssignmentId
           AND question.version = :expectedVersion
+          AND question.assignedReviewerId = :responderUserId
+          AND EXISTS (
+              SELECT responder.id
+              FROM TaskAssignmentForumResponder responder
+              WHERE responder.taskAssignmentId = :taskAssignmentId
+                AND responder.responderUserId = :responderUserId
+          )
         """)
     int updateStateAsResponderIfVersionMatches(
         @Param("questionId") Long questionId,

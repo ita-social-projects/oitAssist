@@ -186,6 +186,7 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
 
         Long responderUserId = requireOrganizationMember();
         QuestionThread currentQuestion = loadQuestion(questionId);
+        requireAssignedResponderAccess(currentQuestion, responderUserId);
         QuestionVisibility previousVisibility = currentQuestion.getVisibility();
         Instant mutationTime = Instant.now();
 
@@ -221,6 +222,7 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
 
         Long responderUserId = requireOrganizationMember();
         QuestionThread currentQuestion = loadQuestion(questionId);
+        requireAssignedResponderAccess(currentQuestion, responderUserId);
         QuestionStatus previousStatus = currentQuestion.getStatus();
         Instant mutationTime = Instant.now();
 
@@ -256,6 +258,7 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
 
         Long responderUserId = requireOrganizationMember();
         QuestionThread currentQuestion = loadQuestion(questionId);
+        requireAssignedResponderAccess(currentQuestion, responderUserId);
         QuestionState previousState = currentQuestion.getState();
         Instant mutationTime = Instant.now();
 
@@ -337,7 +340,10 @@ public class OrganizationQuestionServiceImpl implements OrganizationQuestionServ
     }
 
     private void requireAssignedResponderAccess(QuestionThread question, Long responderUserId) {
-        if (!taskAssignmentForumResponderService.isResponder(question.getTaskAssignmentId(), responderUserId)) {
+        boolean assignedReviewer = Objects.equals(question.getAssignedReviewerId(), responderUserId);
+
+        if (!assignedReviewer
+            || !taskAssignmentForumResponderService.isResponder(question.getTaskAssignmentId(), responderUserId)) {
             throw new QuestionNotFoundException(question.getId());
         }
     }
