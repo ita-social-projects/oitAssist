@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -260,13 +261,10 @@ class ForumAccessServiceTest {
     }
 
     @Test
-    void requireTaskAssignmentForumAccess_orgWithoutResponderGrant_shouldThrowAccessRestrictedException() {
+    void requireTaskAssignmentForumAccess_orgRoleWithoutParticipation_shouldThrowAccessRestrictedException() {
         stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
         stubRoles(false, true);
 
-        when(forumResponderService.isResponder(
-            TASK_ASSIGNMENT_ID,
-            USER_ID)).thenReturn(false);
         when(participationFacade.isUserParticipant(
             USER_ID,
             COMPETITION_ID,
@@ -278,47 +276,38 @@ class ForumAccessServiceTest {
                 .requireTaskAssignmentForumAccess(
                     TASK_ASSIGNMENT_ID));
 
-        verify(forumResponderService).isResponder(
-            TASK_ASSIGNMENT_ID,
-            USER_ID);
-        verify(participationFacade).isUserParticipant(
-            USER_ID,
-            COMPETITION_ID,
-            STAGE_ID);
+        verifyNoInteractions(forumResponderService);
     }
 
     @Test
-    void requireTaskAssignmentForumAccess_orgResponderWithoutParticipation_shouldReturnUserId() {
+    void requireTaskAssignmentForumAccess_responderWithoutParticipation_shouldThrowAccessRestrictedException() {
         stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
         stubRoles(false, true);
+        givenResponderGrant();
 
-        when(forumResponderService.isResponder(
-            TASK_ASSIGNMENT_ID,
-            USER_ID)).thenReturn(true);
+        when(participationFacade.isUserParticipant(
+            USER_ID,
+            COMPETITION_ID,
+            STAGE_ID)).thenReturn(false);
 
-        Long result = forumAccessService
-            .requireTaskAssignmentForumAccess(
-                TASK_ASSIGNMENT_ID);
-
-        assertEquals(USER_ID, result);
-
-        verifyNoInteractions(participationFacade);
+        assertThrows(
+            QuestionForumAccessRestrictedException.class,
+            () -> forumAccessService
+                .requireTaskAssignmentForumAccess(
+                    TASK_ASSIGNMENT_ID));
     }
 
     @Test
-    void requireTaskAssignmentForumAccess_orgResponderHiddenAssignment_shouldReturnUserId() {
+    void requireTaskAssignmentForumAccess_responderHiddenAssignment_shouldThrowAccessRestrictedException() {
         stubAuthenticatedHierarchy(HIDDEN, SCHEDULED);
         stubRoles(false, true);
+        givenResponderGrant();
 
-        when(forumResponderService.isResponder(
-            TASK_ASSIGNMENT_ID,
-            USER_ID)).thenReturn(true);
-
-        Long result = forumAccessService
-            .requireTaskAssignmentForumAccess(
-                TASK_ASSIGNMENT_ID);
-
-        assertEquals(USER_ID, result);
+        assertThrows(
+            QuestionForumAccessRestrictedException.class,
+            () -> forumAccessService
+                .requireTaskAssignmentForumAccess(
+                    TASK_ASSIGNMENT_ID));
 
         verifyNoInteractions(participationFacade);
     }
@@ -468,7 +457,25 @@ class ForumAccessServiceTest {
     }
 
     @Test
-    void requireQuestionViewAccess_responderAndOthersPrivateQuestion_shouldAllowWithoutParticipation() {
+    void requireQuestionViewAccess_assignedResponderAndPrivateQuestion_shouldAllowWithoutParticipation() {
+        stubAuthenticatedHierarchy(HIDDEN, SCHEDULED);
+        stubRoles(false, true);
+
+        when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID)).thenReturn(true);
+
+        QuestionThread question = createQuestion(OTHER_USER_ID, PRIVATE);
+        question.setAssignedReviewerId(USER_ID);
+
+        assertDoesNotThrow(
+            () -> forumAccessService.requireQuestionViewAccess(question));
+
+        verifyNoInteractions(participationFacade);
+    }
+
+    @Test
+    void requireQuestionCommentAccess_assignedResponder_shouldReturnCurrentUserId() {
         stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
         stubRoles(false, true);
 
@@ -477,11 +484,76 @@ class ForumAccessServiceTest {
             USER_ID)).thenReturn(true);
 
         QuestionThread question = createQuestion(OTHER_USER_ID, PRIVATE);
+        question.setAssignedReviewerId(USER_ID);
 
-        assertDoesNotThrow(
+        assertEquals(USER_ID, forumAccessService.requireQuestionCommentAccess(question));
+    }
+
+    @Test
+    void requireQuestionViewAccess_responderAndQuestionAssignedToAnotherReviewer_shouldMaskAsNotFound() {
+        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubRoles(false, true);
+        givenResponderGrant();
+
+        QuestionThread question = createQuestion(OTHER_USER_ID, PRIVATE);
+        question.setAssignedReviewerId(OTHER_USER_ID);
+
+        assertThrows(
+            QuestionNotFoundException.class,
             () -> forumAccessService.requireQuestionViewAccess(question));
 
         verifyNoInteractions(participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_responderAndUnclaimedPrivateQuestion_shouldMaskAsNotFound() {
+        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubRoles(false, true);
+        givenResponderGrant();
+
+        QuestionThread question = createQuestion(OTHER_USER_ID, PRIVATE);
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> forumAccessService.requireQuestionViewAccess(question));
+
+        verifyNoInteractions(participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_assignedReviewerWithoutResponderGrant_shouldMaskAsNotFound() {
+        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubRoles(false, true);
+
+        when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID)).thenReturn(false);
+
+        QuestionThread question = createQuestion(OTHER_USER_ID, PRIVATE);
+        question.setAssignedReviewerId(USER_ID);
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> forumAccessService.requireQuestionViewAccess(question));
+
+        verifyNoInteractions(participationFacade);
+    }
+
+    @Test
+    void requireQuestionViewAccess_assignedReviewerWithoutOrgRole_shouldUseParticipantRules() {
+        stubAuthenticatedHierarchy(VISIBLE, SCHEDULED);
+        stubRoles(false, false);
+
+        QuestionThread question = createQuestion(OTHER_USER_ID, PRIVATE);
+        question.setAssignedReviewerId(USER_ID);
+
+        assertThrows(
+            QuestionNotFoundException.class,
+            () -> forumAccessService.requireQuestionViewAccess(question));
+
+        verifyNoInteractions(
+            participationFacade,
+            forumResponderService);
     }
 
     @Test
@@ -566,6 +638,12 @@ class ForumAccessServiceTest {
             USER_ID,
             COMPETITION_ID,
             STAGE_ID)).thenReturn(true);
+    }
+
+    private void givenResponderGrant() {
+        lenient().when(forumResponderService.isResponder(
+            TASK_ASSIGNMENT_ID,
+            USER_ID)).thenReturn(true);
     }
 
     private void stubRoles(

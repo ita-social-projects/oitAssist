@@ -376,30 +376,6 @@ class ParticipantForumServiceImplTest {
     }
 
     @Test
-    void getForumQuestions_organizationResponder_shouldReturnAllQuestionsWithoutParticipantCheck() {
-        when(forumAccessService.isOrganizationResponder(TASK_ASSIGNMENT_ID))
-            .thenReturn(true);
-
-        when(questionThreadRepository.findAllQuestionsByTaskAssignmentId(
-            eq(TASK_ASSIGNMENT_ID),
-            any(Pageable.class))).thenReturn(Page.empty());
-
-        participantForumService.getForumQuestions(
-            TASK_ASSIGNMENT_ID,
-            PAGE,
-            SIZE);
-
-        verify(questionThreadRepository)
-            .findAllQuestionsByTaskAssignmentId(
-                eq(TASK_ASSIGNMENT_ID),
-                any(Pageable.class));
-        verify(forumAccessService, never())
-            .requireTaskAssignmentForumAccess(any());
-        verify(questionThreadRepository, never())
-            .findParticipantVisibleQuestions(any(), any(), any());
-    }
-
-    @Test
     void createQuestion_accessibleTaskAssignment_shouldSaveAndReturnMappedResponse() {
         CreateQuestionRequestDTO request = createQuestionRequest();
         QuestionThread mappedQuestion = createMappedQuestion();

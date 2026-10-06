@@ -50,7 +50,7 @@ public class ParticipantForumServiceImpl implements ParticipantForumService {
         validateRequest(taskAssignmentId, page, size);
         Pageable pageable = PageRequest.of(page, size, FORUM_SORT);
 
-        if (forumAccessService.isAdministrator() || forumAccessService.isOrganizationResponder(taskAssignmentId)) {
+        if (forumAccessService.isAdministrator()) {
             return questionThreadRepository.findAllQuestionsByTaskAssignmentId(taskAssignmentId, pageable)
                 .map(questionThreadMapper::toSummaryResponse);
         }

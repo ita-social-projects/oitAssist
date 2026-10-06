@@ -235,7 +235,7 @@ public class ReviewRealtimeHandler {
 
     private Long resolveAssignedOrganizationResponder(ForumDomainEvent event) {
         Long reviewerId = event.question().assignedReviewerId();
-        if (!organizationRecipientResolver.isOrganizationResponder(event.taskAssignmentId(), reviewerId)) {
+        if (!organizationRecipientResolver.isEligibleOrganizationResponder(event.taskAssignmentId(), reviewerId)) {
             return null;
         }
         return reviewerId;
