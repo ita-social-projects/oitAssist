@@ -40,11 +40,6 @@ public class ForumAccessService {
         return securityFacade.hasRole(ADMIN_ROLE);
     }
 
-    public boolean isOrganizationResponder(Long taskAssignmentId) {
-        return securityFacade.hasRole(ORG_ROLE)
-            && forumResponderService.isResponder(taskAssignmentId, securityFacade.getCurrentUserId().orElse(null));
-    }
-
     public Long requireTaskAssignmentForumAccess(Long taskAssignmentId) {
         return requireTaskAssignmentParticipantAccess(taskAssignmentId).userId();
     }
@@ -70,7 +65,7 @@ public class ForumAccessService {
         if (isAdministrator()) {
             return context;
         }
-        if (isOrganizationResponder(question.getTaskAssignmentId())) {
+        if (isAssignedOrganizationResponder(question, context.userId())) {
             return context;
         }
 
@@ -89,13 +84,16 @@ public class ForumAccessService {
         if (isAdministrator()) {
             return context;
         }
-        if (isOrganizationResponder(taskAssignmentId)) {
-            return context;
-        }
 
         requireVisibleAssignment(context);
         requireParticipation(context);
         return context;
+    }
+
+    private boolean isAssignedOrganizationResponder(QuestionThread question, Long userId) {
+        return securityFacade.hasRole(ORG_ROLE)
+            && Objects.equals(question.getAssignedReviewerId(), userId)
+            && forumResponderService.isResponder(question.getTaskAssignmentId(), userId);
     }
 
     private TaskAssignmentAccessContext resolveTaskAssignmentContext(Long taskAssignmentId) {

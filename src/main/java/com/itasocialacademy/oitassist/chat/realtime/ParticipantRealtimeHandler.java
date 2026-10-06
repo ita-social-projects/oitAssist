@@ -20,6 +20,7 @@ import com.itasocialacademy.oitassist.chat.event.realtime.MessageCreatedPayload;
 import com.itasocialacademy.oitassist.chat.event.realtime.QuestionRemovalPayload;
 import com.itasocialacademy.oitassist.chat.event.realtime.QuestionUpsertPayload;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -128,22 +129,28 @@ public class ParticipantRealtimeHandler {
     private void sendQuestionUpsertToPrivilegedReaders(ForumDomainEvent event) {
         publisher.toAdministratorAllQuestions(event, QUESTION_UPSERTED, new QuestionUpsertPayload(event.question()));
 
-        organizationRecipientResolver.resolveInboxRecipients(event.taskAssignmentId()).stream()
-            .filter(responderId -> !Objects.equals(responderId, event.question().authorId()))
-            .forEach(responderId -> publisher.toPersonalQuestions(
-                responderId,
-                event,
-                QUESTION_UPSERTED,
-                new QuestionUpsertPayload(event.question())));
+        assignedOrganizationResponder(event).ifPresent(responderId -> publisher.toPersonalQuestions(
+            responderId,
+            event,
+            QUESTION_UPSERTED,
+            new QuestionUpsertPayload(event.question())));
     }
 
     private void sendMessageToPrivilegedReaders(ForumDomainEvent event, QuestionMessageResponseDTO message) {
         publisher.toAdministratorAllQuestions(event, MESSAGE_CREATED, new MessageCreatedPayload(message));
-        organizationRecipientResolver.resolveInboxRecipients(event.taskAssignmentId())
-            .forEach(responderId -> publisher.toPersonalQuestions(
-                responderId,
-                event,
-                MESSAGE_CREATED,
-                new MessageCreatedPayload(message)));
+        assignedOrganizationResponder(event).ifPresent(responderId -> publisher.toPersonalQuestions(
+            responderId,
+            event,
+            MESSAGE_CREATED,
+            new MessageCreatedPayload(message)));
+    }
+
+    private Optional<Long> assignedOrganizationResponder(ForumDomainEvent event) {
+        Long reviewerId = event.question().assignedReviewerId();
+        if (Objects.equals(reviewerId, event.question().authorId())
+            || !organizationRecipientResolver.isOrganizationResponder(event.taskAssignmentId(), reviewerId)) {
+            return Optional.empty();
+        }
+        return Optional.of(reviewerId);
     }
 }
