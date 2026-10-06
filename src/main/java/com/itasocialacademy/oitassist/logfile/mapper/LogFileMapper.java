@@ -1,7 +1,7 @@
 package com.itasocialacademy.oitassist.logfile.mapper;
 
 import com.itasocialacademy.oitassist.logfile.api.LogFileResponse;
-import com.itasocialacademy.oitassist.logfile.dao.LogFileMetadata;
+import com.itasocialacademy.oitassist.logfile.dao.model.LogFileMetadata;
 import org.springframework.stereotype.Component;
 
 @Component
