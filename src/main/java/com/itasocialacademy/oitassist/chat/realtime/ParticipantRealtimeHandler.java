@@ -148,7 +148,7 @@ public class ParticipantRealtimeHandler {
     private Optional<Long> assignedOrganizationResponder(ForumDomainEvent event) {
         Long reviewerId = event.question().assignedReviewerId();
         if (Objects.equals(reviewerId, event.question().authorId())
-            || !organizationRecipientResolver.isOrganizationResponder(event.taskAssignmentId(), reviewerId)) {
+            || !organizationRecipientResolver.isEligibleOrganizationResponder(event.taskAssignmentId(), reviewerId)) {
             return Optional.empty();
         }
         return Optional.of(reviewerId);

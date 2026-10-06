@@ -57,7 +57,7 @@ class ParticipantRealtimeHandlerTest {
         QuestionThreadResponseDTO question = question(RESPONDER_ID, IN_REVIEW, PRIVATE);
         CommentCreatedDomainEvent event = new CommentCreatedDomainEvent(question, comment(), OCCURRED_AT);
 
-        when(organizationRecipientResolver.isOrganizationResponder(TASK_ASSIGNMENT_ID, RESPONDER_ID))
+        when(organizationRecipientResolver.isEligibleOrganizationResponder(TASK_ASSIGNMENT_ID, RESPONDER_ID))
             .thenReturn(true);
 
         participantRealtimeHandler.handle(event);
@@ -105,7 +105,7 @@ class ParticipantRealtimeHandlerTest {
             ADMINISTRATOR_ID,
             OCCURRED_AT);
 
-        when(organizationRecipientResolver.isOrganizationResponder(TASK_ASSIGNMENT_ID, ADMINISTRATOR_ID))
+        when(organizationRecipientResolver.isEligibleOrganizationResponder(TASK_ASSIGNMENT_ID, ADMINISTRATOR_ID))
             .thenReturn(false);
 
         participantRealtimeHandler.handle(event);
@@ -123,7 +123,7 @@ class ParticipantRealtimeHandlerTest {
             RESPONDER_ID,
             OCCURRED_AT);
 
-        when(organizationRecipientResolver.isOrganizationResponder(TASK_ASSIGNMENT_ID, RESPONDER_ID))
+        when(organizationRecipientResolver.isEligibleOrganizationResponder(TASK_ASSIGNMENT_ID, RESPONDER_ID))
             .thenReturn(true);
 
         participantRealtimeHandler.handle(event);
@@ -141,7 +141,7 @@ class ParticipantRealtimeHandlerTest {
             PRIVATE,
             OCCURRED_AT);
 
-        when(organizationRecipientResolver.isOrganizationResponder(TASK_ASSIGNMENT_ID, RESPONDER_ID))
+        when(organizationRecipientResolver.isEligibleOrganizationResponder(TASK_ASSIGNMENT_ID, RESPONDER_ID))
             .thenReturn(true);
 
         participantRealtimeHandler.handle(event);
