@@ -40,8 +40,7 @@ public interface FileRepository extends JpaRepository<FileAsset, Long>, JpaSpeci
         RelatedEntityType type, Long entityId, FileStatus status);
 
     /**
-     * Checks whether a file with the given storage key exists in any status other
-     * than the specified one.
+     * Checks whether a file with the given storage key exists.
      */
-    boolean existsByStorageKeyAndStatusNot(String storageKey, FileStatus status);
+    boolean existsByStorageKey(String storageKey);
 }

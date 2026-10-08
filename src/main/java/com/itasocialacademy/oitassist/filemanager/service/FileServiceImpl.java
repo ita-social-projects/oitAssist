@@ -185,20 +185,22 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Transitions a batch of {@link FileStatus#TEMPORARY} files to
-     * {@link FileStatus#ATTACHED} and establishes their relationship with the
-     * specified entity.
+     * Links previously uploaded TEMPORARY files to a specific entity. If a
+     * {@link StorageContext} is provided, the files are physically moved from the
+     * temporary directory to their final hierarchical storage path.
      *
-     * @param entityId   the ID of the entity to link files to
-     * @param entityType the type of the related entity
-     * @param fileIds    the IDs of the files to attach; no-op if {@code null} or
-     *                   empty
-     * @param userId     the ID of the user performing the file linking operation;
-     *                   must own all files or possess the ADMIN role
+     * @param entityId       the ID of the entity to link files to
+     * @param entityType     the type of the related entity
+     * @param fileIds        the IDs of the files to attach; no-op if {@code null}
+     *                       or empty
+     * @param userId         the ID of the user performing the file linking
+     *                       operation; must own all files or possess the ADMIN role
+     * @param storageContext the context used to calculate the final storage path
      */
     @Override
     @Transactional
-    public void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds, Long userId) {
+    public void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds, Long userId,
+        StorageContext storageContext) {
         if (fileIds == null || fileIds.isEmpty()) {
             log.debug("No files to link to entity {} with id={}", entityType, entityId);
             return;
@@ -213,6 +215,31 @@ public class FileServiceImpl implements FileService {
                 file.setStatus(FileStatus.ATTACHED);
                 file.setRelatedEntityId(entityId);
                 file.setRelatedEntityType(entityType);
+
+                if (storageContext != null && file.getStorageKey().startsWith("_tmp/")) {
+                    FileUploadRequestDto pathDto = FileUploadRequestDto.builder()
+                        .relatedEntityType(entityType)
+                        .relatedEntityId(entityId)
+                        .fileRole(file.getFileRole())
+                        .storageContext(storageContext)
+                        .build();
+
+                    String newPath = buildRelativePath(pathDto);
+
+                    String filename = file.getStorageKey()
+                        .substring(file.getStorageKey().lastIndexOf('/') + 1);
+
+                    StorageProvider provider = providerResolver.resolve(
+                        file.getStorageProvider());
+
+                    String newKey = provider.moveFile(
+                        file.getStorageKey(), newPath + "/" + filename);
+
+                    file.setStorageKey(newKey);
+
+                    log.debug("Moved file {} to {}", file.getStorageKey(), newKey);
+                }
+
                 log.debug("Linked file id={} to {} with id={}", file.getId(), entityType, entityId);
             } else {
                 log.warn("Skipped file id={} with status={} (expected TEMPORARY)", file.getId(), file.getStatus());
@@ -632,7 +659,7 @@ public class FileServiceImpl implements FileService {
 
         String candidate = sanitizedBase + ext;
         int n = 1;
-        while (repository.existsByStorageKeyAndStatusNot(relativePath + "/" + candidate, FileStatus.SOFT_DELETED)) {
+        while (repository.existsByStorageKey(relativePath + "/" + candidate)) {
             candidate = sanitizedBase + "_" + n + ext;
             n++;
         }

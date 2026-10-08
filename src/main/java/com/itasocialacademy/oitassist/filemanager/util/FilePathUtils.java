@@ -27,7 +27,7 @@ public final class FilePathUtils {
                 "Title contains only illegal characters: " + title,
                 ErrorCode.FILE_VALIDATION_FAILED);
         }
-        return safe;
+        return safe.length() > 60 ? safe.substring(0, 60).trim() : safe;
     }
 
     /**

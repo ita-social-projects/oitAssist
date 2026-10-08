@@ -74,10 +74,7 @@ public class LocalStorageProvider implements StorageProvider {
             Path targetDirectory = root.resolve(path).normalize();
             Path targetFile = targetDirectory.resolve(morphedName).normalize();
 
-            if (!targetFile.startsWith(root)) {
-                throw new FileUploadException("Invalid upload path outside configured storage root",
-                    new IllegalArgumentException(path));
-            }
+            validateWithinRoot(targetFile);
 
             Files.createDirectories(targetDirectory);
             Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
@@ -109,9 +106,7 @@ public class LocalStorageProvider implements StorageProvider {
         try {
             Path target = root.resolve(storageKey).normalize();
 
-            if (!target.startsWith(root)) {
-                throw new InvalidFilePathException("Access denied: path is outside storage root: " + storageKey);
-            }
+            validateWithinRoot(target);
 
             boolean deleted = Files.deleteIfExists(target);
 
@@ -184,9 +179,7 @@ public class LocalStorageProvider implements StorageProvider {
         try {
             Path target = root.resolve(storageKey).normalize();
 
-            if (!target.startsWith(root)) {
-                throw new InvalidFilePathException("Access denied: path is outside storage root: " + storageKey);
-            }
+            validateWithinRoot(target);
 
             FileTime fileTime = Files.getLastModifiedTime(target);
             return OffsetDateTime.ofInstant(fileTime.toInstant(), ZoneOffset.UTC);
@@ -225,6 +218,45 @@ public class LocalStorageProvider implements StorageProvider {
             return resource;
         } catch (MalformedURLException e) {
             throw new FileListingException("Could not read file", e);
+        }
+    }
+
+    /**
+     * Moves a file locally from the source storage key to the target storage key.
+     * Used to transfer temporary files to their final destination upon attachment.
+     * Checks for path traversal vulnerabilities before moving.
+     *
+     * @param sourceKey the relative path of the existing file
+     * @param targetKey the desired relative path
+     * @return the final relative path after the move
+     * @throws InvalidFilePathException if the path is outside the storage root
+     * @throws FileUploadException      if the move operation fails
+     */
+    @Override
+    public String moveFile(String sourceKey, String targetKey) {
+        if (sourceKey == null || sourceKey.isBlank() || targetKey == null || targetKey.isBlank()) {
+            throw new InvalidFilePathException("Cannot move local file: blank storage key");
+        }
+
+        Path source = root.resolve(sourceKey).normalize();
+        Path target = root.resolve(targetKey).normalize();
+
+        validateWithinRoot(source);
+        validateWithinRoot(target);
+
+        try {
+            Files.createDirectories(target.getParent());
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new FileUploadException("Failed to move: " + sourceKey, e);
+        }
+
+        return root.relativize(target).toString().replace("\\", "/");
+    }
+
+    private void validateWithinRoot(Path path) {
+        if (!path.startsWith(root)) {
+            throw new InvalidFilePathException("Access denied: path is outside storage root");
         }
     }
 }

@@ -8,12 +8,15 @@ import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException
 import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathException;
 import com.itasocialacademy.oitassist.filemanager.properties.GraphProperties;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
+import com.microsoft.graph.models.DriveItem;
+import com.microsoft.graph.models.ItemReference;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import java.io.*;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
@@ -276,10 +279,8 @@ public class SharePointStorageProvider implements StorageProvider {
     }
 
     /**
-     * <p>
      * Fetches the file content stream directly from the configured Microsoft Graph
      * SharePoint drive and wraps it in an {@link InputStreamResource}.
-     * </p>
      *
      * @param storageKey the relative path of the file within the SharePoint drive
      * @return the {@link Resource} streaming the SharePoint file contents
@@ -319,6 +320,81 @@ public class SharePointStorageProvider implements StorageProvider {
         } catch (Exception e) {
             log.error("Unexpected error while streaming file from SharePoint: {}", storageKey, e);
             throw new FileListingException("Could not read file from SharePoint", e);
+        }
+    }
+
+    /**
+     * Moves a file within the SharePoint drive from the source storage key to the
+     * target. Leverages the Microsoft Graph API PATCH endpoint to update the parent
+     * reference and item name.
+     *
+     * @param sourceKey the relative path of the existing file in the SharePoint
+     *                  drive
+     * @param targetKey the desired relative path
+     * @return the final relative path after the move
+     * @throws InvalidFilePathException if the storage keys are null or blank
+     * @throws FileUploadException      if the Graph API returns an error or fails
+     */
+    @Override
+    public String moveFile(String sourceKey, String targetKey) {
+        if (sourceKey == null || sourceKey.isBlank() || targetKey == null || targetKey.isBlank()) {
+            throw new InvalidFilePathException("Cannot move SharePoint file: blank storage key");
+        }
+
+        int slash = targetKey.lastIndexOf('/');
+        if (slash < 0) {
+            throw new InvalidFilePathException("Target key has no folder: " + targetKey);
+        }
+        String targetFolder = targetKey.substring(0, slash);
+        String targetName = targetKey.substring(slash + 1);
+
+        try {
+            String driveId = graphProperties.getDriveId();
+
+            createTargetFolderBeforeMove(targetFolder);
+
+            DriveItem parentItem = graphClient.drives().byDriveId(driveId)
+                .items().byDriveItemId(DRIVE_ROOT_PREFIX + targetFolder + DRIVE_ROOT_SUFFIX)
+                .get();
+
+            if (parentItem == null || parentItem.getId() == null) {
+                throw new FileListingException("Target folder not found in SharePoint: " + targetFolder,
+                    new IllegalStateException("Graph API returned null DriveItem ID after folder creation"));
+            }
+
+            DriveItem body = new DriveItem();
+            body.setName(targetName);
+
+            ItemReference ref = new ItemReference();
+
+            ref.setId(parentItem.getId());
+            body.setParentReference(ref);
+
+            graphClient.drives().byDriveId(driveId)
+                .items().byDriveItemId(DRIVE_ROOT_PREFIX + sourceKey + DRIVE_ROOT_SUFFIX)
+                .patch(body);
+
+            return targetKey;
+        } catch (ApiException e) {
+            if (e.getResponseStatusCode() == 404) {
+                log.warn("File not found in SharePoint when moving: {}", sourceKey);
+                throw new FileUploadException("Source file not found in SharePoint: " + sourceKey, e);
+            }
+            log.error("Graph API error while moving file from {} to {}", sourceKey, targetKey, e);
+            throw new FileUploadException("Failed to move file in SharePoint", e);
+        } catch (Exception e) {
+            log.error("Unexpected error while moving SharePoint file from {} to {}", sourceKey, targetKey, e);
+            throw new FileUploadException("Failed to move file in SharePoint", e);
+        }
+    }
+
+    private void createTargetFolderBeforeMove(String targetFolder) {
+        String marker = ".keep-" + UUID.randomUUID();
+        upload(InputStream.nullInputStream(), marker, targetFolder);
+        try {
+            deletePhysical(targetFolder + "/" + marker);
+        } catch (FileDeleteException e) {
+            log.warn("Could not remove marker {} in {}", marker, targetFolder, e);
         }
     }
 }

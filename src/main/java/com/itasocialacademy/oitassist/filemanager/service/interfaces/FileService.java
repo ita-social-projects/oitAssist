@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.filemanager.service.interfaces;
 
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
@@ -54,16 +55,20 @@ public interface FileService {
     void deleteHard(Long fileId);
 
     /**
-     * Transitions a batch of TEMPORARY files to ATTACHED and establishes their
-     * relationship with the specified entity.
+     * Links previously uploaded TEMPORARY files to a specific entity. If a
+     * {@link StorageContext} is provided, the files are physically moved from the
+     * temporary directory to their final hierarchical storage path.
      *
-     * @param entityId   the ID of the entity to link files to
-     * @param entityType the type of the related entity
-     * @param fileIds    the IDs of the files to attach; no-op if {@code null} or
-     *                   empty
-     * @param userId     the ID of the user performing the file linking operation
+     * @param entityId       the ID of the entity to link files to
+     * @param entityType     the type of the related entity
+     * @param fileIds        the IDs of the files to attach; no-op if {@code null}
+     *                       or empty
+     * @param userId         the ID of the user performing the file linking
+     *                       operation
+     * @param storageContext the context used to calculate the final storage path
      */
-    void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds, Long userId);
+    void linkFilesToEntity(Long entityId, RelatedEntityType entityType, List<Long> fileIds, Long userId,
+        StorageContext storageContext);
 
     /**
      * Marks a batch of files as SOFT_DELETED. Called when files are removed from

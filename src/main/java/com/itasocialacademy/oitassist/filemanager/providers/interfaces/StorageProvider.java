@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.filemanager.exceptions.FileListingExceptio
 import java.io.InputStream;
 import java.time.OffsetDateTime;
 import java.util.List;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
 import org.springframework.core.io.Resource;
 
 public interface StorageProvider {
@@ -61,4 +62,16 @@ public interface StorageProvider {
      * @return the {@link Resource} representing the file byte stream
      */
     Resource getResource(String storageKey);
+
+    /**
+     * Moves a file from one location to another within the storage provider. This
+     * is primarily used to route temporary files to their final hierarchical
+     * destination once they are permanently linked to an entity.
+     *
+     * @param sourceKey the current relative path of the file
+     * @param targetKey the desired new relative path of the file
+     * @return the final relative path (storage key) after the move
+     * @throws FileUploadException if the file cannot be moved
+     */
+    String moveFile(String sourceKey, String targetKey);
 }
