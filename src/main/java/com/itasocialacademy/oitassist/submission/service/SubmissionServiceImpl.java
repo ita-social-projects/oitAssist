@@ -1,8 +1,12 @@
 package com.itasocialacademy.oitassist.submission.service;
 
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
+import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
+import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
+import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
@@ -10,6 +14,7 @@ import com.itasocialacademy.oitassist.core.exceptions.DataAccessException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
@@ -23,12 +28,15 @@ import com.itasocialacademy.oitassist.submission.exceptions.SubmissionNotFoundEx
 import com.itasocialacademy.oitassist.submission.exceptions.TourIsNotInProgressException;
 import com.itasocialacademy.oitassist.submission.mapper.SubmissionMapper;
 import com.itasocialacademy.oitassist.submission.service.interfaces.SubmissionService;
+import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
+import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.taskassignment.api.TaskAssignmentFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskRequirementsDTO;
 import com.itasocialacademy.oitassist.taskassignment.exceptions.TaskAssignmentNotFoundException;
 import java.time.Instant;
 import java.util.*;
+import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +54,7 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final TaskAssignmentFacade taskAssignmentFacade;
     private final CompetitionFacade competitionFacade;
     private final ParticipationFacade participationFacade;
+    private final TaskBodyFacade taskBodyFacade;
 
     private static final String ADMIN_ROLE = "ADMIN";
     private static final String JURY_ROLE = "JURY";
@@ -108,7 +117,8 @@ public class SubmissionServiceImpl implements SubmissionService {
                 filesToUpload,
                 RelatedEntityType.SUBMISSION,
                 entity.getId(),
-                FileRole.GENERIC);
+                FileRole.GENERIC,
+                resolveStorageContext(taskAssignment, tourDetail));
 
         return submissionMapper.toResponse(entity, uploadedFiles);
     }
@@ -275,5 +285,25 @@ public class SubmissionServiceImpl implements SubmissionService {
             : filename;
 
         return filenameWithoutExtension.equals(namingRule);
+    }
+
+    private StorageContext resolveStorageContext(TaskAssignmentDetailDTO taskAssignment, TourDetail tour) {
+        StageDetail stage = competitionFacade.findStageById(tour.stageId())
+            .orElseThrow(() -> new StageNotFoundException(tour.stageId()));
+
+        CompetitionDetail competition = competitionFacade.findCompetitionById(stage.competitionId())
+            .orElseThrow(() -> new CompetitionNotFoundException(stage.competitionId()));
+
+        String userEmail = securityFacade.getCurrentUserEmail().orElseThrow(UserNotFoundException::new);
+
+        String taskTitle = taskBodyFacade.findTaskBodyById(taskAssignment.taskBodyId())
+            .orElseThrow(() -> new TaskNotFoundException(taskAssignment.taskBodyId())).title();
+
+        return StorageContext.forSubmission(
+            competition.title(),
+            stage.title(),
+            tour.title(),
+            taskTitle,
+            userEmail);
     }
 }
