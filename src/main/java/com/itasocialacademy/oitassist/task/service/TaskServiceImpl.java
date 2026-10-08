@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -76,9 +77,14 @@ public class TaskServiceImpl implements TaskService {
 
         log.debug("Created Task: Id {}; Title - {}", createdTask.getId(), createdTask.getTitle());
 
-        uploadFilesByRole(createdTask.getId(), problemFiles, FileRole.PROBLEM);
-        uploadFilesByRole(createdTask.getId(), referenceFiles, FileRole.REFERENCE);
-        uploadFilesByRole(createdTask.getId(), solutionFiles, FileRole.SOLUTION);
+        uploadFilesByRole(createdTask.getId(), problemFiles, FileRole.PROBLEM,
+            getStorageContext(createdTask.getTitle()));
+
+        uploadFilesByRole(createdTask.getId(), referenceFiles, FileRole.REFERENCE,
+            getStorageContext(createdTask.getTitle()));
+
+        uploadFilesByRole(createdTask.getId(), solutionFiles, FileRole.SOLUTION,
+            getStorageContext(createdTask.getTitle()));
 
         return getResponse(createdTask);
     }
@@ -159,9 +165,14 @@ public class TaskServiceImpl implements TaskService {
                 fileId, newRole, RelatedEntityType.TASK, updatedTask.getId()));
         }
 
-        uploadFilesByRole(updatedTask.getId(), problemFiles, FileRole.PROBLEM);
-        uploadFilesByRole(updatedTask.getId(), referenceFiles, FileRole.REFERENCE);
-        uploadFilesByRole(updatedTask.getId(), solutionFiles, FileRole.SOLUTION);
+        uploadFilesByRole(updatedTask.getId(), problemFiles, FileRole.PROBLEM,
+            getStorageContext(updatedTask.getTitle()));
+
+        uploadFilesByRole(updatedTask.getId(), referenceFiles, FileRole.REFERENCE,
+            getStorageContext(updatedTask.getTitle()));
+
+        uploadFilesByRole(updatedTask.getId(), solutionFiles, FileRole.SOLUTION,
+            getStorageContext(updatedTask.getTitle()));
 
         return getResponse(updatedTask);
     }
@@ -275,11 +286,15 @@ public class TaskServiceImpl implements TaskService {
     }
 
     // helpers
-    private void uploadFilesByRole(Long taskId, List<MultipartFile> files, FileRole role) {
+    private void uploadFilesByRole(Long taskId, List<MultipartFile> files, FileRole role, StorageContext context) {
         if (files == null || files.isEmpty()) {
             return;
         }
-        fileManagerFacade.uploadFiles(files, RelatedEntityType.TASK, taskId, role);
+        fileManagerFacade.uploadFiles(files, RelatedEntityType.TASK, taskId, role, context);
+    }
+
+    private StorageContext getStorageContext(String taskTitle) {
+        return StorageContext.forTask(taskTitle);
     }
 
     private void checkOwnerOrAdmin(Set<Long> taskBodyOwnerIds, Long taskId) {
