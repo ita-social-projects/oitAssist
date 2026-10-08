@@ -1,10 +1,12 @@
 package com.itasocialacademy.oitassist.filemanager.service;
 
+import static com.itasocialacademy.oitassist.filemanager.util.FilePathUtils.sanitize;
 import static com.itasocialacademy.oitassist.filemanager.validation.util.FileValidationUtils.*;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
@@ -22,6 +24,7 @@ import com.itasocialacademy.oitassist.filemanager.mapper.FileMapper;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
 import com.itasocialacademy.oitassist.filemanager.providers.resolver.StorageProviderResolver;
 import com.itasocialacademy.oitassist.filemanager.service.interfaces.FileService;
+import com.itasocialacademy.oitassist.filemanager.util.FilePathUtils;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FilePolicy;
 import com.itasocialacademy.oitassist.filemanager.validation.interfaces.FileValidationStrategy;
 import com.itasocialacademy.oitassist.filemanager.validation.model.ValidationResult;
@@ -29,6 +32,7 @@ import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileAcces
 import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FilePolicyResolver;
 import com.itasocialacademy.oitassist.filemanager.access.FileAccessValidator;
 import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileValidationStrategyResolver;
+import com.itasocialacademy.oitassist.filemanager.validation.util.FileValidationUtils;
 import org.springframework.core.io.Resource;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import java.io.IOException;
@@ -582,12 +586,18 @@ public class FileServiceImpl implements FileService {
     private FileAsset uploadFileAndGetFileAsset(MultipartFile file, FileUploadRequestDto requestDto, Long userId,
         StorageProvider provider) {
         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "";
-        String storedFilename = generateStoredFilename(originalFilename);
+
         String relativePath = buildRelativePath(requestDto);
+
+        String physicalName = generateStoredFilename(originalFilename, relativePath);
+
+        String storedFilename = requestDto.getRelatedEntityType() == RelatedEntityType.SUBMISSION
+            ? UUID.randomUUID() + FilePathUtils.extractExtensionWithDot(originalFilename)
+            : physicalName;
 
         String storageKey;
         try (var inputStream = file.getInputStream()) {
-            storageKey = provider.upload(inputStream, storedFilename, relativePath);
+            storageKey = provider.upload(inputStream, physicalName, relativePath);
         } catch (IOException e) {
             log.error("Failed to upload file: {}", originalFilename, e);
             throw new FileUploadException(originalFilename, e);
@@ -606,37 +616,100 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
-     * Generates a unique filename by prepending a UUID to the original file
-     * extension.
+     * Resolves a unique filename based on the original filename. If a file with the
+     * same name already exists in the target folder (as an active storage key), a
+     * numeric suffix is appended ({@code name_1.ext}, {@code name_2.ext}, etc.).
      *
      * @param originalFilename the original name of the uploaded file
-     * @return a unique filename safe for storage
+     * @param relativePath     the target directory path used for collision
+     *                         detection
+     * @return a sanitized, unique filename safe for storage
      */
-    private String generateStoredFilename(String originalFilename) {
-        return UUID.randomUUID() + extractExtensionWithDot(originalFilename);
-    }
+    private String generateStoredFilename(String originalFilename, String relativePath) {
+        String baseName = FileValidationUtils.extractNameWithoutExtension(originalFilename);
+        String ext = FilePathUtils.extractExtensionWithDot(originalFilename);
+        String sanitizedBase = FilePathUtils.sanitize(baseName);
 
-    /**
-     * Extracts the file extension including the leading dot (e.g., {@code ".pdf"}).
-     *
-     * @param originalFilename the original filename
-     * @return the extension with dot, or an empty string if no extension is present
-     */
-    private String extractExtensionWithDot(String originalFilename) {
-        if (originalFilename == null || !originalFilename.contains(".")) {
-            return "";
+        String candidate = sanitizedBase + ext;
+        int n = 1;
+        while (repository.existsByStorageKeyAndStatusNot(relativePath + "/" + candidate, FileStatus.SOFT_DELETED)) {
+            candidate = sanitizedBase + "_" + n + ext;
+            n++;
         }
-        return originalFilename.substring(originalFilename.lastIndexOf('.'));
+        return candidate;
     }
 
     /**
-     * Builds the relative storage directory path derived from the entity type.
+     * Builds the relative storage directory path for a file upload.
      *
-     * @param requestDto the upload request containing the entity type
-     * @return a lowercase subdirectory name (e.g., {@code "news"}, {@code "task"})
+     * <p>
+     * When a {@link StorageContext} is present, constructs a human-readable
+     * hierarchical path from entity titles (e.g.
+     * {@code tasks/PowerPoint/problems/}). When absent, falls back to a flat
+     * directory named after the entity type. Temporary files (no entity ID) are
+     * placed in {@code _tmp/}.
+     * </p>
+     *
+     * @param requestDto the upload request containing entity type and storage
+     *                   context
+     * @return the relative directory path for the file
      */
     private String buildRelativePath(FileUploadRequestDto requestDto) {
-        return requestDto.getRelatedEntityType().name().toLowerCase();
+        StorageContext storageContext = requestDto.getStorageContext();
+
+        // TEMPORARY files (no entityId) go to _tmp/
+        if (requestDto.getRelatedEntityId() == null) {
+            return "_tmp";
+        }
+
+        // If an entityId is provided, a StorageContext MUST be provided.
+        if (storageContext == null) {
+            throw new ValidationException("StorageContext is required for attached files",
+                ErrorCode.FILE_VALIDATION_FAILED);
+        }
+
+        return switch (requestDto.getRelatedEntityType()) {
+            case NEWS -> {
+                if (storageContext.newsTitle() == null) {
+                    throw storageContextMismatch("newsTitle", RelatedEntityType.NEWS.name());
+                }
+                yield "news/" + sanitize(storageContext.newsTitle());
+            }
+            case TASK -> {
+                if (storageContext.taskTitle() == null) {
+                    throw storageContextMismatch("taskTitle", RelatedEntityType.TASK.name());
+                }
+                yield "tasks/" + sanitize(storageContext.taskTitle()) + "/"
+                    + requestDto.getFileRole().name().toLowerCase();
+            }
+            case SUBMISSION -> {
+                if (storageContext.competitionTitle() == null || storageContext.stageTitle() == null
+                    || storageContext.tourTitle() == null || storageContext.taskTitle() == null
+                    || storageContext.userEmail() == null) {
+                    throw storageContextMismatch("competitionTitle, stageTitle, "
+                        + "tourTitle, taskTitle, userEmail", RelatedEntityType.SUBMISSION.name());
+                }
+                yield String.join("/",
+                    "olympiads",
+                    sanitize(storageContext.competitionTitle()),
+                    sanitize(storageContext.stageTitle()),
+                    sanitize(storageContext.tourTitle()),
+                    sanitize(storageContext.taskTitle()),
+                    "submissions",
+                    sanitize(storageContext.userEmail()));
+            }
+            case COMPETITION -> "competitions";
+        };
+    }
+
+    /**
+     * Helper to construct a clear validation error when the provided StorageContext
+     * lacks the fields required for the requested entity type.
+     */
+    private ValidationException storageContextMismatch(String required, String type) {
+        return new ValidationException(
+            "StorageContext missing required fields [" + required + "] for entity type " + type,
+            ErrorCode.FILE_VALIDATION_FAILED);
     }
 
     /**
