@@ -1,6 +1,7 @@
 package com.itasocialacademy.oitassist.participation.service.interfaces;
 
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ParticipationListItemResponse;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -18,4 +19,6 @@ public interface ParticipationService {
     boolean isUserParticipant(Long userId, Long competitionId, Long stageId);
 
     boolean isUserAStageParticipant(Long userId, Long stageId);
+
+    List<Long> findCompetitionIdsByUserId(Long userId);
 }
