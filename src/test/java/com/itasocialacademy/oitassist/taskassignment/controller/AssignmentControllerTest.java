@@ -61,7 +61,7 @@ class AssignmentControllerTest extends ControllerUnitTest<AssignmentController> 
                 List.of(".pptx"), 50)));
 
         List<FileDetailsDTO> testFiles = List.of(
-            new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
+            new FileDetailsDTO(1L, "problem.pdf", "stored-problem.pdf", "application/pdf", 2048L, "PROBLEM",
                 "/uploads/task/problem.pdf"));
 
         mockAssignmentResponse = TaskAssignmentResponseDTO.builder()
