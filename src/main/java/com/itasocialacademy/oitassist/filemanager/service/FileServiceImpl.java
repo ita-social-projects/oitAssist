@@ -360,6 +360,18 @@ public class FileServiceImpl implements FileService {
         return resultMap;
     }
 
+    /**
+     * Updates the role of a file. Restricted to the original uploader or an
+     * administrator. This method is typically called via the REST API for generic
+     * file role updates.
+     *
+     * @param fileId  the ID of the file to update
+     * @param request the DTO containing the new role
+     * @return the updated file metadata
+     * @throws AuthorizationException     if the current user is not authenticated
+     *                                    or not authorized
+     * @throws FileAssetNotFoundException if the file is not found
+     */
     @Override
     @Transactional
     public FileResponseDto updateRoleGeneral(Long fileId, UpdateFileRoleRequestDto request) {
@@ -381,6 +393,19 @@ public class FileServiceImpl implements FileService {
         return dto;
     }
 
+    /**
+     * Updates the role of a file attached to an entity that may have multiple
+     * owners or complex authorization rules (e.g., Task module where multiple
+     * authors exist). Bypasses the strict single-uploader ownership check, assuming
+     * the calling module has already verified the user's permissions for the parent
+     * entity.
+     *
+     * @param fileId     the ID of the file to update
+     * @param newRole    the new role to assign
+     * @param entityType the related entity type to validate against
+     * @param entityId   the related entity ID to validate against
+     * @throws FileAssetNotFoundException if the file is not found
+     */
     @Override
     @Transactional
     public void updateRoleForMultiOwnerEntity(Long fileId, FileRole newRole, RelatedEntityType entityType,
