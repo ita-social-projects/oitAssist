@@ -351,11 +351,7 @@ public class SharePointStorageProvider implements StorageProvider {
         try {
             String driveId = graphProperties.getDriveId();
 
-            createTargetFolderBeforeMove(targetFolder);
-
-            DriveItem parentItem = graphClient.drives().byDriveId(driveId)
-                .items().byDriveItemId(DRIVE_ROOT_PREFIX + targetFolder + DRIVE_ROOT_SUFFIX)
-                .get();
+            DriveItem parentItem = ensureTargetFolderExistsAndGet(driveId, targetFolder);
 
             if (parentItem == null || parentItem.getId() == null) {
                 throw new FileListingException("Target folder not found in SharePoint: " + targetFolder,
@@ -388,6 +384,53 @@ public class SharePointStorageProvider implements StorageProvider {
         }
     }
 
+    /**
+     * Ensures that the specified target folder exists in SharePoint and retrieves
+     * it.
+     *
+     * <p>
+     * First attempts to fetch the folder directly to avoid unnecessary API calls if
+     * it already exists. If Microsoft Graph returns a 404 (Not Found), it triggers
+     * the creation of the folder by uploading a temporary marker file, and then
+     * fetches the newly created folder.
+     * </p>
+     *
+     * @param driveId      the configured SharePoint drive ID
+     * @param targetFolder the relative path of the target folder
+     * @return the {@link DriveItem} representing the target folder
+     * @throws ApiException if an unexpected error occurs communicating with
+     *                      Microsoft Graph
+     */
+    private DriveItem ensureTargetFolderExistsAndGet(String driveId, String targetFolder) {
+        try {
+            return graphClient.drives().byDriveId(driveId)
+                .items().byDriveItemId(DRIVE_ROOT_PREFIX + targetFolder + DRIVE_ROOT_SUFFIX)
+                .get();
+        } catch (ApiException e) {
+            if (e.getResponseStatusCode() == 404) {
+                log.debug("Target folder {} not found, creating via marker file...", targetFolder);
+                createTargetFolderBeforeMove(targetFolder);
+
+                return graphClient.drives().byDriveId(driveId)
+                    .items().byDriveItemId(DRIVE_ROOT_PREFIX + targetFolder + DRIVE_ROOT_SUFFIX)
+                    .get();
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Creates a folder in SharePoint by uploading and immediately deleting a
+     * temporary marker file.
+     *
+     * <p>
+     * This is a workaround for the Microsoft Graph API, which requires target
+     * folders to exist before moving files into them via {@code PATCH}, but
+     * uploading a file implicitly creates all missing parent directories.
+     * </p>
+     *
+     * @param targetFolder the relative path of the target folder to create
+     */
     private void createTargetFolderBeforeMove(String targetFolder) {
         String marker = ".keep-" + UUID.randomUUID();
         upload(InputStream.nullInputStream(), marker, targetFolder);

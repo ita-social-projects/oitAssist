@@ -216,29 +216,7 @@ public class FileServiceImpl implements FileService {
                 file.setRelatedEntityId(entityId);
                 file.setRelatedEntityType(entityType);
 
-                if (storageContext != null && file.getStorageKey().startsWith("_tmp/")) {
-                    FileUploadRequestDto pathDto = FileUploadRequestDto.builder()
-                        .relatedEntityType(entityType)
-                        .relatedEntityId(entityId)
-                        .fileRole(file.getFileRole())
-                        .storageContext(storageContext)
-                        .build();
-
-                    String newPath = buildRelativePath(pathDto);
-
-                    String filename = file.getStorageKey()
-                        .substring(file.getStorageKey().lastIndexOf('/') + 1);
-
-                    StorageProvider provider = providerResolver.resolve(
-                        file.getStorageProvider());
-
-                    String newKey = provider.moveFile(
-                        file.getStorageKey(), newPath + "/" + filename);
-
-                    file.setStorageKey(newKey);
-
-                    log.debug("Moved file {} to {}", file.getStorageKey(), newKey);
-                }
+                moveFromTempFolder(entityId, entityType, storageContext, file);
 
                 log.debug("Linked file id={} to {} with id={}", file.getId(), entityType, entityId);
             } else {
@@ -450,6 +428,31 @@ public class FileServiceImpl implements FileService {
                     .formatted(file.getOriginalFilename(), extension, newRole,
                         formatAllowed(newPolicy.getAllowedExtensions())),
                 ErrorCode.FILE_VALIDATION_FAILED);
+        }
+
+        if (entityType == RelatedEntityType.TASK) {
+            String oldKey = file.getStorageKey();
+            int lastSlash = oldKey.lastIndexOf('/');
+            int secondLastSlash = lastSlash > 0 ? oldKey.lastIndexOf('/', lastSlash - 1) : -1;
+
+            if (secondLastSlash > 0) {
+                final String delimiter = "/";
+                // e.g. "tasks/My Task/problem" -> "tasks/My Task/solution"
+                String newRelativePath =
+                    oldKey.substring(0, secondLastSlash) + delimiter + newRole.name().toLowerCase();
+
+                // Ensure no collision if a file with same name already exists in the new role
+                // folder
+                String safeFilename = generateStoredFilename(file.getOriginalFilename(), newRelativePath);
+                String newPath = newRelativePath + delimiter + safeFilename;
+
+                StorageProvider provider = providerResolver.resolve(file.getStorageProvider());
+                String newKey = provider.moveFile(oldKey, newPath);
+
+                file.setStorageKey(newKey);
+                file.setStoredFilename(safeFilename);
+                log.debug("Physically moved file on role change from {} to {}", oldKey, newKey);
+            }
         }
 
         file.setFileRole(newRole);
@@ -918,5 +921,49 @@ public class FileServiceImpl implements FileService {
      */
     private String buildFileUrl(Long id) {
         return "/api/v1/files/" + id;
+    }
+
+    /**
+     * Physically moves a file from the temporary upload directory ({@code _tmp/})
+     * to its final hierarchical destination based on the entity's storage context.
+     *
+     * <p>
+     * This method is triggered when a file is formally linked to an entity (e.g.,
+     * when a News article is saved and its inline images are permanently attached).
+     * It updates the file's {@code storageKey} in the database to reflect the new
+     * location.
+     * </p>
+     *
+     * @param entityId       the ID of the entity the file is being attached to
+     * @param entityType     the type of the entity
+     * @param storageContext the hierarchical naming context (e.g., titles) used to
+     *                       build the path
+     * @param file           the file asset being moved
+     */
+    private void moveFromTempFolder(Long entityId, RelatedEntityType entityType, StorageContext storageContext,
+        FileAsset file) {
+        if (storageContext != null && file.getStorageKey().startsWith("_tmp/")) {
+            FileUploadRequestDto pathDto = FileUploadRequestDto.builder()
+                .relatedEntityType(entityType)
+                .relatedEntityId(entityId)
+                .fileRole(file.getFileRole())
+                .storageContext(storageContext)
+                .build();
+
+            String newPath = buildRelativePath(pathDto);
+
+            String filename = file.getStorageKey()
+                .substring(file.getStorageKey().lastIndexOf('/') + 1);
+
+            StorageProvider provider = providerResolver.resolve(
+                file.getStorageProvider());
+
+            String newKey = provider.moveFile(
+                file.getStorageKey(), newPath + "/" + filename);
+
+            file.setStorageKey(newKey);
+
+            log.debug("Moved file {} to {}", file.getStorageKey(), newKey);
+        }
     }
 }
