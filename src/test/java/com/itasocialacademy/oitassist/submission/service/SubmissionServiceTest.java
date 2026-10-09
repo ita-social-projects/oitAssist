@@ -75,7 +75,7 @@ class SubmissionServiceTest {
             .build();
 
         files = List.of(
-            new FileDetailsDTO(10L, "file1.cpp", "document",
+            new FileDetailsDTO(10L, "file1.cpp", "stored-file1.pdf", "document",
                 1024L, "GENERIC", "/uploads/file1.cpp"));
 
         response = SubmissionResponseDTO.builder()

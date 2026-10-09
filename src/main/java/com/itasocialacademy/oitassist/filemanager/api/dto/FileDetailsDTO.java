@@ -7,6 +7,7 @@ package com.itasocialacademy.oitassist.filemanager.api.dto;
 public record FileDetailsDTO(
     Long id,
     String originalFilename,
+    String storedFilename,
     String mimeType,
     Long size,
     String fileRole,

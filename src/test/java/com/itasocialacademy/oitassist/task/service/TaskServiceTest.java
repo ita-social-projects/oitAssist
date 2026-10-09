@@ -95,7 +95,7 @@ class TaskServiceTest {
                 .build())));
 
         testFiles = List.of(
-            new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
+            new FileDetailsDTO(1L, "problem.pdf", "stored-problem.pdf", "application/pdf", 2048L, "PROBLEM",
                 "/uploads/task/problem.pdf"));
 
         taskResponse = TaskResponseDTO.builder()
