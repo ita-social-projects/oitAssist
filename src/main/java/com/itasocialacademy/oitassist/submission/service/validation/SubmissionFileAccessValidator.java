@@ -19,7 +19,7 @@ public class SubmissionFileAccessValidator implements FileAccessValidator {
 
     @Override
     public boolean canAccess(Long submissionId, Long userId, Predicate<String> hasRole) {
-        if (hasRole.test("JURY") || hasRole.test("ORG") || hasRole.test("ADMIN")) {
+        if (hasRole.test("JURY") || hasRole.test("ADMIN")) {
             return true;
         }
         if (userId == null) {
