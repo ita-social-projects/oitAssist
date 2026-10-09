@@ -4,8 +4,13 @@ import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.CompetitionTreeDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
+import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Read-only facade exposing minimal Competition/Stage/Tour lookups to other
@@ -70,4 +75,20 @@ public interface CompetitionFacade {
      *         {@code tourIds}
      */
     List<TourDetail> findToursByIds(List<Long> tourIds);
+
+    /**
+     * Retrieves a page of competitions with the given IDs and statuses.
+     *
+     * @param competitionIds Competition IDs, must not be {@code null} (an empty
+     *                       collection yields an empty page)
+     * @param statuses       Competition statuses to keep, must not be {@code null}
+     * @param pageable       Pagination and sorting information, must not be
+     *                       {@code null}
+     * @return a page of matching competitions; IDs with no matching competition
+     *         are silently omitted
+     */
+    Page<CompetitionDetail> findCompetitionsByIdsAndStatuses(
+        Collection<Long> competitionIds,
+        Set<CompetitionStatus> statuses,
+        Pageable pageable);
 }
