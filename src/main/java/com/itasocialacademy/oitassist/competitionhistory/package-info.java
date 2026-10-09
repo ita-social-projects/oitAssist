@@ -6,8 +6,7 @@
         "competition::api",
         "competition::dto",
         "competition::enums",
-        "participation::api",
-        "user::Role"
+        "participation::api"
     })
 package com.itasocialacademy.oitassist.competitionhistory;
 

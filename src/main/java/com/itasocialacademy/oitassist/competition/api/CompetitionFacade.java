@@ -84,8 +84,8 @@ public interface CompetitionFacade {
      * @param statuses       Competition statuses to keep, must not be {@code null}
      * @param pageable       Pagination and sorting information, must not be
      *                       {@code null}
-     * @return a page of matching competitions; IDs with no matching competition
-     *         are silently omitted
+     * @return a page of matching competitions; IDs with no matching competition are
+     *         silently omitted
      */
     Page<CompetitionDetail> findCompetitionsByIdsAndStatuses(
         Collection<Long> competitionIds,
