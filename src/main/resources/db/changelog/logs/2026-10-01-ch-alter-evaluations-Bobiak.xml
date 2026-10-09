@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="alter-evaluations-score-to-double" author="Solomiia Bobiak">
+        <comment>
+            Jury scores are fractional (criteria are weighted 0 / 0.5 / 1), so the score
+            no longer fits an integer column.
+        </comment>
+
+        <modifyDataType tableName="evaluations"
+                        columnName="score"
+                        newDataType="DOUBLE PRECISION"/>
+
+        <rollback>
+            <modifyDataType tableName="evaluations"
+                            columnName="score"
+                            newDataType="INT"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
