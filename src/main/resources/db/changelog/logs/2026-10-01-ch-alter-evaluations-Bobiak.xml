@@ -6,19 +6,13 @@
 
     <changeSet id="alter-evaluations-score-to-double" author="Solomiia Bobiak">
         <comment>
-            Jury scores are fractional (criteria are weighted 0 / 0.5 / 1), so the score
+            Jury scores are fractional, so the score
             no longer fits an integer column.
         </comment>
 
         <modifyDataType tableName="evaluations"
                         columnName="score"
                         newDataType="DOUBLE PRECISION"/>
-
-        <rollback>
-            <modifyDataType tableName="evaluations"
-                            columnName="score"
-                            newDataType="INT"/>
-        </rollback>
     </changeSet>
 
 </databaseChangeLog>

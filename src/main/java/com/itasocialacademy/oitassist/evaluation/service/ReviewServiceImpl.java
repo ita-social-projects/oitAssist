@@ -28,7 +28,6 @@ import com.itasocialacademy.oitassist.taskassignment.api.TaskAssignmentFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -126,9 +125,9 @@ public class ReviewServiceImpl implements ReviewService {
         Map<Long, List<FileDetailsDTO>> filesBySubmission = fileManagerFacade
             .getFilesByEntities(RelatedEntityType.SUBMISSION, submissionIds, Set.of(FileRole.GENERIC));
 
-        Map<Long, Evaluation> evaluations = submissionIds.stream()
-            .map(evaluationRepository::findBySubmissionId)
-            .flatMap(Optional::stream)
+        Map<Long, Evaluation> evaluations = evaluationRepository
+            .findAllBySubmissionIdIn(submissionIds)
+            .stream()
             .collect(Collectors.toMap(Evaluation::getSubmissionId, evaluation -> evaluation));
 
         List<SubmissionForReview> submissions = submissionDetails.stream()
@@ -181,7 +180,7 @@ public class ReviewServiceImpl implements ReviewService {
 
     private void validateScore(Double score, Integer maxPoints) {
         int max = maxPoints != null ? maxPoints : 0;
-        if (score == null || score < MIN_SCORE || score > max) {
+        if (score == null || !Double.isFinite(score) || score < MIN_SCORE || score > max) {
             throw new ValidationException(
                 "Score must be between %d and %d".formatted(MIN_SCORE, max),
                 ErrorCode.COMMON_VALIDATION_FAILED);

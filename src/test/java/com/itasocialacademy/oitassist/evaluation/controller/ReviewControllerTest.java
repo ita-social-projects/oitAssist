@@ -60,7 +60,7 @@ class ReviewControllerTest extends ControllerUnitTest<ReviewController> {
 
     @Test
     void evaluate_validRequest_shouldReturn200() throws Exception {
-        when(reviewService.evaluate(eq(100L), eq(7.5), eq("good work")))
+        when(reviewService.evaluate(100L, 7.5, "good work"))
             .thenReturn(new EvaluationResponse(100L, 7.5, "good work"));
 
         mockMvc.perform(put("/api/v1/review/submissions/{submissionId}/evaluation", 100L)

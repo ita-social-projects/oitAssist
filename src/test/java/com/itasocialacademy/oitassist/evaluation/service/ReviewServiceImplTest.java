@@ -275,7 +275,8 @@ class ReviewServiceImplTest {
             1024L, FileRole.GENERIC.name(), "/api/v1/files/200");
 
         stubTaskForReviewChain(List.of(submission), Map.of(SUBMISSION_ID, List.of(submissionFile)));
-        when(evaluationRepository.findBySubmissionId(SUBMISSION_ID)).thenReturn(Optional.empty());
+        when(evaluationRepository.findAllBySubmissionIdIn(List.of(SUBMISSION_ID)))
+            .thenReturn(List.of());
 
         TaskReviewResponse response = reviewService.getTaskForReview(ASSIGNMENT_ID);
 
@@ -291,7 +292,8 @@ class ReviewServiceImplTest {
     @Test
     void getTaskForReview_ShouldReturnNullScore_WhenSubmissionIsNotEvaluatedYet() {
         stubTaskForReviewChain(List.of(submission), Map.of());
-        when(evaluationRepository.findBySubmissionId(SUBMISSION_ID)).thenReturn(Optional.empty());
+        when(evaluationRepository.findAllBySubmissionIdIn(List.of(SUBMISSION_ID)))
+            .thenReturn(List.of());
 
         TaskReviewResponse response = reviewService.getTaskForReview(ASSIGNMENT_ID);
 
@@ -310,7 +312,8 @@ class ReviewServiceImplTest {
             .build();
 
         stubTaskForReviewChain(List.of(submission), Map.of());
-        when(evaluationRepository.findBySubmissionId(SUBMISSION_ID)).thenReturn(Optional.of(evaluation));
+        when(evaluationRepository.findAllBySubmissionIdIn(List.of(SUBMISSION_ID)))
+            .thenReturn(List.of(evaluation));
 
         TaskReviewResponse response = reviewService.getTaskForReview(ASSIGNMENT_ID);
 
