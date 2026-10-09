@@ -218,4 +218,22 @@ class ParticipationServiceTest {
 
         verify(participationRepository, never()).findAll(any(Specification.class));
     }
+
+    @Test
+    void findCompetitionIdsByUserId_userHasParticipations_shouldReturnCompetitionIds() {
+        when(participationRepository.findDistinctCompetitionIdsByUserId(4L)).thenReturn(List.of(2L, 5L));
+
+        List<Long> result = participationService.findCompetitionIdsByUserId(4L);
+
+        assertEquals(List.of(2L, 5L), result);
+    }
+
+    @Test
+    void findCompetitionIdsByUserId_userHasNoParticipations_shouldReturnEmptyList() {
+        when(participationRepository.findDistinctCompetitionIdsByUserId(4L)).thenReturn(List.of());
+
+        List<Long> result = participationService.findCompetitionIdsByUserId(4L);
+
+        assertTrue(result.isEmpty());
+    }
 }

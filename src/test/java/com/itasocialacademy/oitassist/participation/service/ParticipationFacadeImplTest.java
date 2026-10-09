@@ -1,11 +1,11 @@
 package com.itasocialacademy.oitassist.participation.service;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.itasocialacademy.oitassist.participation.service.interfaces.ParticipationService;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -70,5 +70,15 @@ class ParticipationFacadeImplTest {
                 USER_ID,
                 COMPETITION_ID,
                 STAGE_ID);
+    }
+
+    @Test
+    void findCompetitionIdsByUserId_shouldDelegateToServiceAndReturnResult() {
+        when(participationService.findCompetitionIdsByUserId(USER_ID)).thenReturn(List.of(COMPETITION_ID));
+
+        List<Long> result = participationFacade.findCompetitionIdsByUserId(USER_ID);
+
+        assertEquals(List.of(COMPETITION_ID), result);
+        verify(participationService).findCompetitionIdsByUserId(USER_ID);
     }
 }
