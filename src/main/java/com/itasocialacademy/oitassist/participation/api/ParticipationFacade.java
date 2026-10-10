@@ -4,8 +4,9 @@ import java.util.List;
 
 /**
  * Read-only facade exposing Competition and Stage Participation lookups to
- * other modules (e.g. {@code competition}). Returns boolean values representing
- * participants existing.
+ * other modules (e.g. {@code competition}, {@code competitionhistory}).
+ * Provides boolean checks of participants existing, as well as the IDs of the
+ * competitions a user has participated in.
  */
 public interface ParticipationFacade {
     boolean competitionHasParticipants(Long competitionId);
