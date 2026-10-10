@@ -14,10 +14,11 @@ import org.springframework.data.domain.Pageable;
 
 /**
  * Read-only facade exposing minimal Competition/Stage/Tour lookups to other
- * modules (e.g. {@code participation}). Deliberately returns DTOs rather than
- * JPA entities to keep {@code competition}'s persistence model private and to
- * ensure callers can't bypass the business rules enforced by
- * {@code HierarchyValidator} / {@code CompetitionServiceImpl}.
+ * modules (e.g. {@code participation}, {@code competitionhistory}).
+ * Deliberately returns DTOs rather than JPA entities to keep
+ * {@code competition}'s persistence model private and to ensure callers can't
+ * bypass the business rules enforced by {@code HierarchyValidator} /
+ * {@code CompetitionServiceImpl}.
  */
 public interface CompetitionFacade {
     /**
