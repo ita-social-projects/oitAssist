@@ -131,7 +131,6 @@ public class InvitationServiceImpl implements InvitationService {
         Invitation invitation = getPendingInvitationOrThrow(invitationId);
         Long userId = getCurrentUserIdOrThrow();
         validateUserCanProcessInvitation(userId, invitation);
-        participationRepository.saveAndFlush(participationMapper.toParticipation(invitation));
         invitation.setStatus(RequestStatus.ACCEPTED);
         invitation.setProcessedAt(Instant.now());
 
@@ -141,6 +140,7 @@ public class InvitationServiceImpl implements InvitationService {
         } catch (ObjectOptimisticLockingFailureException e) {
             throw new UnableToProcessInvitationException(INVITATION_WAS_ALREADY_UPDATED);
         }
+        participationRepository.saveAndFlush(participationMapper.toParticipation(invitation));
         return response;
     }
 

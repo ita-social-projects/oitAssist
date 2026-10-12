@@ -94,7 +94,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     public ProcessApplicationResponse acceptRequest(Long applicationId) {
         Application application = getPendingApplicationOrThrow(applicationId);
         Long userId = getCurrentUserIdOrThrow();
-        participationRepository.save(participationMapper.toParticipation(application));
+
         application.setStatus(RequestStatus.ACCEPTED);
         application.setProcessedBy(userId);
         application.setProcessedAt(Instant.now());
@@ -106,6 +106,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         } catch (ObjectOptimisticLockingFailureException e) {
             throw new UnableToProcessApplicationException(APPLICATION_WAS_ALREADY_UPDATED);
         }
+        participationRepository.save(participationMapper.toParticipation(application));
 
         scheduleAcceptedEmail(
             application.getCompetitionId(),
