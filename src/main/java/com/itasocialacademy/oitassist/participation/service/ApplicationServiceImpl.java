@@ -42,6 +42,7 @@ import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.*;
@@ -58,6 +59,8 @@ import org.springframework.stereotype.Service;
 public class ApplicationServiceImpl implements ApplicationService {
     private static final RequestStatus PENDING_STATUS = RequestStatus.PENDING;
     private static final String UNIQUE_PARTICIPATION_CONSTRAINT = "uc_participants_competition_id_stage_id";
+    private static final String APPLICATION_WAS_ALREADY_UPDATED =
+        "This application was already updated by another request";
 
     private final ParticipationRepository participationRepository;
     private final ApplicationRepository applicationRepository;
@@ -95,8 +98,14 @@ public class ApplicationServiceImpl implements ApplicationService {
         application.setStatus(RequestStatus.ACCEPTED);
         application.setProcessedBy(userId);
         application.setProcessedAt(Instant.now());
-        ProcessApplicationResponse response = processApplicationMapper.toResponse(
-            applicationRepository.saveAndFlush(application));
+
+        ProcessApplicationResponse response;
+        try {
+            response = processApplicationMapper.toResponse(
+                applicationRepository.saveAndFlush(application));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new UnableToProcessApplicationException(APPLICATION_WAS_ALREADY_UPDATED);
+        }
 
         scheduleAcceptedEmail(
             application.getCompetitionId(),
@@ -144,6 +153,9 @@ public class ApplicationServiceImpl implements ApplicationService {
                         "Unexpected database constraint violation while accepting application",
                         ErrorCode.DATA_ACCESS_ERROR, e);
                 }
+            } catch (ObjectOptimisticLockingFailureException e) {
+                failed.add(new FailedApplicationDecisionItemResponse(
+                    application.getId(), APPLICATION_WAS_ALREADY_UPDATED));
             }
         }
         AcceptedApplicationListResponse response = AcceptedApplicationListResponse.builder()
@@ -171,9 +183,13 @@ public class ApplicationServiceImpl implements ApplicationService {
         application.setRejectionReason(request.rejectionReason());
         application.setProcessedBy(userId);
         application.setProcessedAt(Instant.now());
-        ProcessApplicationResponse response =
-            processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
 
+        ProcessApplicationResponse response;
+        try {
+            response = processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new UnableToProcessApplicationException(APPLICATION_WAS_ALREADY_UPDATED);
+        }
         scheduleRejectedEmail(
             application.getCompetitionId(),
             application.getStageId(),
@@ -208,11 +224,15 @@ public class ApplicationServiceImpl implements ApplicationService {
                     new FailedApplicationDecisionItemResponse(application.getId(), "Application is not pending"));
                 continue;
             }
-            Application savedApplication = applicationSaver.saveRejectedApplication(
-                userId, application, request.rejectionReason());
-            succeeded.add(
-                new SucceededApplicationRejectingItemResponse(savedApplication.getId(), savedApplication.getUserId(),
-                    RequestStatus.REJECTED));
+            try {
+                Application savedApplication = applicationSaver.saveRejectedApplication(
+                    userId, application, request.rejectionReason());
+                succeeded.add(new SucceededApplicationRejectingItemResponse(
+                    savedApplication.getId(), savedApplication.getUserId(), RequestStatus.REJECTED));
+            } catch (ObjectOptimisticLockingFailureException e) {
+                failed.add(new FailedApplicationDecisionItemResponse(
+                    application.getId(), APPLICATION_WAS_ALREADY_UPDATED));
+            }
         }
         RejectedApplicationListResponse response = RejectedApplicationListResponse.builder()
             .application(new ApplicationDecisionSummary(competitionId, stageId, userId, Instant.now()))
@@ -240,7 +260,13 @@ public class ApplicationServiceImpl implements ApplicationService {
         application.setStatus(RequestStatus.CANCELLED);
         application.setProcessedBy(userId);
         application.setProcessedAt(Instant.now());
-        return processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
+        ProcessApplicationResponse response;
+        try {
+            response = processApplicationMapper.toResponse(applicationRepository.saveAndFlush(application));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new UnableToProcessApplicationException(APPLICATION_WAS_ALREADY_UPDATED);
+        }
+        return response;
     }
 
     @Override

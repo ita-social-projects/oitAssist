@@ -22,6 +22,6 @@ public class InvitationRequestsSaver {
             .status(RequestStatus.PENDING)
             .build();
 
-        return repository.save(invitation);
+        return repository.saveAndFlush(invitation);
     }
 }
