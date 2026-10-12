@@ -50,8 +50,6 @@ public class ApplicationOptimisticLockingIT extends PostgresIntegrationTest {
     @MockitoBean
     private SecurityFacade securityFacade;
 
-    String randomEmail = UUID.randomUUID() + "@mail.com";
-
     @AfterEach
     void cleanUp() {
         applicationRepository.deleteAll();
