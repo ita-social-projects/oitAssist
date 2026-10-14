@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.submission.dao.repository;
 
 import com.itasocialacademy.oitassist.submission.dao.model.Submission;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -34,4 +35,6 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
         Long taskAssignmentId,
         String comment,
         Instant submittedAt);
+
+    List<Submission> findAllByTaskAssignmentId(Long taskAssignmentId);
 }
