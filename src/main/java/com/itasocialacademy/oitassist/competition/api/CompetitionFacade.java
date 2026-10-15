@@ -7,6 +7,7 @@ import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.data.domain.Page;
@@ -14,10 +15,10 @@ import org.springframework.data.domain.Pageable;
 
 /**
  * Read-only facade exposing minimal Competition/Stage/Tour lookups to other
- * modules (e.g. {@code participation}, {@code competitionhistory}).
- * Deliberately returns DTOs rather than JPA entities to keep
- * {@code competition}'s persistence model private and to ensure callers can't
- * bypass the business rules enforced by {@code HierarchyValidator} /
+ * modules (e.g. {@code participation}, {@code competitionhistory},
+ * {@code evaluation}). Deliberately returns DTOs rather than JPA entities to
+ * keep {@code competition}'s persistence model private and to ensure callers
+ * can't bypass the business rules enforced by {@code HierarchyValidator} /
  * {@code CompetitionServiceImpl}.
  */
 public interface CompetitionFacade {
@@ -92,4 +93,16 @@ public interface CompetitionFacade {
         Collection<Long> competitionIds,
         Set<CompetitionStatus> statuses,
         Pageable pageable);
+
+    /**
+     * Retrieves the IDs of all tours belonging to the given competitions, grouped
+     * by competition. A tour belongs to a competition through its stage.
+     *
+     * @param competitionIds Competition IDs, must not be {@code null} (an empty
+     *                       collection yields an empty map)
+     * @return a map from competition ID to the IDs of its tours, in unspecified
+     *         order; competitions that have no tours (or do not exist) are not
+     *         present in the map
+     */
+    Map<Long, List<Long>> findTourIdsByCompetitionIds(Collection<Long> competitionIds);
 }

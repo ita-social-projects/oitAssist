@@ -8,6 +8,7 @@ import com.itasocialacademy.oitassist.competition.api.dto.StageTreeDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
+import com.itasocialacademy.oitassist.competition.dao.model.CompetitionTourView;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import com.itasocialacademy.oitassist.competition.dao.model.Tour;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
@@ -104,6 +105,19 @@ class CompetitionFacadeImpl implements CompetitionFacade {
         return competitionRepository
             .findByIdInAndCompetitionStatusIn(competitionIds, statuses, pageable)
             .map(competitionMapper::toCompetitionDetail);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<Long>> findTourIdsByCompetitionIds(Collection<Long> competitionIds) {
+        Objects.requireNonNull(competitionIds, COMPETITION_ID_MUST_NOT_BE_NULL);
+        if (competitionIds.isEmpty()) {
+            return Map.of();
+        }
+        return tourRepository.findTourIdsByCompetitionIds(competitionIds).stream()
+            .collect(Collectors.groupingBy(
+                CompetitionTourView::getCompetitionId,
+                Collectors.mapping(CompetitionTourView::getTourId, Collectors.toList())));
     }
 
     private CompetitionTreeDetail buildTreeDetail(Competition competitionEntity) {
