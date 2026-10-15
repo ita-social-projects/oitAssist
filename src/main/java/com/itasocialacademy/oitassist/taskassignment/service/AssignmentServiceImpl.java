@@ -216,6 +216,19 @@ public class AssignmentServiceImpl implements AssignmentService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<TaskAssignmentDetailDTO> getTaskAssignmentDetailsByTourIds(Collection<Long> tourIds) {
+        if (tourIds.isEmpty()) {
+            return List.of();
+        }
+        return taskAssignmentRepository
+            .findAllByTourIdIn(tourIds)
+            .stream()
+            .map(taskAssignmentMapper::toDetails)
+            .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean existsByTaskBodyId(Long taskBodyId) {
         return taskAssignmentRepository.existsByTaskBodyId(taskBodyId);
     }

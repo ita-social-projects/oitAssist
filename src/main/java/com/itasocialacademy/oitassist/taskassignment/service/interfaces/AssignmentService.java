@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 public interface AssignmentService {
     /**
@@ -113,6 +114,18 @@ public interface AssignmentService {
      *         found, or empty if no assignment exists with the given id
      */
     Optional<TaskAssignmentDetailDTO> getTaskAssignmentDetailById(Long taskAssignmentId);
+
+    /**
+     * Retrieves detailed information about all task assignments that belong to any
+     * of the given tours, intended for cross-module communication via the facade
+     * layer.
+     *
+     * @param tourIds the ids of the tours to retrieve assignments for; an empty
+     *                collection results in an empty list
+     * @return a list of {@link TaskAssignmentDetailDTO} for all assignments of the
+     *         given tours, or an empty list if there are none
+     */
+    List<TaskAssignmentDetailDTO> getTaskAssignmentDetailsByTourIds(Collection<Long> tourIds);
 
     /**
      * Checks whether a task assignment exists for the given task body id.
