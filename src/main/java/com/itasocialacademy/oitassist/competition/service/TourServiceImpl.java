@@ -134,11 +134,6 @@ public class TourServiceImpl implements TourService {
         }
         tour.setExecutionStatus(request.status());
 
-        // place for publishing events (TBD)
-        // if (request.status() == ExecutionStatus.FINISHED) {
-        // eventPublisher.publishEvent(new TourFinishedEvent(tour.getId()));
-        // }
-
         Tour updatedTour = tourRepository.save(tour);
         return mapper.toResponse(updatedTour);
     }

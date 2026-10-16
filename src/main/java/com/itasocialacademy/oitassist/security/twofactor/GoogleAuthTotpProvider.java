@@ -70,7 +70,7 @@ public class GoogleAuthTotpProvider implements TotpProvider {
         int candidateCode;
         try {
             candidateCode = Integer.parseInt(code);
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             return Optional.empty();
         }
 

@@ -103,6 +103,9 @@ class CompetitionHierarchyConcurrencyIT extends PostgresIntegrationTest {
                     new ChangeCompetitionStatusRequest(CompetitionStatus.ENROLLMENT, competition.getVersion());
                 competitionService.changeStatus(competition.getId(), request);
             } catch (RuntimeException _) {
+                // Expected: exactly one of the two concurrent operations loses the race
+                // and throws (e.g. due to version/row-lock conflict) — the outcome is
+                // verified below via the final DB state, not here.
             }
         }, executor);
 
@@ -112,6 +115,9 @@ class CompetitionHierarchyConcurrencyIT extends PostgresIntegrationTest {
             try {
                 tourService.delete(stage.getId(), tour.getId());
             } catch (RuntimeException _) {
+                // Expected: exactly one of the two concurrent operations loses the race
+                // and throws (e.g. due to version/row-lock conflict) — the outcome is
+                // verified below via the final DB state, not here.
             }
         }, executor);
 

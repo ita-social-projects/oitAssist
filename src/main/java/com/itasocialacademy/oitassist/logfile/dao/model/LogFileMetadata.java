@@ -1,4 +1,4 @@
-package com.itasocialacademy.oitassist.logfile.dao;
+package com.itasocialacademy.oitassist.logfile.dao.model;
 
 import java.time.Instant;
 import java.util.Objects;
