@@ -825,4 +825,17 @@ class HierarchyValidatorTest {
         assertThrows(StaleEntityVersionException.class,
             () -> validator.validateEntityVersion(1L, null, Competition.class, 1L));
     }
+
+    @Test
+    void validateStageHasAtLeastOneTour_hasTour_shouldPass() {
+        when(tourRepository.existsByStageId(anyLong())).thenReturn(true);
+        validator.validateStageHasAtLeastOneTour(1L);
+    }
+
+    @Test
+    void validateStageHasAtLeastOneTour_noTour_shouldThrow() {
+        when(tourRepository.existsByStageId(anyLong())).thenReturn(false);
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> validator.validateStageHasAtLeastOneTour(1L));
+    }
 }

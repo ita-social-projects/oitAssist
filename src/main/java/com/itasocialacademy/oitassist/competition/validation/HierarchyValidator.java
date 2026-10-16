@@ -459,4 +459,12 @@ public class HierarchyValidator {
                     .formatted(competition.getCompetitionStatus()));
         }
     }
+
+    @Transactional(readOnly = true)
+    public void validateStageHasAtLeastOneTour(Long stageId) {
+        if (!tourRepository.existsByStageId(stageId)) {
+            throw new CompetitionHierarchyValidationException(
+                "Cannot start stage: Stage with ID: {%s} must contain at least one tour.".formatted(stageId));
+        }
+    }
 }
