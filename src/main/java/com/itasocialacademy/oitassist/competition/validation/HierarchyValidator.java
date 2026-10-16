@@ -464,7 +464,7 @@ public class HierarchyValidator {
     public void validateStageHasAtLeastOneTour(Long stageId) {
         if (!tourRepository.existsByStageId(stageId)) {
             throw new CompetitionHierarchyValidationException(
-                "Cannot publish: All stages must have at least one tour.");
+                "Cannot start stage: Stage with ID: {%s} must contain at least one tour.".formatted(stageId));
         }
     }
 }
