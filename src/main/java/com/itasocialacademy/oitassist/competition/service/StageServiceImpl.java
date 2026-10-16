@@ -134,6 +134,7 @@ public class StageServiceImpl implements StageService {
         validator.validateStageStatusTransition(stage.getStatus(), request.status());
 
         if (request.status() == StageStatus.IN_PROGRESS) {
+            validator.validateStageHasAtLeastOneTour(stageId);
             validator.validateStageEligibilityToStart(stage);
         } else if (request.status() == StageStatus.FINISHED) {
             validator.validateAllToursCompletedForStage(stageId);
