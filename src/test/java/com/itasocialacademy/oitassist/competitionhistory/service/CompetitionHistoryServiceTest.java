@@ -6,6 +6,8 @@ import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competitionhistory.dto.response.CompetitionHistoryResponse;
 import com.itasocialacademy.oitassist.competitionhistory.mapper.CompetitionHistoryMapper;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
+import com.itasocialacademy.oitassist.evaluation.api.dto.CompetitionScore;
+import com.itasocialacademy.oitassist.evaluation.api.facade.EvaluationFacade;
 import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -30,6 +33,7 @@ class CompetitionHistoryServiceTest {
     private static final Long USER_ID = 4L;
     private static final Set<CompetitionStatus> HISTORY_STATUSES =
         Set.of(CompetitionStatus.FINISHED, CompetitionStatus.ARCHIVED);
+    private static final CompetitionScore SCORE = new CompetitionScore(28.5, 45);
 
     @Mock
     private SecurityFacade securityFacade;
@@ -37,6 +41,8 @@ class CompetitionHistoryServiceTest {
     private ParticipationFacade participationFacade;
     @Mock
     private CompetitionFacade competitionFacade;
+    @Mock
+    private EvaluationFacade evaluationFacade;
     @Mock
     private CompetitionHistoryMapper mapper;
 
@@ -67,7 +73,8 @@ class CompetitionHistoryServiceTest {
         when(participationFacade.findCompetitionIdsByUserId(USER_ID)).thenReturn(List.of(2L));
         when(competitionFacade.findCompetitionsByIdsAndStatuses(List.of(2L), HISTORY_STATUSES, pageable))
             .thenReturn(new PageImpl<>(List.of(competitionDetail), pageable, 1));
-        when(mapper.toResponse(competitionDetail)).thenReturn(historyResponse);
+        when(evaluationFacade.getUserScores(USER_ID, List.of(2L))).thenReturn(Map.of(2L, SCORE));
+        when(mapper.toResponse(competitionDetail, SCORE)).thenReturn(historyResponse);
 
         Page<CompetitionHistoryResponse> result = historyService.getHistory(USER_ID, pageable);
 
@@ -83,7 +90,8 @@ class CompetitionHistoryServiceTest {
         when(participationFacade.findCompetitionIdsByUserId(USER_ID)).thenReturn(List.of(2L));
         when(competitionFacade.findCompetitionsByIdsAndStatuses(List.of(2L), HISTORY_STATUSES, pageable))
             .thenReturn(new PageImpl<>(List.of(competitionDetail), pageable, 1));
-        when(mapper.toResponse(competitionDetail)).thenReturn(historyResponse);
+        when(evaluationFacade.getUserScores(USER_ID, List.of(2L))).thenReturn(Map.of(2L, SCORE));
+        when(mapper.toResponse(competitionDetail, SCORE)).thenReturn(historyResponse);
 
         Page<CompetitionHistoryResponse> result = historyService.getHistory(USER_ID, pageable);
 
@@ -99,18 +107,18 @@ class CompetitionHistoryServiceTest {
         assertThrows(InsufficientPermissionsException.class,
             () -> historyService.getHistory(USER_ID, pageable));
 
-        verifyNoInteractions(participationFacade, competitionFacade, mapper);
+        verifyNoInteractions(participationFacade, competitionFacade, evaluationFacade, mapper);
     }
 
     @Test
-    void getHistory_noParticipations_shouldReturnEmptyPage() {
+    void getHistory_noParticipation_shouldReturnEmptyPage() {
         when(securityFacade.isOwner(USER_ID)).thenReturn(true);
         when(participationFacade.findCompetitionIdsByUserId(USER_ID)).thenReturn(List.of());
 
         Page<CompetitionHistoryResponse> result = historyService.getHistory(USER_ID, pageable);
 
         assertTrue(result.isEmpty());
-        verifyNoInteractions(competitionFacade, mapper);
+        verifyNoInteractions(competitionFacade, evaluationFacade, mapper);
     }
 
     @Test
@@ -123,6 +131,6 @@ class CompetitionHistoryServiceTest {
         Page<CompetitionHistoryResponse> result = historyService.getHistory(USER_ID, pageable);
 
         assertTrue(result.isEmpty());
-        verifyNoInteractions(mapper);
+        verifyNoInteractions(evaluationFacade, mapper);
     }
 }

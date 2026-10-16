@@ -6,7 +6,9 @@
         "competition::api",
         "competition::dto",
         "competition::enums",
-        "participation::api"
+        "participation::api",
+        "evaluation::api",
+        "evaluation::dto"
     })
 package com.itasocialacademy.oitassist.competitionhistory;
 
