@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.competitionhistory.dto.response.Competitio
 import com.itasocialacademy.oitassist.competitionhistory.service.interfaces.CompetitionHistoryService;
 import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.core.web.ErrorResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -28,10 +29,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class CompetitionHistoryController {
     private final CompetitionHistoryService competitionHistoryService;
 
+    @Operation(
+        summary = "Get the user's competition history",
+        description = "Returns a page of the user's finished competitions with the user's total score "
+            + "and the maximum possible score. Available to the owner of the history and to administrators.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "History page returned",
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = PageResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid user id",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "401", description = "Not authenticated",
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class))),
