@@ -10,6 +10,8 @@ import com.itasocialacademy.oitassist.filemanager.dao.model.FileAsset;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileStatus;
 import com.itasocialacademy.oitassist.filemanager.dao.repository.FileRepository;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.request.UpdateFileRoleRequestDto;
+import com.itasocialacademy.oitassist.filemanager.dto.response.FileResourceDto;
 import com.itasocialacademy.oitassist.filemanager.dto.response.FileResponseDto;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileAssetNotFoundException;
 import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
@@ -33,11 +35,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import com.itasocialacademy.oitassist.filemanager.access.FileAccessValidator;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileAccessValidatorResolver;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import com.itasocialacademy.oitassist.filemanager.validation.enums.AllowedExtension;
 import org.springframework.data.jpa.domain.Specification;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -46,6 +54,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class FileServiceImplTest {
 
+    private static final String ROLE_ADMIN = "ADMIN";
     @Mock
     private FileRepository fileRepository;
 
@@ -75,6 +84,12 @@ class FileServiceImplTest {
 
     @Mock
     private FilePolicy filePolicy;
+
+    @Mock
+    private FileAccessValidatorResolver accessValidatorResolver;
+
+    @Mock
+    private FileAccessValidator accessValidator;
 
     private Long fileId;
     private Long nonExistentId;
@@ -696,20 +711,18 @@ class FileServiceImplTest {
         problemFile.setFileRole(FileRole.PROBLEM);
 
         Set<FileRole> roles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
-        FileDetailsDTO expectedDto = new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
-            "/uploads/task/problem.pdf");
+        FileDetailsDTO expectedDto = new FileDetailsDTO(1L, "problem.pdf", "stored-problem.pdf",
+            "application/pdf", 2048L, "PROBLEM", "/api/v1/files/1");
 
         when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(problemFile));
-        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
-        when(storageProvider.getFileUrl("task/problem.pdf")).thenReturn("/uploads/task/problem.pdf");
-        when(fileMapper.toDetails(problemFile, "/uploads/task/problem.pdf")).thenReturn(expectedDto);
+        when(fileMapper.toDetails(problemFile, "/api/v1/files/1")).thenReturn(expectedDto);
 
         List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
 
         assertEquals(1, result.size());
         assertEquals(expectedDto, result.getFirst());
         verify(fileRepository).findAll(any(Specification.class));
-        verify(fileMapper).toDetails(problemFile, "/uploads/task/problem.pdf");
+        verify(fileMapper).toDetails(problemFile, "/api/v1/files/1");
     }
 
     @Test
@@ -740,25 +753,21 @@ class FileServiceImplTest {
         referenceFile.setFileRole(FileRole.REFERENCE);
 
         Set<FileRole> roles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
-        FileDetailsDTO problemDto = new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 1024L, "PROBLEM",
-            "/uploads/task/problem.pdf");
-        FileDetailsDTO referenceDto = new FileDetailsDTO(2L, "reference.docx",
+        FileDetailsDTO problemDto = new FileDetailsDTO(1L, "problem.pdf", "stored-problem.pdf",
+            "application/pdf", 1024L, "PROBLEM", "/api/v1/files/1");
+        FileDetailsDTO referenceDto = new FileDetailsDTO(2L, "reference.docx", "stored-reference.docx",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 2048L, "REFERENCE",
-            "/uploads/task/reference.docx");
+            "/api/v1/files/2");
 
         when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(problemFile, referenceFile));
-        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
-        when(storageProvider.getFileUrl("task/problem.pdf")).thenReturn("/uploads/task/problem.pdf");
-        when(storageProvider.getFileUrl("task/reference.docx")).thenReturn("/uploads/task/reference.docx");
-        when(fileMapper.toDetails(problemFile, "/uploads/task/problem.pdf")).thenReturn(problemDto);
-        when(fileMapper.toDetails(referenceFile, "/uploads/task/reference.docx")).thenReturn(referenceDto);
+        when(fileMapper.toDetails(problemFile, "/api/v1/files/1")).thenReturn(problemDto);
+        when(fileMapper.toDetails(referenceFile, "/api/v1/files/2")).thenReturn(referenceDto);
 
         List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
 
         assertEquals(2, result.size());
         assertEquals(problemDto, result.get(0));
         assertEquals(referenceDto, result.get(1));
-        verify(providerResolver, times(2)).resolve(StorageProviderType.LOCAL);
         verify(fileMapper, times(2)).toDetails(any(), anyString());
     }
 
@@ -771,19 +780,852 @@ class FileServiceImplTest {
         solutionFile.setFileRole(FileRole.SOLUTION);
 
         Set<FileRole> roles = Set.of(FileRole.SOLUTION);
-        FileDetailsDTO solutionDto = new FileDetailsDTO(3L, "solution.zip", "application/zip", 4096L, "SOLUTION",
-            "/uploads/task/solution.zip");
+        FileDetailsDTO solutionDto = new FileDetailsDTO(3L, "solution.zip", "stored-solution.zip",
+            "application/zip", 4096L, "SOLUTION", "/api/v1/files/3");
 
         when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(solutionFile));
-        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
-        when(storageProvider.getFileUrl("task/solution.zip")).thenReturn("/uploads/task/solution.zip");
-        when(fileMapper.toDetails(solutionFile, "/uploads/task/solution.zip")).thenReturn(solutionDto);
+        when(fileMapper.toDetails(solutionFile, "/api/v1/files/3")).thenReturn(solutionDto);
 
         List<FileDetailsDTO> result = fileService.getFilesByEntity(RelatedEntityType.TASK, 10L, roles);
 
         assertEquals(1, result.size());
         assertEquals("SOLUTION", result.getFirst().fileRole());
         verify(fileRepository).findAll(any(Specification.class));
+    }
+
+    // --- uploadToFileDetails Tests ---
+
+    @Test
+    void uploadToFileDetails_ShouldReturnEmptyList_WhenNoFilesProvided() {
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any()))
+            .thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any()))
+            .thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any()))
+            .thenReturn(ValidationResult.ok());
+
+        List<FileDetailsDTO> result =
+            fileService.uploadToFileDetails(List.of(), request);
+
+        assertTrue(result.isEmpty());
+
+        verify(validationStrategyResolver)
+            .resolve(RelatedEntityType.NEWS, FileRole.GENERIC);
+        verify(filePolicyResolver)
+            .resolve(RelatedEntityType.NEWS, FileRole.GENERIC);
+
+        verifyNoInteractions(providerResolver, fileRepository, fileMapper);
+    }
+
+    @Test
+    void uploadToFileDetails_ShouldThrowAuthorizationException_WhenUserNotAuthenticated() {
+        MultipartFile file = new MockMultipartFile(
+            "file",
+            "test.jpg",
+            "image/jpeg",
+            new byte[10]);
+
+        List<MultipartFile> files = List.of(file);
+
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.empty());
+
+        assertThrows(
+            AuthorizationException.class,
+            () -> fileService.uploadToFileDetails(files, request));
+
+        verifyNoInteractions(
+            validationStrategyResolver,
+            filePolicyResolver,
+            providerResolver,
+            fileRepository,
+            fileMapper);
+    }
+
+    @Test
+    void uploadToFileDetails_ShouldThrowValidationException_WhenValidationFails() {
+        MultipartFile file = new MockMultipartFile(
+            "file",
+            "photo.jpg",
+            "image/jpeg",
+            new byte[512]);
+
+        List<MultipartFile> files = List.of(file);
+
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any()))
+            .thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any()))
+            .thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any()))
+            .thenReturn(ValidationResult.fail("File size exceeded"));
+
+        ValidationException exception = assertThrows(
+            ValidationException.class,
+            () -> fileService.uploadToFileDetails(files, request));
+
+        assertTrue(exception.getMessage().contains("File size exceeded"));
+
+        verifyNoInteractions(providerResolver);
+        verify(fileRepository, never()).save(any());
+        verify(fileMapper, never()).toDetails(any(), any());
+    }
+
+    @Test
+    void uploadToFileDetails_ShouldReturnMappedDtos_WhenFilesAreValid() {
+        MultipartFile file = new MockMultipartFile(
+            "file",
+            "photo.jpg",
+            "image/jpeg",
+            new byte[512]);
+
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        FileAsset savedAsset = new FileAsset();
+        savedAsset.setId(10L);
+        savedAsset.setStorageKey("news/stored.jpg");
+
+        ArgumentCaptor<FileAsset> captor =
+            ArgumentCaptor.forClass(FileAsset.class);
+
+        FileDetailsDTO expectedDto = new FileDetailsDTO(
+            10L,
+            "photo.jpg",
+            "stored-photo.jpg",
+            "image/jpeg",
+            512L,
+            FileRole.GENERIC.name(),
+            "/api/v1/files/10");
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any()))
+            .thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any()))
+            .thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any()))
+            .thenReturn(ValidationResult.ok());
+
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+        when(storageProvider.upload(any(), anyString(), anyString()))
+            .thenReturn("news/stored.jpg");
+        when(storageProvider.getType())
+            .thenReturn(StorageProviderType.LOCAL);
+        when(fileRepository.save(any())).thenReturn(savedAsset);
+
+        when(fileMapper.toDetails(
+            savedAsset,
+            "/api/v1/files/10")).thenReturn(expectedDto);
+
+        List<FileDetailsDTO> result =
+            fileService.uploadToFileDetails(List.of(file), request);
+
+        assertEquals(List.of(expectedDto), result);
+
+        verify(fileRepository).save(captor.capture());
+
+        FileAsset saved = captor.getValue();
+
+        assertAll(
+            () -> assertEquals("photo.jpg", saved.getOriginalFilename()),
+            () -> assertEquals("image/jpeg", saved.getMimeType()),
+            () -> assertEquals(512L, saved.getSize()),
+            () -> assertEquals(RelatedEntityType.NEWS, saved.getRelatedEntityType()),
+            () -> assertEquals(1L, saved.getRelatedEntityId()),
+            () -> assertEquals(userId, saved.getUserId()),
+            () -> assertEquals(FileStatus.ATTACHED, saved.getStatus()));
+
+        verify(providerResolver).resolveDefault();
+        verify(fileMapper).toDetails(
+            savedAsset,
+            "/api/v1/files/10");
+
+        assertEquals(List.of(expectedDto), result);
+
+    }
+
+    @Test
+    void uploadToFileDetails_ShouldProcessEachFileIndependently_WhenMultipleFilesProvided() {
+        MultipartFile file1 = new MockMultipartFile(
+            "file",
+            "a.jpg",
+            "image/jpeg",
+            new byte[256]);
+
+        MultipartFile file2 = new MockMultipartFile(
+            "file",
+            "b.jpg",
+            "image/jpeg",
+            new byte[512]);
+
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        FileAsset asset1 = new FileAsset();
+        asset1.setId(1L);
+        asset1.setStorageKey("news/a.jpg");
+
+        FileAsset asset2 = new FileAsset();
+        asset2.setId(2L);
+        asset2.setStorageKey("news/b.jpg");
+
+        FileDetailsDTO dto1 = new FileDetailsDTO(
+            1L,
+            "a.jpg",
+            "stored-a.jpg",
+            "image/jpeg",
+            256L,
+            FileRole.GENERIC.name(),
+            "/api/v1/files/1");
+
+        FileDetailsDTO dto2 = new FileDetailsDTO(
+            2L,
+            "b.jpg",
+            "stored-b.jpg",
+            "image/jpeg",
+            512L,
+            FileRole.GENERIC.name(),
+            "/api/v1/files/2");
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any()))
+            .thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any()))
+            .thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any()))
+            .thenReturn(ValidationResult.ok());
+
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+
+        when(storageProvider.upload(any(), anyString(), anyString()))
+            .thenReturn("news/a.jpg")
+            .thenReturn("news/b.jpg");
+
+        when(storageProvider.getType())
+            .thenReturn(StorageProviderType.LOCAL);
+
+        when(fileRepository.save(any()))
+            .thenReturn(asset1)
+            .thenReturn(asset2);
+
+        when(fileMapper.toDetails(
+            asset1,
+            "/api/v1/files/1")).thenReturn(dto1);
+
+        when(fileMapper.toDetails(
+            asset2,
+            "/api/v1/files/2")).thenReturn(dto2);
+
+        List<FileDetailsDTO> result =
+            fileService.uploadToFileDetails(
+                List.of(file1, file2),
+                request);
+
+        assertEquals(List.of(dto1, dto2), result);
+
+        verify(providerResolver, times(2)).resolveDefault();
+        verify(fileRepository, times(2)).save(any());
+        verify(fileMapper, times(2)).toDetails(any(), anyString());
+    }
+
+    @Test
+    void uploadToFileDetails_ShouldPassGeneratedFileUrlToMapper() {
+        MultipartFile file = new MockMultipartFile(
+            "file",
+            "photo.jpg",
+            "image/jpeg",
+            new byte[100]);
+
+        FileUploadRequestDto request =
+            uploadRequest(RelatedEntityType.NEWS, 1L);
+
+        FileAsset savedAsset = new FileAsset();
+        savedAsset.setId(10L);
+        savedAsset.setStorageKey("news/photo.jpg");
+
+        FileDetailsDTO expectedDto = new FileDetailsDTO(
+            10L,
+            "photo.jpg",
+            "stored-photo.jpg",
+            "image/jpeg",
+            512L,
+            FileRole.GENERIC.name(),
+            "/api/v1/files/10");
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(validationStrategyResolver.resolve(any(), any()))
+            .thenReturn(validationStrategy);
+        when(filePolicyResolver.resolve(any(), any()))
+            .thenReturn(filePolicy);
+        when(validationStrategy.validate(any(), any(), any()))
+            .thenReturn(ValidationResult.ok());
+
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+        when(storageProvider.upload(any(), anyString(), anyString()))
+            .thenReturn("news/photo.jpg");
+        when(storageProvider.getType())
+            .thenReturn(StorageProviderType.LOCAL);
+
+        when(fileRepository.save(any()))
+            .thenReturn(savedAsset);
+
+        when(fileMapper.toDetails(
+            savedAsset,
+            "/api/v1/files/10")).thenReturn(expectedDto);
+
+        FileDetailsDTO result =
+            fileService.uploadToFileDetails(List.of(file), request)
+                .getFirst();
+
+        assertSame(expectedDto, result);
+
+        verify(fileMapper)
+            .toDetails(
+                savedAsset,
+                "/api/v1/files/10");
+    }
+
+    // --- detachFiles Tests ---
+
+    @Test
+    void detachFiles_ShouldDoNothing_WhenFileIdsAreNull() {
+        fileService.detachFiles(
+            RelatedEntityType.NEWS,
+            1L,
+            null,
+            userId);
+
+        verifyNoInteractions(fileRepository, securityFacade);
+    }
+
+    @Test
+    void detachFiles_ShouldDoNothing_WhenFileIdsAreEmpty() {
+        fileService.detachFiles(
+            RelatedEntityType.NEWS,
+            1L,
+            List.of(),
+            userId);
+
+        verifyNoInteractions(fileRepository, securityFacade);
+    }
+
+    @Test
+    void detachFiles_ShouldSoftDeleteFiles_WhenUserIsOwner() {
+        FileAsset file1 = createFile(
+            1L,
+            userId,
+            RelatedEntityType.NEWS,
+            10L);
+        FileAsset file2 = createFile(
+            2L,
+            userId,
+            RelatedEntityType.NEWS,
+            10L);
+
+        List<Long> fileIds = List.of(1L, 2L);
+
+        when(fileRepository.findAllById(fileIds))
+            .thenReturn(List.of(file1, file2));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        fileService.detachFiles(
+            RelatedEntityType.NEWS,
+            10L,
+            fileIds,
+            userId);
+
+        assertAll(
+            () -> assertEquals(FileStatus.SOFT_DELETED, file1.getStatus()),
+            () -> assertEquals(FileStatus.SOFT_DELETED, file2.getStatus()),
+            () -> assertNotNull(file1.getDeletedAt()),
+            () -> assertNotNull(file2.getDeletedAt()));
+
+        verify(fileRepository).findAllById(fileIds);
+        verify(fileRepository).saveAll(List.of(file1, file2));
+    }
+
+    @Test
+    void detachFiles_ShouldAllowAdminToDetachAnotherUsersFiles() {
+        FileAsset file = createFile(
+            fileId,
+            999L,
+            RelatedEntityType.NEWS,
+            10L);
+
+        when(fileRepository.findAllById(List.of(fileId)))
+            .thenReturn(List.of(file));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(true);
+
+        fileService.detachFiles(
+            RelatedEntityType.NEWS,
+            10L,
+            List.of(fileId),
+            userId);
+
+        assertEquals(FileStatus.SOFT_DELETED, file.getStatus());
+        assertNotNull(file.getDeletedAt());
+
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
+    @Test
+    void detachFiles_ShouldThrowValidationException_WhenFileBelongsToAnotherEntity() {
+        FileAsset file = createFile(
+            fileId,
+            userId,
+            RelatedEntityType.TASK,
+            999L);
+
+        List<Long> fileIds = List.of(fileId);
+
+        when(fileRepository.findAllById(fileIds))
+            .thenReturn(List.of(file));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        ValidationException exception = assertThrows(
+            ValidationException.class,
+            () -> fileService.detachFiles(
+                RelatedEntityType.NEWS,
+                10L,
+                fileIds,
+                userId));
+
+        assertTrue(exception.getMessage().contains("does not belong"));
+        assertEquals(FileStatus.ATTACHED, file.getStatus());
+        assertNull(file.getDeletedAt());
+
+        verify(fileRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void detachFiles_ShouldThrowAuthorizationException_WhenUserIsNotOwnerAndNotAdmin() {
+        FileAsset file = createFile(
+            fileId,
+            999L,
+            RelatedEntityType.NEWS,
+            10L);
+
+        List<Long> fileIds = List.of(fileId);
+
+        when(fileRepository.findAllById(fileIds))
+            .thenReturn(List.of(file));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        assertThrows(
+            AuthorizationException.class,
+            () -> fileService.detachFiles(
+                RelatedEntityType.NEWS,
+                10L,
+                fileIds,
+                userId));
+
+        assertEquals(FileStatus.ATTACHED, file.getStatus());
+        assertNull(file.getDeletedAt());
+
+        verify(fileRepository, never()).saveAll(any());
+    }
+
+    // --- detachAllFilesByEntityId Tests ---
+
+    @Test
+    void detachAllFilesByEntityId_ShouldDetachAllAttachedFiles() {
+        FileAsset file1 = createFile(
+            1L,
+            userId,
+            RelatedEntityType.NEWS,
+            10L);
+        FileAsset file2 = createFile(
+            2L,
+            userId,
+            RelatedEntityType.NEWS,
+            10L);
+
+        List<FileAsset> files = List.of(file1, file2);
+
+        when(fileRepository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED))
+            .thenReturn(files);
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        fileService.detachAllFilesByEntityId(
+            RelatedEntityType.NEWS,
+            10L,
+            userId);
+
+        assertAll(
+            () -> assertEquals(FileStatus.SOFT_DELETED, file1.getStatus()),
+            () -> assertEquals(FileStatus.SOFT_DELETED, file2.getStatus()),
+            () -> assertNotNull(file1.getDeletedAt()),
+            () -> assertNotNull(file2.getDeletedAt()));
+
+        verify(fileRepository)
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED);
+
+        verify(fileRepository).saveAll(files);
+    }
+
+    @Test
+    void detachAllFilesByEntityId_ShouldAllowAdminToDetachAnotherUsersFiles() {
+        FileAsset file = createFile(
+            fileId,
+            999L,
+            RelatedEntityType.NEWS,
+            10L);
+
+        when(fileRepository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED))
+            .thenReturn(List.of(file));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(true);
+
+        fileService.detachAllFilesByEntityId(
+            RelatedEntityType.NEWS,
+            10L,
+            userId);
+
+        assertEquals(FileStatus.SOFT_DELETED, file.getStatus());
+        assertNotNull(file.getDeletedAt());
+
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
+    @Test
+    void detachAllFilesByEntityId_ShouldDoNothing_WhenNoAttachedFilesFound() {
+        when(fileRepository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED))
+            .thenReturn(List.of());
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        fileService.detachAllFilesByEntityId(
+            RelatedEntityType.NEWS,
+            10L,
+            userId);
+
+        verify(fileRepository)
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED);
+
+        verify(fileRepository).saveAll(List.of());
+    }
+
+    @Test
+    void detachAllFilesByEntityId_ShouldThrowAuthorizationException_WhenUserIsNotOwner() {
+        FileAsset file = createFile(
+            fileId,
+            999L,
+            RelatedEntityType.NEWS,
+            10L);
+
+        when(fileRepository
+            .findByRelatedEntityTypeAndRelatedEntityIdAndStatus(
+                RelatedEntityType.NEWS,
+                10L,
+                FileStatus.ATTACHED))
+            .thenReturn(List.of(file));
+
+        when(securityFacade.hasRole(ROLE_ADMIN))
+            .thenReturn(false);
+
+        assertThrows(
+            AuthorizationException.class,
+            () -> fileService.detachAllFilesByEntityId(
+                RelatedEntityType.NEWS,
+                10L,
+                userId));
+
+        assertEquals(FileStatus.ATTACHED, file.getStatus());
+        assertNull(file.getDeletedAt());
+
+        verify(fileRepository, never()).saveAll(any());
+    }
+
+    // --- detachFilesForMultiOwnerEntity Tests ---
+
+    @Test
+    void detachFilesForMultiOwnerEntity_ShouldSoftDelete_WhenFileIsAttached() {
+        FileAsset file = new FileAsset();
+        file.setId(1L);
+        file.setStatus(FileStatus.ATTACHED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(42L);
+        file.setDeletedAt(null);
+
+        when(fileRepository.findAllById(List.of(1L))).thenReturn(List.of(file));
+
+        fileService.detachFilesForMultiOwnerEntity(RelatedEntityType.TASK, 42L, List.of(1L));
+
+        assertEquals(FileStatus.SOFT_DELETED, file.getStatus());
+        assertNotNull(file.getDeletedAt());
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
+    @Test
+    void detachFilesForMultiOwnerEntity_ShouldIgnore_WhenFileIsAlreadySoftDeleted() {
+        OffsetDateTime originalDeletedAt = OffsetDateTime.now().minusDays(1);
+        FileAsset file = new FileAsset();
+        file.setId(1L);
+        file.setStatus(FileStatus.SOFT_DELETED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(42L);
+        file.setDeletedAt(originalDeletedAt);
+
+        when(fileRepository.findAllById(List.of(1L))).thenReturn(List.of(file));
+
+        fileService.detachFilesForMultiOwnerEntity(RelatedEntityType.TASK, 42L, List.of(1L));
+
+        assertEquals(FileStatus.SOFT_DELETED, file.getStatus());
+        assertEquals(originalDeletedAt, file.getDeletedAt()); // Should not be overwritten
+        verify(fileRepository).saveAll(List.of(file)); // Note: saveAll is still called, but entity is unchanged
+    }
+
+    @Test
+    void detachFilesForMultiOwnerEntity_ShouldIgnore_WhenFileIsHardDeleted() {
+        OffsetDateTime originalDeletedAt = OffsetDateTime.now().minusDays(1);
+        FileAsset file = new FileAsset();
+        file.setId(1L);
+        file.setStatus(FileStatus.HARD_DELETED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(42L);
+        file.setDeletedAt(originalDeletedAt);
+
+        when(fileRepository.findAllById(List.of(1L))).thenReturn(List.of(file));
+
+        fileService.detachFilesForMultiOwnerEntity(RelatedEntityType.TASK, 42L, List.of(1L));
+
+        assertEquals(FileStatus.HARD_DELETED, file.getStatus());
+        assertEquals(originalDeletedAt, file.getDeletedAt());
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
+    // --- Update Role Tests ---
+
+    @Test
+    void updateRole_ShouldUpdateRoleGeneralAndReturnDto_WhenValidRequest() {
+        UpdateFileRoleRequestDto requestDto = new UpdateFileRoleRequestDto(FileRole.PROBLEM);
+
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setUserId(userId);
+        file.setStatus(FileStatus.ATTACHED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(1L);
+        file.setFileRole(FileRole.REFERENCE);
+        file.setStorageProvider(StorageProviderType.LOCAL);
+        file.setStorageKey("task/problem.docx");
+        file.setOriginalFilename("problem.docx");
+
+        FileResponseDto expectedDto = FileResponseDto.builder().id(fileId).build();
+
+        FilePolicy newRolePolicy = mock(FilePolicy.class);
+        when(newRolePolicy.getAllowedExtensions()).thenReturn(Set.of(AllowedExtension.DOCX));
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(filePolicyResolver.resolve(RelatedEntityType.TASK, FileRole.PROBLEM)).thenReturn(newRolePolicy);
+        when(fileRepository.save(any(FileAsset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(fileMapper.toDto(any(FileAsset.class))).thenReturn(expectedDto);
+
+        FileResponseDto result = fileService.updateRoleGeneral(fileId, requestDto);
+
+        assertNotNull(result);
+        assertEquals(expectedDto, result);
+        assertEquals(FileRole.PROBLEM, file.getFileRole());
+
+        verify(fileRepository).save(file);
+        verify(filePolicyResolver).resolve(RelatedEntityType.TASK, FileRole.PROBLEM);
+        verify(newRolePolicy).getAllowedExtensions();
+    }
+
+    @Test
+    void updateRole_General_ShouldThrowValidationException_WhenFileNotAttached() {
+        UpdateFileRoleRequestDto requestDto = new UpdateFileRoleRequestDto(FileRole.PROBLEM);
+
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setUserId(userId);
+        file.setStatus(FileStatus.TEMPORARY);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+
+        ValidationException exception =
+            assertThrows(ValidationException.class, () -> fileService.updateRoleGeneral(fileId, requestDto));
+        assertTrue(exception.getMessage().contains("ATTACHED state"));
+
+        verifyNoInteractions(filePolicyResolver, fileMapper);
+        verify(fileRepository, never()).save(any());
+    }
+
+    @Test
+    void updateRole_General_ShouldThrowAuthorizationException_WhenUserNotOwnerOrAdmin() {
+        Long ownerId = 99L;
+        UpdateFileRoleRequestDto requestDto = new UpdateFileRoleRequestDto(FileRole.PROBLEM);
+
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setUserId(ownerId);
+
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+
+        assertThrows(AuthorizationException.class, () -> fileService.updateRoleGeneral(fileId, requestDto));
+
+        verifyNoInteractions(filePolicyResolver, fileMapper);
+        verify(fileRepository, never()).save(any());
+    }
+
+    @Test
+    void updateRoleForMultiOwnerEntity_ShouldUpdateRole_WhenValidRequest() {
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setStatus(FileStatus.ATTACHED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(2L);
+        file.setFileRole(FileRole.PROBLEM);
+        file.setStorageProvider(StorageProviderType.LOCAL);
+        file.setOriginalFilename("test.docx");
+
+        FilePolicy newRolePolicy = mock(FilePolicy.class);
+        when(newRolePolicy.getAllowedExtensions()).thenReturn(Set.of(AllowedExtension.DOCX));
+
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
+        when(filePolicyResolver.resolve(RelatedEntityType.TASK, FileRole.SOLUTION)).thenReturn(newRolePolicy);
+        when(fileRepository.save(any(FileAsset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        fileService.updateRoleForMultiOwnerEntity(fileId, FileRole.SOLUTION, RelatedEntityType.TASK, 2L);
+
+        assertEquals(FileRole.SOLUTION, file.getFileRole());
+        verify(fileRepository).save(file);
+    }
+
+    @Test
+    void updateRoleForMultiOwnerEntity_ShouldThrowValidationException_WhenWrongEntityBoundary() {
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setStatus(FileStatus.ATTACHED);
+        file.setRelatedEntityType(RelatedEntityType.TASK);
+        file.setRelatedEntityId(99L); // Belongs to task 99
+
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
+
+        // Attempting to update it in the context of task 42 -> should throw
+        ValidationException exception = assertThrows(ValidationException.class,
+            () -> fileService.updateRoleForMultiOwnerEntity(fileId, FileRole.SOLUTION, RelatedEntityType.TASK, 42L));
+
+        assertTrue(exception.getMessage().contains("does not belong to"));
+        verify(fileRepository, never()).save(any());
+    }
+
+    // --- getFileResource(Long id) Tests ---
+
+    @Test
+    void getFileResource_ShouldReturnDto_WhenAttachedFileAndAccessGranted() {
+        existingFile.setStatus(FileStatus.ATTACHED);
+        existingFile.setRelatedEntityType(RelatedEntityType.NEWS);
+        existingFile.setRelatedEntityId(100L);
+        existingFile.setStorageKey("news/100/article.pdf");
+        existingFile.setMimeType("application/pdf");
+        existingFile.setOriginalFilename("article.pdf");
+        existingFile.setSize(1024L);
+
+        Resource mockResource = new ByteArrayResource("content".getBytes());
+
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(accessValidatorResolver.resolve(RelatedEntityType.NEWS)).thenReturn(accessValidator);
+        when(accessValidator.canAccess(eq(100L), eq(userId), any())).thenReturn(true);
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.getResource("news/100/article.pdf")).thenReturn(mockResource);
+
+        FileResourceDto result = fileService.getFileResource(fileId);
+
+        assertNotNull(result);
+        assertEquals(mockResource, result.resource());
+        assertEquals("application/pdf", result.mimeType());
+        assertEquals("article.pdf", result.displayFilename());
+        assertEquals(1024L, result.contentLength());
+    }
+
+    @Test
+    void getFileResource_ShouldThrowNotFound_WhenFileDoesNotExist() {
+        when(fileRepository.findById(nonExistentId)).thenReturn(Optional.empty());
+
+        assertThrows(FileAssetNotFoundException.class, () -> fileService.getFileResource(nonExistentId));
+    }
+
+    @Test
+    void getFileResource_ShouldThrowAuthorizationException_WhenAccessDenied() {
+        existingFile.setStatus(FileStatus.ATTACHED);
+        existingFile.setRelatedEntityType(RelatedEntityType.NEWS);
+        existingFile.setRelatedEntityId(100L);
+
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(accessValidatorResolver.resolve(RelatedEntityType.NEWS)).thenReturn(accessValidator);
+        when(accessValidator.canAccess(eq(100L), eq(userId), any())).thenReturn(false);
+
+        assertThrows(AuthorizationException.class, () -> fileService.getFileResource(fileId));
+    }
+
+    @Test
+    void getFileResource_ShouldSucceedForTemporaryFile_WhenUserIsOwner() {
+        existingFile.setStatus(FileStatus.TEMPORARY);
+        existingFile.setUserId(userId);
+        existingFile.setStorageKey("temp/preview.png");
+        existingFile.setMimeType("image/png");
+        existingFile.setOriginalFilename("preview.png");
+        existingFile.setSize(512L);
+
+        Resource mockResource = new ByteArrayResource("image".getBytes());
+
+        when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.getResource("temp/preview.png")).thenReturn(mockResource);
+
+        FileResourceDto result = fileService.getFileResource(fileId);
+
+        assertNotNull(result);
+        assertEquals(mockResource, result.resource());
     }
 
     // --- Helpers ---
@@ -798,5 +1640,19 @@ class FileServiceImplTest {
             .relatedEntityId(relatedEntityId)
             .fileRole(role)
             .build();
+    }
+
+    private FileAsset createFile(
+        Long id,
+        Long ownerId,
+        RelatedEntityType entityType,
+        Long entityId) {
+        FileAsset file = new FileAsset();
+        file.setId(id);
+        file.setUserId(ownerId);
+        file.setRelatedEntityType(entityType);
+        file.setRelatedEntityId(entityId);
+        file.setStatus(FileStatus.ATTACHED);
+        return file;
     }
 }

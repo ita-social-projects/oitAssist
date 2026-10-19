@@ -79,7 +79,11 @@ public class TourController {
         @ApiResponse(responseCode = "403", description = "Access denied",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Tour not found",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PutMapping("/stages/{stageId}/tours/{tourId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
@@ -98,7 +102,11 @@ public class TourController {
         @ApiResponse(responseCode = "403", description = "Access denied",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Tour not found",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/stages/{stageId}/tours/{tourId}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")

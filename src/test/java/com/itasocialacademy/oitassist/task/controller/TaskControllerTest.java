@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.mock.web.MockMultipartFile;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.task.dto.request.AddOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
@@ -58,61 +61,60 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void createTask_validRequest_shouldReturn201() throws Exception {
-        CreateTaskRequestDTO request = new CreateTaskRequestDTO(
+        CreateTaskRequestDTO metadata = new CreateTaskRequestDTO(
             "PowerPoint Різдвяна зірка",
-            "Створити у файлі-розв'язку на одному слайді",
-            List.of(51L, 52L));
+            "Створити у файлі-розв'язку на одному слайді");
 
-        when(taskService.createTask(any(CreateTaskRequestDTO.class))).thenReturn(mockTaskResponse);
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
 
-        mockMvc.perform(post("/api/v1/tasks")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        MockMultipartFile problemFile = new MockMultipartFile(
+            "problemFiles", "problem.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "content".getBytes());
+
+        when(taskService.createTask(any(), any(), any(), any())).thenReturn(mockTaskResponse);
+
+        mockMvc.perform(multipart("/api/v1/tasks")
+            .file(metadataPart)
+            .file(problemFile))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(1L))
-            .andExpect(jsonPath("$.title").value("PowerPoint Різдвяна зірка"))
-            .andExpect(jsonPath("$.ownerIds[0]").value(100L));
+            .andExpect(jsonPath("$.title").value("PowerPoint Різдвяна зірка"));
 
-        verify(taskService).createTask(any(CreateTaskRequestDTO.class));
+        verify(taskService).createTask(any(), any(), any(), any());
     }
 
     @Test
     void createTask_roleRestricted_shouldReturn403() throws Exception {
-        CreateTaskRequestDTO request = new CreateTaskRequestDTO(
-            "Some Task", "Description", List.of(1L));
+        CreateTaskRequestDTO metadata = new CreateTaskRequestDTO(
+            "Some Task", "Description");
 
-        when(taskService.createTask(any(CreateTaskRequestDTO.class)))
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
+
+        when(taskService.createTask(any(), any(), any(), any()))
             .thenThrow(new TaskAccessRestrictedException(0L));
 
-        mockMvc.perform(post("/api/v1/tasks")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart("/api/v1/tasks")
+            .file(metadataPart))
             .andExpect(status().isForbidden());
     }
 
     @Test
     void createTask_blankTitle_shouldReturn400() throws Exception {
-        CreateTaskRequestDTO request = new CreateTaskRequestDTO(
+        CreateTaskRequestDTO metadata = new CreateTaskRequestDTO(
             "",
-            "Some description",
-            List.of(1L));
+            "Some description");
 
-        mockMvc.perform(post("/api/v1/tasks")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isBadRequest());
-    }
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
 
-    @Test
-    void createTask_emptyFileIds_shouldReturn400() throws Exception {
-        CreateTaskRequestDTO request = new CreateTaskRequestDTO(
-            "Valid Title",
-            "Some description",
-            List.of());
-
-        mockMvc.perform(post("/api/v1/tasks")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart("/api/v1/tasks")
+            .file(metadataPart))
             .andExpect(status().isBadRequest());
     }
 
@@ -176,7 +178,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
     @Test
     void getMyTasks_shouldReturnPageResponseAnd200() throws Exception {
         Page<TaskResponseDTO> page = new PageImpl<>(List.of(mockTaskResponse));
-        when(taskService.getAllMyTasks(any(Pageable.class))).thenReturn(page);
+        when(taskService.getAllMyTasks(any(Pageable.class), eq(null))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/tasks/my")
             .param("page", "0")
@@ -188,18 +190,47 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .andExpect(jsonPath("$.pageNumber").value(0))
             .andExpect(jsonPath("$.totalElements").value(1));
 
-        verify(taskService).getAllMyTasks(any(Pageable.class));
+        verify(taskService).getAllMyTasks(any(Pageable.class), eq(null));
+    }
+
+    @Test
+    void getMyTasks_withSearch_shouldReturnFilteredPageResponseAnd200() throws Exception {
+        Page<TaskResponseDTO> page = new PageImpl<>(List.of(mockTaskResponse));
+        when(taskService.getAllMyTasks(any(Pageable.class), eq("PowerPoint"))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/tasks/my")
+            .param("page", "0")
+            .param("size", "15")
+            .param("search", "PowerPoint"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content[0].id").value(1L))
+            .andExpect(jsonPath("$.content[0].title").value("PowerPoint Різдвяна зірка"))
+            .andExpect(jsonPath("$.pageNumber").value(0))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(taskService).getAllMyTasks(any(Pageable.class), eq("PowerPoint"));
     }
 
     // ---- updateTask ----
 
     @Test
     void updateTask_validRequest_shouldReturn200() throws Exception {
-        UpdateTaskRequestDTO request = new UpdateTaskRequestDTO(
+        UpdateTaskRequestDTO metadata = new UpdateTaskRequestDTO(
             "Оновлена назва завдання",
             "Оновлений опис завдання",
             List.of(51L, 62L),
-            List.of(52L));
+            null,
+            0L);
+
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
+
+        MockMultipartFile problemFile = new MockMultipartFile(
+            "problemFiles", "problem.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "content".getBytes());
 
         TaskResponseDTO updatedResponse = TaskResponseDTO.builder()
             .id(1L)
@@ -209,58 +240,84 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
             .ownerIds(new HashSet<>(Set.of(100L)))
             .build();
 
-        when(taskService.updateTask(eq(1L), any(UpdateTaskRequestDTO.class))).thenReturn(updatedResponse);
+        when(taskService.updateTask(eq(1L), any(), any(), any(), any())).thenReturn(updatedResponse);
 
-        mockMvc.perform(put("/api/v1/tasks/{taskId}", 1L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart("/api/v1/tasks/{taskId}", 1L)
+            .file(metadataPart)
+            .file(problemFile)
+            .with(request -> {
+                request.setMethod("PUT");
+                return request;
+            }))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(1L))
             .andExpect(jsonPath("$.title").value("Оновлена назва завдання"))
             .andExpect(jsonPath("$.description").value("Оновлений опис завдання"));
 
-        verify(taskService).updateTask(eq(1L), any(UpdateTaskRequestDTO.class));
+        verify(taskService).updateTask(eq(1L), any(), any(), any(), any());
     }
 
     @Test
     void updateTask_notOwnerNotAdmin_shouldReturn403() throws Exception {
-        UpdateTaskRequestDTO request = new UpdateTaskRequestDTO(
-            "Title", "Description", null, null);
+        UpdateTaskRequestDTO metadata = new UpdateTaskRequestDTO(
+            "Title", "Description", null, null, 0L);
 
-        when(taskService.updateTask(eq(1L), any(UpdateTaskRequestDTO.class)))
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
+
+        when(taskService.updateTask(eq(1L), any(), any(), any(), any()))
             .thenThrow(new TaskAccessRestrictedException(1L));
 
-        mockMvc.perform(put("/api/v1/tasks/{taskId}", 1L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart("/api/v1/tasks/{taskId}", 1L)
+            .file(metadataPart)
+            .with(request -> {
+                request.setMethod("PUT");
+                return request;
+            }))
             .andExpect(status().isForbidden());
     }
 
     @Test
     void updateTask_taskNotFound_shouldReturn404() throws Exception {
-        UpdateTaskRequestDTO request = new UpdateTaskRequestDTO(
-            "Title", "Description", null, null);
+        UpdateTaskRequestDTO metadata = new UpdateTaskRequestDTO(
+            "Title", "Description", null, null, 0L);
 
-        when(taskService.updateTask(eq(99L), any(UpdateTaskRequestDTO.class)))
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
+
+        when(taskService.updateTask(eq(99L), any(), any(), any(), any()))
             .thenThrow(new TaskNotFoundException(99L));
 
-        mockMvc.perform(put("/api/v1/tasks/{taskId}", 99L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart("/api/v1/tasks/{taskId}", 99L)
+            .file(metadataPart)
+            .with(request -> {
+                request.setMethod("PUT");
+                return request;
+            }))
             .andExpect(status().isNotFound());
     }
 
     @Test
     void updateTask_blankTitle_shouldReturn400() throws Exception {
-        UpdateTaskRequestDTO request = new UpdateTaskRequestDTO(
+        UpdateTaskRequestDTO metadata = new UpdateTaskRequestDTO(
             "",
             "Оновлений опис завдання",
             null,
-            null);
+            null,
+            0L);
 
-        mockMvc.perform(put("/api/v1/tasks/{taskId}", 1L)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request)))
+        MockMultipartFile metadataPart = new MockMultipartFile(
+            "metadata", "", MediaType.APPLICATION_JSON_VALUE,
+            objectMapper.writeValueAsBytes(metadata));
+
+        mockMvc.perform(multipart("/api/v1/tasks/{taskId}", 1L)
+            .file(metadataPart)
+            .with(request -> {
+                request.setMethod("PUT");
+                return request;
+            }))
             .andExpect(status().isBadRequest());
     }
 
@@ -268,7 +325,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void addOwner_validRequest_shouldReturn200() throws Exception {
-        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com");
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com", 0L);
 
         when(taskService.addTaskOwner(eq(1L), any(AddOwnerRequestDTO.class)))
             .thenReturn(mockTaskResponse);
@@ -285,7 +342,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void addOwner_nonAdmin_shouldReturn403() throws Exception {
-        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com");
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("newowner@mail.com", 0L);
 
         when(taskService.addTaskOwner(eq(1L), any(AddOwnerRequestDTO.class)))
             .thenThrow(new TaskAccessRestrictedException(1L));
@@ -298,7 +355,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void addOwner_invalidEmail_shouldReturn400() throws Exception {
-        AddOwnerRequestDTO request = new AddOwnerRequestDTO("not-an-email");
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("not-an-email", 0L);
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/add-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)
@@ -308,7 +365,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void addOwner_blankEmail_shouldReturn400() throws Exception {
-        AddOwnerRequestDTO request = new AddOwnerRequestDTO("");
+        AddOwnerRequestDTO request = new AddOwnerRequestDTO("", 0L);
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/add-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)
@@ -318,7 +375,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void removeOwner_validRequest_shouldReturn200() throws Exception {
-        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("owner@mail.com");
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("owner@mail.com", 0L);
 
         when(taskService.removeTaskOwner(eq(1L), any(RemoveOwnerRequestDTO.class)))
             .thenReturn(mockTaskResponse);
@@ -335,7 +392,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void removeOwner_nonAdmin_shouldReturn403() throws Exception {
-        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("owner@mail.com");
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("owner@mail.com", 0L);
 
         when(taskService.removeTaskOwner(eq(1L), any(RemoveOwnerRequestDTO.class)))
             .thenThrow(new TaskAccessRestrictedException(1L));
@@ -348,7 +405,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void removeOwner_invalidEmail_shouldReturn400() throws Exception {
-        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("not-an-email");
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("not-an-email", 0L);
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/remove-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)
@@ -358,7 +415,7 @@ class TaskControllerTest extends ControllerUnitTest<TaskController> {
 
     @Test
     void removeOwner_blankEmail_shouldReturn400() throws Exception {
-        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("");
+        RemoveOwnerRequestDTO request = new RemoveOwnerRequestDTO("", 0L);
 
         mockMvc.perform(patch("/api/v1/tasks/{taskId}/remove-owner", 1L)
             .contentType(MediaType.APPLICATION_JSON)

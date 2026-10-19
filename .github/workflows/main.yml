@@ -11,6 +11,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  FRONTEND_REF: dev
 
 jobs:
   build:
@@ -23,6 +24,7 @@ jobs:
         with:
           java-version: 25
           distribution: temurin
+          cache: maven
 
       - name: Verify project
         run: mvn clean verify
@@ -36,16 +38,15 @@ jobs:
           #      mvn clean install sonar:sonar \
           #        -Dsonar.projectKey=ita-social-projects_oitAssist \
           #        -Dsonar.organization=ita-social-projects \
-          #        -Dsonar.host.url=https://sonarcloud.io \
+        #        -Dsonar.host.url=https://sonarcloud.io \
 
-          #- name: Test Reporter
-          # #v1.5.0
-          #uses: dorny/test-reporter@0d00bb14cb0cc2c9b8985df6e81dd333188224e1
-          #if: success() || failure()
-          #with:
-          # name: Tests Report
-          #path: '**/target/surefire-reports/*.xml'
-          #reporter: java-junit
+      - name: Test Reporter
+        uses: dorny/test-reporter@31a54ee7ebcacc03a09ea97a7e5465a47b84aea5  # v1.9.1
+        if: success() || failure()
+        with:
+          name: Tests Report
+          path: '**/target/surefire-reports/TEST-*.xml,**/target/failsafe-reports/TEST-*.xml'
+          reporter: java-junit
 
   build-and-push-backend-image:
     needs: build
@@ -73,8 +74,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ita-social-projects/oitClient
-          ref: dev
+          ref: ${{ env.FRONTEND_REF }}
           path: frontend
+
+      - name: Capture frontend build metadata
+        run: |
+          COMMIT_ID=$(git -C frontend rev-parse HEAD)
+          COMMIT_TIME=$(date -u -d "$(git -C frontend log -1 --format=%cI)" +%Y-%m-%dT%H:%M:%SZ)
+          VERSION=$(node -p "require('./frontend/package.json').version || ''")
+          {
+            echo "oit.frontend.commit-id=$COMMIT_ID"
+            echo "oit.frontend.short-commit-id=${COMMIT_ID:0:7}"
+            echo "oit.frontend.commit-time=$COMMIT_TIME"
+            echo "oit.frontend.branch=$FRONTEND_REF"
+            echo "oit.frontend.version=$VERSION"
+          } > src/main/resources/frontend-info.properties
 
       - name: Build frontend
         run: |

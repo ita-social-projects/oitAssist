@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.competition.dto.request;
 import com.itasocialacademy.oitassist.competition.dto.validation.HasDateRange;
 import com.itasocialacademy.oitassist.competition.dto.validation.ValidDateRange;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -25,6 +26,10 @@ public record UpdateTourRequest(
     @Schema(description = "Location for the tour", example = "Konotop city",
         requiredMode = Schema.RequiredMode.REQUIRED) @NotBlank String location,
 
-    @Schema(description = "Order of the tour in the hierarchy", example = "1") @Min(1) Short sortPosition)
+    @Schema(description = "Order of the tour in the hierarchy", example = "1") @Min(1) Short sortPosition,
+
+    @Schema(description = "Optimistic locking version; must be echoed back on updates",
+        requiredMode = RequiredMode.REQUIRED) @NotNull Long version)
+
     implements HasDateRange {
 }

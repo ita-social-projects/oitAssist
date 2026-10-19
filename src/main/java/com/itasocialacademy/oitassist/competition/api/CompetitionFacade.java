@@ -59,4 +59,15 @@ public interface CompetitionFacade {
      * @return the competition tree, or empty if no competition with this ID exists
      */
     Optional<CompetitionTreeDetail> findCompetitionTreeByCompetitionId(Long competitionId);
+
+    /**
+     * Retrieves tours by their IDs.
+     *
+     * @param tourIds Tour IDs, must not be {@code null} (an empty list yields an
+     *                empty result)
+     * @return the tours found for the given IDs, in unspecified order; IDs with no
+     *         matching tour are silently omitted, so the result may be smaller than
+     *         {@code tourIds}
+     */
+    List<TourDetail> findToursByIds(List<Long> tourIds);
 }

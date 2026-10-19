@@ -5,8 +5,6 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
-import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequestedEvent;
-import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -22,6 +20,7 @@ import com.itasocialacademy.oitassist.task.dto.request.CreateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.RemoveOwnerRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.request.UpdateTaskRequestDTO;
 import com.itasocialacademy.oitassist.task.dto.response.TaskResponseDTO;
+import com.itasocialacademy.oitassist.task.exceptions.StaleTaskVersionException;
 import com.itasocialacademy.oitassist.task.exceptions.TaskAccessRestrictedException;
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.task.mapper.TaskBodyMapper;
@@ -30,6 +29,7 @@ import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import com.itasocialacademy.oitassist.user.exceptions.UserNotFoundException;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +39,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -54,7 +55,11 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
-    public TaskResponseDTO createTask(CreateTaskRequestDTO requestDTO) {
+    public TaskResponseDTO createTask(
+        CreateTaskRequestDTO requestDTO,
+        List<MultipartFile> problemFiles,
+        List<MultipartFile> referenceFiles,
+        List<MultipartFile> solutionFiles) {
         Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be logged in to create tasks",
                 ErrorCode.ACCESS_DENIED));
@@ -70,7 +75,10 @@ public class TaskServiceImpl implements TaskService {
         createdTask.addOwner(owner);
 
         log.debug("Created Task: Id {}; Title - {}", createdTask.getId(), createdTask.getTitle());
-        publishAttachEvent(createdTask.getId(), requestDTO.fileIds(), createdTask.getCreatedBy());
+
+        uploadFilesByRole(createdTask.getId(), problemFiles, FileRole.PROBLEM);
+        uploadFilesByRole(createdTask.getId(), referenceFiles, FileRole.REFERENCE);
+        uploadFilesByRole(createdTask.getId(), solutionFiles, FileRole.SOLUTION);
 
         return getResponse(createdTask);
     }
@@ -95,13 +103,7 @@ public class TaskServiceImpl implements TaskService {
         log.debug("getAllTasks: page={}, size={}, sort={} search={}",
             pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort(), search);
 
-        String normalizedSearch = search == null || search.isBlank()
-            ? ""
-            : search.trim()
-                .replaceAll("\\s+", " ")
-                .replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
+        String normalizedSearch = getNormalizedSearch(search);
 
         Page<TaskBody> tasksPage = taskBodyRepository.findAllByTitleLike(normalizedSearch, pageable);
 
@@ -110,21 +112,28 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<TaskResponseDTO> getAllMyTasks(Pageable pageable) {
+    public Page<TaskResponseDTO> getAllMyTasks(Pageable pageable, String search) {
         Long currentUserId = securityFacade.getCurrentUserId()
             .orElseThrow(() -> new AuthorizationException("User must be logged in to view created tasks",
                 ErrorCode.ACCESS_DENIED));
-        log.debug("getAllMyTasks: userId={}, page={}, size={}, sort={}",
-            currentUserId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        log.debug("getAllMyTasks: userId={}, page={}, size={}, sort={}, search={}",
+            currentUserId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort(), search);
 
-        Page<TaskBody> myTasksPage = taskBodyRepository.findAllByOwnerId(currentUserId, pageable);
+        String normalizedSearch = getNormalizedSearch(search);
+
+        Page<TaskBody> myTasksPage = taskBodyRepository.findAllByOwnerId(currentUserId, normalizedSearch, pageable);
 
         return getResponseBulk(myTasksPage);
     }
 
     @Override
     @Transactional
-    public TaskResponseDTO updateTask(Long taskId, UpdateTaskRequestDTO requestDTO) {
+    public TaskResponseDTO updateTask(
+        Long taskId,
+        UpdateTaskRequestDTO requestDTO,
+        List<MultipartFile> problemFiles,
+        List<MultipartFile> referenceFiles,
+        List<MultipartFile> solutionFiles) {
         TaskBody existingTask = taskBodyRepository.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
@@ -132,18 +141,27 @@ public class TaskServiceImpl implements TaskService {
             .map(o -> o.getId().getOwnerId()).collect(Collectors.toSet()),
             existingTask.getId());
 
+        checkTaskVersion(existingTask.getVersion(), requestDTO.version(), existingTask.getId());
+
         existingTask.setTitle(requestDTO.title());
         existingTask.setDescription(requestDTO.description());
 
-        TaskBody updatedTask = taskBodyRepository.save(existingTask);
+        TaskBody updatedTask = taskBodyRepository.saveAndFlush(existingTask);
         log.debug("Updated Task: Id {}, Title - {}", updatedTask.getId(), updatedTask.getTitle());
 
-        Long currentUserId = securityFacade.getCurrentUserId()
-            .orElseThrow(() -> new AuthorizationException("User must be logged in to view created tasks",
-                ErrorCode.ACCESS_DENIED));
+        if (requestDTO.removedFileIds() != null && !requestDTO.removedFileIds().isEmpty()) {
+            fileManagerFacade.detachFilesForMultiOwnerEntity(
+                RelatedEntityType.TASK, updatedTask.getId(), requestDTO.removedFileIds());
+        }
 
-        publishAttachEvent(updatedTask.getId(), requestDTO.fileIds(), currentUserId);
-        publishDetachEvent(updatedTask.getId(), requestDTO.removedFileIds(), currentUserId);
+        if (requestDTO.roleUpdates() != null) {
+            requestDTO.roleUpdates().forEach((fileId, newRole) -> fileManagerFacade.updateRoleForMultiOwnerEntity(
+                fileId, newRole, RelatedEntityType.TASK, updatedTask.getId()));
+        }
+
+        uploadFilesByRole(updatedTask.getId(), problemFiles, FileRole.PROBLEM);
+        uploadFilesByRole(updatedTask.getId(), referenceFiles, FileRole.REFERENCE);
+        uploadFilesByRole(updatedTask.getId(), solutionFiles, FileRole.SOLUTION);
 
         return getResponse(updatedTask);
     }
@@ -165,6 +183,8 @@ public class TaskServiceImpl implements TaskService {
             throw new ValidationException("Provided user is not ADMIN nor ORG", ErrorCode.COMMON_VALIDATION_FAILED);
         }
 
+        checkTaskVersion(task.getVersion(), addOwnerRequest.version(), task.getId());
+
         if (task.getOwners().stream()
             .anyMatch(owner -> owner.getId().getOwnerId().equals(userDetails.id()))) {
             return getResponse(task);
@@ -175,6 +195,7 @@ public class TaskServiceImpl implements TaskService {
             .build();
 
         task.addOwner(owner);
+        auditOwnersUpdate(task);
 
         log.debug("User {} added to task`s {} owners", userDetails.id(), task.getId());
 
@@ -194,14 +215,23 @@ public class TaskServiceImpl implements TaskService {
         UserAuthDetails userDetails = userFacade.findByEmail(removeOwnerRequest.ownerEmail())
             .orElseThrow(UserNotFoundException::new);
 
+        checkTaskVersion(task.getVersion(), removeOwnerRequest.version(), task.getId());
+
         Optional<TaskOwner> toRemove = task.getOwners().stream()
             .filter(o -> o.getId().getOwnerId().equals(userDetails.id())).findFirst();
 
-        if (toRemove.isPresent()) {
-            task.removeOwner(toRemove.get());
-        } else {
+        if (toRemove.isEmpty()) {
             return getResponse(task);
         }
+
+        if (task.getOwners().size() == 1) {
+            throw new ValidationException(
+                "Cannot remove the last owner of a task",
+                ErrorCode.COMMON_VALIDATION_FAILED);
+        }
+
+        task.removeOwner(toRemove.get());
+        auditOwnersUpdate(task);
 
         log.debug("User {} removed from task`s {} owners", userDetails.id(), task.getId());
 
@@ -245,22 +275,11 @@ public class TaskServiceImpl implements TaskService {
     }
 
     // helpers
-    private void publishAttachEvent(Long taskBodyId, List<Long> fileIds, Long authorId) {
-        if (fileIds == null || fileIds.isEmpty()) {
+    private void uploadFilesByRole(Long taskId, List<MultipartFile> files, FileRole role) {
+        if (files == null || files.isEmpty()) {
             return;
         }
-
-        applicationEventPublisher.publishEvent(
-            new FilesAttachRequestedEvent(taskBodyId, RelatedEntityType.TASK, fileIds, authorId));
-    }
-
-    private void publishDetachEvent(Long taskBodyId, List<Long> removedFileIds, Long authorId) {
-        if (removedFileIds == null || removedFileIds.isEmpty()) {
-            return;
-        }
-
-        applicationEventPublisher.publishEvent(
-            new FilesDetachRequestedEvent(RelatedEntityType.TASK, taskBodyId, removedFileIds, authorId));
+        fileManagerFacade.uploadFiles(files, RelatedEntityType.TASK, taskId, role);
     }
 
     private void checkOwnerOrAdmin(Set<Long> taskBodyOwnerIds, Long taskId) {
@@ -321,5 +340,27 @@ public class TaskServiceImpl implements TaskService {
     private Map<Long, String> getUserEmailsByIdsInBulk(List<Long> userIds) {
         return userFacade.findByIds(userIds).stream()
             .collect(Collectors.toMap(UserAuthDetails::id, UserAuthDetails::email));
+    }
+
+    private String getNormalizedSearch(String search) {
+        return search == null || search.isBlank()
+            ? ""
+            : search.trim()
+                .replaceAll("\\s+", " ")
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+    }
+
+    private void checkTaskVersion(Long actualVersion, Long providedVersion, Long taskId) {
+        if (!Objects.equals(actualVersion, providedVersion)) {
+            throw new StaleTaskVersionException(taskId);
+        }
+    }
+
+    private void auditOwnersUpdate(TaskBody taskBody) {
+        taskBody.setUpdatedAt(Instant.now());
+        taskBody.setUpdatedBy(securityFacade.getCurrentUserId().orElseThrow(UserNotFoundException::new));
+        taskBodyRepository.saveAndFlush(taskBody);
     }
 }
