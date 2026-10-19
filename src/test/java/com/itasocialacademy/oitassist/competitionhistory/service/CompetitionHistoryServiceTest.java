@@ -133,4 +133,28 @@ class CompetitionHistoryServiceTest {
         assertTrue(result.isEmpty());
         verifyNoInteractions(evaluationFacade, mapper);
     }
+
+    @Test
+    void getHistory_severalCompetitions_shouldMatchScoresById() {
+        CompetitionDetail otherDetail = CompetitionDetail.builder()
+            .id(3L)
+            .title("Other")
+            .competitionStatus(CompetitionStatus.FINISHED)
+            .build();
+        CompetitionHistoryResponse otherResponse = CompetitionHistoryResponse.builder()
+            .id(3L)
+            .title("Other")
+            .build();
+        when(securityFacade.isOwner(USER_ID)).thenReturn(true);
+        when(participationFacade.findCompetitionIdsByUserId(USER_ID)).thenReturn(List.of(2L, 3L));
+        when(competitionFacade.findCompetitionsByIdsAndStatuses(List.of(2L, 3L), HISTORY_STATUSES, pageable))
+            .thenReturn(new PageImpl<>(List.of(competitionDetail, otherDetail), pageable, 2));
+        when(evaluationFacade.getUserScores(USER_ID, List.of(2L, 3L))).thenReturn(Map.of(2L, SCORE));
+        when(mapper.toResponse(competitionDetail, SCORE)).thenReturn(historyResponse);
+        when(mapper.toResponse(otherDetail, new CompetitionScore(0.0, 0))).thenReturn(otherResponse);
+
+        Page<CompetitionHistoryResponse> result = historyService.getHistory(USER_ID, pageable);
+
+        assertEquals(List.of(historyResponse, otherResponse), result.getContent());
+    }
 }
