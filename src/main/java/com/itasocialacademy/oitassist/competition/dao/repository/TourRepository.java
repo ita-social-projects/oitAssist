@@ -14,6 +14,11 @@ public interface TourRepository extends JpaRepository<Tour, Long> {
     boolean existsByStageIdAndTitle(Long stageId, String title);
 
     /**
+     * Checks whether a tour already exists within a specific stage.
+     */
+    boolean existsByStageId(Long stageId);
+
+    /**
      * Returns all tours of a specific stage, following their logical sequence.
      */
     List<Tour> findAllByStageIdOrderBySortPositionAsc(Long stageId);
