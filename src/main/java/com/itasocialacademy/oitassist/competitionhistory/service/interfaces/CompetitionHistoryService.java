@@ -11,8 +11,8 @@ public interface CompetitionHistoryService {
      * competition appears once even if the user participated in several of its
      * stages. Each entry also contains the sum of the user's jury scores and the
      * sum of maximum points of all tasks of the competition; work without an
-     * evaluation counts as zero. Only the owner of the history or an
-     * administrator may access it.
+     * evaluation counts as zero. Only the owner of the history or an administrator
+     * may access it.
      *
      * @param userId   ID of the user whose history is requested, must not be
      *                 {@code null}
