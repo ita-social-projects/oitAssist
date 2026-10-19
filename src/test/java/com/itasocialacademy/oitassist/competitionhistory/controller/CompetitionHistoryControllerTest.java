@@ -51,6 +51,8 @@ class CompetitionHistoryControllerTest extends ControllerUnitTest<CompetitionHis
             .title(title)
             .dateStart(dateStart)
             .dateFinish(dateStart.plusDays(10))
+            .score(28.5)
+            .maxScore(45)
             .build();
         Page<CompetitionHistoryResponse> page = new PageImpl<>(List.of(item), PageRequest.of(0, 20), 1);
 
@@ -63,6 +65,8 @@ class CompetitionHistoryControllerTest extends ControllerUnitTest<CompetitionHis
             .andExpect(jsonPath("$.content[0].title").value(title))
             .andExpect(jsonPath("$.content[0].dateStart").exists())
             .andExpect(jsonPath("$.content[0].dateFinish").exists())
+            .andExpect(jsonPath("$.content[0].score").value(28.5))
+            .andExpect(jsonPath("$.content[0].maxScore").value(45))
             .andExpect(jsonPath("$.pageNumber").value(0))
             .andExpect(jsonPath("$.totalElements").value(1));
     }
