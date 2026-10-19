@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.competition.dao.repository;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,4 +27,9 @@ public interface CompetitionRepository extends JpaRepository<Competition, Long>,
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c from Competition c where c.id = :id")
     Optional<Competition> findByIdForUpdate(@Param("id") Long id);
+
+    Page<Competition> findByIdInAndCompetitionStatusIn(
+        Collection<Long> ids,
+        Collection<CompetitionStatus> statuses,
+        Pageable pageable);
 }

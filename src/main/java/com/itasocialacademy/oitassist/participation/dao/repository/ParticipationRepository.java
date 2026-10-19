@@ -3,6 +3,8 @@ package com.itasocialacademy.oitassist.participation.dao.repository;
 import com.itasocialacademy.oitassist.participation.dao.model.Participation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 
@@ -24,4 +26,7 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
         Long stageId);
 
     boolean existsByUserIdAndStageId(Long userId, Long stageId);
+
+    @Query("SELECT DISTINCT p.competitionId FROM Participation p WHERE p.userId = :userId")
+    List<Long> findDistinctCompetitionIdsByUserId(@Param("userId") Long userId);
 }

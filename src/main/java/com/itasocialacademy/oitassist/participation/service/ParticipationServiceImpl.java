@@ -99,4 +99,9 @@ public class ParticipationServiceImpl implements ParticipationService {
     public boolean isUserAStageParticipant(Long userId, Long stageId) {
         return repository.existsByUserIdAndStageId(userId, stageId);
     }
+
+    @Override
+    public List<Long> findCompetitionIdsByUserId(Long userId) {
+        return repository.findDistinctCompetitionIdsByUserId(userId);
+    }
 }

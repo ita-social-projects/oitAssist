@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.participation.service;
 import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
 import com.itasocialacademy.oitassist.participation.service.interfaces.ParticipationService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -29,5 +30,10 @@ public class ParticipationFacadeImpl implements ParticipationFacade, Participati
     @Override
     public boolean isUserAStageParticipant(Long userId, Long stageId) {
         return participationService.isUserAStageParticipant(userId, stageId);
+    }
+
+    @Override
+    public List<Long> findCompetitionIdsByUserId(Long userId) {
+        return participationService.findCompetitionIdsByUserId(userId);
     }
 }

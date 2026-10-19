@@ -557,6 +557,35 @@ class AssignmentServiceTest {
         verify(taskAssignmentMapper, never()).toDetails(any());
     }
 
+    // ---- getTaskAssignmentDetailsByTourIds ----
+
+    @Test
+    void getTaskAssignmentDetailsByTourIds_existingTours_shouldReturnDetails() {
+        TaskAssignment secondAssignment = TaskAssignment.builder().id(2L).tourId(11L).build();
+        TaskAssignmentDetailDTO firstDetail = new TaskAssignmentDetailDTO(
+            1L, 3L, 10L, AssignmentVisibility.VISIBLE, 25, null);
+        TaskAssignmentDetailDTO secondDetail = new TaskAssignmentDetailDTO(
+            2L, 4L, 11L, AssignmentVisibility.VISIBLE, 40, null);
+        List<Long> tourIds = List.of(10L, 11L);
+
+        when(taskAssignmentRepository.findAllByTourIdIn(tourIds))
+            .thenReturn(List.of(taskAssignment, secondAssignment));
+        when(taskAssignmentMapper.toDetails(taskAssignment)).thenReturn(firstDetail);
+        when(taskAssignmentMapper.toDetails(secondAssignment)).thenReturn(secondDetail);
+
+        List<TaskAssignmentDetailDTO> result = assignmentService.getTaskAssignmentDetailsByTourIds(tourIds);
+
+        assertEquals(List.of(firstDetail, secondDetail), result);
+    }
+
+    @Test
+    void getTaskAssignmentDetailsByTourIds_emptyCollection_shouldReturnEmptyList() {
+        List<TaskAssignmentDetailDTO> result = assignmentService.getTaskAssignmentDetailsByTourIds(List.of());
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(taskAssignmentRepository, taskAssignmentMapper);
+    }
+
     // ---- existsByTaskBodyId ----
 
     @Test
