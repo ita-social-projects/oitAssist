@@ -283,7 +283,12 @@ public class LocalStorageProvider implements StorageProvider {
         validateWithinRoot(target);
 
         try {
+            // Ensure target exists so Windows flags this as a directory symlink,
+            // and delete any pre-existing link to guarantee idempotent creation.
+            Files.createDirectories(target);
             Files.createDirectories(link.getParent());
+            Files.deleteIfExists(link);
+
             Path relative = link.getParent().relativize(target);
             Files.createSymbolicLink(link, relative);
         } catch (IOException e) {

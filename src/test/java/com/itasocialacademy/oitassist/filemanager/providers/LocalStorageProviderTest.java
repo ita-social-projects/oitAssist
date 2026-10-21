@@ -323,6 +323,22 @@ class LocalStorageProviderTest {
     }
 
     @Test
+    void createTaskReference_ShouldCreateTargetDirectoryAndBeIdempotent() {
+        Path target = tempDir.resolve("tasks/non_existent_target");
+        assertThat(Files.exists(target)).isFalse();
+
+        localStorageProvider.createTaskReference("olympiads/comp/stage/tour/task1", "tasks/non_existent_target");
+        assertThat(Files.isDirectory(target)).isTrue();
+
+        // Calling again should not throw FileAlreadyExistsException
+        localStorageProvider.createTaskReference("olympiads/comp/stage/tour/task1", "tasks/non_existent_target");
+        Path link = tempDir.resolve("olympiads/comp/stage/tour/task1/task");
+        if (Files.isSymbolicLink(link)) {
+            assertThat(Files.exists(link)).isTrue();
+        }
+    }
+
+    @Test
     void deleteTaskReference_ShouldThrowInvalidFilePathException_WhenPathIsBlankOrOutsideRoot() {
         assertThrows(InvalidFilePathException.class,
             () -> localStorageProvider.deleteTaskReference("   "));
