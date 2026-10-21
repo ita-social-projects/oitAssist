@@ -28,6 +28,12 @@ class FilePathUtilsTest {
     }
 
     @Test
+    void sanitize_innerDots_shouldCollapseConsecutiveDots() {
+        assertThat(FilePathUtils.sanitize("Wait... what")).isEqualTo("Wait. what");
+        assertThat(FilePathUtils.sanitize("Round 1..2")).isEqualTo("Round 1.2");
+    }
+
+    @Test
     void sanitize_longTitle_shouldTruncateTo60Characters() {
         String longTitle = "a".repeat(80);
         String result = FilePathUtils.sanitize(longTitle);

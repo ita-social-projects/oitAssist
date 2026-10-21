@@ -11,8 +11,8 @@ public final class FilePathUtils {
 
     /**
      * Sanitizes a title for use as a filesystem folder name. Replaces characters
-     * illegal on Windows (\ / : * ? " < > |), control characters, and trims
-     * leading/trailing dots and spaces.
+     * illegal on Windows (\ / : * ? " < > |), control characters, trims
+     * leading/trailing dots and spaces, and collapses consecutive dots.
      */
     public static String sanitize(String title) {
         if (title == null || title.isBlank()) {
@@ -22,6 +22,7 @@ public final class FilePathUtils {
         String safe = title.replaceAll(ILLEGAL_CHARS, "_");
         safe = safe.replaceAll("^[.\\s]+", "");
         safe = safe.replaceAll("[.\\s]+$", "");
+        safe = safe.replaceAll("\\.{2,}", ".");
         if (safe.isBlank()) {
             throw new ValidationException(
                 "Title contains only illegal characters: " + title,
