@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
+import com.itasocialacademy.oitassist.participation.api.ParticipationStatusFacade;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
@@ -21,7 +22,6 @@ import com.itasocialacademy.oitassist.user.exceptions.*;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
-import com.itasocialacademy.oitassist.usercompetition.api.interfaces.UserCompetitionFacade;
 import jakarta.persistence.EntityNotFoundException;
 import org.jetbrains.annotations.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +46,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper mapper;
 
     private final ProfileUpdateRequestRepository profileUpdateRequestRepository;
-    private final UserCompetitionFacade userCompetitionFacade;
+    private final ParticipationStatusFacade participationStatusFacade;
 
     /**
      * {@inheritDoc}
@@ -174,7 +174,7 @@ public class UserServiceImpl implements UserService {
                 ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
         }
 
-        boolean hasAnyCompetitions = userCompetitionFacade.hasActiveCompetitions(currentUserId,
+        boolean hasAnyCompetitions = participationStatusFacade.isUserParticipantWithCompetitionStatus(currentUserId,
             List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT));
 
         UpdateRequestStatus status = hasAnyCompetitions ? UpdateRequestStatus.PENDING : UpdateRequestStatus.APPROVED;
