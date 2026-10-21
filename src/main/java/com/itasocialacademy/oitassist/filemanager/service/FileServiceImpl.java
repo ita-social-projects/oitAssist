@@ -71,6 +71,12 @@ public class FileServiceImpl implements FileService {
     private static final String ROLE_ORG = "ORG";
 
     /**
+     * Root directory name used for storing competition-related file hierarchies,
+     * including submission uploads and assignment task references.
+     */
+    public static final String OLYMPIADS_PATH = "olympiads";
+
+    /**
      * Error message indicating that the user is not authenticated. Used when an
      * operation requires authentication, but it is invalid.
      */
@@ -429,7 +435,7 @@ public class FileServiceImpl implements FileService {
      */
     @Override
     public void createTaskReference(StorageContext ctx) {
-        String assignmentPath = String.join("/", "olympiads",
+        String assignmentPath = String.join("/", OLYMPIADS_PATH,
             sanitize(ctx.competitionTitle()), sanitize(ctx.stageTitle()),
             sanitize(ctx.tourTitle()), sanitize(ctx.taskTitle()));
         String poolPath = "tasks/" + sanitize(ctx.taskTitle());
@@ -447,7 +453,7 @@ public class FileServiceImpl implements FileService {
      */
     @Override
     public void deleteTaskReference(StorageContext ctx) {
-        String assignmentPath = String.join("/", "olympiads",
+        String assignmentPath = String.join("/", OLYMPIADS_PATH,
             sanitize(ctx.competitionTitle()), sanitize(ctx.stageTitle()),
             sanitize(ctx.tourTitle()), sanitize(ctx.taskTitle()));
         providerResolver.resolveDefault().deleteTaskReference(assignmentPath);
@@ -793,7 +799,7 @@ public class FileServiceImpl implements FileService {
                         + "tourTitle, taskTitle, userEmail", RelatedEntityType.SUBMISSION.name());
                 }
                 yield String.join("/",
-                    "olympiads",
+                    OLYMPIADS_PATH,
                     sanitize(storageContext.competitionTitle()),
                     sanitize(storageContext.stageTitle()),
                     sanitize(storageContext.tourTitle()),
