@@ -1016,6 +1016,8 @@ public class FileServiceImpl implements FileService {
     private void moveFromTempFolder(Long entityId, RelatedEntityType entityType, StorageContext storageContext,
         FileAsset file) {
         if (storageContext != null && file.getStorageKey() != null && file.getStorageKey().startsWith("_tmp/")) {
+            String oldKey = file.getStorageKey();
+
             FileUploadRequestDto pathDto = FileUploadRequestDto.builder()
                 .relatedEntityType(entityType)
                 .relatedEntityId(entityId)
@@ -1025,18 +1027,22 @@ public class FileServiceImpl implements FileService {
 
             String newPath = buildRelativePath(pathDto);
 
-            String filename = file.getStorageKey()
-                .substring(file.getStorageKey().lastIndexOf('/') + 1);
+            String originalName = (file.getOriginalFilename() != null && !file.getOriginalFilename().isBlank())
+                ? file.getOriginalFilename()
+                : file.getStoredFilename();
+
+            String safeFilename = generateStoredFilename(originalName, newPath);
 
             StorageProvider provider = providerResolver.resolve(
                 file.getStorageProvider());
 
             String newKey = provider.moveFile(
-                file.getStorageKey(), newPath + "/" + filename);
+                oldKey, newPath + "/" + safeFilename);
 
             file.setStorageKey(newKey);
+            file.setStoredFilename(safeFilename);
 
-            log.debug("Moved file {} to {}", file.getStorageKey(), newKey);
+            log.debug("Moved file {} to {}", oldKey, newKey);
         }
     }
 }

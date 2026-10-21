@@ -1654,6 +1654,66 @@ class FileServiceImplTest {
         verify(storageProvider).deleteTaskReference("olympiads/Comp 1/Stage 1/Tour 1/Task 1");
     }
 
+    @Test
+    void linkFilesToEntity_shouldMoveFromTempFolderAndResolveFilenameWithoutCollision() {
+        StorageContext ctx = StorageContext.forNews("News Title");
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setUserId(userId);
+        file.setStatus(FileStatus.TEMPORARY);
+        file.setStorageProvider(StorageProviderType.LOCAL);
+        file.setStorageKey("_tmp/news-cover.png");
+        file.setOriginalFilename("news-cover.png");
+        file.setFileRole(FileRole.GENERIC);
+
+        when(securityFacade.hasRole(ROLE_ADMIN)).thenReturn(false);
+        when(fileRepository.findAllById(List.of(fileId))).thenReturn(List.of(file));
+        when(fileRepository.existsByStorageKey("news/News Title/news-cover.png")).thenReturn(false);
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.moveFile("_tmp/news-cover.png", "news/News Title/news-cover.png"))
+            .thenReturn("news/News Title/news-cover.png");
+
+        fileService.linkFilesToEntity(10L, RelatedEntityType.NEWS, List.of(fileId), userId, ctx);
+
+        assertEquals(FileStatus.ATTACHED, file.getStatus());
+        assertEquals(10L, file.getRelatedEntityId());
+        assertEquals(RelatedEntityType.NEWS, file.getRelatedEntityType());
+        assertEquals("news/News Title/news-cover.png", file.getStorageKey());
+        assertEquals("news-cover.png", file.getStoredFilename());
+
+        verify(storageProvider).moveFile("_tmp/news-cover.png", "news/News Title/news-cover.png");
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
+    @Test
+    void linkFilesToEntity_shouldResolveCollisionFreeFilename_whenFileAlreadyExistsAtDestination() {
+        StorageContext ctx = StorageContext.forNews("News Title");
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setUserId(userId);
+        file.setStatus(FileStatus.TEMPORARY);
+        file.setStorageProvider(StorageProviderType.LOCAL);
+        file.setStorageKey("_tmp/news-cover.png");
+        file.setOriginalFilename("news-cover.png");
+        file.setFileRole(FileRole.GENERIC);
+
+        when(securityFacade.hasRole(ROLE_ADMIN)).thenReturn(false);
+        when(fileRepository.findAllById(List.of(fileId))).thenReturn(List.of(file));
+        when(fileRepository.existsByStorageKey("news/News Title/news-cover.png")).thenReturn(true);
+        when(fileRepository.existsByStorageKey("news/News Title/news-cover_1.png")).thenReturn(false);
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.moveFile("_tmp/news-cover.png", "news/News Title/news-cover_1.png"))
+            .thenReturn("news/News Title/news-cover_1.png");
+
+        fileService.linkFilesToEntity(10L, RelatedEntityType.NEWS, List.of(fileId), userId, ctx);
+
+        assertEquals("news/News Title/news-cover_1.png", file.getStorageKey());
+        assertEquals("news-cover_1.png", file.getStoredFilename());
+
+        verify(storageProvider).moveFile("_tmp/news-cover.png", "news/News Title/news-cover_1.png");
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
     // --- Helpers ---
 
     private static FileUploadRequestDto uploadRequest(RelatedEntityType type, Long relatedEntityId) {
