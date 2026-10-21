@@ -29,6 +29,7 @@ import com.itasocialacademy.oitassist.submission.exceptions.TourIsNotInProgressE
 import com.itasocialacademy.oitassist.submission.mapper.SubmissionMapper;
 import com.itasocialacademy.oitassist.submission.service.interfaces.SubmissionService;
 import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
+import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
 import com.itasocialacademy.oitassist.task.exceptions.TaskNotFoundException;
 import com.itasocialacademy.oitassist.taskassignment.api.TaskAssignmentFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
@@ -296,14 +297,14 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         String userEmail = securityFacade.getCurrentUserEmail().orElseThrow(UserNotFoundException::new);
 
-        String taskTitle = taskBodyFacade.findTaskBodyById(taskAssignment.taskBodyId())
-            .orElseThrow(() -> new TaskNotFoundException(taskAssignment.taskBodyId())).title();
+        TaskBodyDetail task = taskBodyFacade.findTaskBodyById(taskAssignment.taskBodyId())
+            .orElseThrow(() -> new TaskNotFoundException(taskAssignment.taskBodyId()));
 
         return StorageContext.forSubmission(
             competition.title(),
             stage.title(),
             tour.title(),
-            taskTitle,
+            task.title(),
             userEmail);
     }
 }
