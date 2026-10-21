@@ -19,15 +19,18 @@ import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -374,6 +377,17 @@ class SharePointStorageProviderTest {
     }
 
     @Test
+    void createTaskReference_ShouldThrowInvalidFilePathException_WhenSiteUrlIsBlank() {
+        when(graphPropertiesMock.getSiteUrl()).thenReturn("");
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.createTaskReference("olympiads/1", "tasks/1"));
+
+        when(graphPropertiesMock.getSiteUrl()).thenReturn(null);
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.createTaskReference("olympiads/1", "tasks/1"));
+    }
+
+    @Test
     void createTaskReference_ShouldUploadUrlFile() {
         stubUpload();
         when(graphPropertiesMock.getSiteUrl()).thenReturn("https://sharepoint.example.com");
@@ -381,6 +395,24 @@ class SharePointStorageProviderTest {
         sharePointStorageProvider.createTaskReference("olympiads/comp/stage/tour/task1", "tasks/task1");
 
         verify(contentBuilder).put(any(InputStream.class));
+    }
+
+    @Test
+    void createTaskReference_ShouldUploadUrlFileWithEncodedPathAndSanitizedUrl() throws Exception {
+        stubUpload();
+        when(graphPropertiesMock.getSiteUrl()).thenReturn("https://sharepoint.example.com/sites/OIT/Shared Documents/");
+
+        sharePointStorageProvider.createTaskReference(
+            "olympiads/comp/stage/tour/task1",
+            "tasks/Algebra #1 & 100% Задача");
+
+        ArgumentCaptor<InputStream> streamCaptor = ArgumentCaptor.forClass(InputStream.class);
+        verify(contentBuilder).put(streamCaptor.capture());
+        String actualContent = new String(streamCaptor.getValue().readAllBytes(), StandardCharsets.UTF_8);
+
+        String expectedUrl =
+            "https://sharepoint.example.com/sites/OIT/Shared%20Documents/tasks/Algebra%20%231%20&%20100%25%20%D0%97%D0%B0%D0%B4%D0%B0%D1%87%D0%B0";
+        assertEquals("[InternetShortcut]\r\nURL=" + expectedUrl + "\r\n", actualContent);
     }
 
     @Test

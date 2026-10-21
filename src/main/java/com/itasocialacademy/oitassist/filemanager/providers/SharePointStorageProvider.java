@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriUtils;
 
 /**
  * Implementation of {@link StorageProvider} for SharePoint storage. Uses
@@ -406,8 +407,17 @@ public class SharePointStorageProvider implements StorageProvider {
                 "Cannot create .url file for task: blank assignment or taskPool path");
         }
 
-        String siteUrl = graphProperties.getSiteUrl();
-        String content = "[InternetShortcut]\nURL=" + siteUrl + "/" + taskPoolPath;
+        String cleanSiteUrl = getCleanSiteUrl();
+
+        String normalizedTaskPoolPath = taskPoolPath.strip();
+
+        if (normalizedTaskPoolPath.startsWith("/")) {
+            normalizedTaskPoolPath = normalizedTaskPoolPath.substring(1);
+        }
+
+        String encodedTaskPoolPath = UriUtils.encodePath(normalizedTaskPoolPath, StandardCharsets.UTF_8);
+
+        String content = "[InternetShortcut]\r\nURL=" + cleanSiteUrl + "/" + encodedTaskPoolPath + "\r\n";
 
         try (var is = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))) {
             upload(is, "task.url", assignmentPath);
@@ -415,6 +425,36 @@ public class SharePointStorageProvider implements StorageProvider {
             log.warn("Failed to create task.url in {}: {}",
                 assignmentPath, e.getMessage());
         }
+    }
+
+    /**
+     * Retrieves and sanitizes the SharePoint base site URL from configuration.
+     *
+     * <p>
+     * Trims leading/trailing whitespace, strips any trailing slash, and encodes
+     * spaces as {@code %20} so the returned URL can be safely concatenated with
+     * relative paths.
+     * </p>
+     *
+     * @return the sanitized base site URL
+     * @throws InvalidFilePathException if {@code graph.site-url} is null or blank
+     */
+    private String getCleanSiteUrl() {
+        String siteUrl = graphProperties.getSiteUrl();
+
+        if (siteUrl == null || siteUrl.isBlank()) {
+            throw new InvalidFilePathException(
+                "Cannot create .url file for task: blank siteUrl");
+        }
+
+        String cleanSiteUrl = siteUrl.strip();
+
+        if (cleanSiteUrl.endsWith("/")) {
+            cleanSiteUrl = cleanSiteUrl.substring(0, cleanSiteUrl.length() - 1);
+        }
+
+        cleanSiteUrl = cleanSiteUrl.replace(" ", "%20");
+        return cleanSiteUrl;
     }
 
     /**
