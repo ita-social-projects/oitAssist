@@ -39,7 +39,7 @@ class FileManagerFacadeImplTest {
         List<MultipartFile> files = List.of(file);
         StorageContext ctx = StorageContext.forTask("Test Task");
         List<FileDetailsDTO> expected =
-            List.of(new FileDetailsDTO(1L, "file.txt", "text/plain", 100L, "PROBLEM", "url"));
+            List.of(new FileDetailsDTO(1L, "file.txt", "stored-file.txt", "text/plain", 100L, "PROBLEM", "url"));
 
         when(fileService.uploadToFileDetails(eq(files), any(FileUploadRequestDto.class))).thenReturn(expected);
 

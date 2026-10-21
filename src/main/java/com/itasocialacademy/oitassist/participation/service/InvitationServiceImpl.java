@@ -36,6 +36,7 @@ import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
@@ -53,6 +54,8 @@ public class InvitationServiceImpl implements InvitationService {
     private static final String ALREADY_PENDING_MESSAGE = "Student already has a pending invitation";
     private static final String PENDING_INVITATION_CONSTRAINT = "idx_unique_pending_invitation";
     private static final RequestStatus PENDING_STATUS = RequestStatus.PENDING;
+    private static final String INVITATION_WAS_ALREADY_UPDATED =
+        "This invitation was already updated by another request";
 
     private final ParticipationRepository participationRepository;
     private final InvitationRepository invitationRepository;
@@ -130,8 +133,15 @@ public class InvitationServiceImpl implements InvitationService {
         validateUserCanProcessInvitation(userId, invitation);
         invitation.setStatus(RequestStatus.ACCEPTED);
         invitation.setProcessedAt(Instant.now());
-        participationRepository.save(participationMapper.toParticipation(invitation));
-        return processInvitationMapper.toResponse(invitationRepository.saveAndFlush(invitation));
+
+        ProcessInvitationResponse response;
+        try {
+            response = processInvitationMapper.toResponse(invitationRepository.saveAndFlush(invitation));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new UnableToProcessInvitationException(INVITATION_WAS_ALREADY_UPDATED);
+        }
+        participationRepository.saveAndFlush(participationMapper.toParticipation(invitation));
+        return response;
     }
 
     @Override
@@ -143,7 +153,14 @@ public class InvitationServiceImpl implements InvitationService {
         invitation.setStatus(RequestStatus.REJECTED);
         invitation.setProcessedAt(Instant.now());
         invitation.setRejectionReason(request.rejectionReason());
-        return processInvitationMapper.toResponse(invitationRepository.saveAndFlush(invitation));
+
+        ProcessInvitationResponse response;
+        try {
+            response = processInvitationMapper.toResponse(invitationRepository.saveAndFlush(invitation));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new UnableToProcessInvitationException(INVITATION_WAS_ALREADY_UPDATED);
+        }
+        return response;
     }
 
     @Override
@@ -154,7 +171,14 @@ public class InvitationServiceImpl implements InvitationService {
         validateUserCanCancelInvitation(userId, invitation);
         invitation.setStatus(RequestStatus.CANCELLED);
         invitation.setProcessedAt(Instant.now());
-        return processInvitationMapper.toResponse(invitationRepository.saveAndFlush(invitation));
+
+        ProcessInvitationResponse response;
+        try {
+            response = processInvitationMapper.toResponse(invitationRepository.saveAndFlush(invitation));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new UnableToProcessInvitationException(INVITATION_WAS_ALREADY_UPDATED);
+        }
+        return response;
     }
 
     @Override

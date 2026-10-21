@@ -122,8 +122,8 @@ class AssignmentServiceTest {
             .build();
 
         testFiles = List.of(
-            new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
-                "/uploads/task/problem.pdf"));
+            new FileDetailsDTO(1L, "problem.pdf", "stored-problem.pdf", "application/pdf", 2048L,
+                "PROBLEM", "/uploads/task/problem.pdf"));
 
         detailedResponse = new DetailedTaskAssignmentResponseDTO(
             1L, 3L, "PowerPoint Різдвяна зірка", "Створити у файлі-розв'язку",

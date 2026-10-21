@@ -11,6 +11,7 @@ import com.itasocialacademy.oitassist.competition.dao.specification.CompetitionS
 import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
 import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.StageTreeResponse;
@@ -23,8 +24,6 @@ import com.itasocialacademy.oitassist.competition.mapper.TourMapper;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
 import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
-import jakarta.annotation.Resource;
-import org.springframework.context.annotation.Lazy;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -47,10 +46,6 @@ public class CompetitionServiceImpl implements CompetitionService {
     private final TourMapper tourMapper;
     private final HierarchyValidator validator;
 
-    @Resource
-    @Lazy
-    private CompetitionServiceImpl self;
-
     @Override
     @Transactional
     public CompetitionResponse create(CreateCompetitionRequest request) {
@@ -61,18 +56,34 @@ public class CompetitionServiceImpl implements CompetitionService {
     }
 
     @Override
+    @Transactional
+    public CompetitionResponse update(Long competitionId, UpdateCompetitionRequest request) {
+        Competition competition = validator.lockCompetitionForUpdate(competitionId);
+
+        validator.validateEntityVersion(request.version(), competition.getVersion(), Competition.class, competitionId);
+        validator.validateImmutabilityByCompetitionId(competitionId);
+        validator.validateCompetitionDatesAgainstExistingStages(
+            competitionId, request.dateStart(), request.dateFinish());
+
+        competition.setTitle(request.title());
+        competition.setDescription(request.description());
+        competition.setDateStart(request.dateStart());
+        competition.setDateFinish(request.dateFinish());
+
+        return mapper.toResponse(competitionRepository.saveAndFlush(competition));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public CompetitionResponse getById(Long competitionId) {
-        Competition competition = competitionRepository.findById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
-        return mapper.toResponse(competition);
+        return findCompetitionResponseById(competitionId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public CompetitionResponse getVisibleById(Long competitionId) {
         validator.checkVisibilityAccess(competitionId);
-        return self.getById(competitionId);
+        return findCompetitionResponseById(competitionId);
     }
 
     @Override
@@ -170,5 +181,11 @@ public class CompetitionServiceImpl implements CompetitionService {
             .and(CompetitionSpecification.finishesAfterOrEqual(filter.dateStart()))
             .and(CompetitionSpecification.startsBeforeOrEqual(filter.dateFinish()))
             .and(CompetitionSpecification.hasAnyStatus(filter.statuses()));
+    }
+
+    private CompetitionResponse findCompetitionResponseById(Long competitionId) {
+        Competition competition = competitionRepository.findById(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+        return mapper.toResponse(competition);
     }
 }

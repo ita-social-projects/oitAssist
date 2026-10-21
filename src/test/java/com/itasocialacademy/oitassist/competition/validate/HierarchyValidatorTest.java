@@ -40,7 +40,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class HierarchyValidatorTest {
@@ -69,7 +68,6 @@ class HierarchyValidatorTest {
     @BeforeEach
     void setUp() {
         lenient().when(entityManager.createNativeQuery(anyString())).thenReturn(nativeQuery);
-        ReflectionTestUtils.setField(validator, "self", validator);
 
         ZonedDateTime start = ZonedDateTime.of(2026, 6, 25, 10, 0, 0, 0, ZoneId.of("UTC"));
 
@@ -433,6 +431,72 @@ class HierarchyValidatorTest {
             draftCompetition.getDateFinish()));
     }
 
+    // ---- Stage dates validation against new Competition dates ----
+
+    @Test
+    void validateCompetitionDatesAgainstExistingStages_allStagesWithinNewRange_shouldPass() {
+        ZonedDateTime newStart = draftCompetition.getDateStart();
+        ZonedDateTime newFinish = draftCompetition.getDateFinish();
+
+        Stage stage = Stage.builder()
+            .title("Stage 1")
+            .dateStart(newStart.plusHours(1))
+            .dateFinish(newFinish.minusHours(1))
+            .build();
+
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L)).thenReturn(List.of(stage));
+
+        assertDoesNotThrow(() -> validator.validateCompetitionDatesAgainstExistingStages(1L, newStart, newFinish));
+    }
+
+    @Test
+    void validateCompetitionDatesAgainstExistingStages_stageStartsBeforeNewStart_shouldThrow() {
+        ZonedDateTime newStart = draftCompetition.getDateStart().plusDays(2);
+        ZonedDateTime newFinish = draftCompetition.getDateFinish();
+
+        Stage orphanedStage = Stage.builder()
+            .title("Early Stage")
+            .dateStart(draftCompetition.getDateStart())
+            .dateFinish(newStart.plusHours(1))
+            .build();
+
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L)).thenReturn(List.of(orphanedStage));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateCompetitionDatesAgainstExistingStages(1L, newStart, newFinish));
+
+        assertTrue(exception.getMessage().contains("Early Stage"));
+    }
+
+    @Test
+    void validateCompetitionDatesAgainstExistingStages_stageFinishesAfterNewFinish_shouldThrow() {
+        ZonedDateTime newStart = draftCompetition.getDateStart();
+        ZonedDateTime newFinish = draftCompetition.getDateFinish().minusDays(2);
+
+        Stage orphanedStage = Stage.builder()
+            .title("Late Stage")
+            .dateStart(newStart.plusHours(1))
+            .dateFinish(draftCompetition.getDateFinish())
+            .build();
+
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L)).thenReturn(List.of(orphanedStage));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateCompetitionDatesAgainstExistingStages(1L, newStart, newFinish));
+
+        assertTrue(exception.getMessage().contains("Late Stage"));
+    }
+
+    @Test
+    void validateCompetitionDatesAgainstExistingStages_noStages_shouldPass() {
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L)).thenReturn(List.of());
+
+        assertDoesNotThrow(() -> validator.validateCompetitionDatesAgainstExistingStages(1L,
+            draftCompetition.getDateStart(), draftCompetition.getDateFinish()));
+    }
+
     // ---- Execution Readiness (Draft/Published) ----
 
     @Test
@@ -760,5 +824,18 @@ class HierarchyValidatorTest {
     void validateEntityVersion_nullActualVersion_shouldThrow() {
         assertThrows(StaleEntityVersionException.class,
             () -> validator.validateEntityVersion(1L, null, Competition.class, 1L));
+    }
+
+    @Test
+    void validateStageHasAtLeastOneTour_hasTour_shouldPass() {
+        when(tourRepository.existsByStageId(anyLong())).thenReturn(true);
+        validator.validateStageHasAtLeastOneTour(1L);
+    }
+
+    @Test
+    void validateStageHasAtLeastOneTour_noTour_shouldThrow() {
+        when(tourRepository.existsByStageId(anyLong())).thenReturn(false);
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> validator.validateStageHasAtLeastOneTour(1L));
     }
 }

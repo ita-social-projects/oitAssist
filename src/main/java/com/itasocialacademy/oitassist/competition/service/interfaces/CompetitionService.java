@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.competition.service.interfaces;
 import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
 import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
 import org.springframework.data.domain.Page;
@@ -15,6 +16,16 @@ public interface CompetitionService {
      * @param request has data about Competition
      */
     CompetitionResponse create(CreateCompetitionRequest request);
+
+    /**
+     * Updates an existing competition.
+     *
+     * @param competitionId Competition ID
+     * @param request       the DTO containing updated competition details and the
+     *                      expected version
+     * @return {@link CompetitionResponse}
+     */
+    CompetitionResponse update(Long competitionId, UpdateCompetitionRequest request);
 
     /**
      * Retrieve a competition by ID w/o checking access role.

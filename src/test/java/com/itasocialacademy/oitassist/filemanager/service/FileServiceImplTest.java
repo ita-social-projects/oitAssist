@@ -712,8 +712,8 @@ class FileServiceImplTest {
         problemFile.setFileRole(FileRole.PROBLEM);
 
         Set<FileRole> roles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
-        FileDetailsDTO expectedDto = new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 2048L, "PROBLEM",
-            "/api/v1/files/1");
+        FileDetailsDTO expectedDto = new FileDetailsDTO(1L, "problem.pdf", "stored-problem.pdf",
+            "application/pdf", 2048L, "PROBLEM", "/api/v1/files/1");
 
         when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(problemFile));
         when(fileMapper.toDetails(problemFile, "/api/v1/files/1")).thenReturn(expectedDto);
@@ -754,9 +754,9 @@ class FileServiceImplTest {
         referenceFile.setFileRole(FileRole.REFERENCE);
 
         Set<FileRole> roles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
-        FileDetailsDTO problemDto = new FileDetailsDTO(1L, "problem.pdf", "application/pdf", 1024L, "PROBLEM",
-            "/api/v1/files/1");
-        FileDetailsDTO referenceDto = new FileDetailsDTO(2L, "reference.docx",
+        FileDetailsDTO problemDto = new FileDetailsDTO(1L, "problem.pdf", "stored-problem.pdf",
+            "application/pdf", 1024L, "PROBLEM", "/api/v1/files/1");
+        FileDetailsDTO referenceDto = new FileDetailsDTO(2L, "reference.docx", "stored-reference.docx",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 2048L, "REFERENCE",
             "/api/v1/files/2");
 
@@ -781,8 +781,8 @@ class FileServiceImplTest {
         solutionFile.setFileRole(FileRole.SOLUTION);
 
         Set<FileRole> roles = Set.of(FileRole.SOLUTION);
-        FileDetailsDTO solutionDto = new FileDetailsDTO(3L, "solution.zip", "application/zip", 4096L, "SOLUTION",
-            "/api/v1/files/3");
+        FileDetailsDTO solutionDto = new FileDetailsDTO(3L, "solution.zip", "stored-solution.zip",
+            "application/zip", 4096L, "SOLUTION", "/api/v1/files/3");
 
         when(fileRepository.findAll(any(Specification.class))).thenReturn(List.of(solutionFile));
         when(fileMapper.toDetails(solutionFile, "/api/v1/files/3")).thenReturn(solutionDto);
@@ -902,6 +902,7 @@ class FileServiceImplTest {
         FileDetailsDTO expectedDto = new FileDetailsDTO(
             10L,
             "photo.jpg",
+            "stored-photo.jpg",
             "image/jpeg",
             512L,
             FileRole.GENERIC.name(),
@@ -981,6 +982,7 @@ class FileServiceImplTest {
         FileDetailsDTO dto1 = new FileDetailsDTO(
             1L,
             "a.jpg",
+            "stored-a.jpg",
             "image/jpeg",
             256L,
             FileRole.GENERIC.name(),
@@ -989,6 +991,7 @@ class FileServiceImplTest {
         FileDetailsDTO dto2 = new FileDetailsDTO(
             2L,
             "b.jpg",
+            "stored-b.jpg",
             "image/jpeg",
             512L,
             FileRole.GENERIC.name(),
@@ -1053,6 +1056,7 @@ class FileServiceImplTest {
         FileDetailsDTO expectedDto = new FileDetailsDTO(
             10L,
             "photo.jpg",
+            "stored-photo.jpg",
             "image/jpeg",
             512L,
             FileRole.GENERIC.name(),
