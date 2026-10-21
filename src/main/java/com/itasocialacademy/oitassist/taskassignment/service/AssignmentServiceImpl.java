@@ -16,6 +16,7 @@ import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
 import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
+import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
@@ -54,6 +55,10 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final TaskBodyFacade taskBodyFacade;
     private final FileManagerFacade fileManagerFacade;
     private final SecurityFacade securityFacade;
+    private final ParticipationFacade participationFacade;
+
+    public static final String ADMIN_ROLE = "ADMIN";
+    public static final String ORG_ROLE = "ORG";
 
     @Override
     @Transactional
@@ -96,6 +101,8 @@ public class AssignmentServiceImpl implements AssignmentService {
         TourDetail tour = competitionFacade.findTourById(tourId).orElseThrow(
             () -> new TourNotFoundException(tourId));
 
+        checkParticipantOrAdminOrOrg(tourId);
+
         log.debug("Getting all task assignments for tour {}, page={}, size={}, sort={}", tour.id(),
             pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
@@ -121,9 +128,10 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Override
     @Transactional(readOnly = true)
     public DetailedTaskAssignmentResponseDTO getTaskAssignmentById(Long taskAssignmentId) {
-        // TODO: add check to see if ordinary user is in the stage participiant list
         TaskAssignment assignment = taskAssignmentRepository.findById(taskAssignmentId).orElseThrow(
             () -> new TaskAssignmentNotFoundException(taskAssignmentId));
+
+        checkParticipantOrAdminOrOrg(assignment.getTourId());
 
         TaskBodyDetail taskBody = taskBodyFacade.findTaskBodyById(assignment.getTaskBodyId()).orElseThrow(
             () -> new TaskNotFoundException(assignment.getTaskBodyId()));
@@ -280,7 +288,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     private List<FileDetailsDTO> resolveTaskFiles(Long taskBodyId) {
         Set<FileRole> allowedFileRoles;
 
-        if (securityFacade.hasRole("ADMIN") || securityFacade.hasRole("ORG")) {
+        if (securityFacade.hasRole(ADMIN_ROLE) || securityFacade.hasRole(ORG_ROLE)) {
             allowedFileRoles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE, FileRole.SOLUTION);
         } else {
             allowedFileRoles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
@@ -296,7 +304,23 @@ public class AssignmentServiceImpl implements AssignmentService {
     }
 
     private void checkAdminOrOrg() {
-        if (!securityFacade.hasRole("ADMIN") && !securityFacade.hasRole("ORG")) {
+        if (!securityFacade.hasRole(ADMIN_ROLE) && !securityFacade.hasRole(ORG_ROLE)) {
+            throw new AuthorizationException("You do not have permission to this operation", ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private void checkParticipantOrAdminOrOrg(Long tourId) {
+        if (securityFacade.hasRole(ADMIN_ROLE) || securityFacade.hasRole(ORG_ROLE)) {
+            return;
+        }
+
+        Long currentUserId = securityFacade.getCurrentUserId().orElseThrow(
+            () -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
+
+        TourDetail tour = competitionFacade.findTourById(tourId).orElseThrow(
+            () -> new TourNotFoundException(tourId));
+
+        if (!participationFacade.isUserAStageParticipant(currentUserId, tour.stageId())) {
             throw new AuthorizationException("You do not have permission to this operation", ErrorCode.ACCESS_DENIED);
         }
     }
