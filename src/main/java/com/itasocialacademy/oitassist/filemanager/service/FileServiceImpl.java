@@ -491,7 +491,7 @@ public class FileServiceImpl implements FileService {
                 ErrorCode.FILE_VALIDATION_FAILED);
         }
 
-        if (entityType == RelatedEntityType.TASK) {
+        if (entityType == RelatedEntityType.TASK && file.getStorageKey() != null) {
             String oldKey = file.getStorageKey();
             int lastSlash = oldKey.lastIndexOf('/');
             int secondLastSlash = lastSlash > 0 ? oldKey.lastIndexOf('/', lastSlash - 1) : -1;
@@ -719,7 +719,19 @@ public class FileServiceImpl implements FileService {
     private String generateStoredFilename(String originalFilename, String relativePath) {
         String baseName = FileValidationUtils.extractNameWithoutExtension(originalFilename);
         String ext = FilePathUtils.extractExtensionWithDot(originalFilename);
-        String sanitizedBase = FilePathUtils.sanitize(baseName);
+        if (ext.isEmpty() && originalFilename != null && originalFilename.endsWith(".")) {
+            ext = ".";
+        }
+        String sanitizedBase;
+        try {
+            sanitizedBase = FilePathUtils.sanitize(baseName);
+        } catch (ValidationException _) {
+            sanitizedBase = (baseName == null || baseName.isBlank()) ? "file"
+                : baseName.replaceAll("[\\\\/:*?\"<>|\\x00-\\x1F]", "_");
+            if (sanitizedBase.isBlank()) {
+                sanitizedBase = "file";
+            }
+        }
 
         String candidate = sanitizedBase + ext;
         int n = 1;
@@ -1003,7 +1015,7 @@ public class FileServiceImpl implements FileService {
      */
     private void moveFromTempFolder(Long entityId, RelatedEntityType entityType, StorageContext storageContext,
         FileAsset file) {
-        if (storageContext != null && file.getStorageKey().startsWith("_tmp/")) {
+        if (storageContext != null && file.getStorageKey() != null && file.getStorageKey().startsWith("_tmp/")) {
             FileUploadRequestDto pathDto = FileUploadRequestDto.builder()
                 .relatedEntityType(entityType)
                 .relatedEntityId(entityId)
