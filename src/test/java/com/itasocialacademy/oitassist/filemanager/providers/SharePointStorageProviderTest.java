@@ -327,6 +327,73 @@ class SharePointStorageProviderTest {
     }
 
     //
+    // moveFile() SECTION TESTS
+    //
+
+    @Test
+    void moveFile_ShouldThrowInvalidFilePathException_WhenBlank() {
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.moveFile("", "target/file.txt"));
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.moveFile(null, "target/file.txt"));
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.moveFile("source.txt", "   "));
+    }
+
+    @Test
+    void moveFile_ShouldThrowInvalidFilePathException_WhenTargetHasNoFolder() {
+        assertThatThrownBy(() -> sharePointStorageProvider.moveFile("source.txt", "targetfile.txt"))
+            .isInstanceOf(InvalidFilePathException.class)
+            .hasMessageContaining("Target key has no folder");
+    }
+
+    @Test
+    void moveFile_ShouldMoveFileSuccessfully_WhenFolderExists() {
+        stubGraphChain();
+        DriveItem folderItem = driveFolder("solution", "folder-123");
+        when(itemBuilder.get()).thenReturn(folderItem);
+        when(itemBuilder.patch(any(DriveItem.class))).thenReturn(new DriveItem());
+
+        String result = sharePointStorageProvider.moveFile(
+            "tasks/task1/problem/file.txt", "tasks/task1/solution/file.txt");
+
+        assertThat(result).isEqualTo("tasks/task1/solution/file.txt");
+        verify(itemBuilder).patch(any(DriveItem.class));
+    }
+
+    //
+    // createTaskReference() & deleteTaskReference() SECTION TESTS
+    //
+
+    @Test
+    void createTaskReference_ShouldThrowInvalidFilePathException_WhenPathIsBlank() {
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.createTaskReference("", "tasks/1"));
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.createTaskReference("olympiads/1", null));
+    }
+
+    @Test
+    void createTaskReference_ShouldUploadUrlFile() {
+        stubUpload();
+        when(graphPropertiesMock.getSiteUrl()).thenReturn("https://sharepoint.example.com");
+
+        sharePointStorageProvider.createTaskReference("olympiads/comp/stage/tour/task1", "tasks/task1");
+
+        verify(contentBuilder).put(any(InputStream.class));
+    }
+
+    @Test
+    void deleteTaskReference_ShouldDeletePhysicalFile() {
+        stubGraphChain();
+        doNothing().when(itemBuilder).delete();
+
+        sharePointStorageProvider.deleteTaskReference("olympiads/comp/stage/tour/task1");
+
+        verify(itemBuilder).delete();
+    }
+
+    //
     // HELPER METHODS
     //
 

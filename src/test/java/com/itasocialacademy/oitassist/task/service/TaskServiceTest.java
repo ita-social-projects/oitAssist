@@ -8,6 +8,7 @@ import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.ValidationException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -38,7 +39,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -56,8 +56,6 @@ class TaskServiceTest {
     private TaskBodyRepository taskBodyRepository;
     @Mock
     private TaskBodyMapper taskBodyMapper;
-    @Mock
-    private ApplicationEventPublisher applicationEventPublisher;
     @Mock
     private SecurityFacade securityFacade;
     @Mock
@@ -145,9 +143,10 @@ class TaskServiceTest {
         TaskOwner owner = captor.getValue().getOwners().iterator().next();
         assertEquals(100L, owner.getId().getOwnerId());
 
-        verify(fileManagerFacade).uploadFiles(problemFiles, RelatedEntityType.TASK, 1L, FileRole.PROBLEM);
-        verify(fileManagerFacade, never()).uploadFiles(any(), any(), any(), eq(FileRole.REFERENCE));
-        verify(fileManagerFacade, never()).uploadFiles(any(), any(), any(), eq(FileRole.SOLUTION));
+        verify(fileManagerFacade).uploadFiles(problemFiles, RelatedEntityType.TASK, 1L, FileRole.PROBLEM,
+            StorageContext.forTask("Test Task"));
+        verify(fileManagerFacade, never()).uploadFiles(any(), any(), any(), eq(FileRole.REFERENCE), any());
+        verify(fileManagerFacade, never()).uploadFiles(any(), any(), any(), eq(FileRole.SOLUTION), any());
     }
 
     @Test
@@ -165,9 +164,12 @@ class TaskServiceTest {
 
         taskService.createTask(metadata, problemFiles, refFiles, solFiles);
 
-        verify(fileManagerFacade).uploadFiles(problemFiles, RelatedEntityType.TASK, 1L, FileRole.PROBLEM);
-        verify(fileManagerFacade).uploadFiles(refFiles, RelatedEntityType.TASK, 1L, FileRole.REFERENCE);
-        verify(fileManagerFacade).uploadFiles(solFiles, RelatedEntityType.TASK, 1L, FileRole.SOLUTION);
+        verify(fileManagerFacade).uploadFiles(problemFiles, RelatedEntityType.TASK, 1L, FileRole.PROBLEM,
+            StorageContext.forTask("Test Task"));
+        verify(fileManagerFacade).uploadFiles(refFiles, RelatedEntityType.TASK, 1L, FileRole.REFERENCE,
+            StorageContext.forTask("Test Task"));
+        verify(fileManagerFacade).uploadFiles(solFiles, RelatedEntityType.TASK, 1L, FileRole.SOLUTION,
+            StorageContext.forTask("Test Task"));
     }
 
     @Test
@@ -182,7 +184,7 @@ class TaskServiceTest {
 
         taskService.createTask(metadata, null, null, null);
 
-        verify(fileManagerFacade, never()).uploadFiles(any(), any(), any(), any());
+        verify(fileManagerFacade, never()).uploadFiles(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -366,7 +368,8 @@ class TaskServiceTest {
         // Verify role update
         verify(fileManagerFacade).updateRoleForMultiOwnerEntity(52L, FileRole.SOLUTION, RelatedEntityType.TASK, 1L);
         // Verify upload
-        verify(fileManagerFacade).uploadFiles(newProblemFiles, RelatedEntityType.TASK, 1L, FileRole.PROBLEM);
+        verify(fileManagerFacade).uploadFiles(newProblemFiles, RelatedEntityType.TASK, 1L, FileRole.PROBLEM,
+            StorageContext.forTask("Updated Title"));
     }
 
     @Test

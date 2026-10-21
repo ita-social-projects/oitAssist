@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
+import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
@@ -12,6 +14,7 @@ import com.itasocialacademy.oitassist.core.exceptions.DataAccessException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
@@ -24,6 +27,8 @@ import com.itasocialacademy.oitassist.submission.exceptions.NotAParticipantExcep
 import com.itasocialacademy.oitassist.submission.exceptions.SubmissionNotFoundException;
 import com.itasocialacademy.oitassist.submission.exceptions.TourIsNotInProgressException;
 import com.itasocialacademy.oitassist.submission.mapper.SubmissionMapper;
+import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
+import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
 import com.itasocialacademy.oitassist.taskassignment.api.TaskAssignmentFacade;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskAssignmentDetailDTO;
 import com.itasocialacademy.oitassist.taskassignment.api.dto.TaskRequirementsDTO;
@@ -60,6 +65,8 @@ class SubmissionServiceTest {
     private CompetitionFacade competitionFacade;
     @Mock
     private ParticipationFacade participationFacade;
+    @Mock
+    private TaskBodyFacade taskBodyFacade;
 
     private Submission submission;
     private SubmissionResponseDTO response;
@@ -337,6 +344,23 @@ class SubmissionServiceTest {
                 5)));
     }
 
+    private void mockStorageContext(Long stageId) {
+        StageDetail stageDetail = mock(StageDetail.class);
+        when(stageDetail.competitionId()).thenReturn(600L);
+        when(stageDetail.title()).thenReturn("Stage Title");
+        when(competitionFacade.findStageById(stageId)).thenReturn(Optional.of(stageDetail));
+
+        CompetitionDetail compDetail = mock(CompetitionDetail.class);
+        when(compDetail.title()).thenReturn("Comp Title");
+        when(competitionFacade.findCompetitionById(600L)).thenReturn(Optional.of(compDetail));
+
+        when(securityFacade.getCurrentUserEmail()).thenReturn(Optional.of("user@email.com"));
+
+        TaskBodyDetail taskBody = mock(TaskBodyDetail.class);
+        when(taskBody.title()).thenReturn("Task Title");
+        when(taskBodyFacade.findTaskBodyById(500L)).thenReturn(Optional.of(taskBody));
+    }
+
     @Test
     @DisplayName("createSubmission should create submission and upload valid files")
     void createSubmission_ShouldCreateSubmissionAndUploadValidFiles() {
@@ -359,11 +383,15 @@ class SubmissionServiceTest {
 
         TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
         when(assignment.tourId()).thenReturn(tourId);
+        when(assignment.taskBodyId()).thenReturn(500L);
         when(assignment.requirements()).thenReturn(requirements);
 
         TourDetail tourDetail = mock(TourDetail.class);
         when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
         when(tourDetail.stageId()).thenReturn(stageId);
+        when(tourDetail.title()).thenReturn("Tour Title");
+
+        mockStorageContext(stageId);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
 
@@ -380,10 +408,11 @@ class SubmissionServiceTest {
             .thenReturn(Optional.of(submission));
 
         when(fileManagerFacade.uploadFiles(
-            List.of(validFile),
-            RelatedEntityType.SUBMISSION,
-            1L,
-            FileRole.GENERIC))
+            eq(List.of(validFile)),
+            eq(RelatedEntityType.SUBMISSION),
+            eq(1L),
+            eq(FileRole.GENERIC),
+            any(StorageContext.class)))
             .thenReturn(files);
 
         when(submissionMapper.toResponse(submission, files))
@@ -417,10 +446,11 @@ class SubmissionServiceTest {
             userId);
 
         verify(fileManagerFacade).uploadFiles(
-            List.of(validFile),
-            RelatedEntityType.SUBMISSION,
-            1L,
-            FileRole.GENERIC);
+            eq(List.of(validFile)),
+            eq(RelatedEntityType.SUBMISSION),
+            eq(1L),
+            eq(FileRole.GENERIC),
+            any(StorageContext.class));
 
         verify(submissionMapper).toResponse(submission, files);
     }
@@ -443,11 +473,15 @@ class SubmissionServiceTest {
 
         TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
         when(assignment.tourId()).thenReturn(tourId);
+        when(assignment.taskBodyId()).thenReturn(500L);
         when(assignment.requirements()).thenReturn(requirements);
 
         TourDetail tourDetail = mock(TourDetail.class);
         when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
         when(tourDetail.stageId()).thenReturn(stageId);
+        when(tourDetail.title()).thenReturn("Tour Title");
+
+        mockStorageContext(stageId);
 
         Submission existingSubmission = Submission.builder()
             .id(1L)
@@ -477,10 +511,11 @@ class SubmissionServiceTest {
             .thenReturn(Optional.of(existingSubmission));
 
         when(fileManagerFacade.uploadFiles(
-            List.of(file),
-            RelatedEntityType.SUBMISSION,
-            1L,
-            FileRole.GENERIC))
+            eq(List.of(file)),
+            eq(RelatedEntityType.SUBMISSION),
+            eq(1L),
+            eq(FileRole.GENERIC),
+            any(StorageContext.class)))
             .thenReturn(uploadedFiles);
 
         when(submissionMapper.toResponse(existingSubmission, uploadedFiles))
@@ -514,10 +549,11 @@ class SubmissionServiceTest {
             userId);
 
         verify(fileManagerFacade).uploadFiles(
-            List.of(file),
-            RelatedEntityType.SUBMISSION,
-            1L,
-            FileRole.GENERIC);
+            eq(List.of(file)),
+            eq(RelatedEntityType.SUBMISSION),
+            eq(1L),
+            eq(FileRole.GENERIC),
+            any(StorageContext.class));
 
         verify(submissionMapper).toResponse(existingSubmission, uploadedFiles);
     }
@@ -576,11 +612,15 @@ class SubmissionServiceTest {
 
         TaskAssignmentDetailDTO assignment = mock(TaskAssignmentDetailDTO.class);
         when(assignment.tourId()).thenReturn(tourId);
+        when(assignment.taskBodyId()).thenReturn(500L);
         when(assignment.requirements()).thenReturn(requirements);
 
         TourDetail tourDetail = mock(TourDetail.class);
         when(tourDetail.executionStatus()).thenReturn(ExecutionStatus.IN_PROGRESS);
         when(tourDetail.stageId()).thenReturn(stageId);
+        when(tourDetail.title()).thenReturn("Tour Title");
+
+        mockStorageContext(stageId);
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
 
@@ -599,10 +639,11 @@ class SubmissionServiceTest {
         List<FileDetailsDTO> uploadedFiles = List.of();
 
         when(fileManagerFacade.uploadFiles(
-            List.of(firstFile),
-            RelatedEntityType.SUBMISSION,
-            1L,
-            FileRole.GENERIC))
+            eq(List.of(firstFile)),
+            eq(RelatedEntityType.SUBMISSION),
+            eq(1L),
+            eq(FileRole.GENERIC),
+            any(StorageContext.class)))
             .thenReturn(uploadedFiles);
 
         SubmissionResponseDTO responseDTO = SubmissionResponseDTO.builder()
@@ -635,10 +676,11 @@ class SubmissionServiceTest {
             userId);
 
         verify(fileManagerFacade).uploadFiles(
-            List.of(firstFile),
-            RelatedEntityType.SUBMISSION,
-            1L,
-            FileRole.GENERIC);
+            eq(List.of(firstFile)),
+            eq(RelatedEntityType.SUBMISSION),
+            eq(1L),
+            eq(FileRole.GENERIC),
+            any(StorageContext.class));
 
         verify(submissionMapper).toResponse(
             submission,
