@@ -13,6 +13,7 @@ import com.microsoft.graph.models.ItemReference;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -381,6 +382,59 @@ public class SharePointStorageProvider implements StorageProvider {
         } catch (Exception e) {
             log.error("Unexpected error while moving SharePoint file from {} to {}", sourceKey, targetKey, e);
             throw new FileUploadException("Failed to move file in SharePoint", e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Generates an Internet Shortcut ({@code task.url}) file containing a web link
+     * to the task pool folder in SharePoint, and uploads it to the assignment
+     * folder.
+     * </p>
+     *
+     * @param assignmentPath the relative destination folder path in SharePoint
+     *                       where the shortcut should be created
+     * @param taskPoolPath   the relative source path pointing to the task pool
+     *                       folder in SharePoint
+     */
+    @Override
+    public void createTaskReference(String assignmentPath, String taskPoolPath) {
+        if (assignmentPath == null || assignmentPath.isBlank() || taskPoolPath == null || taskPoolPath.isBlank()) {
+            throw new InvalidFilePathException(
+                "Cannot create .url file for task: blank assignment or taskPool path");
+        }
+
+        String siteUrl = graphProperties.getSiteUrl();
+        String content = "[InternetShortcut]\nURL=" + siteUrl + "/" + taskPoolPath;
+
+        try (var is = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))) {
+            upload(is, "task.url", assignmentPath);
+        } catch (IOException e) {
+            log.warn("Failed to create task.url in {}: {}",
+                assignmentPath, e.getMessage());
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Deletes the {@code task.url} file located in the specified SharePoint
+     * assignment folder.
+     * </p>
+     *
+     * @param assignmentPath the relative destination folder path in SharePoint
+     *                       containing the {@code task.url} file
+     */
+    @Override
+    public void deleteTaskReference(String assignmentPath) {
+        try {
+            deletePhysical(assignmentPath + "/task.url");
+        } catch (Exception e) {
+            log.warn("Failed to delete task.url from {}: {}",
+                assignmentPath, e.getMessage());
         }
     }
 

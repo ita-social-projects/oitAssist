@@ -1,14 +1,19 @@
 package com.itasocialacademy.oitassist.taskassignment.service;
 
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
+import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
+import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
+import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
@@ -74,6 +79,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
 
         TaskAssignment savedTaskAssignment = taskAssignmentRepository.save(taskAssignment);
+
+        fileManagerFacade.createTaskReference(
+            buildAssignmentStorageContext(tourId, taskBody.title()));
 
         log.debug("Assigned task {} to tour {}", taskBody.id(), tour.id());
         List<FileDetailsDTO> files = resolveTaskFiles(taskBody.id());
@@ -171,6 +179,12 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         validateTourStatus(tour, "Cannot delete task assignment.");
 
+        TaskBodyDetail task = taskBodyFacade.findTaskBodyById(assignment.getTaskBodyId())
+            .orElseThrow(() -> new TaskNotFoundException(assignment.getTaskBodyId()));
+
+        fileManagerFacade.deleteTaskReference(
+            buildAssignmentStorageContext(tour.id(), task.title()));
+
         taskAssignmentRepository.delete(assignment);
 
         log.debug("Deleted Task Assignment: Id {}", assignment.getId());
@@ -201,6 +215,9 @@ public class AssignmentServiceImpl implements AssignmentService {
             .build();
 
         TaskAssignment saved = taskAssignmentRepository.save(taskAssignment);
+
+        fileManagerFacade.createTaskReference(
+            buildAssignmentStorageContext(tourId, createdTask.title()));
 
         log.debug("Created task {} and assigned to tour {}", createdTask.id(), tour.id());
 
@@ -284,9 +301,29 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
     }
 
-    public void checkAssignmentVersion(Long actualVersion, Long expectedVersion, Long assignmentId) {
+    private void checkAssignmentVersion(Long actualVersion, Long expectedVersion, Long assignmentId) {
         if (!Objects.equals(actualVersion, expectedVersion)) {
             throw new StaleAssignmentVersionException(assignmentId);
         }
+    }
+
+    /**
+     * Resolves the competition hierarchy (competition, stage, tour) for a given
+     * tour ID and builds a {@link StorageContext} suitable for task assignment
+     * storage references.
+     *
+     * @param tourId    the ID of the tour
+     * @param taskTitle the title of the task
+     * @return the populated {@link StorageContext}
+     */
+    private StorageContext buildAssignmentStorageContext(Long tourId, String taskTitle) {
+        TourDetail tour = competitionFacade.findTourById(tourId)
+            .orElseThrow(() -> new TourNotFoundException(tourId));
+        StageDetail stage = competitionFacade.findStageById(tour.stageId())
+            .orElseThrow(() -> new StageNotFoundException(tour.stageId()));
+        CompetitionDetail comp = competitionFacade.findCompetitionById(stage.competitionId())
+            .orElseThrow(() -> new CompetitionNotFoundException(stage.competitionId()));
+
+        return StorageContext.forAssignment(comp.title(), stage.title(), tour.title(), taskTitle);
     }
 }

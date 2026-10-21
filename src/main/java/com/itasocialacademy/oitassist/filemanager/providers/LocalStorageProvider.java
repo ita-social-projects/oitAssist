@@ -254,6 +254,74 @@ public class LocalStorageProvider implements StorageProvider {
         return root.relativize(target).toString().replace("\\", "/");
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Creates a relative directory symbolic link pointing from
+     * {@code assignmentPath/task} back to {@code taskPoolPath}. Resolves parent
+     * directories if missing and validates bounds against the storage root
+     * directory.
+     * </p>
+     *
+     * @param assignmentPath the relative destination path of the assignment folder
+     *                       where the symlink should reside
+     * @param taskPoolPath   the relative source path pointing to the canonical task
+     *                       folder in the task pool
+     */
+    @Override
+    public void createTaskReference(String assignmentPath, String taskPoolPath) {
+        if (assignmentPath == null || assignmentPath.isBlank() || taskPoolPath == null || taskPoolPath.isBlank()) {
+            throw new InvalidFilePathException(
+                "Cannot create symlink for task: blank assignment or taskPool path");
+        }
+
+        Path link = root.resolve(assignmentPath + "/task").normalize();
+        Path target = root.resolve(taskPoolPath).normalize();
+
+        validateWithinRoot(link);
+        validateWithinRoot(target);
+
+        try {
+            Files.createDirectories(link.getParent());
+            Path relative = link.getParent().relativize(target);
+            Files.createSymbolicLink(link, relative);
+        } catch (IOException e) {
+            log.warn("Failed to create symlink {} -> {}: {}",
+                link, target, e.getMessage());
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Deletes the symbolic link located at {@code assignmentPath/task}. Verifies
+     * that the target path is indeed a symbolic link prior to deletion to avoid
+     * deleting actual directory data.
+     * </p>
+     *
+     * @param assignmentPath the relative destination folder path containing the
+     *                       symlink
+     */
+    @Override
+    public void deleteTaskReference(String assignmentPath) {
+        if (assignmentPath == null || assignmentPath.isBlank()) {
+            throw new InvalidFilePathException("Cannot create symlink for task: blank assignmentPath");
+        }
+
+        Path link = root.resolve(assignmentPath + "/task").normalize();
+        validateWithinRoot(link);
+
+        try {
+            if (Files.isSymbolicLink(link)) {
+                Files.delete(link);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to delete symlink {}: {}", link, e.getMessage());
+        }
+    }
+
     private void validateWithinRoot(Path path) {
         if (!path.startsWith(root)) {
             throw new InvalidFilePathException("Access denied: path is outside storage root");

@@ -74,4 +74,30 @@ public interface StorageProvider {
      * @throws FileUploadException if the file cannot be moved
      */
     String moveFile(String sourceKey, String targetKey);
+
+    /**
+     * Creates a reference to a task in the specified assignment folder.
+     *
+     * <p>
+     * Depending on the storage provider implementation, this creates either an OS
+     * symbolic link (for local filesystem storage) or an Internet Shortcut
+     * {@code task.url} file (for SharePoint storage).
+     * </p>
+     *
+     * @param assignmentPath the relative destination folder path where the
+     *                       reference should be placed (e.g.,
+     *                       {@code "olympiads/Comp/Stage/Tour/Task"})
+     * @param taskPoolPath   the relative source path pointing to the canonical task
+     *                       folder in the task pool (e.g., {@code "tasks/Task"})
+     */
+    void createTaskReference(String assignmentPath, String taskPoolPath);
+
+    /**
+     * Deletes the task reference (symlink or {@code task.url} file) from the
+     * specified assignment folder.
+     *
+     * @param assignmentPath the relative destination folder path containing the
+     *                       reference to delete
+     */
+    void deleteTaskReference(String assignmentPath);
 }

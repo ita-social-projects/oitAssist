@@ -418,6 +418,42 @@ public class FileServiceImpl implements FileService {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Resolves the assignment path
+     * ({@code olympiads/<competition>/<stage>/<tour>/<task>}) and task pool path
+     * ({@code tasks/<task>}), then delegates reference creation to the default
+     * provider.
+     * </p>
+     */
+    @Override
+    public void createTaskReference(StorageContext ctx) {
+        String assignmentPath = String.join("/", "olympiads",
+            sanitize(ctx.competitionTitle()), sanitize(ctx.stageTitle()),
+            sanitize(ctx.tourTitle()), sanitize(ctx.taskTitle()));
+        String poolPath = "tasks/" + sanitize(ctx.taskTitle());
+        providerResolver.resolveDefault().createTaskReference(assignmentPath, poolPath);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Resolves the assignment path
+     * ({@code olympiads/<competition>/<stage>/<tour>/<task>}) and delegates
+     * reference deletion to the default provider.
+     * </p>
+     */
+    @Override
+    public void deleteTaskReference(StorageContext ctx) {
+        String assignmentPath = String.join("/", "olympiads",
+            sanitize(ctx.competitionTitle()), sanitize(ctx.stageTitle()),
+            sanitize(ctx.tourTitle()), sanitize(ctx.taskTitle()));
+        providerResolver.resolveDefault().deleteTaskReference(assignmentPath);
+    }
+
+    /**
      * Validates and updates the role of a given file asset. Ensures the file is in
      * an ATTACHED state, belongs to the specified entity, and that the new role is
      * allowed for its extension based on the entity's policy.

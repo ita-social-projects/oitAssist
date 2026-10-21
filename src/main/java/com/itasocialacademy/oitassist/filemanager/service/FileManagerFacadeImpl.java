@@ -68,4 +68,14 @@ public class FileManagerFacadeImpl implements FileManagerFacade {
         Long entityId) {
         fileService.updateRoleForMultiOwnerEntity(fileId, newRole, entityType, entityId);
     }
+
+    @Override
+    public void createTaskReference(StorageContext ctx) {
+        fileService.createTaskReference(ctx);
+    }
+
+    @Override
+    public void deleteTaskReference(StorageContext ctx) {
+        fileService.deleteTaskReference(ctx);
+    }
 }

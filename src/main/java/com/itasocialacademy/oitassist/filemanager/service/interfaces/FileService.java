@@ -170,4 +170,19 @@ public interface FileService {
      *         metadata
      */
     FileResourceDto getFileResource(Long id);
+
+    /**
+     * Creates a task reference (symlink or {@code .url} file) in the assignment
+     * folder pointing to the canonical task in the task pool.
+     *
+     * @param context the storage context containing the hierarchy titles
+     */
+    void createTaskReference(StorageContext context);
+
+    /**
+     * Deletes the task reference from the assignment folder.
+     *
+     * @param context the storage context containing the hierarchy titles
+     */
+    void deleteTaskReference(StorageContext context);
 }
