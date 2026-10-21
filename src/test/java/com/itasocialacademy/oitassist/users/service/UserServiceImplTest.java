@@ -1,10 +1,9 @@
 package com.itasocialacademy.oitassist.users.service;
 
-import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
-import com.itasocialacademy.oitassist.participation.api.ParticipationStatusFacade;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.user.api.interfaces.ActiveParticipationChecker;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
@@ -53,7 +52,7 @@ class UserServiceImplTest {
     private SecurityFacade securityFacade;
 
     @Mock
-    private ParticipationStatusFacade participationStatusFacade;
+    private ActiveParticipationChecker activeParticipationChecker;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -172,8 +171,7 @@ class UserServiceImplTest {
             .thenReturn(false);
         when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any()))
             .thenReturn(false);
-        when(participationStatusFacade.isUserParticipantWithCompetitionStatus(user.getId(),
-            List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT))).thenReturn(true);
+        when(activeParticipationChecker.hasActiveParticipation(user.getId())).thenReturn(true);
 
         // when
         userService.createProfileUpdateRequest(request);
@@ -207,8 +205,7 @@ class UserServiceImplTest {
             .thenReturn(false);
         when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any()))
             .thenReturn(false);
-        when(participationStatusFacade.isUserParticipantWithCompetitionStatus(user.getId(),
-            List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT))).thenReturn(false);
+        when(activeParticipationChecker.hasActiveParticipation(user.getId())).thenReturn(false);
 
         // when
         userService.createProfileUpdateRequest(request);

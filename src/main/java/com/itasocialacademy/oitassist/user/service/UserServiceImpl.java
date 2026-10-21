@@ -1,13 +1,12 @@
 package com.itasocialacademy.oitassist.user.service;
 
-import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
-import com.itasocialacademy.oitassist.participation.api.ParticipationStatusFacade;
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.interfaces.ActiveParticipationChecker;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
@@ -46,7 +45,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper mapper;
 
     private final ProfileUpdateRequestRepository profileUpdateRequestRepository;
-    private final ParticipationStatusFacade participationStatusFacade;
+    private final ActiveParticipationChecker activeParticipationChecker;
 
     /**
      * {@inheritDoc}
@@ -174,8 +173,7 @@ public class UserServiceImpl implements UserService {
                 ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
         }
 
-        boolean hasAnyCompetitions = participationStatusFacade.isUserParticipantWithCompetitionStatus(currentUserId,
-            List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT));
+        boolean hasAnyCompetitions = activeParticipationChecker.hasActiveParticipation(currentUserId);
 
         UpdateRequestStatus status = hasAnyCompetitions ? UpdateRequestStatus.PENDING : UpdateRequestStatus.APPROVED;
 

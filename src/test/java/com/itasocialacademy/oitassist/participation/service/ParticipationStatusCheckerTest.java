@@ -27,7 +27,8 @@ public class ParticipationStatusCheckerTest {
         Long currentUserId = 1L;
         List<CompetitionStatus> competitionStatuses = List.of();
 
-        boolean result = participationStatusCheckerImpl.isUserParticipantWithCompetitionStatus(currentUserId, competitionStatuses);
+        boolean result =
+            participationStatusCheckerImpl.isUserParticipantWithCompetitionStatus(currentUserId, competitionStatuses);
 
         assertFalse(result);
     }
@@ -37,9 +38,11 @@ public class ParticipationStatusCheckerTest {
         Long currentUserId = 1L;
         List<CompetitionStatus> competitionStatuses = List.of(CompetitionStatus.ENROLLMENT);
 
-        when(participationRepository.existsByUserIdAndCompetitionStatusIn(currentUserId, competitionStatuses)).thenReturn(false);
+        when(participationRepository.existsByUserIdAndCompetitionStatusIn(currentUserId, competitionStatuses))
+            .thenReturn(false);
 
-        boolean result = participationStatusCheckerImpl.isUserParticipantWithCompetitionStatus(currentUserId, competitionStatuses);
+        boolean result =
+            participationStatusCheckerImpl.isUserParticipantWithCompetitionStatus(currentUserId, competitionStatuses);
 
         assertFalse(result);
     }
@@ -49,9 +52,11 @@ public class ParticipationStatusCheckerTest {
         Long currentUserId = 1L;
         List<CompetitionStatus> competitionStatuses = List.of(CompetitionStatus.ENROLLMENT);
 
-        when(participationRepository.existsByUserIdAndCompetitionStatusIn(currentUserId, competitionStatuses)).thenReturn(true);
+        when(participationRepository.existsByUserIdAndCompetitionStatusIn(currentUserId, competitionStatuses))
+            .thenReturn(true);
 
-        boolean result = participationStatusCheckerImpl.isUserParticipantWithCompetitionStatus(currentUserId, competitionStatuses);
+        boolean result =
+            participationStatusCheckerImpl.isUserParticipantWithCompetitionStatus(currentUserId, competitionStatuses);
 
         assertTrue(result);
         verify(participationRepository).existsByUserIdAndCompetitionStatusIn(currentUserId, competitionStatuses);

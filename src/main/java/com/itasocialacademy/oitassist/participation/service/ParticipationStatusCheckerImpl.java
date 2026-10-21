@@ -15,7 +15,9 @@ public class ParticipationStatusCheckerImpl implements ParticipationStatusChecke
     /**
      * {@inheritDoc}
      *
-     * <p>Returns {@code false} for an empty status list without querying the database.</p>
+     * <p>
+     * Returns {@code false} for an empty status list without querying the database.
+     * </p>
      */
     @Override
     public boolean isUserParticipantWithCompetitionStatus(Long userId, List<CompetitionStatus> statuses) {
