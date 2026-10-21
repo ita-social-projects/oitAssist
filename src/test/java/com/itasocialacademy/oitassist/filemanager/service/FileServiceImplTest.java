@@ -1714,6 +1714,33 @@ class FileServiceImplTest {
         verify(fileRepository).saveAll(List.of(file));
     }
 
+    @Test
+    void linkFilesToEntity_shouldNotMoveAnyFiles_whenAnyFileFailsOwnershipValidation() {
+        StorageContext ctx = StorageContext.forNews("News Title");
+        FileAsset file1 = new FileAsset();
+        file1.setId(1L);
+        file1.setUserId(userId);
+        file1.setStatus(FileStatus.TEMPORARY);
+        file1.setStorageProvider(StorageProviderType.LOCAL);
+        file1.setStorageKey("_tmp/file1.png");
+
+        FileAsset file2 = new FileAsset();
+        file2.setId(2L);
+        file2.setUserId(999L);
+        file2.setStatus(FileStatus.TEMPORARY);
+        file2.setStorageProvider(StorageProviderType.LOCAL);
+        file2.setStorageKey("_tmp/file2.png");
+
+        when(securityFacade.hasRole(ROLE_ADMIN)).thenReturn(false);
+        when(fileRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(file1, file2));
+
+        assertThrows(AuthorizationException.class,
+            () -> fileService.linkFilesToEntity(10L, RelatedEntityType.NEWS, List.of(1L, 2L), userId, ctx));
+
+        verify(storageProvider, never()).moveFile(any(), any());
+        verify(fileRepository, never()).saveAll(any());
+    }
+
     // --- Helpers ---
 
     private static FileUploadRequestDto uploadRequest(RelatedEntityType type, Long relatedEntityId) {

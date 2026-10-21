@@ -106,7 +106,9 @@ public class AssignmentServiceImpl implements AssignmentService {
         log.debug("Getting all task assignments for tour {}, page={}, size={}, sort={}", tour.id(),
             pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
-        Page<TaskAssignment> assignmentsPage = taskAssignmentRepository.findAllByTourId(tourId, pageable);
+        Page<TaskAssignment> assignmentsPage = isAdminOrOrg()
+            ? taskAssignmentRepository.findAllByTourId(tourId, pageable)
+            : taskAssignmentRepository.findAllByTourIdAndVisibility(tourId, AssignmentVisibility.VISIBLE, pageable);
 
         if (assignmentsPage.isEmpty()) {
             return Page.empty(pageable);
@@ -132,6 +134,10 @@ public class AssignmentServiceImpl implements AssignmentService {
             () -> new TaskAssignmentNotFoundException(taskAssignmentId));
 
         checkParticipantOrAdminOrOrg(assignment.getTourId());
+
+        if (!isAdminOrOrg() && assignment.getVisibility() != AssignmentVisibility.VISIBLE) {
+            throw new AuthorizationException("You do not have permission to this operation", ErrorCode.ACCESS_DENIED);
+        }
 
         TaskBodyDetail taskBody = taskBodyFacade.findTaskBodyById(assignment.getTaskBodyId()).orElseThrow(
             () -> new TaskNotFoundException(assignment.getTaskBodyId()));
@@ -303,14 +309,18 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
     }
 
+    private boolean isAdminOrOrg() {
+        return securityFacade.hasRole(ADMIN_ROLE) || securityFacade.hasRole(ORG_ROLE);
+    }
+
     private void checkAdminOrOrg() {
-        if (!securityFacade.hasRole(ADMIN_ROLE) && !securityFacade.hasRole(ORG_ROLE)) {
+        if (!isAdminOrOrg()) {
             throw new AuthorizationException("You do not have permission to this operation", ErrorCode.ACCESS_DENIED);
         }
     }
 
     private void checkParticipantOrAdminOrOrg(Long tourId) {
-        if (securityFacade.hasRole(ADMIN_ROLE) || securityFacade.hasRole(ORG_ROLE)) {
+        if (isAdminOrOrg()) {
             return;
         }
 

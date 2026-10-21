@@ -273,7 +273,8 @@ class AssignmentServiceTest {
         when(securityFacade.hasRole("ORG")).thenReturn(false);
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
         when(participationFacade.isUserAStageParticipant(100L, 20L)).thenReturn(true);
-        when(taskAssignmentRepository.findAllByTourId(10L, pageable)).thenReturn(page);
+        when(taskAssignmentRepository.findAllByTourIdAndVisibility(10L, AssignmentVisibility.VISIBLE, pageable))
+            .thenReturn(page);
         when(taskBodyFacade.getTaskTitlesByIds(List.of(3L))).thenReturn(Map.of(3L, "PowerPoint Різдвяна зірка"));
         when(taskAssignmentMapper.toResponse(taskAssignment, "PowerPoint Різдвяна зірка")).thenReturn(
             assignmentResponse);
@@ -283,6 +284,26 @@ class AssignmentServiceTest {
         assertFalse(result.isEmpty());
         assertEquals(1, result.getTotalElements());
         verify(participationFacade).isUserAStageParticipant(100L, 20L);
+    }
+
+    @Test
+    void getAssignmentsByTourId_asAdminOrOrg_shouldReturnAllAssignmentsIncludingHidden() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<TaskAssignment> page = new PageImpl<>(List.of(taskAssignment));
+
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(taskAssignmentRepository.findAllByTourId(10L, pageable)).thenReturn(page);
+        when(taskBodyFacade.getTaskTitlesByIds(List.of(3L))).thenReturn(Map.of(3L, "PowerPoint Різдвяна зірка"));
+        when(taskAssignmentMapper.toResponse(taskAssignment, "PowerPoint Різдвяна зірка")).thenReturn(
+            assignmentResponse);
+
+        Page<TaskAssignmentResponseDTO> result = assignmentService.getAssignmentsByTourId(pageable, 10L);
+
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.getTotalElements());
+        verify(taskAssignmentRepository).findAllByTourId(10L, pageable);
+        verify(taskAssignmentRepository, never()).findAllByTourIdAndVisibility(any(), any(), any());
     }
 
     @Test
@@ -383,6 +404,36 @@ class AssignmentServiceTest {
 
         assertThrows(AuthorizationException.class, () -> assignmentService.getTaskAssignmentById(1L));
         verify(taskBodyFacade, never()).findTaskBodyById(any());
+    }
+
+    @Test
+    void getTaskAssignmentById_asParticipant_whenHidden_shouldThrowAuthorizationException() {
+        taskAssignment.setVisibility(AssignmentVisibility.HIDDEN);
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.hasRole("ORG")).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
+        when(participationFacade.isUserAStageParticipant(100L, 20L)).thenReturn(true);
+
+        assertThrows(AuthorizationException.class, () -> assignmentService.getTaskAssignmentById(1L));
+        verify(taskBodyFacade, never()).findTaskBodyById(any());
+    }
+
+    @Test
+    void getTaskAssignmentById_asAdminOrOrg_whenHidden_shouldReturnDetailedResponse() {
+        taskAssignment.setVisibility(AssignmentVisibility.HIDDEN);
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(taskAssignment, taskBodyDetail.title(),
+            taskBodyDetail.description(), testFiles)).thenReturn(detailedResponse);
+
+        DetailedTaskAssignmentResponseDTO result = assignmentService.getTaskAssignmentById(1L);
+
+        assertNotNull(result);
+        assertEquals(1L, result.id());
     }
 
     // ---- updateTaskAssignment ----

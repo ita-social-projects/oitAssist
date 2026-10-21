@@ -217,6 +217,9 @@ public class FileServiceImpl implements FileService {
 
         for (FileAsset file : files) {
             checkOwnerOrAdmin(file.getUserId(), userId, isAdmin);
+        }
+
+        for (FileAsset file : files) {
             if (file.getStatus() == FileStatus.TEMPORARY) {
                 file.setStatus(FileStatus.ATTACHED);
                 file.setRelatedEntityId(entityId);
