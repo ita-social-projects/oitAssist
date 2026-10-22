@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.competition.controller;
 import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
 import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
 import com.itasocialacademy.oitassist.competition.service.interfaces.CompetitionService;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -109,6 +111,35 @@ public class CompetitionController {
     }
 
     @Operation(
+        summary = "Update an existing competition",
+        description = "Updates an existing competition's details (title, description, dateStart, dateFinish). "
+            + "Stage dates must remain within the updated competition dates, and the competition "
+            + "must not be ARCHIVED (or active with participants).")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Competition updated successfully",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = CompetitionResponse.class))),
+        @ApiResponse(responseCode = "400",
+            description = "Validation failed (e.g., date range invalid or stage dates fall outside new range)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Competition not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PutMapping("/{competitionId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
+    public ResponseEntity<CompetitionResponse> updateCompetition(
+        @PathVariable Long competitionId,
+        @Valid @RequestBody UpdateCompetitionRequest request) {
+        return ResponseEntity.ok(competitionService.update(competitionId, request));
+    }
+
+    @Operation(
         summary = "Get full competition tree (Competition -> Stages -> Tours)",
         description = "Retrieves the competition together with its full hierarchy of stages and tours "
             + "in a single nested response. Access to a DRAFT competition's tree follows the same "
@@ -143,6 +174,10 @@ public class CompetitionController {
         @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Competition not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{competitionId}/status")
@@ -150,6 +185,6 @@ public class CompetitionController {
     public ResponseEntity<CompetitionResponse> changeStatus(
         @PathVariable Long competitionId,
         @Valid @RequestBody ChangeCompetitionStatusRequest request) {
-        return ResponseEntity.ok(competitionService.changeStatus(competitionId, request.status()));
+        return ResponseEntity.ok(competitionService.changeStatus(competitionId, request));
     }
 }

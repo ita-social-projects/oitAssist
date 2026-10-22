@@ -1,9 +1,9 @@
 package com.itasocialacademy.oitassist.users.service;
 
-import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.user.api.interfaces.ActiveParticipationChecker;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ReviewRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
@@ -20,7 +20,6 @@ import com.itasocialacademy.oitassist.user.mapper.ProfileUpdateRequestMapper;
 import com.itasocialacademy.oitassist.user.exceptions.*;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.service.UserServiceImpl;
-import com.itasocialacademy.oitassist.usercompetition.api.interfaces.UserCompetitionFacade;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import java.util.ArrayList;
@@ -33,6 +32,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -59,7 +60,7 @@ class UserServiceImplTest {
     private SecurityFacade securityFacade;
 
     @Mock
-    private UserCompetitionFacade userCompetitionFacade;
+    private ActiveParticipationChecker activeParticipationChecker;
 
     @Mock
     private ProfileUpdateRequestMapper profileUpdateRequestMapper;
@@ -181,8 +182,7 @@ class UserServiceImplTest {
             .thenReturn(false);
         when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any()))
             .thenReturn(false);
-        when(userCompetitionFacade.hasActiveCompetitions(user.getId(),
-            List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT))).thenReturn(true);
+        when(activeParticipationChecker.hasActiveParticipation(user.getId())).thenReturn(true);
 
         // when
         userService.createProfileUpdateRequest(request);
@@ -216,8 +216,7 @@ class UserServiceImplTest {
             .thenReturn(false);
         when(profileUpdateRequestRepository.existsByUserIdAndRequestedAtBetween(eq(user.getId()), any(), any()))
             .thenReturn(false);
-        when(userCompetitionFacade.hasActiveCompetitions(user.getId(),
-            List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT))).thenReturn(false);
+        when(activeParticipationChecker.hasActiveParticipation(user.getId())).thenReturn(false);
 
         // when
         userService.createProfileUpdateRequest(request);
@@ -672,10 +671,11 @@ class UserServiceImplTest {
     @DisplayName("getUsers should throw InsufficientPermissionsException when current user is not admin")
     void getUsers_ShouldThrowInsufficientPermissionsException_WhenCurrentUserIsNotAdmin() {
         Pageable pageable = PageRequest.of(0, 10);
+        List<Role> roles = List.of(Role.ADMIN);
 
         when(securityFacade.hasRole(String.valueOf(Role.ADMIN))).thenReturn(false);
 
-        assertThatThrownBy(() -> userService.getUsers(pageable, "ivan", List.of(Role.ADMIN)))
+        assertThatThrownBy(() -> userService.getUsers(pageable, "ivan", roles))
             .isInstanceOf(InsufficientPermissionsException.class)
             .hasMessage("You do not have enough permissions to perform this action");
 

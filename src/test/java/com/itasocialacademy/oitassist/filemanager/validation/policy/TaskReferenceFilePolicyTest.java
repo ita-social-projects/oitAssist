@@ -35,7 +35,13 @@ class TaskReferenceFilePolicyTest {
             AllowedExtension.DOCX,
             AllowedExtension.XLSX,
             AllowedExtension.PPTX,
-            AllowedExtension.ACCDB);
+            AllowedExtension.ACCDB,
+            AllowedExtension.JPG,
+            AllowedExtension.JPEG,
+            AllowedExtension.PNG,
+            AllowedExtension.GIF,
+            AllowedExtension.WEBP,
+            AllowedExtension.MP4);
 
         Set<AllowedExtension> actual = policy.getAllowedExtensions();
 

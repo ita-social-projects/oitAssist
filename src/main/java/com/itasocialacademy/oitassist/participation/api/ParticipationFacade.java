@@ -9,4 +9,8 @@ public interface ParticipationFacade {
     boolean competitionHasParticipants(Long competitionId);
 
     boolean stageHasParticipants(Long stageId);
+
+    boolean isUserParticipant(Long userId, Long competitionId, Long stageId);
+
+    boolean isUserAStageParticipant(Long userId, Long stageId);
 }

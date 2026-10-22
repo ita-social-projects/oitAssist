@@ -75,13 +75,13 @@ class NewsArchivingServiceImplTest {
 
     @Test
     void getArchivedNewsGroupedByYearAndMonth_ShouldReturnEmptyList_WhenNoArchivedNews() {
-        when(newsRepository.findArchivedNewsOrderByArchivedAtDesc()).thenReturn(List.of());
+        when(newsRepository.findArchivedNewsOrderByPublishedAtDesc()).thenReturn(List.of());
 
         List<ArchivedNewsByYearDto> result = newsArchivingService.getArchivedNewsGroupedByYearAndMonth();
 
         assertTrue(result.isEmpty());
 
-        verify(newsRepository).findArchivedNewsOrderByArchivedAtDesc();
+        verify(newsRepository).findArchivedNewsOrderByPublishedAtDesc();
     }
 
     @Test
@@ -101,7 +101,7 @@ class NewsArchivingServiceImplTest {
             "News 2025 December",
             OffsetDateTime.parse("2025-12-10T10:00:00+02:00"));
 
-        when(newsRepository.findArchivedNewsOrderByArchivedAtDesc())
+        when(newsRepository.findArchivedNewsOrderByPublishedAtDesc())
             .thenReturn(List.of(news2025December, news2026April, news2026May));
 
         List<ArchivedNewsByYearDto> result = newsArchivingService.getArchivedNewsGroupedByYearAndMonth();
@@ -129,7 +129,7 @@ class NewsArchivingServiceImplTest {
             "Kyiv timezone news",
             OffsetDateTime.parse("2026-04-30T22:30:00Z"));
 
-        when(newsRepository.findArchivedNewsOrderByArchivedAtDesc()).thenReturn(List.of(news));
+        when(newsRepository.findArchivedNewsOrderByPublishedAtDesc()).thenReturn(List.of(news));
 
         List<ArchivedNewsByYearDto> result = newsArchivingService.getArchivedNewsGroupedByYearAndMonth();
 
@@ -138,14 +138,64 @@ class NewsArchivingServiceImplTest {
         assertEquals(5, result.get(0).months().get(0).month());
     }
 
-    private News buildArchivedNews(Long id, String title, OffsetDateTime archivedAt) {
+    @Test
+    void getArchivedNewsGroupedByYearAndMonth_ShouldSortNewsWithinSameMonthByPublishedAtDesc() {
+        News earlierNews = buildArchivedNews(
+            1L,
+            "Earlier in May",
+            OffsetDateTime.parse("2026-05-05T10:00:00+03:00"));
+
+        News laterNews = buildArchivedNews(
+            2L,
+            "Later in May",
+            OffsetDateTime.parse("2026-05-25T10:00:00+03:00"));
+
+        when(newsRepository.findArchivedNewsOrderByPublishedAtDesc())
+            .thenReturn(List.of(earlierNews, laterNews));
+
+        List<ArchivedNewsByYearDto> result = newsArchivingService.getArchivedNewsGroupedByYearAndMonth();
+
+        assertEquals(1, result.size());
+        assertEquals(1, result.get(0).months().size());
+        List<com.itasocialacademy.oitassist.news.dao.dto.response.ResponseNewsListItemDto> newsList =
+            result.get(0).months().get(0).news();
+        assertEquals(2, newsList.size());
+        assertEquals("Later in May", newsList.get(0).getTitle());
+        assertEquals("Earlier in May", newsList.get(1).getTitle());
+    }
+
+    @Test
+    void getArchivedNewsGroupedByYearAndMonth_ShouldFallbackToCreatedAt_WhenPublishedAtIsNull() {
+        News news = new News();
+        news.setId(1L);
+        news.setTitle("Fallback News");
+        news.setContent("Preview content");
+        news.setStatus(NewsStatus.ARCHIVED);
+        news.setPublishedAt(null);
+        news.setCreatedAt(OffsetDateTime.parse("2026-06-15T12:00:00+03:00"));
+        news.setArchivedAt(OffsetDateTime.parse("2026-07-15T12:00:00+03:00"));
+
+        when(newsRepository.findArchivedNewsOrderByPublishedAtDesc()).thenReturn(List.of(news));
+
+        List<ArchivedNewsByYearDto> result = newsArchivingService.getArchivedNewsGroupedByYearAndMonth();
+
+        assertEquals(1, result.size());
+        assertEquals(2026, result.get(0).year());
+        assertEquals(1, result.get(0).months().size());
+        assertEquals(6, result.get(0).months().get(0).month());
+        assertEquals("Fallback News", result.get(0).months().get(0).news().get(0).getTitle());
+        assertEquals(OffsetDateTime.parse("2026-06-15T12:00:00+03:00"),
+            result.get(0).months().get(0).news().get(0).getPublishedAt());
+    }
+
+    private News buildArchivedNews(Long id, String title, OffsetDateTime publishedAt) {
         News news = new News();
         news.setId(id);
         news.setTitle(title);
         news.setContent("Some content for preview");
         news.setStatus(NewsStatus.ARCHIVED);
-        news.setPublishedAt(archivedAt.minusDays(30));
-        news.setArchivedAt(archivedAt);
+        news.setPublishedAt(publishedAt);
+        news.setArchivedAt(publishedAt.plusDays(30));
         return news;
     }
 }

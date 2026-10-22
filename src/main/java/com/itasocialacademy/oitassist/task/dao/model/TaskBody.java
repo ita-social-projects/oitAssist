@@ -46,6 +46,10 @@ public class TaskBody {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @OneToMany(
         mappedBy = "task",
         cascade = CascadeType.ALL,

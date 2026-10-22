@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Event listener for file attachment events within the application module.
+ *
  * <p>
  * Handles {@link FilesAttachRequestedEvent} by delegating file linking
  * operations to the {@link FileService}. This listener enables asynchronous,
@@ -25,6 +26,7 @@ public class FileEventListener {
 
     /**
      * Processes a file attachment request event.
+     *
      * <p>
      * Links the specified files to the given entity by delegating to the file
      * service.
@@ -43,6 +45,7 @@ public class FileEventListener {
 
     /**
      * Processes a file detachment request event.
+     *
      * <p>
      * Unlinks the specified files from their associated entities by delegating to
      * the file service.

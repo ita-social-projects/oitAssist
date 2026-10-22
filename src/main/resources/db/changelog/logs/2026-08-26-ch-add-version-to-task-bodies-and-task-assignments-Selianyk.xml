@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="add-version-to-task-bodies" author="Ihor Selianyk">
+        <addColumn tableName="task_bodies">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="add-version-to-task-assignments" author="Ihor Selianyk">
+        <addColumn tableName="task_assignments">
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

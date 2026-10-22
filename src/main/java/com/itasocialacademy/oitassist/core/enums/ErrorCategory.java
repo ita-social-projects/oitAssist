@@ -18,5 +18,6 @@ public enum ErrorCategory {
     AUTHENTICATION,
     NOT_FOUND,
     CONFLICT,
+    RATE_LIMITED,
     TECHNICAL
 }

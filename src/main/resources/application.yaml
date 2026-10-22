@@ -24,6 +24,10 @@ spring:
     show-sql: ${JPA_SHOW_SQL}
     open-in-view: false
     properties:
+      jakarta:
+        persistence:
+          lock:
+            timeout: 3000
       hibernate.default_batch_fetch_size: 50
     hibernate:
       ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:validate}
@@ -55,12 +59,12 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            scope: openid, email, profile
+            scope: [openid, email, profile]
           microsoft:
             provider: microsoft
             client-id: ${MICROSOFT_CLIENT_ID}
             client-secret: ${MICROSOFT_CLIENT_SECRET}
-            scope: openid, email, profile
+            scope: [openid, email, profile]
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             client-name: Microsoft
@@ -83,10 +87,20 @@ oit:
         description: Production
 
 jwt:
-  encrypted-key: ${JWT_ENCRYPTED_KEY}
   sign-key: ${JWT_SIGN_KEY}
   validity: ${JWT_VALIDITY:600000}
   refresh-validity: ${JWT_REFRESH_VALIDITY:1209600000}
+
+two-factor:
+  issuer: ${TWO_FACTOR_ISSUER:OITAssist}
+  recovery-code-count: ${TWO_FACTOR_RECOVERY_CODE_COUNT:10}
+  recovery-code-length: ${TWO_FACTOR_RECOVERY_CODE_LENGTH:8}
+  totp-tolerance-steps: ${TWO_FACTOR_TOTP_TOLERANCE_STEPS:1}
+  pending-token-validity-millis: ${TWO_FACTOR_PENDING_TOKEN_VALIDITY_MILLIS:300000}
+  email-otp-validity-millis: ${TWO_FACTOR_EMAIL_OTP_VALIDITY_MILLIS:600000}
+  mandatory-roles: ${TWO_FACTOR_MANDATORY_ROLES:ADMIN,AUTHOR,JURY,ORG}
+  max-verify-attempts: 3
+  verify-lockout-duration-millis: 60000   # 1 minute
 
 logging:
   level:
@@ -148,3 +162,11 @@ app:
     archiving:
       cron: ${APP_NEWS_ARCHIVING_CRON:0 5 0 * * *}
   timezone: ${APP_TIMEZONE:Europe/Kiev}
+  envvar:
+    access-mode: blacklist
+    blacklist:
+      - JWT_SIGN_KEY
+      - JWT_ENCRYPTED_KEY
+
+competition:
+  hierarchy-lock-timeout-ms: ${LOCK_TIMEOUT:3000}

@@ -6,10 +6,13 @@ import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateAndAssign
 import com.itasocialacademy.oitassist.taskassignment.dto.request.CreateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.request.UpdateTaskAssignmentRequestDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.DetailedTaskAssignmentResponseDTO;
+import com.itasocialacademy.oitassist.taskassignment.dto.response.LinkedToursResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.dto.response.TaskAssignmentResponseDTO;
 import com.itasocialacademy.oitassist.taskassignment.service.interfaces.AssignmentService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -20,9 +23,12 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -57,7 +63,10 @@ public class AssignmentController {
     @Operation(
         summary = "Create a new task and assign it to a tour",
         description = "Creates a new task body and immediately assigns it to the specified tour. "
-            + "Requires ADMIN or ORG role.")
+            + "Requires ADMIN or ORG role.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(encoding = @Encoding(name = "metadata",
+                contentType = "application/json"))))
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Task created and assigned successfully",
             content = @Content(mediaType = "application/json",
@@ -72,11 +81,17 @@ public class AssignmentController {
             content = @Content(mediaType = "application/json",
                 schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PostMapping("/tours/{tourId}/task-assignments/new")
+    @PostMapping(value = "/tours/{tourId}/task-assignments/new", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN','ORG')")
-    public ResponseEntity<DetailedTaskAssignmentResponseDTO> createAndAssignTask(@PathVariable Long tourId,
-        @Valid @RequestBody CreateAndAssignTaskRequestDTO request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(assignmentService.createAndAssignTask(tourId, request));
+    public ResponseEntity<DetailedTaskAssignmentResponseDTO> createAndAssignTask(
+        @PathVariable Long tourId,
+        @RequestPart(value = "problemFiles", required = false) List<MultipartFile> problemFiles,
+        @RequestPart(value = "referenceFiles", required = false) List<MultipartFile> referenceFiles,
+        @RequestPart(value = "solutionFiles", required = false) List<MultipartFile> solutionFiles,
+        @RequestPart("metadata") @Valid CreateAndAssignTaskRequestDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(assignmentService.createAndAssignTask(
+                tourId, request, problemFiles, referenceFiles, solutionFiles));
     }
 
     @Operation(
@@ -113,6 +128,24 @@ public class AssignmentController {
     }
 
     @Operation(
+        summary = "Get tours linked to a task",
+        description = "Retrieves a list of tours linked to the specified task body. Requires ADMIN or ORG role.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Linked tours retrieved successfully",
+            content = @Content(mediaType = "application/json",
+                array = @ArraySchema(schema = @Schema(implementation = LinkedToursResponseDTO.class)))),
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ADMIN or ORG role)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Task body or linked tour not found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/tasks/{taskId}/linked-tours")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")
+    public ResponseEntity<List<LinkedToursResponseDTO>> getLinkedTours(@PathVariable Long taskId) {
+        return ResponseEntity.ok().body(assignmentService.getLinkedToursByTaskId(taskId));
+    }
+
+    @Operation(
         summary = "Update a task assignment",
         description = "Updates an existing task assignment. Only users with ADMIN or ORG role can perform this action.")
     @ApiResponses(value = {
@@ -127,7 +160,11 @@ public class AssignmentController {
                 schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Task assignment not found",
             content = @Content(mediaType = "application/json",
-                schema = @Schema(implementation = ErrorResponse.class)))
+                schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409",
+            description = "Conflict — the entity was modified by another request since it was last read "
+                + "(stale version)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/task-assignments/{assignmentId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ORG')")

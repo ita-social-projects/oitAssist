@@ -14,5 +14,6 @@ public record TourResponse(
     ZonedDateTime dateFinish,
     Short sortPosition,
     String location,
-    ExecutionStatus executionStatus) {
+    ExecutionStatus executionStatus,
+    Long version) {
 }
