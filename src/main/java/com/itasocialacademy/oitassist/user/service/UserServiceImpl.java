@@ -56,7 +56,8 @@ public class UserServiceImpl implements UserService {
     private final ActiveParticipationChecker activeParticipationChecker;
     private final EmailService emailService;
 
-    private static final DateTimeFormatter EMAIL_DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.of("Europe/Kyiv"));
+    private static final DateTimeFormatter EMAIL_DATE =
+        DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.of("Europe/Kyiv"));
 
     /**
      * {@inheritDoc}
