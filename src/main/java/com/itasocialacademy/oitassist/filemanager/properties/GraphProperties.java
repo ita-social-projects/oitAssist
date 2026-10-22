@@ -14,4 +14,5 @@ public class GraphProperties {
     private String clientId;
     private String clientSecret;
     private String driveId;
+    private String siteUrl;
 }

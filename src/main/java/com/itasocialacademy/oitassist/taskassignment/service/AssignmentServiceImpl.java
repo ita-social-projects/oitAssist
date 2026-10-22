@@ -1,16 +1,22 @@
 package com.itasocialacademy.oitassist.taskassignment.service;
 
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
+import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.ExecutionStatus;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
+import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
+import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
+import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
@@ -49,6 +55,10 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final TaskBodyFacade taskBodyFacade;
     private final FileManagerFacade fileManagerFacade;
     private final SecurityFacade securityFacade;
+    private final ParticipationFacade participationFacade;
+
+    public static final String ADMIN_ROLE = "ADMIN";
+    public static final String ORG_ROLE = "ORG";
 
     @Override
     @Transactional
@@ -75,6 +85,9 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         TaskAssignment savedTaskAssignment = taskAssignmentRepository.save(taskAssignment);
 
+        fileManagerFacade.createTaskReference(
+            buildAssignmentStorageContext(tourId, taskBody.title()));
+
         log.debug("Assigned task {} to tour {}", taskBody.id(), tour.id());
         List<FileDetailsDTO> files = resolveTaskFiles(taskBody.id());
 
@@ -88,10 +101,14 @@ public class AssignmentServiceImpl implements AssignmentService {
         TourDetail tour = competitionFacade.findTourById(tourId).orElseThrow(
             () -> new TourNotFoundException(tourId));
 
+        checkParticipantOrAdminOrOrg(tourId);
+
         log.debug("Getting all task assignments for tour {}, page={}, size={}, sort={}", tour.id(),
             pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
-        Page<TaskAssignment> assignmentsPage = taskAssignmentRepository.findAllByTourId(tourId, pageable);
+        Page<TaskAssignment> assignmentsPage = isAdminOrOrg()
+            ? taskAssignmentRepository.findAllByTourId(tourId, pageable)
+            : taskAssignmentRepository.findAllByTourIdAndVisibility(tourId, AssignmentVisibility.VISIBLE, pageable);
 
         if (assignmentsPage.isEmpty()) {
             return Page.empty(pageable);
@@ -113,9 +130,14 @@ public class AssignmentServiceImpl implements AssignmentService {
     @Override
     @Transactional(readOnly = true)
     public DetailedTaskAssignmentResponseDTO getTaskAssignmentById(Long taskAssignmentId) {
-        // TODO: add check to see if ordinary user is in the stage participiant list
         TaskAssignment assignment = taskAssignmentRepository.findById(taskAssignmentId).orElseThrow(
             () -> new TaskAssignmentNotFoundException(taskAssignmentId));
+
+        checkParticipantOrAdminOrOrg(assignment.getTourId());
+
+        if (!isAdminOrOrg() && assignment.getVisibility() != AssignmentVisibility.VISIBLE) {
+            throw new AuthorizationException("You do not have permission to this operation", ErrorCode.ACCESS_DENIED);
+        }
 
         TaskBodyDetail taskBody = taskBodyFacade.findTaskBodyById(assignment.getTaskBodyId()).orElseThrow(
             () -> new TaskNotFoundException(assignment.getTaskBodyId()));
@@ -171,6 +193,12 @@ public class AssignmentServiceImpl implements AssignmentService {
 
         validateTourStatus(tour, "Cannot delete task assignment.");
 
+        TaskBodyDetail task = taskBodyFacade.findTaskBodyById(assignment.getTaskBodyId())
+            .orElseThrow(() -> new TaskNotFoundException(assignment.getTaskBodyId()));
+
+        fileManagerFacade.deleteTaskReference(
+            buildAssignmentStorageContext(tour.id(), task.title()));
+
         taskAssignmentRepository.delete(assignment);
 
         log.debug("Deleted Task Assignment: Id {}", assignment.getId());
@@ -201,6 +229,9 @@ public class AssignmentServiceImpl implements AssignmentService {
             .build();
 
         TaskAssignment saved = taskAssignmentRepository.save(taskAssignment);
+
+        fileManagerFacade.createTaskReference(
+            buildAssignmentStorageContext(tourId, createdTask.title()));
 
         log.debug("Created task {} and assigned to tour {}", createdTask.id(), tour.id());
 
@@ -263,7 +294,7 @@ public class AssignmentServiceImpl implements AssignmentService {
     private List<FileDetailsDTO> resolveTaskFiles(Long taskBodyId) {
         Set<FileRole> allowedFileRoles;
 
-        if (securityFacade.hasRole("ADMIN") || securityFacade.hasRole("ORG")) {
+        if (securityFacade.hasRole(ADMIN_ROLE) || securityFacade.hasRole(ORG_ROLE)) {
             allowedFileRoles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE, FileRole.SOLUTION);
         } else {
             allowedFileRoles = Set.of(FileRole.PROBLEM, FileRole.REFERENCE);
@@ -278,15 +309,55 @@ public class AssignmentServiceImpl implements AssignmentService {
         }
     }
 
+    private boolean isAdminOrOrg() {
+        return securityFacade.hasRole(ADMIN_ROLE) || securityFacade.hasRole(ORG_ROLE);
+    }
+
     private void checkAdminOrOrg() {
-        if (!securityFacade.hasRole("ADMIN") && !securityFacade.hasRole("ORG")) {
+        if (!isAdminOrOrg()) {
             throw new AuthorizationException("You do not have permission to this operation", ErrorCode.ACCESS_DENIED);
         }
     }
 
-    public void checkAssignmentVersion(Long actualVersion, Long expectedVersion, Long assignmentId) {
+    private void checkParticipantOrAdminOrOrg(Long tourId) {
+        if (isAdminOrOrg()) {
+            return;
+        }
+
+        Long currentUserId = securityFacade.getCurrentUserId().orElseThrow(
+            () -> new AuthorizationException("User is not authenticated", ErrorCode.ACCESS_DENIED));
+
+        TourDetail tour = competitionFacade.findTourById(tourId).orElseThrow(
+            () -> new TourNotFoundException(tourId));
+
+        if (!participationFacade.isUserAStageParticipant(currentUserId, tour.stageId())) {
+            throw new AuthorizationException("You do not have permission to this operation", ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private void checkAssignmentVersion(Long actualVersion, Long expectedVersion, Long assignmentId) {
         if (!Objects.equals(actualVersion, expectedVersion)) {
             throw new StaleAssignmentVersionException(assignmentId);
         }
+    }
+
+    /**
+     * Resolves the competition hierarchy (competition, stage, tour) for a given
+     * tour ID and builds a {@link StorageContext} suitable for task assignment
+     * storage references.
+     *
+     * @param tourId    the ID of the tour
+     * @param taskTitle the title of the task
+     * @return the populated {@link StorageContext}
+     */
+    private StorageContext buildAssignmentStorageContext(Long tourId, String taskTitle) {
+        TourDetail tour = competitionFacade.findTourById(tourId)
+            .orElseThrow(() -> new TourNotFoundException(tourId));
+        StageDetail stage = competitionFacade.findStageById(tour.stageId())
+            .orElseThrow(() -> new StageNotFoundException(tour.stageId()));
+        CompetitionDetail comp = competitionFacade.findCompetitionById(stage.competitionId())
+            .orElseThrow(() -> new CompetitionNotFoundException(stage.competitionId()));
+
+        return StorageContext.forAssignment(comp.title(), stage.title(), tour.title(), taskTitle);
     }
 }

@@ -74,10 +74,7 @@ public class LocalStorageProvider implements StorageProvider {
             Path targetDirectory = root.resolve(path).normalize();
             Path targetFile = targetDirectory.resolve(morphedName).normalize();
 
-            if (!targetFile.startsWith(root)) {
-                throw new FileUploadException("Invalid upload path outside configured storage root",
-                    new IllegalArgumentException(path));
-            }
+            validateWithinRoot(targetFile);
 
             Files.createDirectories(targetDirectory);
             Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
@@ -109,9 +106,7 @@ public class LocalStorageProvider implements StorageProvider {
         try {
             Path target = root.resolve(storageKey).normalize();
 
-            if (!target.startsWith(root)) {
-                throw new InvalidFilePathException("Access denied: path is outside storage root: " + storageKey);
-            }
+            validateWithinRoot(target);
 
             boolean deleted = Files.deleteIfExists(target);
 
@@ -184,9 +179,7 @@ public class LocalStorageProvider implements StorageProvider {
         try {
             Path target = root.resolve(storageKey).normalize();
 
-            if (!target.startsWith(root)) {
-                throw new InvalidFilePathException("Access denied: path is outside storage root: " + storageKey);
-            }
+            validateWithinRoot(target);
 
             FileTime fileTime = Files.getLastModifiedTime(target);
             return OffsetDateTime.ofInstant(fileTime.toInstant(), ZoneOffset.UTC);
@@ -225,6 +218,118 @@ public class LocalStorageProvider implements StorageProvider {
             return resource;
         } catch (MalformedURLException e) {
             throw new FileListingException("Could not read file", e);
+        }
+    }
+
+    /**
+     * Moves a file locally from the source storage key to the target storage key.
+     * Used to transfer temporary files to their final destination upon attachment.
+     * Checks for path traversal vulnerabilities before moving.
+     *
+     * @param sourceKey the relative path of the existing file
+     * @param targetKey the desired relative path
+     * @return the final relative path after the move
+     * @throws InvalidFilePathException if the path is outside the storage root
+     * @throws FileUploadException      if the move operation fails
+     */
+    @Override
+    public String moveFile(String sourceKey, String targetKey) {
+        if (sourceKey == null || sourceKey.isBlank() || targetKey == null || targetKey.isBlank()) {
+            throw new InvalidFilePathException("Cannot move local file: blank storage key");
+        }
+
+        Path source = root.resolve(sourceKey).normalize();
+        Path target = root.resolve(targetKey).normalize();
+
+        validateWithinRoot(source);
+        validateWithinRoot(target);
+
+        try {
+            Files.createDirectories(target.getParent());
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new FileUploadException("Failed to move: " + sourceKey, e);
+        }
+
+        return root.relativize(target).toString().replace("\\", "/");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Creates a relative directory symbolic link pointing from
+     * {@code assignmentPath/task} back to {@code taskPoolPath}. Resolves parent
+     * directories if missing and validates bounds against the storage root
+     * directory.
+     * </p>
+     *
+     * @param assignmentPath the relative destination path of the assignment folder
+     *                       where the symlink should reside
+     * @param taskPoolPath   the relative source path pointing to the canonical task
+     *                       folder in the task pool
+     */
+    @Override
+    public void createTaskReference(String assignmentPath, String taskPoolPath) {
+        if (assignmentPath == null || assignmentPath.isBlank() || taskPoolPath == null || taskPoolPath.isBlank()) {
+            throw new InvalidFilePathException(
+                "Cannot create symlink for task: blank assignment or taskPool path");
+        }
+
+        Path link = root.resolve(assignmentPath + "/task").normalize();
+        Path target = root.resolve(taskPoolPath).normalize();
+
+        validateWithinRoot(link);
+        validateWithinRoot(target);
+
+        try {
+            // Ensure target exists so Windows flags this as a directory symlink,
+            // and delete any pre-existing link to guarantee idempotent creation.
+            Files.createDirectories(target);
+            Files.createDirectories(link.getParent());
+            Files.deleteIfExists(link);
+
+            Path relative = link.getParent().relativize(target);
+            Files.createSymbolicLink(link, relative);
+        } catch (IOException e) {
+            log.warn("Failed to create symlink {} -> {}: {}",
+                link, target, e.getMessage());
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Deletes the symbolic link located at {@code assignmentPath/task}. Verifies
+     * that the target path is indeed a symbolic link prior to deletion to avoid
+     * deleting actual directory data.
+     * </p>
+     *
+     * @param assignmentPath the relative destination folder path containing the
+     *                       symlink
+     */
+    @Override
+    public void deleteTaskReference(String assignmentPath) {
+        if (assignmentPath == null || assignmentPath.isBlank()) {
+            throw new InvalidFilePathException("Cannot create symlink for task: blank assignmentPath");
+        }
+
+        Path link = root.resolve(assignmentPath + "/task").normalize();
+        validateWithinRoot(link);
+
+        try {
+            if (Files.isSymbolicLink(link)) {
+                Files.delete(link);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to delete symlink {}: {}", link, e.getMessage());
+        }
+    }
+
+    private void validateWithinRoot(Path path) {
+        if (!path.startsWith(root)) {
+            throw new InvalidFilePathException("Access denied: path is outside storage root");
         }
     }
 }

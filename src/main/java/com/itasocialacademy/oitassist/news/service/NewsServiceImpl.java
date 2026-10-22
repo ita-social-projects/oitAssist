@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.news.service;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.NotFoundException;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesAttachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.api.events.FilesDetachRequestedEvent;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
@@ -75,7 +76,7 @@ public class NewsServiceImpl implements NewsService {
         News entity = mapper.toEntity(dto);
         initializeNewNews(entity, dto);
         ResponseNewsDto saved = mapper.toDto(repository.save(entity));
-        publishAttachEvent(saved.getId(), dto.getFileIds());
+        publishAttachEvent(saved.getId(), dto.getFileIds(), saved.getTitle());
         return saved;
     }
 
@@ -88,7 +89,7 @@ public class NewsServiceImpl implements NewsService {
         applyPublishLogic(entity, dto.isPublishNow());
         mapper.merge(dto, entity);
         ResponseNewsDto updated = mapper.toDto(repository.save(entity));
-        publishAttachEvent(updated.getId(), dto.getFileIds());
+        publishAttachEvent(updated.getId(), dto.getFileIds(), updated.getTitle());
         publishDetachEvent(updated.getId(), dto.getRemovedFileIds());
         return updated;
     }
@@ -120,7 +121,7 @@ public class NewsServiceImpl implements NewsService {
         return repository.findAll(spec, pageable).map(mapper::toAdminListItemDto);
     }
 
-    private void publishAttachEvent(Long newsId, List<Long> fileIds) {
+    private void publishAttachEvent(Long newsId, List<Long> fileIds, String newsTitle) {
         if (fileIds == null || fileIds.isEmpty()) {
             return;
         }
@@ -130,7 +131,8 @@ public class NewsServiceImpl implements NewsService {
                 ErrorCode.ACCESS_DENIED));
 
         eventPublisher.publishEvent(
-            new FilesAttachRequestedEvent(newsId, RelatedEntityType.NEWS, fileIds, authorId));
+            new FilesAttachRequestedEvent(newsId, RelatedEntityType.NEWS, fileIds, authorId,
+                StorageContext.forNews(newsTitle)));
     }
 
     private void publishDetachEvent(Long newsId, List<Long> removedFileIds) {

@@ -142,6 +142,7 @@ graph:
   client-id: ${GRAPH_CLIENT_ID}
   client-secret: ${GRAPH_CLIENT_SECRET}
   drive-id: ${GRAPH_DRIVE_ID}
+  site-url: ${GRAPH_SITE_URL}
 
 app:
   storage:

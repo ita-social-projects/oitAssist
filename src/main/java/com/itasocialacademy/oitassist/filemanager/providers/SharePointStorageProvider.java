@@ -8,17 +8,22 @@ import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException
 import com.itasocialacademy.oitassist.filemanager.exceptions.InvalidFilePathException;
 import com.itasocialacademy.oitassist.filemanager.properties.GraphProperties;
 import com.itasocialacademy.oitassist.filemanager.providers.interfaces.StorageProvider;
+import com.microsoft.graph.models.DriveItem;
+import com.microsoft.graph.models.ItemReference;
 import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriUtils;
 
 /**
  * Implementation of {@link StorageProvider} for SharePoint storage. Uses
@@ -276,10 +281,8 @@ public class SharePointStorageProvider implements StorageProvider {
     }
 
     /**
-     * <p>
      * Fetches the file content stream directly from the configured Microsoft Graph
      * SharePoint drive and wraps it in an {@link InputStreamResource}.
-     * </p>
      *
      * @param storageKey the relative path of the file within the SharePoint drive
      * @return the {@link Resource} streaming the SharePoint file contents
@@ -319,6 +322,216 @@ public class SharePointStorageProvider implements StorageProvider {
         } catch (Exception e) {
             log.error("Unexpected error while streaming file from SharePoint: {}", storageKey, e);
             throw new FileListingException("Could not read file from SharePoint", e);
+        }
+    }
+
+    /**
+     * Moves a file within the SharePoint drive from the source storage key to the
+     * target. Leverages the Microsoft Graph API PATCH endpoint to update the parent
+     * reference and item name.
+     *
+     * @param sourceKey the relative path of the existing file in the SharePoint
+     *                  drive
+     * @param targetKey the desired relative path
+     * @return the final relative path after the move
+     * @throws InvalidFilePathException if the storage keys are null or blank
+     * @throws FileUploadException      if the Graph API returns an error or fails
+     */
+    @Override
+    public String moveFile(String sourceKey, String targetKey) {
+        if (sourceKey == null || sourceKey.isBlank() || targetKey == null || targetKey.isBlank()) {
+            throw new InvalidFilePathException("Cannot move SharePoint file: blank storage key");
+        }
+
+        int slash = targetKey.lastIndexOf('/');
+        if (slash < 0) {
+            throw new InvalidFilePathException("Target key has no folder: " + targetKey);
+        }
+        String targetFolder = targetKey.substring(0, slash);
+        String targetName = targetKey.substring(slash + 1);
+
+        try {
+            String driveId = graphProperties.getDriveId();
+
+            DriveItem parentItem = ensureTargetFolderExistsAndGet(driveId, targetFolder);
+
+            if (parentItem == null || parentItem.getId() == null) {
+                throw new FileListingException("Target folder not found in SharePoint: " + targetFolder,
+                    new IllegalStateException("Graph API returned null DriveItem ID after folder creation"));
+            }
+
+            DriveItem body = new DriveItem();
+            body.setName(targetName);
+
+            ItemReference ref = new ItemReference();
+
+            ref.setId(parentItem.getId());
+            body.setParentReference(ref);
+
+            graphClient.drives().byDriveId(driveId)
+                .items().byDriveItemId(DRIVE_ROOT_PREFIX + sourceKey + DRIVE_ROOT_SUFFIX)
+                .patch(body);
+
+            return targetKey;
+        } catch (ApiException e) {
+            if (e.getResponseStatusCode() == 404) {
+                log.warn("File not found in SharePoint when moving: {}", sourceKey);
+                throw new FileUploadException("Source file not found in SharePoint: " + sourceKey, e);
+            }
+            log.error("Graph API error while moving file from {} to {}", sourceKey, targetKey, e);
+            throw new FileUploadException("Failed to move file in SharePoint", e);
+        } catch (Exception e) {
+            log.error("Unexpected error while moving SharePoint file from {} to {}", sourceKey, targetKey, e);
+            throw new FileUploadException("Failed to move file in SharePoint", e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Generates an Internet Shortcut ({@code task.url}) file containing a web link
+     * to the task pool folder in SharePoint, and uploads it to the assignment
+     * folder.
+     * </p>
+     *
+     * @param assignmentPath the relative destination folder path in SharePoint
+     *                       where the shortcut should be created
+     * @param taskPoolPath   the relative source path pointing to the task pool
+     *                       folder in SharePoint
+     */
+    @Override
+    public void createTaskReference(String assignmentPath, String taskPoolPath) {
+        if (assignmentPath == null || assignmentPath.isBlank() || taskPoolPath == null || taskPoolPath.isBlank()) {
+            throw new InvalidFilePathException(
+                "Cannot create .url file for task: blank assignment or taskPool path");
+        }
+
+        String cleanSiteUrl = getCleanSiteUrl();
+
+        String normalizedTaskPoolPath = taskPoolPath.strip();
+
+        if (normalizedTaskPoolPath.startsWith("/")) {
+            normalizedTaskPoolPath = normalizedTaskPoolPath.substring(1);
+        }
+
+        String encodedTaskPoolPath = UriUtils.encodePath(normalizedTaskPoolPath, StandardCharsets.UTF_8);
+
+        String content = "[InternetShortcut]\r\nURL=" + cleanSiteUrl + "/" + encodedTaskPoolPath + "\r\n";
+
+        try (var is = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))) {
+            upload(is, "task.url", assignmentPath);
+        } catch (IOException e) {
+            log.warn("Failed to create task.url in {}: {}",
+                assignmentPath, e.getMessage());
+        }
+    }
+
+    /**
+     * Retrieves and sanitizes the SharePoint base site URL from configuration.
+     *
+     * <p>
+     * Trims leading/trailing whitespace, strips any trailing slash, and encodes
+     * spaces as {@code %20} so the returned URL can be safely concatenated with
+     * relative paths.
+     * </p>
+     *
+     * @return the sanitized base site URL
+     * @throws InvalidFilePathException if {@code graph.site-url} is null or blank
+     */
+    private String getCleanSiteUrl() {
+        String siteUrl = graphProperties.getSiteUrl();
+
+        if (siteUrl == null || siteUrl.isBlank()) {
+            throw new InvalidFilePathException(
+                "Cannot create .url file for task: blank siteUrl");
+        }
+
+        String cleanSiteUrl = siteUrl.strip();
+
+        if (cleanSiteUrl.endsWith("/")) {
+            cleanSiteUrl = cleanSiteUrl.substring(0, cleanSiteUrl.length() - 1);
+        }
+
+        cleanSiteUrl = cleanSiteUrl.replace(" ", "%20");
+        return cleanSiteUrl;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Deletes the {@code task.url} file located in the specified SharePoint
+     * assignment folder.
+     * </p>
+     *
+     * @param assignmentPath the relative destination folder path in SharePoint
+     *                       containing the {@code task.url} file
+     */
+    @Override
+    public void deleteTaskReference(String assignmentPath) {
+        try {
+            deletePhysical(assignmentPath + "/task.url");
+        } catch (Exception e) {
+            log.warn("Failed to delete task.url from {}: {}",
+                assignmentPath, e.getMessage());
+        }
+    }
+
+    /**
+     * Ensures that the specified target folder exists in SharePoint and retrieves
+     * it.
+     *
+     * <p>
+     * First attempts to fetch the folder directly to avoid unnecessary API calls if
+     * it already exists. If Microsoft Graph returns a 404 (Not Found), it triggers
+     * the creation of the folder by uploading a temporary marker file, and then
+     * fetches the newly created folder.
+     * </p>
+     *
+     * @param driveId      the configured SharePoint drive ID
+     * @param targetFolder the relative path of the target folder
+     * @return the {@link DriveItem} representing the target folder
+     * @throws ApiException if an unexpected error occurs communicating with
+     *                      Microsoft Graph
+     */
+    private DriveItem ensureTargetFolderExistsAndGet(String driveId, String targetFolder) {
+        try {
+            return graphClient.drives().byDriveId(driveId)
+                .items().byDriveItemId(DRIVE_ROOT_PREFIX + targetFolder + DRIVE_ROOT_SUFFIX)
+                .get();
+        } catch (ApiException e) {
+            if (e.getResponseStatusCode() == 404) {
+                log.debug("Target folder {} not found, creating via marker file...", targetFolder);
+                createTargetFolderBeforeMove(targetFolder);
+
+                return graphClient.drives().byDriveId(driveId)
+                    .items().byDriveItemId(DRIVE_ROOT_PREFIX + targetFolder + DRIVE_ROOT_SUFFIX)
+                    .get();
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Creates a folder in SharePoint by uploading and immediately deleting a
+     * temporary marker file.
+     *
+     * <p>
+     * This is a workaround for the Microsoft Graph API, which requires target
+     * folders to exist before moving files into them via {@code PATCH}, but
+     * uploading a file implicitly creates all missing parent directories.
+     * </p>
+     *
+     * @param targetFolder the relative path of the target folder to create
+     */
+    private void createTargetFolderBeforeMove(String targetFolder) {
+        String marker = ".keep-" + UUID.randomUUID();
+        upload(InputStream.nullInputStream(), marker, targetFolder);
+        try {
+            deletePhysical(targetFolder + "/" + marker);
+        } catch (FileDeleteException e) {
+            log.warn("Could not remove marker {} in {}", marker, targetFolder, e);
         }
     }
 }

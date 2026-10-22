@@ -26,11 +26,16 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
+import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.TourNotFoundException;
+import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
+import com.itasocialacademy.oitassist.participation.api.ParticipationFacade;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.task.api.TaskBodyFacade;
 import com.itasocialacademy.oitassist.task.api.dto.TaskBodyDetail;
@@ -70,6 +75,9 @@ class AssignmentServiceTest {
 
     @Mock
     private SecurityFacade securityFacade;
+
+    @Mock
+    private ParticipationFacade participationFacade;
 
     @InjectMocks
     private AssignmentServiceImpl assignmentService;
@@ -123,9 +131,24 @@ class AssignmentServiceTest {
 
         tourDetail = TourDetail.builder()
             .id(10L)
+            .stageId(20L)
             .title("Tour 1")
             .executionStatus(ExecutionStatus.SCHEDULED)
             .build();
+
+        StageDetail stageDetail = StageDetail.builder()
+            .id(20L)
+            .competitionId(30L)
+            .title("Stage 1")
+            .build();
+
+        CompetitionDetail competitionDetail = CompetitionDetail.builder()
+            .id(30L)
+            .title("Comp 1")
+            .build();
+
+        lenient().when(competitionFacade.findStageById(20L)).thenReturn(Optional.of(stageDetail));
+        lenient().when(competitionFacade.findCompetitionById(30L)).thenReturn(Optional.of(competitionDetail));
 
         taskBodyDetail = TaskBodyDetail.builder()
             .id(3L)
@@ -161,6 +184,7 @@ class AssignmentServiceTest {
         assertEquals("Створити у файлі-розв'язку", result.taskDescription());
         assertEquals(testFiles, result.files());
         verify(taskAssignmentRepository).save(taskAssignment);
+        verify(fileManagerFacade).createTaskReference(any(StorageContext.class));
     }
 
     @Test
@@ -233,6 +257,7 @@ class AssignmentServiceTest {
 
         ArgumentCaptor<TaskAssignment> captor = ArgumentCaptor.forClass(TaskAssignment.class);
         verify(taskAssignmentRepository).save(captor.capture());
+        verify(fileManagerFacade).createTaskReference(any(StorageContext.class));
         assertEquals(AssignmentVisibility.HIDDEN, captor.getValue().getVisibility());
     }
 
@@ -244,6 +269,30 @@ class AssignmentServiceTest {
         Page<TaskAssignment> page = new PageImpl<>(List.of(taskAssignment));
 
         when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.hasRole("ORG")).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
+        when(participationFacade.isUserAStageParticipant(100L, 20L)).thenReturn(true);
+        when(taskAssignmentRepository.findAllByTourIdAndVisibility(10L, AssignmentVisibility.VISIBLE, pageable))
+            .thenReturn(page);
+        when(taskBodyFacade.getTaskTitlesByIds(List.of(3L))).thenReturn(Map.of(3L, "PowerPoint Різдвяна зірка"));
+        when(taskAssignmentMapper.toResponse(taskAssignment, "PowerPoint Різдвяна зірка")).thenReturn(
+            assignmentResponse);
+
+        Page<TaskAssignmentResponseDTO> result = assignmentService.getAssignmentsByTourId(pageable, 10L);
+
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.getTotalElements());
+        verify(participationFacade).isUserAStageParticipant(100L, 20L);
+    }
+
+    @Test
+    void getAssignmentsByTourId_asAdminOrOrg_shouldReturnAllAssignmentsIncludingHidden() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<TaskAssignment> page = new PageImpl<>(List.of(taskAssignment));
+
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskAssignmentRepository.findAllByTourId(10L, pageable)).thenReturn(page);
         when(taskBodyFacade.getTaskTitlesByIds(List.of(3L))).thenReturn(Map.of(3L, "PowerPoint Різдвяна зірка"));
         when(taskAssignmentMapper.toResponse(taskAssignment, "PowerPoint Різдвяна зірка")).thenReturn(
@@ -253,6 +302,8 @@ class AssignmentServiceTest {
 
         assertFalse(result.isEmpty());
         assertEquals(1, result.getTotalElements());
+        verify(taskAssignmentRepository).findAllByTourId(10L, pageable);
+        verify(taskAssignmentRepository, never()).findAllByTourIdAndVisibility(any(), any(), any());
     }
 
     @Test
@@ -260,12 +311,27 @@ class AssignmentServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
 
         when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
         when(taskAssignmentRepository.findAllByTourId(10L, pageable)).thenReturn(Page.empty(pageable));
 
         Page<TaskAssignmentResponseDTO> result = assignmentService.getAssignmentsByTourId(pageable, 10L);
 
         assertTrue(result.isEmpty());
         verify(taskBodyFacade, never()).getTaskTitlesByIds(any());
+    }
+
+    @Test
+    void getAssignmentsByTourId_asNonParticipant_shouldThrowAuthorizationException() {
+        Pageable pageable = PageRequest.of(0, 10);
+
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.hasRole("ORG")).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
+        when(participationFacade.isUserAStageParticipant(100L, 20L)).thenReturn(false);
+
+        assertThrows(AuthorizationException.class,
+            () -> assignmentService.getAssignmentsByTourId(pageable, 10L));
     }
 
     @Test
@@ -310,17 +376,64 @@ class AssignmentServiceTest {
         when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
         when(securityFacade.hasRole("ADMIN")).thenReturn(false);
         when(securityFacade.hasRole("ORG")).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
+        when(participationFacade.isUserAStageParticipant(100L, 20L)).thenReturn(true);
         when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
         when(taskAssignmentMapper.toDetailedResponse(any(), any(), any(), any())).thenReturn(detailedResponse);
 
         assignmentService.getTaskAssignmentById(1L);
 
-        verify(securityFacade).hasRole("ADMIN");
-        verify(securityFacade).hasRole("ORG");
+        verify(securityFacade, atLeastOnce()).hasRole("ADMIN");
+        verify(securityFacade, atLeastOnce()).hasRole("ORG");
+        verify(participationFacade).isUserAStageParticipant(100L, 20L);
 
         ArgumentCaptor<Set> captor = ArgumentCaptor.forClass(Set.class);
         verify(fileManagerFacade).getFilesByEntity(any(), eq(3L), captor.capture());
         assertEquals(Set.of(FileRole.PROBLEM, FileRole.REFERENCE), captor.getValue());
+    }
+
+    @Test
+    void getTaskAssignmentById_asNonParticipant_shouldThrowAuthorizationException() {
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.hasRole("ORG")).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
+        when(participationFacade.isUserAStageParticipant(100L, 20L)).thenReturn(false);
+
+        assertThrows(AuthorizationException.class, () -> assignmentService.getTaskAssignmentById(1L));
+        verify(taskBodyFacade, never()).findTaskBodyById(any());
+    }
+
+    @Test
+    void getTaskAssignmentById_asParticipant_whenHidden_shouldThrowAuthorizationException() {
+        taskAssignment.setVisibility(AssignmentVisibility.HIDDEN);
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(false);
+        when(securityFacade.hasRole("ORG")).thenReturn(false);
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(100L));
+        when(competitionFacade.findTourById(10L)).thenReturn(Optional.of(tourDetail));
+        when(participationFacade.isUserAStageParticipant(100L, 20L)).thenReturn(true);
+
+        assertThrows(AuthorizationException.class, () -> assignmentService.getTaskAssignmentById(1L));
+        verify(taskBodyFacade, never()).findTaskBodyById(any());
+    }
+
+    @Test
+    void getTaskAssignmentById_asAdminOrOrg_whenHidden_shouldReturnDetailedResponse() {
+        taskAssignment.setVisibility(AssignmentVisibility.HIDDEN);
+        when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
+        when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
+        when(securityFacade.hasRole("ADMIN")).thenReturn(true);
+        when(fileManagerFacade.getFilesByEntity(any(), eq(3L), any())).thenReturn(testFiles);
+        when(taskAssignmentMapper.toDetailedResponse(taskAssignment, taskBodyDetail.title(),
+            taskBodyDetail.description(), testFiles)).thenReturn(detailedResponse);
+
+        DetailedTaskAssignmentResponseDTO result = assignmentService.getTaskAssignmentById(1L);
+
+        assertNotNull(result);
+        assertEquals(1L, result.id());
     }
 
     // ---- updateTaskAssignment ----
@@ -406,9 +519,11 @@ class AssignmentServiceTest {
     void deleteTaskAssignment_existingId_shouldDelete() {
         when(taskAssignmentRepository.findById(1L)).thenReturn(Optional.of(taskAssignment));
         when(competitionFacade.findTourById(any())).thenReturn(Optional.of(tourDetail));
+        when(taskBodyFacade.findTaskBodyById(3L)).thenReturn(Optional.of(taskBodyDetail));
 
         assignmentService.deleteTaskAssignment(1L);
 
+        verify(fileManagerFacade).deleteTaskReference(any(StorageContext.class));
         verify(taskAssignmentRepository).delete(taskAssignment);
     }
 
@@ -461,6 +576,7 @@ class AssignmentServiceTest {
 
         ArgumentCaptor<TaskAssignment> captor = ArgumentCaptor.forClass(TaskAssignment.class);
         verify(taskAssignmentRepository).save(captor.capture());
+        verify(fileManagerFacade).createTaskReference(any(StorageContext.class));
 
         TaskAssignment saved = captor.getValue();
         assertEquals(3L, saved.getTaskBodyId());
@@ -523,6 +639,7 @@ class AssignmentServiceTest {
 
         ArgumentCaptor<TaskAssignment> captor = ArgumentCaptor.forClass(TaskAssignment.class);
         verify(taskAssignmentRepository).save(captor.capture());
+        verify(fileManagerFacade).createTaskReference(any(StorageContext.class));
         assertEquals(AssignmentVisibility.HIDDEN, captor.getValue().getVisibility());
     }
 
