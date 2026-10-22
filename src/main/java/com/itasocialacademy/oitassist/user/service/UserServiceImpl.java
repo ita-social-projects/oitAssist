@@ -1,6 +1,5 @@
 package com.itasocialacademy.oitassist.user.service;
 
-import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.core.enums.ErrorCode;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.service.interfaces.EmailService;
@@ -8,6 +7,7 @@ import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsExc
 import com.itasocialacademy.oitassist.security.api.dto.UserDetailsImpl;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
+import com.itasocialacademy.oitassist.user.api.interfaces.ActiveParticipationChecker;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ReviewRequestDTO;
@@ -26,7 +26,6 @@ import com.itasocialacademy.oitassist.user.exceptions.*;
 import com.itasocialacademy.oitassist.user.mapper.UserMapper;
 import com.itasocialacademy.oitassist.user.dao.repository.UserRepository;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
-import com.itasocialacademy.oitassist.usercompetition.api.interfaces.UserCompetitionFacade;
 import jakarta.persistence.EntityNotFoundException;
 import org.jetbrains.annotations.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -53,8 +52,8 @@ public class UserServiceImpl implements UserService {
     private final UserMapper mapper;
 
     private final ProfileUpdateRequestRepository profileUpdateRequestRepository;
-    private final UserCompetitionFacade userCompetitionFacade;
     private final ProfileUpdateRequestMapper profileUpdateRequestMapper;
+    private final ActiveParticipationChecker activeParticipationChecker;
     private final EmailService emailService;
 
     private static final DateTimeFormatter EMAIL_DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.of("Europe/Kyiv"));
@@ -96,14 +95,14 @@ public class UserServiceImpl implements UserService {
      * {@inheritDoc}
      */
     @Override
+    public List<UserProfileDetails> findProfilesDetailsByIds(List<Long> userIds) {
+        return repository.findAllById(userIds)
+            .stream().map(mapper::toUserProfileDetails).toList();
+    }
+
     public UserDetailsImpl loadUserByUsername(@NonNull String username) {
         Optional<User> user = repository.findUserByEmail(username);
         return user.map(mapper::toUserDetails).orElse(null);
-    }
-
-    public List<UserProfileDetails> findProfilesDetailsByIds(List<Long> userIds) {
-        return repository.findAllById(userIds)
-                .stream().map(mapper::toUserProfileDetails).toList();
     }
 
     /**
@@ -196,8 +195,7 @@ public class UserServiceImpl implements UserService {
                 ErrorCode.PROFILE_UPDATE_REQUEST_ALREADY_PENDING);
         }
 
-        boolean hasAnyCompetitions = userCompetitionFacade.hasActiveCompetitions(currentUserId,
-            List.of(CompetitionStatus.PUBLISHED, CompetitionStatus.ENROLLMENT));
+        boolean hasAnyCompetitions = activeParticipationChecker.hasActiveParticipation(currentUserId);
 
         UpdateRequestStatus status = hasAnyCompetitions ? UpdateRequestStatus.PENDING : UpdateRequestStatus.APPROVED;
 
@@ -364,13 +362,7 @@ public class UserServiceImpl implements UserService {
             throw new InsufficientPermissionsException();
         }
 
-        String normalizedSearch = search == null || search.isBlank()
-            ? null
-            : search.trim()
-                .replaceAll("\\s+", " ")
-                .replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
+        String normalizedSearch = normalizeSearch(search);
 
         List<Role> normalizedRoles = roles == null || roles.isEmpty()
             ? null
@@ -408,5 +400,24 @@ public class UserServiceImpl implements UserService {
         }
         user.setUserStatus(newStatus);
         return mapper.toResponseUserDTO(repository.save(user));
+    }
+
+    @Override
+    public Optional<List<Long>> findUserIdsBySearch(String search, List<Long> candidateIds) {
+        String normalizedSearch = normalizeSearch(search);
+        if (normalizedSearch == null) {
+            return Optional.empty();
+        }
+        return Optional.of(repository.findIdsBySearch(normalizedSearch, candidateIds));
+    }
+
+    private String normalizeSearch(String search) {
+        return search == null || search.isBlank()
+            ? null
+            : search.trim()
+                .replaceAll("\\s+", " ")
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 }

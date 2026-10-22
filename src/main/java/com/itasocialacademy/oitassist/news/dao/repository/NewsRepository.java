@@ -33,8 +33,7 @@ public interface NewsRepository
             SELECT n
             FROM News n
             WHERE n.status = com.itasocialacademy.oitassist.news.dao.enums.NewsStatus.ARCHIVED
-              AND n.archivedAt IS NOT NULL
-            ORDER BY n.archivedAt DESC
+            ORDER BY n.publishedAt DESC
         """)
-    List<News> findArchivedNewsOrderByArchivedAtDesc();
+    List<News> findArchivedNewsOrderByPublishedAtDesc();
 }

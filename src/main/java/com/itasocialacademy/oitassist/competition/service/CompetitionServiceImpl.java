@@ -9,7 +9,9 @@ import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.dao.specification.CompetitionSpecification;
 import com.itasocialacademy.oitassist.competition.dto.filter.CompetitionSearchFilter;
+import com.itasocialacademy.oitassist.competition.dto.request.ChangeCompetitionStatusRequest;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
+import com.itasocialacademy.oitassist.competition.dto.request.UpdateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionTreeResponse;
 import com.itasocialacademy.oitassist.competition.dto.response.StageTreeResponse;
@@ -54,18 +56,34 @@ public class CompetitionServiceImpl implements CompetitionService {
     }
 
     @Override
+    @Transactional
+    public CompetitionResponse update(Long competitionId, UpdateCompetitionRequest request) {
+        Competition competition = validator.lockCompetitionForUpdate(competitionId);
+
+        validator.validateEntityVersion(request.version(), competition.getVersion(), Competition.class, competitionId);
+        validator.validateImmutabilityByCompetitionId(competitionId);
+        validator.validateCompetitionDatesAgainstExistingStages(
+            competitionId, request.dateStart(), request.dateFinish());
+
+        competition.setTitle(request.title());
+        competition.setDescription(request.description());
+        competition.setDateStart(request.dateStart());
+        competition.setDateFinish(request.dateFinish());
+
+        return mapper.toResponse(competitionRepository.saveAndFlush(competition));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public CompetitionResponse getById(Long competitionId) {
-        Competition competition = competitionRepository.findById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
-        return mapper.toResponse(competition);
+        return findCompetitionResponseById(competitionId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public CompetitionResponse getVisibleById(Long competitionId) {
         validator.checkVisibilityAccess(competitionId);
-        return getById(competitionId);
+        return findCompetitionResponseById(competitionId);
     }
 
     @Override
@@ -94,21 +112,22 @@ public class CompetitionServiceImpl implements CompetitionService {
 
     @Override
     @Transactional
-    public CompetitionResponse changeStatus(Long competitionId, CompetitionStatus status) {
-        Competition competition = competitionRepository.findById(competitionId)
-            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+    public CompetitionResponse changeStatus(Long competitionId, ChangeCompetitionStatusRequest request) {
+        Competition competition = validator.lockCompetitionForUpdate(competitionId);
 
+        validator.validateEntityVersion(request.version(), competition.getVersion(), Competition.class, competitionId);
         CompetitionStatus currentStatus = competition.getCompetitionStatus();
 
-        validator.validateCompetitionStatusTransition(currentStatus, status);
+        validator.validateCompetitionStatusTransition(currentStatus, request.status());
 
-        if (status == CompetitionStatus.ENROLLMENT || status == CompetitionStatus.PUBLISHED) {
+        if (request.status() == CompetitionStatus.ENROLLMENT
+            || request.status() == CompetitionStatus.PUBLISHED) {
             validatePublishingRequirements(competitionId);
-        } else if (status == CompetitionStatus.FINISHED) {
+        } else if (request.status() == CompetitionStatus.FINISHED) {
             validator.validateAllStagesCompletedForCompetition(competitionId);
         }
 
-        competition.setCompetitionStatus(status);
+        competition.setCompetitionStatus(request.status());
         return mapper.toResponse(competitionRepository.save(competition));
     }
 
@@ -162,5 +181,11 @@ public class CompetitionServiceImpl implements CompetitionService {
             .and(CompetitionSpecification.finishesAfterOrEqual(filter.dateStart()))
             .and(CompetitionSpecification.startsBeforeOrEqual(filter.dateFinish()))
             .and(CompetitionSpecification.hasAnyStatus(filter.statuses()));
+    }
+
+    private CompetitionResponse findCompetitionResponseById(Long competitionId) {
+        Competition competition = competitionRepository.findById(competitionId)
+            .orElseThrow(() -> new CompetitionNotFoundException(competitionId));
+        return mapper.toResponse(competition);
     }
 }

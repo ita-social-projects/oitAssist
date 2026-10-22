@@ -1,9 +1,12 @@
 package com.itasocialacademy.oitassist.competition.validate;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
@@ -18,9 +21,12 @@ import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionHierarchyValidationException;
 import com.itasocialacademy.oitassist.competition.exceptions.CompetitionNotFoundException;
 import com.itasocialacademy.oitassist.competition.exceptions.StageNotFoundException;
+import com.itasocialacademy.oitassist.competition.exceptions.StaleEntityVersionException;
 import com.itasocialacademy.oitassist.competition.spi.ParticipationInquiryPort;
 import com.itasocialacademy.oitassist.competition.validation.HierarchyValidator;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -48,6 +54,10 @@ class HierarchyValidatorTest {
     private TourRepository tourRepository;
     @Mock
     private ParticipationInquiryPort participationSPI;
+    @Mock
+    private EntityManager entityManager;
+    @Mock
+    private Query nativeQuery;
 
     @InjectMocks
     private HierarchyValidator validator;
@@ -57,6 +67,8 @@ class HierarchyValidatorTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(entityManager.createNativeQuery(anyString())).thenReturn(nativeQuery);
+
         ZonedDateTime start = ZonedDateTime.of(2026, 6, 25, 10, 0, 0, 0, ZoneId.of("UTC"));
 
         draftCompetition = Competition.builder()
@@ -135,11 +147,29 @@ class HierarchyValidatorTest {
         assertThrows(StageNotFoundException.class, () -> validator.checkVisibilityAccessByStageId(999L));
     }
 
+    // ---- lockCompetitionForUpdate ----
+
+    @Test
+    void lockCompetitionForUpdate_found_shouldReturnCompetition() {
+        when(competitionRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(draftCompetition));
+
+        Competition result = validator.lockCompetitionForUpdate(1L);
+
+        assertEquals(draftCompetition, result);
+    }
+
+    @Test
+    void lockCompetitionForUpdate_notFound_shouldThrow() {
+        when(competitionRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
+
+        assertThrows(CompetitionNotFoundException.class, () -> validator.lockCompetitionForUpdate(99L));
+    }
+
     // ---- validateImmutabilityByCompetitionId ----
 
     @Test
     void validateImmutabilityByCompetitionId_notFound_shouldThrow() {
-        when(competitionRepository.findById(99L)).thenReturn(Optional.empty());
+        when(competitionRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
         assertThrows(CompetitionNotFoundException.class,
             () -> validator.validateImmutabilityByCompetitionId(99L));
@@ -148,7 +178,7 @@ class HierarchyValidatorTest {
     @Test
     void validateImmutabilityByCompetitionId_whenArchived_shouldThrow() {
         draftCompetition.setCompetitionStatus(CompetitionStatus.ARCHIVED);
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(draftCompetition));
+        when(competitionRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(draftCompetition));
 
         CompetitionHierarchyValidationException exception = assertThrows(
             CompetitionHierarchyValidationException.class,
@@ -159,7 +189,7 @@ class HierarchyValidatorTest {
 
     @Test
     void validateImmutabilityByCompetitionId_whenDraft_shouldPass() {
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(draftCompetition));
+        when(competitionRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(draftCompetition));
 
         assertDoesNotThrow(() -> validator.validateImmutabilityByCompetitionId(1L));
     }
@@ -167,14 +197,14 @@ class HierarchyValidatorTest {
     @Test
     void validateImmutabilityByCompetitionId_whenEnrollment_shouldPass() {
         draftCompetition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(draftCompetition));
+        when(competitionRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(draftCompetition));
 
         assertDoesNotThrow(() -> validator.validateImmutabilityByCompetitionId(1L));
     }
 
     @Test
     void validateImmutabilityByCompetitionId_whenPublished_shouldPass() {
-        when(competitionRepository.findById(2L)).thenReturn(Optional.of(publishedCompetition));
+        when(competitionRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(publishedCompetition));
 
         assertDoesNotThrow(() -> validator.validateImmutabilityByCompetitionId(2L));
     }
@@ -182,7 +212,7 @@ class HierarchyValidatorTest {
     @Test
     void validateImmutabilityByCompetitionId_whenEnrollmentAndHasActiveParticipants_shouldThrow() {
         draftCompetition.setCompetitionStatus(CompetitionStatus.ENROLLMENT);
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(draftCompetition));
+        when(competitionRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(draftCompetition));
         when(participationSPI.competitionHasParticipants(anyLong())).thenReturn(true);
 
         assertThrows(CompetitionHierarchyValidationException.class,
@@ -191,7 +221,7 @@ class HierarchyValidatorTest {
 
     @Test
     void validateImmutabilityByCompetitionId_whenPublishedHasActiveParticipants_shouldThrow() {
-        when(competitionRepository.findById(2L)).thenReturn(Optional.of(publishedCompetition));
+        when(competitionRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(publishedCompetition));
         when(participationSPI.competitionHasParticipants(anyLong())).thenReturn(true);
 
         assertThrows(CompetitionHierarchyValidationException.class,
@@ -203,7 +233,7 @@ class HierarchyValidatorTest {
         Stage stage = Stage.builder().id(10L).competitionId(1L).build();
         draftCompetition.setCompetitionStatus(CompetitionStatus.ARCHIVED);
         when(stageRepository.findById(10L)).thenReturn(Optional.of(stage));
-        when(competitionRepository.findById(1L)).thenReturn(Optional.of(draftCompetition));
+        when(competitionRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(draftCompetition));
 
         assertThrows(CompetitionHierarchyValidationException.class,
             () -> validator.validateImmutabilityByStageId(10L));
@@ -271,8 +301,11 @@ class HierarchyValidatorTest {
     void validateStageDates_competitionNotFound_shouldThrow() {
         when(competitionRepository.findById(99L)).thenReturn(Optional.empty());
 
+        ZonedDateTime start = ZonedDateTime.now();
+        ZonedDateTime finish = start.plusDays(1);
+
         assertThrows(CompetitionNotFoundException.class,
-            () -> validator.validateStageDates(99L, ZonedDateTime.now(), ZonedDateTime.now().plusDays(1)));
+            () -> validator.validateStageDates(99L, start, finish));
     }
 
     @Test
@@ -310,8 +343,11 @@ class HierarchyValidatorTest {
     void validateTourDates_stageNotFound_shouldThrow() {
         when(stageRepository.findById(99L)).thenReturn(Optional.empty());
 
+        ZonedDateTime start = ZonedDateTime.now();
+        ZonedDateTime finish = start.plusHours(1);
+
         assertThrows(StageNotFoundException.class,
-            () -> validator.validateTourDates(99L, ZonedDateTime.now(), ZonedDateTime.now().plusHours(1)));
+            () -> validator.validateTourDates(99L, start, finish));
     }
 
     @Test
@@ -393,6 +429,72 @@ class HierarchyValidatorTest {
 
         assertDoesNotThrow(() -> validator.validateStageDatesAgainstExistingTours(10L, draftCompetition.getDateStart(),
             draftCompetition.getDateFinish()));
+    }
+
+    // ---- Stage dates validation against new Competition dates ----
+
+    @Test
+    void validateCompetitionDatesAgainstExistingStages_allStagesWithinNewRange_shouldPass() {
+        ZonedDateTime newStart = draftCompetition.getDateStart();
+        ZonedDateTime newFinish = draftCompetition.getDateFinish();
+
+        Stage stage = Stage.builder()
+            .title("Stage 1")
+            .dateStart(newStart.plusHours(1))
+            .dateFinish(newFinish.minusHours(1))
+            .build();
+
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L)).thenReturn(List.of(stage));
+
+        assertDoesNotThrow(() -> validator.validateCompetitionDatesAgainstExistingStages(1L, newStart, newFinish));
+    }
+
+    @Test
+    void validateCompetitionDatesAgainstExistingStages_stageStartsBeforeNewStart_shouldThrow() {
+        ZonedDateTime newStart = draftCompetition.getDateStart().plusDays(2);
+        ZonedDateTime newFinish = draftCompetition.getDateFinish();
+
+        Stage orphanedStage = Stage.builder()
+            .title("Early Stage")
+            .dateStart(draftCompetition.getDateStart())
+            .dateFinish(newStart.plusHours(1))
+            .build();
+
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L)).thenReturn(List.of(orphanedStage));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateCompetitionDatesAgainstExistingStages(1L, newStart, newFinish));
+
+        assertTrue(exception.getMessage().contains("Early Stage"));
+    }
+
+    @Test
+    void validateCompetitionDatesAgainstExistingStages_stageFinishesAfterNewFinish_shouldThrow() {
+        ZonedDateTime newStart = draftCompetition.getDateStart();
+        ZonedDateTime newFinish = draftCompetition.getDateFinish().minusDays(2);
+
+        Stage orphanedStage = Stage.builder()
+            .title("Late Stage")
+            .dateStart(newStart.plusHours(1))
+            .dateFinish(draftCompetition.getDateFinish())
+            .build();
+
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L)).thenReturn(List.of(orphanedStage));
+
+        CompetitionHierarchyValidationException exception = assertThrows(
+            CompetitionHierarchyValidationException.class,
+            () -> validator.validateCompetitionDatesAgainstExistingStages(1L, newStart, newFinish));
+
+        assertTrue(exception.getMessage().contains("Late Stage"));
+    }
+
+    @Test
+    void validateCompetitionDatesAgainstExistingStages_noStages_shouldPass() {
+        when(stageRepository.findAllByCompetitionIdOrderBySortPositionAsc(1L)).thenReturn(List.of());
+
+        assertDoesNotThrow(() -> validator.validateCompetitionDatesAgainstExistingStages(1L,
+            draftCompetition.getDateStart(), draftCompetition.getDateFinish()));
     }
 
     // ---- Execution Readiness (Draft/Published) ----
@@ -703,5 +805,37 @@ class HierarchyValidatorTest {
         when(stageRepository.existsById(anyLong())).thenReturn(false);
 
         assertThrows(StageNotFoundException.class, () -> validator.validateToursNotStartedByStageId(10L));
+    }
+
+    // ---- validateEntityVersion ----
+
+    @Test
+    void validateEntityVersion_matchingVersions_shouldNotThrow() {
+        assertDoesNotThrow(() -> validator.validateEntityVersion(1L, 1L, Competition.class, 1L));
+    }
+
+    @Test
+    void validateEntityVersion_mismatchedVersions_shouldThrowStaleEntityVersionException() {
+        assertThrows(StaleEntityVersionException.class,
+            () -> validator.validateEntityVersion(5L, 1L, Competition.class, 1L));
+    }
+
+    @Test
+    void validateEntityVersion_nullActualVersion_shouldThrow() {
+        assertThrows(StaleEntityVersionException.class,
+            () -> validator.validateEntityVersion(1L, null, Competition.class, 1L));
+    }
+
+    @Test
+    void validateStageHasAtLeastOneTour_hasTour_shouldPass() {
+        when(tourRepository.existsByStageId(anyLong())).thenReturn(true);
+        validator.validateStageHasAtLeastOneTour(1L);
+    }
+
+    @Test
+    void validateStageHasAtLeastOneTour_noTour_shouldThrow() {
+        when(tourRepository.existsByStageId(anyLong())).thenReturn(false);
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> validator.validateStageHasAtLeastOneTour(1L));
     }
 }

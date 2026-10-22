@@ -24,6 +24,8 @@ public class ResponseNewsAdminListItemDto {
     private OffsetDateTime createdAt;
     @Schema(description = "Date and time when the news was published")
     private OffsetDateTime publishedAt;
+    @Schema(description = "Date and time when the news was last updated")
+    private OffsetDateTime updatedAt;
     @Schema(description = "Date and time when the news was archived")
     private OffsetDateTime archivedAt;
 }

@@ -3,30 +3,34 @@ package com.itasocialacademy.oitassist.participation.controller;
 import com.itasocialacademy.oitassist.ControllerUnitTest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateInvitationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.FailedInvitationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessInvitationResponse;
-import com.itasocialacademy.oitassist.participation.dao.dto.response.SucceededInvitationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.*;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.service.interfaces.InvitationService;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 
 import java.time.Instant;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 class InvitationControllerTest extends ControllerUnitTest<InvitationController> {
+    private static final String ENROLLMENT_BASE_LINK = "/api/v1/enrollment/invitations/{id}";
+    private static final String COMPETITION_BASE_LINK = "/api/v1/competitions/{compId}/stages/{stId}/invitations";
+
     @Mock
     private InvitationService invitationService;
 
@@ -41,10 +45,7 @@ class InvitationControllerTest extends ControllerUnitTest<InvitationController> 
     @Test
     void sendEnrollmentRequest_shouldReturnCreated_whenAllStudentsSucceed() throws Exception {
         CreateInvitationRequest request = CreateInvitationRequest.builder()
-            .competitionId(2L)
-            .stageId(3L)
-            .studentIds(List.of(10L, 11L))
-            .build();
+            .studentIds(List.of(10L, 11L)).build();
 
         CreateInvitationResponse response = CreateInvitationResponse.builder()
             .competitionId(2L)
@@ -57,9 +58,10 @@ class InvitationControllerTest extends ControllerUnitTest<InvitationController> 
             .issuedAt(Instant.parse("2026-07-28T10:00:00Z"))
             .build();
 
-        when(invitationService.sendEnrollmentRequest(any(CreateInvitationRequest.class))).thenReturn(response);
+        when(invitationService.sendInvitationRequests(eq(2L), eq(3L), any(CreateInvitationRequest.class)))
+            .thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/competitions/invitations")
+        mockMvc.perform(post(COMPETITION_BASE_LINK, 2L, 3L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
@@ -67,16 +69,13 @@ class InvitationControllerTest extends ControllerUnitTest<InvitationController> 
             .andExpect(jsonPath("$.succeeded[0].studentId").value(10L))
             .andExpect(jsonPath("$.failed").isEmpty());
 
-        verify(invitationService).sendEnrollmentRequest(any(CreateInvitationRequest.class));
+        verify(invitationService).sendInvitationRequests(eq(2L), eq(3L), any(CreateInvitationRequest.class));
     }
 
     @Test
     void sendEnrollmentRequest_shouldReturnCreated_withPartialFailures() throws Exception {
         CreateInvitationRequest request = CreateInvitationRequest.builder()
-            .competitionId(2L)
-            .stageId(3L)
-            .studentIds(List.of(10L, 11L))
-            .build();
+            .studentIds(List.of(10L, 11L)).build();
 
         CreateInvitationResponse response = CreateInvitationResponse.builder()
             .competitionId(2L)
@@ -87,9 +86,10 @@ class InvitationControllerTest extends ControllerUnitTest<InvitationController> 
             .issuedAt(Instant.parse("2026-07-28T10:00:00Z"))
             .build();
 
-        when(invitationService.sendEnrollmentRequest(any(CreateInvitationRequest.class))).thenReturn(response);
+        when(invitationService.sendInvitationRequests(eq(2L), eq(3L), any(CreateInvitationRequest.class)))
+            .thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/competitions/invitations")
+        mockMvc.perform(post(COMPETITION_BASE_LINK, 2L, 3L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
@@ -97,16 +97,13 @@ class InvitationControllerTest extends ControllerUnitTest<InvitationController> 
             .andExpect(jsonPath("$.failed[0].studentId").value(11L))
             .andExpect(jsonPath("$.failed[0].reason").value("Student already has a pending invitation"));
 
-        verify(invitationService).sendEnrollmentRequest(any(CreateInvitationRequest.class));
+        verify(invitationService).sendInvitationRequests(eq(2L), eq(3L), any(CreateInvitationRequest.class));
     }
 
     @Test
     void sendEnrollmentRequest_shouldReturnCreated_whenAllStudentsFail() throws Exception {
         CreateInvitationRequest request = CreateInvitationRequest.builder()
-            .competitionId(2L)
-            .stageId(3L)
-            .studentIds(List.of(99L))
-            .build();
+            .studentIds(List.of(99L)).build();
 
         CreateInvitationResponse response = CreateInvitationResponse.builder()
             .competitionId(2L)
@@ -117,23 +114,24 @@ class InvitationControllerTest extends ControllerUnitTest<InvitationController> 
             .issuedAt(Instant.parse("2026-07-28T10:00:00Z"))
             .build();
 
-        when(invitationService.sendEnrollmentRequest(any(CreateInvitationRequest.class))).thenReturn(response);
+        when(invitationService.sendInvitationRequests(eq(2L), eq(3L), any(CreateInvitationRequest.class)))
+            .thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/competitions/invitations")
+        mockMvc.perform(post(COMPETITION_BASE_LINK, 2L, 3L)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.succeeded").isEmpty())
             .andExpect(jsonPath("$.failed[0].reason").value("Student not found"));
 
-        verify(invitationService).sendEnrollmentRequest(any(CreateInvitationRequest.class));
+        verify(invitationService).sendInvitationRequests(eq(2L), eq(3L), any(CreateInvitationRequest.class));
     }
 
     @Test
     void sendEnrollmentRequest_shouldReturnBadRequest_whenRequestIsInvalid() throws Exception {
         CreateInvitationRequest request = CreateInvitationRequest.builder().build();
 
-        mockMvc.perform(post("/api/v1/competitions/invitations")
+        mockMvc.perform(post(COMPETITION_BASE_LINK, "a", "z")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isBadRequest());
@@ -156,7 +154,7 @@ class InvitationControllerTest extends ControllerUnitTest<InvitationController> 
 
         when(invitationService.acceptRequest(invitationId)).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/competitions/invitations/accept/{id}", invitationId)
+        mockMvc.perform(post(ENROLLMENT_BASE_LINK + "/accept", invitationId)
             .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(invitationId))
@@ -188,7 +186,7 @@ class InvitationControllerTest extends ControllerUnitTest<InvitationController> 
         when(invitationService.rejectRequest(eq(invitationId), any(RejectEnrollmentRequest.class)))
             .thenReturn(response);
 
-        mockMvc.perform(patch("/api/v1/competitions/invitations/reject/{id}", invitationId)
+        mockMvc.perform(patch(ENROLLMENT_BASE_LINK + "/reject", invitationId)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
@@ -216,12 +214,61 @@ class InvitationControllerTest extends ControllerUnitTest<InvitationController> 
 
         when(invitationService.cancelRequest(invitationId)).thenReturn(response);
 
-        mockMvc.perform(patch("/api/v1/competitions/invitations/cancel/{id}", invitationId)
+        mockMvc.perform(patch(ENROLLMENT_BASE_LINK + "/cancel", invitationId)
             .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(invitationId))
             .andExpect(jsonPath("$.status").value("CANCELLED"));
 
         verify(invitationService).cancelRequest(invitationId);
+    }
+
+    @Test
+    void getEnrollmentRequests_shouldReturnOkWithPagedResults() throws Exception {
+        InvitationListItemResponse item = new InvitationListItemResponse(
+            1L, Instant.parse("2026-07-28T10:00:00Z"), RequestStatus.PENDING,
+            new UserSummary("Test", "Test Surname", "test@mail.com"));
+
+        Page<InvitationListItemResponse> page = new PageImpl<>(
+            List.of(item), PageRequest.of(0, 20), 1);
+
+        when(invitationService.getEnrollmentRequests(any(), any(), any(), any(Pageable.class))).thenReturn(page);
+
+        mockMvc.perform(get(COMPETITION_BASE_LINK, 2L, 3L)
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content[0].invitationId").value(1L))
+            .andExpect(jsonPath("$.content[0].status").value("PENDING"))
+            .andExpect(jsonPath("$.content[0].user.firstName").value("Test"))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(invitationService).getEnrollmentRequests(any(), any(), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    void getEnrollmentRequests_withSearchParam_shouldPassSearchToService() throws Exception {
+        Page<InvitationListItemResponse> page = Page.empty(PageRequest.of(0, 20));
+
+        when(invitationService.getEnrollmentRequests(any(), any(), eq("test"), any(Pageable.class))).thenReturn(page);
+
+        mockMvc.perform(get(COMPETITION_BASE_LINK, 2L, 3L)
+            .param("search", "test"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isEmpty());
+
+        verify(invitationService).getEnrollmentRequests(any(), any(), eq("test"), any(Pageable.class));
+    }
+
+    @Test
+    void getEnrollmentRequests_noResults_shouldReturnEmptyPage() throws Exception {
+        when(invitationService.getEnrollmentRequests(any(), any(), any(), any(Pageable.class)))
+            .thenReturn(Page.empty());
+
+        mockMvc.perform(get(COMPETITION_BASE_LINK, 2L, 3L))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isEmpty())
+            .andExpect(jsonPath("$.totalElements").value(0));
     }
 }

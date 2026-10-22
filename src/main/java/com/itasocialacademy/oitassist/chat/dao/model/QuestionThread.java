@@ -38,13 +38,8 @@ public class QuestionThread {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * TODO change after TaskAssignment is implemented. Temporary TaskBody
-     * reference. This field should be replaced with taskAssignmentId after
-     * TaskAssignment is implemented.
-     */
-    @Column(name = "task_id", nullable = false)
-    private Long taskId;
+    @Column(name = "task_assignment_id", nullable = false)
+    private Long taskAssignmentId;
 
     @CreatedBy
     @Column(name = "author_id", nullable = false, updatable = false)

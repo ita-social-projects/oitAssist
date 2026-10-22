@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 
 @Schema(description = "DTO for updating an existing task assignment")
 public record UpdateTaskAssignmentRequestDTO(
@@ -20,5 +21,8 @@ public record UpdateTaskAssignmentRequestDTO(
 
     @Schema(
         description = "Requirements and constraints for submitted files",
-        requiredMode = Schema.RequiredMode.NOT_REQUIRED) @Valid TaskRequirementsRequestDTO requirements) {
+        requiredMode = Schema.RequiredMode.NOT_REQUIRED) @Valid TaskRequirementsRequestDTO requirements,
+
+    @Schema(description = "Optimistic locking version; must be echoed back on updates",
+        requiredMode = Schema.RequiredMode.REQUIRED) @NotNull Long version) {
 }

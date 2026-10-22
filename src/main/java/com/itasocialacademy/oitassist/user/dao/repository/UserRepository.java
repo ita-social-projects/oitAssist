@@ -43,4 +43,19 @@ public interface UserRepository extends JpaRepository<User, Long> {
         Pageable pageable);
 
     Page<User> findAllByIdIn(List<Long> ids, Pageable pageable);
+
+    @Query("""
+        SELECT u.id FROM User u
+        WHERE u.id IN :candidateIds
+        AND (
+            :search IS NULL
+            OR :search = ''
+            OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+            OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+            OR LOWER(u.surname) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+            OR LOWER(CONCAT(u.firstName, ' ', u.surname)) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+            OR LOWER(CONCAT(u.surname, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+        )
+        """)
+    List<Long> findIdsBySearch(@Param("search") String search, @Param("candidateIds") List<Long> candidateIds);
 }

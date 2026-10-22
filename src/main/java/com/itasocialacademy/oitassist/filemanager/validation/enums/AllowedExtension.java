@@ -14,7 +14,8 @@ public enum AllowedExtension {
     JPEG("jpeg"),
     PNG("png"),
     GIF("gif"),
-    WEBP("webp");
+    WEBP("webp"),
+    MP4("mp4"),;
 
     private final String rawValue;
 }

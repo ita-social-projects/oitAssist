@@ -1,12 +1,21 @@
 package com.itasocialacademy.oitassist.logfile.dao;
 
+import com.itasocialacademy.oitassist.logfile.dao.model.LogFileMetadata;
+import com.itasocialacademy.oitassist.logfile.exceptions.InvalidLogFileNameException;
+import com.itasocialacademy.oitassist.logfile.exceptions.LogFileDownloadException;
 import com.itasocialacademy.oitassist.logfile.exceptions.LogFileListingException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,10 +34,69 @@ public class FileSystemLogFileDao implements LogFileDao {
 
     @Override
     public List<LogFileMetadata> findAll() {
+        return findFiles(path -> true);
+    }
+
+    @Override
+    public List<LogFileMetadata> findByNameContainingIgnoreCase(String name) {
+        String normalizedName = name.toLowerCase(Locale.ROOT);
+        return findFiles(path -> path.getFileName()
+            .toString()
+            .toLowerCase(Locale.ROOT)
+            .contains(normalizedName));
+    }
+
+    @Override
+    public Optional<Path> downloadFile(String fileName) {
+        validateLogDirectory();
+
+        Path filePath = resolveDownloadPath(fileName);
+
+        try {
+            BasicFileAttributes attributes =
+                Files.readAttributes(
+                    filePath,
+                    BasicFileAttributes.class,
+                    LinkOption.NOFOLLOW_LINKS);
+
+            if (attributes.isSymbolicLink() || !attributes.isRegularFile()) {
+                return Optional.empty();
+            }
+            return Optional.of(filePath);
+        } catch (NoSuchFileException _) {
+            log.debug("Log file not found for download: {}", fileName);
+
+            return Optional.empty();
+        } catch (IOException | SecurityException exception) {
+            log.error("Failed to access log file for download: {}", filePath, exception);
+
+            throw new LogFileDownloadException(exception);
+        }
+    }
+
+    private Path resolveDownloadPath(String fileName) {
+        try {
+            Path filePath = logDirectory
+                .resolve(fileName)
+                .normalize();
+
+            if (!filePath.startsWith(logDirectory)
+                || !logDirectory.equals(filePath.getParent())) {
+                throw new InvalidLogFileNameException();
+            }
+
+            return filePath;
+        } catch (InvalidPathException _) {
+            throw new InvalidLogFileNameException();
+        }
+    }
+
+    private List<LogFileMetadata> findFiles(Predicate<Path> filter) {
         validateLogDirectory();
 
         try (Stream<Path> paths = Files.list(logDirectory)) {
             return paths
+                .filter(filter)
                 .map(this::readMetadata)
                 .flatMap(Optional::stream)
                 .toList();
@@ -37,6 +105,7 @@ public class FileSystemLogFileDao implements LogFileDao {
                 "Failed to read metadata from log directory: {}",
                 logDirectory,
                 exception.getCause());
+
             throw new LogFileListingException();
         } catch (IOException | SecurityException exception) {
             log.error("Failed to access log directory: {}", logDirectory, exception);
@@ -104,7 +173,7 @@ public class FileSystemLogFileDao implements LogFileDao {
                 attributes
                     .lastModifiedTime()
                     .toInstant()));
-        } catch (NoSuchFileException exception) {
+        } catch (NoSuchFileException _) {
             log.debug("Log file disappeared during directory scan: {}", path.getFileName());
             return Optional.empty();
         } catch (IOException exception) {

@@ -9,7 +9,7 @@ import org.springframework.modulith.NamedInterface;
 @RequiredArgsConstructor
 public enum RelatedEntityType {
     NEWS("News"),
-    TASK("Task"),
+    TASK("TaskBody"),
     COMPETITION("Competition"),
     SUBMISSION("Submission");
 

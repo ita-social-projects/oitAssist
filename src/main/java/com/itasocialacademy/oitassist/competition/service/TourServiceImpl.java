@@ -77,6 +77,8 @@ public class TourServiceImpl implements TourService {
         Tour tour = tourRepository.findById(tourId)
             .orElseThrow(() -> new TourNotFoundException(tourId));
 
+        validator.validateEntityVersion(request.version(), tour.getVersion(), Tour.class, tourId);
+
         validator.validateTourEligibility(pathStageId, tour.getStageId());
         validator.validateImmutabilityByStageId(tour.getStageId());
         validator.validateTourDates(tour.getStageId(), request.dateStart(), request.dateFinish());
@@ -114,6 +116,8 @@ public class TourServiceImpl implements TourService {
         Tour tour = tourRepository.findById(tourId)
             .orElseThrow(() -> new TourNotFoundException(tourId));
 
+        validator.validateEntityVersion(request.version(), tour.getVersion(), Tour.class, tourId);
+
         validator.validateTourEligibility(stageId, tour.getStageId());
         validator.checkIfCompetitionPublishedByStageId(stageId);
         validator.checkIfStageInProgress(stageId, request.status());
@@ -129,11 +133,6 @@ public class TourServiceImpl implements TourService {
             }
         }
         tour.setExecutionStatus(request.status());
-
-        // place for publishing events (TBD)
-        // if (request.status() == ExecutionStatus.FINISHED) {
-        // eventPublisher.publishEvent(new TourFinishedEvent(tour.getId()));
-        // }
 
         Tour updatedTour = tourRepository.save(tour);
         return mapper.toResponse(updatedTour);
@@ -179,6 +178,7 @@ public class TourServiceImpl implements TourService {
 
         validator.validateTourEligibility(pathStageId, tour.getStageId());
         validator.validateImmutabilityByStageId(tour.getStageId());
+        validator.validateTourDeletionKeepsStageNonEmpty(tour.getStageId());
 
         tourRepository.delete(tour);
     }

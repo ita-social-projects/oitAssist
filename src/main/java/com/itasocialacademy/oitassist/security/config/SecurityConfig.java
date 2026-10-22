@@ -76,13 +76,18 @@ public class SecurityConfig {
                     "/api/v1/registration/**",
                     "/api/v1/security/signIn",
                     "/api/v1/security/refresh",
+                    "/api/v1/security/2fa/verify",
+                    "/api/v1/security/2fa/enroll",
+                    "/api/v1/security/2fa/enroll/confirm",
                     "/api/v1/user-activation/resend")
                 .permitAll()
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/news/**",
                     "/api/v1/user-activation/verify",
                     "/ui",
-                    "/ui/**")
+                    "/ui/**",
+                    "/api/v1/files/**",
+                    "/api/v1/version")
                 .permitAll()
                 .requestMatchers(
                     "/index.html",
