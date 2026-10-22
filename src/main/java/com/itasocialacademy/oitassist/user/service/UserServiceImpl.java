@@ -39,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +56,8 @@ public class UserServiceImpl implements UserService {
     private final UserCompetitionFacade userCompetitionFacade;
     private final ProfileUpdateRequestMapper profileUpdateRequestMapper;
     private final EmailService emailService;
+
+    private static final DateTimeFormatter EMAIL_DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withZone(ZoneId.of("Europe/Kyiv"));
 
     /**
      * {@inheritDoc}
@@ -322,12 +325,12 @@ public class UserServiceImpl implements UserService {
         Map<String, String> root = Map.of(
             "firstName", user.getFirstName(),
             "status", status,
-            "processedAt", request.getReviewedAt().toString(),
+            "processedAt", EMAIL_DATE.format(request.getReviewedAt()),
             "rejectionReason", request.getRejectReason() != null ? request.getRejectReason() : "");
 
         emailService.sendTemplateEmail(
             user.getEmail(),
-            "profile-update-status.ftlh",
+            "profile-update-status.html",
             "Зміна даних профілю",
             root);
     }
