@@ -6,7 +6,9 @@ import com.itasocialacademy.oitassist.competition.api.dto.CompetitionTreeDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.StageTreeDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
+import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
+import com.itasocialacademy.oitassist.competition.dao.model.CompetitionTourView;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import com.itasocialacademy.oitassist.competition.dao.model.Tour;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
@@ -15,13 +17,17 @@ import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.mapper.CompetitionMapper;
 import com.itasocialacademy.oitassist.competition.mapper.StageMapper;
 import com.itasocialacademy.oitassist.competition.mapper.TourMapper;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,6 +95,35 @@ class CompetitionFacadeImpl implements CompetitionFacade {
         return tourRepository.findAllById(tourIds).stream()
             .map(tourMapper::toTourDetail)
             .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CompetitionDetail> findCompetitionsByIdsAndStatuses(
+        Collection<Long> competitionIds,
+        Set<CompetitionStatus> statuses,
+        Pageable pageable) {
+        Objects.requireNonNull(competitionIds, "competitionIds must not be null");
+        Objects.requireNonNull(statuses, "statuses must not be null");
+        if (competitionIds.isEmpty() || statuses.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        return competitionRepository
+            .findByIdInAndCompetitionStatusIn(competitionIds, statuses, pageable)
+            .map(competitionMapper::toCompetitionDetail);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<Long>> findTourIdsByCompetitionIds(Collection<Long> competitionIds) {
+        Objects.requireNonNull(competitionIds, COMPETITION_ID_MUST_NOT_BE_NULL);
+        if (competitionIds.isEmpty()) {
+            return Map.of();
+        }
+        return tourRepository.findTourIdsByCompetitionIds(competitionIds).stream()
+            .collect(Collectors.groupingBy(
+                CompetitionTourView::getCompetitionId,
+                Collectors.mapping(CompetitionTourView::getTourId, Collectors.toList())));
     }
 
     private CompetitionTreeDetail buildTreeDetail(Competition competitionEntity) {

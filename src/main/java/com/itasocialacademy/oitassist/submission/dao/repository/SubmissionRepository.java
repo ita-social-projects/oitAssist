@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.submission.dao.repository;
 
 import com.itasocialacademy.oitassist.submission.dao.model.Submission;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -37,4 +38,11 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
         Instant submittedAt);
 
     List<Submission> findAllByTaskAssignmentId(Long taskAssignmentId);
+
+    /**
+     * Returns all submissions made by the given user for any of the given task
+     * assignments. A user has at most one submission per task assignment.
+     */
+    List<Submission> findAllBySubmittedByAndTaskAssignmentIdIn(
+        Long userId, Collection<Long> taskAssignmentIds);
 }

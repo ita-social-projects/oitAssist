@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.taskassignment.dao.repository;
 
 import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.dao.model.TaskAssignment;
+import java.util.Collection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,4 +22,9 @@ public interface TaskAssignmentRepository extends JpaRepository<TaskAssignment, 
 
     @Query("SELECT t.tourId FROM TaskAssignment t WHERE t.taskBodyId = :taskBodyId")
     List<Long> findTourIdsByTaskBodyId(Long taskBodyId);
+
+    /**
+     * Returns all task assignments that belong to any of the given tours.
+     */
+    List<TaskAssignment> findAllByTourIdIn(Collection<Long> tourIds);
 }
