@@ -30,7 +30,7 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
 
     @Query("SELECT DISTINCT p.competitionId FROM Participation p WHERE p.userId = :userId")
     List<Long> findDistinctCompetitionIdsByUserId(@Param("userId") Long userId);
-      
+
     @Query("""
             SELECT CASE
                 WHEN COUNT(p) > 0 THEN true
