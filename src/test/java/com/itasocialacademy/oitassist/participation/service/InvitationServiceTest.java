@@ -370,7 +370,7 @@ class InvitationServiceTest {
         assertNotNull(response);
         assertEquals(RequestStatus.ACCEPTED, invitation.getStatus());
         assertNotNull(invitation.getProcessedAt());
-        verify(participationRepository).save(participation);
+        verify(participationRepository).saveAndFlush(participation);
         verify(invitationRepository).saveAndFlush(invitation);
     }
 

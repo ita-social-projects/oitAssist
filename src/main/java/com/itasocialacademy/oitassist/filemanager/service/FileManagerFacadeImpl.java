@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.filemanager.service;
 
 import com.itasocialacademy.oitassist.filemanager.api.FileManagerFacade;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.FileRole;
 import com.itasocialacademy.oitassist.filemanager.dao.enums.RelatedEntityType;
 import com.itasocialacademy.oitassist.filemanager.dto.request.FileUploadRequestDto;
@@ -32,12 +33,14 @@ public class FileManagerFacadeImpl implements FileManagerFacade {
 
     @Override
     public List<FileDetailsDTO> uploadFiles(List<MultipartFile> files, RelatedEntityType entityType, Long entityId,
-        FileRole role) {
-        return fileService.uploadToFileDetails(files, FileUploadRequestDto.builder()
-            .fileRole(role)
+        FileRole role, StorageContext storageContext) {
+        FileUploadRequestDto request = FileUploadRequestDto.builder()
             .relatedEntityType(entityType)
             .relatedEntityId(entityId)
-            .build());
+            .fileRole(role)
+            .storageContext(storageContext)
+            .build();
+        return fileService.uploadToFileDetails(files, request);
     }
 
     @Override
@@ -64,5 +67,15 @@ public class FileManagerFacadeImpl implements FileManagerFacade {
     public void updateRoleForMultiOwnerEntity(Long fileId, FileRole newRole, RelatedEntityType entityType,
         Long entityId) {
         fileService.updateRoleForMultiOwnerEntity(fileId, newRole, entityType, entityId);
+    }
+
+    @Override
+    public void createTaskReference(StorageContext ctx) {
+        fileService.createTaskReference(ctx);
+    }
+
+    @Override
+    public void deleteTaskReference(StorageContext ctx) {
+        fileService.deleteTaskReference(ctx);
     }
 }

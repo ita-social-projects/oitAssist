@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.taskassignment.dao.repository;
 
+import com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility;
 import com.itasocialacademy.oitassist.taskassignment.dao.model.TaskAssignment;
 import java.util.Collection;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,8 @@ import java.util.List;
 @Repository
 public interface TaskAssignmentRepository extends JpaRepository<TaskAssignment, Long> {
     Page<TaskAssignment> findAllByTourId(Long tourId, Pageable pageable);
+
+    Page<TaskAssignment> findAllByTourIdAndVisibility(Long tourId, AssignmentVisibility visibility, Pageable pageable);
 
     boolean existsByTaskBodyIdAndTourId(Long taskBodyId, Long tourId);
 

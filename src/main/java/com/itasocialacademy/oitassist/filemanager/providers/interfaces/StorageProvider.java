@@ -5,6 +5,7 @@ import com.itasocialacademy.oitassist.filemanager.exceptions.FileListingExceptio
 import java.io.InputStream;
 import java.time.OffsetDateTime;
 import java.util.List;
+import com.itasocialacademy.oitassist.filemanager.exceptions.FileUploadException;
 import org.springframework.core.io.Resource;
 
 public interface StorageProvider {
@@ -61,4 +62,42 @@ public interface StorageProvider {
      * @return the {@link Resource} representing the file byte stream
      */
     Resource getResource(String storageKey);
+
+    /**
+     * Moves a file from one location to another within the storage provider. This
+     * is primarily used to route temporary files to their final hierarchical
+     * destination once they are permanently linked to an entity.
+     *
+     * @param sourceKey the current relative path of the file
+     * @param targetKey the desired new relative path of the file
+     * @return the final relative path (storage key) after the move
+     * @throws FileUploadException if the file cannot be moved
+     */
+    String moveFile(String sourceKey, String targetKey);
+
+    /**
+     * Creates a reference to a task in the specified assignment folder.
+     *
+     * <p>
+     * Depending on the storage provider implementation, this creates either an OS
+     * symbolic link (for local filesystem storage) or an Internet Shortcut
+     * {@code task.url} file (for SharePoint storage).
+     * </p>
+     *
+     * @param assignmentPath the relative destination folder path where the
+     *                       reference should be placed (e.g.,
+     *                       {@code "olympiads/Comp/Stage/Tour/Task"})
+     * @param taskPoolPath   the relative source path pointing to the canonical task
+     *                       folder in the task pool (e.g., {@code "tasks/Task"})
+     */
+    void createTaskReference(String assignmentPath, String taskPoolPath);
+
+    /**
+     * Deletes the task reference (symlink or {@code task.url} file) from the
+     * specified assignment folder.
+     *
+     * @param assignmentPath the relative destination folder path containing the
+     *                       reference to delete
+     */
+    void deleteTaskReference(String assignmentPath);
 }

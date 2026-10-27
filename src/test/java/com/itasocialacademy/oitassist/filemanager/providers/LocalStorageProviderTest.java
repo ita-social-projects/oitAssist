@@ -152,8 +152,8 @@ class LocalStorageProviderTest {
         InputStream content = new ByteArrayInputStream("data".getBytes());
 
         assertThatThrownBy(() -> localStorageProvider.upload(content, "hack.exe", "../../etc"))
-            .isInstanceOf(FileUploadException.class)
-            .hasMessageContaining("Invalid upload path outside configured storage root");
+            .isInstanceOf(InvalidFilePathException.class)
+            .hasMessageContaining("Access denied: path is outside storage root");
     }
 
     @Test
@@ -251,5 +251,101 @@ class LocalStorageProviderTest {
         assertThatThrownBy(() -> localStorageProvider.getLastModified("non-existent.txt"))
             .isInstanceOf(FileListingException.class)
             .hasMessageContaining("Could not read file metadata");
+    }
+
+    //
+    // moveFile() SECTION TESTS
+    //
+
+    @Test
+    void moveFile_ShouldMoveFileSuccessfully() throws IOException {
+        Path sourceDir = tempDir.resolve("tasks/task1/problem");
+        Files.createDirectories(sourceDir);
+        Path source = sourceDir.resolve("doc.txt");
+        Files.writeString(source, "hello world");
+
+        String moved = localStorageProvider.moveFile(
+            "tasks/task1/problem/doc.txt", "tasks/task1/solution/doc.txt");
+
+        assertThat(moved).isEqualTo("tasks/task1/solution/doc.txt");
+        assertThat(Files.exists(source)).isFalse();
+        Path target = tempDir.resolve("tasks/task1/solution/doc.txt");
+        assertThat(Files.exists(target)).isTrue();
+        assertThat(Files.readString(target)).isEqualTo("hello world");
+    }
+
+    @Test
+    void moveFile_ShouldThrowInvalidFilePathException_WhenKeyIsBlank() {
+        assertThrows(InvalidFilePathException.class,
+            () -> localStorageProvider.moveFile(null, "target.txt"));
+        assertThrows(InvalidFilePathException.class,
+            () -> localStorageProvider.moveFile("source.txt", "   "));
+    }
+
+    @Test
+    void moveFile_ShouldThrowInvalidFilePathException_WhenPathIsOutsideRoot() {
+        assertThatThrownBy(() -> localStorageProvider.moveFile("source.txt", "../outside.txt"))
+            .isInstanceOf(InvalidFilePathException.class)
+            .hasMessageContaining("Access denied: path is outside storage root");
+    }
+
+    //
+    // createTaskReference() & deleteTaskReference() SECTION TESTS
+    //
+
+    @Test
+    void createTaskReference_ShouldThrowInvalidFilePathException_WhenPathsAreBlank() {
+        assertThrows(InvalidFilePathException.class,
+            () -> localStorageProvider.createTaskReference("", "tasks/task1"));
+        assertThrows(InvalidFilePathException.class,
+            () -> localStorageProvider.createTaskReference("olympiads/task1", null));
+    }
+
+    @Test
+    void createTaskReference_ShouldThrowInvalidFilePathException_WhenPathIsOutsideRoot() {
+        assertThatThrownBy(() -> localStorageProvider.createTaskReference("../outside", "tasks/task1"))
+            .isInstanceOf(InvalidFilePathException.class)
+            .hasMessageContaining("Access denied: path is outside storage root");
+    }
+
+    @Test
+    void createTaskReference_andDeleteTaskReference_ShouldManageSymlinkLifecycle() throws IOException {
+        Path taskDir = tempDir.resolve("tasks/task1");
+        Files.createDirectories(taskDir);
+
+        localStorageProvider.createTaskReference("olympiads/comp/stage/tour/task1", "tasks/task1");
+
+        Path link = tempDir.resolve("olympiads/comp/stage/tour/task1/task");
+        if (Files.isSymbolicLink(link)) {
+            localStorageProvider.deleteTaskReference("olympiads/comp/stage/tour/task1");
+            assertThat(Files.exists(link)).isFalse();
+        }
+    }
+
+    @Test
+    void createTaskReference_ShouldCreateTargetDirectoryAndBeIdempotent() {
+        Path target = tempDir.resolve("tasks/non_existent_target");
+        assertThat(Files.exists(target)).isFalse();
+
+        localStorageProvider.createTaskReference("olympiads/comp/stage/tour/task1", "tasks/non_existent_target");
+        assertThat(Files.isDirectory(target)).isTrue();
+
+        // Calling again should not throw FileAlreadyExistsException
+        localStorageProvider.createTaskReference("olympiads/comp/stage/tour/task1", "tasks/non_existent_target");
+        Path link = tempDir.resolve("olympiads/comp/stage/tour/task1/task");
+        if (Files.isSymbolicLink(link)) {
+            assertThat(Files.exists(link)).isTrue();
+        }
+    }
+
+    @Test
+    void deleteTaskReference_ShouldThrowInvalidFilePathException_WhenPathIsBlankOrOutsideRoot() {
+        assertThrows(InvalidFilePathException.class,
+            () -> localStorageProvider.deleteTaskReference("   "));
+        assertThrows(InvalidFilePathException.class,
+            () -> localStorageProvider.deleteTaskReference(null));
+        assertThatThrownBy(() -> localStorageProvider.deleteTaskReference("../outside"))
+            .isInstanceOf(InvalidFilePathException.class)
+            .hasMessageContaining("Access denied: path is outside storage root");
     }
 }

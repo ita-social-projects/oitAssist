@@ -5,7 +5,8 @@
         "filemanager :: FileAccessValidator",
         "taskassignment :: api", "taskassignment :: dto", "taskassignment :: exceptions",
         "competition :: api", "competition :: dto", "competition :: exceptions", "competition :: enums",
-        "participation :: api"})
+        "participation :: api", "user :: UserNotFoundException",
+        "task :: exceptions", "task :: api", "task :: dto"})
 package com.itasocialacademy.oitassist.submission;
 
 import org.springframework.modulith.ApplicationModule;

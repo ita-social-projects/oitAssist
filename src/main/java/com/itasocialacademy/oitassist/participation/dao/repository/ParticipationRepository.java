@@ -1,5 +1,6 @@
 package com.itasocialacademy.oitassist.participation.dao.repository;
 
+import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Participation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -29,4 +30,18 @@ public interface ParticipationRepository extends JpaRepository<Participation, Lo
 
     @Query("SELECT DISTINCT p.competitionId FROM Participation p WHERE p.userId = :userId")
     List<Long> findDistinctCompetitionIdsByUserId(@Param("userId") Long userId);
+      
+    @Query("""
+            SELECT CASE
+                WHEN COUNT(p) > 0 THEN true
+                ELSE false
+            END
+            FROM Participation p
+            JOIN Competition c ON c.id = p.competitionId
+            WHERE p.userId = :userId
+                AND c.competitionStatus IN :statuses
+        """)
+    boolean existsByUserIdAndCompetitionStatusIn(
+        @Param("userId") Long userId,
+        @Param("statuses") List<CompetitionStatus> statuses);
 }

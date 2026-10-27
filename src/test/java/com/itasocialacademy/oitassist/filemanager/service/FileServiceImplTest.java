@@ -42,6 +42,7 @@ import java.util.Set;
 
 import com.itasocialacademy.oitassist.filemanager.access.FileAccessValidator;
 import com.itasocialacademy.oitassist.filemanager.api.dto.FileDetailsDTO;
+import com.itasocialacademy.oitassist.filemanager.api.dto.StorageContext;
 import com.itasocialacademy.oitassist.filemanager.validation.resolvers.FileAccessValidatorResolver;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -193,8 +194,7 @@ class FileServiceImplTest {
 
         verify(fileRepository).save(captor.capture());
         FileAsset saved = captor.getValue();
-        assertTrue(saved.getStoredFilename().endsWith(".gz"));
-        assertFalse(saved.getStoredFilename().endsWith(".tar.gz"), "Should only extract the last extension");
+        assertEquals("archive.tar.gz", saved.getStoredFilename());
     }
 
     @Test
@@ -319,7 +319,7 @@ class FileServiceImplTest {
 
         fileService.upload(List.of(file), request);
 
-        verify(storageProvider).upload(any(), anyString(), eq("task"));
+        verify(storageProvider).upload(any(), anyString(), eq("tasks/Sample Task/generic"));
     }
 
     @Test
@@ -472,6 +472,7 @@ class FileServiceImplTest {
         FileUploadRequestDto request = FileUploadRequestDto.builder()
             .relatedEntityType(RelatedEntityType.NEWS)
             .relatedEntityId(1L)
+            .storageContext(StorageContext.forNews("Sample News"))
             .build();
 
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
@@ -1523,17 +1524,22 @@ class FileServiceImplTest {
         file.setFileRole(FileRole.PROBLEM);
         file.setStorageProvider(StorageProviderType.LOCAL);
         file.setOriginalFilename("test.docx");
+        file.setStorageKey("tasks/My Task/problem/test.docx");
 
         FilePolicy newRolePolicy = mock(FilePolicy.class);
         when(newRolePolicy.getAllowedExtensions()).thenReturn(Set.of(AllowedExtension.DOCX));
 
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(file));
         when(filePolicyResolver.resolve(RelatedEntityType.TASK, FileRole.SOLUTION)).thenReturn(newRolePolicy);
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.moveFile(anyString(), anyString())).thenReturn("tasks/My Task/solution/test.docx");
         when(fileRepository.save(any(FileAsset.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         fileService.updateRoleForMultiOwnerEntity(fileId, FileRole.SOLUTION, RelatedEntityType.TASK, 2L);
 
         assertEquals(FileRole.SOLUTION, file.getFileRole());
+        assertEquals("tasks/My Task/solution/test.docx", file.getStorageKey());
+        verify(storageProvider).moveFile("tasks/My Task/problem/test.docx", "tasks/My Task/solution/test.docx");
         verify(fileRepository).save(file);
     }
 
@@ -1628,6 +1634,113 @@ class FileServiceImplTest {
         assertEquals(mockResource, result.resource());
     }
 
+    @Test
+    void createTaskReference_shouldResolvePathsAndDelegateToDefaultProvider() {
+        StorageContext ctx = StorageContext.forAssignment("Comp 1", "Stage 1", "Tour 1", "Task 1");
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+
+        fileService.createTaskReference(ctx);
+
+        verify(storageProvider).createTaskReference("olympiads/Comp 1/Stage 1/Tour 1/Task 1", "tasks/Task 1");
+    }
+
+    @Test
+    void deleteTaskReference_shouldResolveAssignmentPathAndDelegateToDefaultProvider() {
+        StorageContext ctx = StorageContext.forAssignment("Comp 1", "Stage 1", "Tour 1", "Task 1");
+        when(providerResolver.resolveDefault()).thenReturn(storageProvider);
+
+        fileService.deleteTaskReference(ctx);
+
+        verify(storageProvider).deleteTaskReference("olympiads/Comp 1/Stage 1/Tour 1/Task 1");
+    }
+
+    @Test
+    void linkFilesToEntity_shouldMoveFromTempFolderAndResolveFilenameWithoutCollision() {
+        StorageContext ctx = StorageContext.forNews("News Title");
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setUserId(userId);
+        file.setStatus(FileStatus.TEMPORARY);
+        file.setStorageProvider(StorageProviderType.LOCAL);
+        file.setStorageKey("_tmp/news-cover.png");
+        file.setOriginalFilename("news-cover.png");
+        file.setFileRole(FileRole.GENERIC);
+
+        when(securityFacade.hasRole(ROLE_ADMIN)).thenReturn(false);
+        when(fileRepository.findAllById(List.of(fileId))).thenReturn(List.of(file));
+        when(fileRepository.existsByStorageKey("news/News Title/news-cover.png")).thenReturn(false);
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.moveFile("_tmp/news-cover.png", "news/News Title/news-cover.png"))
+            .thenReturn("news/News Title/news-cover.png");
+
+        fileService.linkFilesToEntity(10L, RelatedEntityType.NEWS, List.of(fileId), userId, ctx);
+
+        assertEquals(FileStatus.ATTACHED, file.getStatus());
+        assertEquals(10L, file.getRelatedEntityId());
+        assertEquals(RelatedEntityType.NEWS, file.getRelatedEntityType());
+        assertEquals("news/News Title/news-cover.png", file.getStorageKey());
+        assertEquals("news-cover.png", file.getStoredFilename());
+
+        verify(storageProvider).moveFile("_tmp/news-cover.png", "news/News Title/news-cover.png");
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
+    @Test
+    void linkFilesToEntity_shouldResolveCollisionFreeFilename_whenFileAlreadyExistsAtDestination() {
+        StorageContext ctx = StorageContext.forNews("News Title");
+        FileAsset file = new FileAsset();
+        file.setId(fileId);
+        file.setUserId(userId);
+        file.setStatus(FileStatus.TEMPORARY);
+        file.setStorageProvider(StorageProviderType.LOCAL);
+        file.setStorageKey("_tmp/news-cover.png");
+        file.setOriginalFilename("news-cover.png");
+        file.setFileRole(FileRole.GENERIC);
+
+        when(securityFacade.hasRole(ROLE_ADMIN)).thenReturn(false);
+        when(fileRepository.findAllById(List.of(fileId))).thenReturn(List.of(file));
+        when(fileRepository.existsByStorageKey("news/News Title/news-cover.png")).thenReturn(true);
+        when(fileRepository.existsByStorageKey("news/News Title/news-cover_1.png")).thenReturn(false);
+        when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
+        when(storageProvider.moveFile("_tmp/news-cover.png", "news/News Title/news-cover_1.png"))
+            .thenReturn("news/News Title/news-cover_1.png");
+
+        fileService.linkFilesToEntity(10L, RelatedEntityType.NEWS, List.of(fileId), userId, ctx);
+
+        assertEquals("news/News Title/news-cover_1.png", file.getStorageKey());
+        assertEquals("news-cover_1.png", file.getStoredFilename());
+
+        verify(storageProvider).moveFile("_tmp/news-cover.png", "news/News Title/news-cover_1.png");
+        verify(fileRepository).saveAll(List.of(file));
+    }
+
+    @Test
+    void linkFilesToEntity_shouldNotMoveAnyFiles_whenAnyFileFailsOwnershipValidation() {
+        StorageContext ctx = StorageContext.forNews("News Title");
+        FileAsset file1 = new FileAsset();
+        file1.setId(1L);
+        file1.setUserId(userId);
+        file1.setStatus(FileStatus.TEMPORARY);
+        file1.setStorageProvider(StorageProviderType.LOCAL);
+        file1.setStorageKey("_tmp/file1.png");
+
+        FileAsset file2 = new FileAsset();
+        file2.setId(2L);
+        file2.setUserId(999L);
+        file2.setStatus(FileStatus.TEMPORARY);
+        file2.setStorageProvider(StorageProviderType.LOCAL);
+        file2.setStorageKey("_tmp/file2.png");
+
+        when(securityFacade.hasRole(ROLE_ADMIN)).thenReturn(false);
+        when(fileRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(file1, file2));
+
+        assertThrows(AuthorizationException.class,
+            () -> fileService.linkFilesToEntity(10L, RelatedEntityType.NEWS, List.of(1L, 2L), userId, ctx));
+
+        verify(storageProvider, never()).moveFile(any(), any());
+        verify(fileRepository, never()).saveAll(any());
+    }
+
     // --- Helpers ---
 
     private static FileUploadRequestDto uploadRequest(RelatedEntityType type, Long relatedEntityId) {
@@ -1635,10 +1748,20 @@ class FileServiceImplTest {
     }
 
     private static FileUploadRequestDto uploadRequest(RelatedEntityType type, Long relatedEntityId, FileRole role) {
+        StorageContext context = null;
+        if (relatedEntityId != null) {
+            context = switch (type) {
+                case NEWS -> StorageContext.forNews("Sample News");
+                case TASK -> StorageContext.forTask("Sample Task");
+                case SUBMISSION -> StorageContext.forSubmission("comp", "stage", "tour", "task", "user@mail.com");
+                default -> null;
+            };
+        }
         return FileUploadRequestDto.builder()
             .relatedEntityType(type)
             .relatedEntityId(relatedEntityId)
             .fileRole(role)
+            .storageContext(context)
             .build();
     }
 

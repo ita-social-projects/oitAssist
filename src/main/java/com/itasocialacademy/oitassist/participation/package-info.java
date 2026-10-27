@@ -1,19 +1,9 @@
 @ApplicationModule(
     displayName = "Participation Manager",
-    allowedDependencies = {
-        "security::SecurityFacade",
-        "core",
-        "competition::api",
-        "competition::dto",
-        "competition::exceptions",
-        "competition::enums",
-        "competition::spi",
-        "user::UserFacade",
-        "user::UserAuthDetails",
-        "user::Role",
-        "user::UserProfileDetails",
-        "user::UserNotFoundException"
-    })
+    allowedDependencies = {"security::SecurityFacade", "core", "competition::api", "competition::dto",
+        "competition::exceptions", "competition::enums", "competition::spi", "user::UserFacade",
+        "user::UserAuthDetails", "user::Role", "user::UserProfileDetails", "user::UserNotFoundException",
+        "user::ActiveParticipationChecker"})
 package com.itasocialacademy.oitassist.participation;
 
 import org.springframework.modulith.ApplicationModule;

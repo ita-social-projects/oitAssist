@@ -19,15 +19,18 @@ import com.microsoft.graph.serviceclient.GraphServiceClient;
 import com.microsoft.kiota.ApiException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -324,6 +327,102 @@ class SharePointStorageProviderTest {
             .isInstanceOf(FileListingException.class)
             .hasMessageContaining("Failed to get last modified from SharePoint")
             .hasCauseInstanceOf(RuntimeException.class);
+    }
+
+    //
+    // moveFile() SECTION TESTS
+    //
+
+    @Test
+    void moveFile_ShouldThrowInvalidFilePathException_WhenBlank() {
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.moveFile("", "target/file.txt"));
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.moveFile(null, "target/file.txt"));
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.moveFile("source.txt", "   "));
+    }
+
+    @Test
+    void moveFile_ShouldThrowInvalidFilePathException_WhenTargetHasNoFolder() {
+        assertThatThrownBy(() -> sharePointStorageProvider.moveFile("source.txt", "targetfile.txt"))
+            .isInstanceOf(InvalidFilePathException.class)
+            .hasMessageContaining("Target key has no folder");
+    }
+
+    @Test
+    void moveFile_ShouldMoveFileSuccessfully_WhenFolderExists() {
+        stubGraphChain();
+        DriveItem folderItem = driveFolder("solution", "folder-123");
+        when(itemBuilder.get()).thenReturn(folderItem);
+        when(itemBuilder.patch(any(DriveItem.class))).thenReturn(new DriveItem());
+
+        String result = sharePointStorageProvider.moveFile(
+            "tasks/task1/problem/file.txt", "tasks/task1/solution/file.txt");
+
+        assertThat(result).isEqualTo("tasks/task1/solution/file.txt");
+        verify(itemBuilder).patch(any(DriveItem.class));
+    }
+
+    //
+    // createTaskReference() & deleteTaskReference() SECTION TESTS
+    //
+
+    @Test
+    void createTaskReference_ShouldThrowInvalidFilePathException_WhenPathIsBlank() {
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.createTaskReference("", "tasks/1"));
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.createTaskReference("olympiads/1", null));
+    }
+
+    @Test
+    void createTaskReference_ShouldThrowInvalidFilePathException_WhenSiteUrlIsBlank() {
+        when(graphPropertiesMock.getSiteUrl()).thenReturn("");
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.createTaskReference("olympiads/1", "tasks/1"));
+
+        when(graphPropertiesMock.getSiteUrl()).thenReturn(null);
+        assertThrows(InvalidFilePathException.class,
+            () -> sharePointStorageProvider.createTaskReference("olympiads/1", "tasks/1"));
+    }
+
+    @Test
+    void createTaskReference_ShouldUploadUrlFile() {
+        stubUpload();
+        when(graphPropertiesMock.getSiteUrl()).thenReturn("https://sharepoint.example.com");
+
+        sharePointStorageProvider.createTaskReference("olympiads/comp/stage/tour/task1", "tasks/task1");
+
+        verify(contentBuilder).put(any(InputStream.class));
+    }
+
+    @Test
+    void createTaskReference_ShouldUploadUrlFileWithEncodedPathAndSanitizedUrl() throws Exception {
+        stubUpload();
+        when(graphPropertiesMock.getSiteUrl()).thenReturn("https://sharepoint.example.com/sites/OIT/Shared Documents/");
+
+        sharePointStorageProvider.createTaskReference(
+            "olympiads/comp/stage/tour/task1",
+            "tasks/Algebra #1 & 100% Задача");
+
+        ArgumentCaptor<InputStream> streamCaptor = ArgumentCaptor.forClass(InputStream.class);
+        verify(contentBuilder).put(streamCaptor.capture());
+        String actualContent = new String(streamCaptor.getValue().readAllBytes(), StandardCharsets.UTF_8);
+
+        String expectedUrl =
+            "https://sharepoint.example.com/sites/OIT/Shared%20Documents/tasks/Algebra%20%231%20&%20100%25%20%D0%97%D0%B0%D0%B4%D0%B0%D1%87%D0%B0";
+        assertEquals("[InternetShortcut]\r\nURL=" + expectedUrl + "\r\n", actualContent);
+    }
+
+    @Test
+    void deleteTaskReference_ShouldDeletePhysicalFile() {
+        stubGraphChain();
+        doNothing().when(itemBuilder).delete();
+
+        sharePointStorageProvider.deleteTaskReference("olympiads/comp/stage/tour/task1");
+
+        verify(itemBuilder).delete();
     }
 
     //

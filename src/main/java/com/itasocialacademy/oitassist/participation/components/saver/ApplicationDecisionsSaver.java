@@ -22,7 +22,7 @@ public class ApplicationDecisionsSaver {
         application.setProcessedBy(organizerId);
         application.setProcessedAt(Instant.now());
         application.setStatus(RequestStatus.ACCEPTED);
-        applicationRepository.save(application);
+        applicationRepository.saveAndFlush(application);
 
         Participation participation = Participation.builder()
             .userId(application.getUserId())
@@ -39,6 +39,6 @@ public class ApplicationDecisionsSaver {
         application.setRejectionReason(rejectionReason);
         application.setStatus(RequestStatus.REJECTED);
 
-        return applicationRepository.save(application);
+        return applicationRepository.saveAndFlush(application);
     }
 }
