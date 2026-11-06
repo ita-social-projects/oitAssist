@@ -35,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 class CompetitionFacadeImpl implements CompetitionFacade {
     private static final String COMPETITION_ID_MUST_NOT_BE_NULL = "competitionId must not be null";
+    private static final String STAGE_ID_MUST_NOT_BE_NULL = "stageId must not be null";
     private final CompetitionRepository competitionRepository;
     private final StageRepository stageRepository;
     private final TourRepository tourRepository;
@@ -53,7 +54,7 @@ class CompetitionFacadeImpl implements CompetitionFacade {
     @Override
     @Transactional(readOnly = true)
     public Optional<StageDetail> findStageById(Long stageId) {
-        Objects.requireNonNull(stageId, "stageId must not be null");
+        Objects.requireNonNull(stageId, STAGE_ID_MUST_NOT_BE_NULL);
         return stageRepository.findById(stageId)
             .map(stageMapper::toStageDetail);
     }
@@ -124,6 +125,30 @@ class CompetitionFacadeImpl implements CompetitionFacade {
             .collect(Collectors.groupingBy(
                 CompetitionTourView::getCompetitionId,
                 Collectors.mapping(CompetitionTourView::getTourId, Collectors.toList())));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CompetitionDetail> findCompetitionsByIds(Collection<Long> competitionIds) {
+        Objects.requireNonNull(competitionIds, COMPETITION_ID_MUST_NOT_BE_NULL);
+        if (competitionIds.isEmpty()) {
+            return List.of();
+        }
+        return competitionRepository.findAllById(competitionIds).stream()
+            .map(competitionMapper::toCompetitionDetail)
+            .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StageDetail> findStagesByIds(Collection<Long> stageIds) {
+        Objects.requireNonNull(stageIds, STAGE_ID_MUST_NOT_BE_NULL);
+        if (stageIds.isEmpty()) {
+            return List.of();
+        }
+        return stageRepository.findAllById(stageIds).stream()
+            .map(stageMapper::toStageDetail)
+            .toList();
     }
 
     private CompetitionTreeDetail buildTreeDetail(Competition competitionEntity) {
