@@ -3,6 +3,7 @@ package com.itasocialacademy.oitassist.users.service;
 import com.itasocialacademy.oitassist.core.exceptions.AuthorizationException;
 import com.itasocialacademy.oitassist.core.exceptions.InsufficientPermissionsException;
 import com.itasocialacademy.oitassist.security.api.interfaces.SecurityFacade;
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.api.interfaces.ActiveParticipationChecker;
 import com.itasocialacademy.oitassist.user.dao.dto.request.ProfileUpdateRequestDTO;
 import com.itasocialacademy.oitassist.user.dao.dto.response.ResponseUserDTO;
@@ -763,5 +764,61 @@ class UserServiceImplTest {
         verify(securityFacade).hasRole(String.valueOf(Role.ADMIN));
         verify(repository).findAllByIdIn(ids, pageable);
         verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("findEligibleStudents should normalize search and forward to repository")
+    void findEligibleStudents_ShouldNormalizeSearchAndForwardToRepository() {
+        Pageable pageable = PageRequest.of(0, 20);
+        String search = "  Ivan  ";
+        List<Long> excludedIds = List.of(1L, 2L);
+        UserProfileDetails profile = new UserProfileDetails(3L, "Ivan", "Petrov", "ivan@test.com");
+        Page<UserProfileDetails> expectedPage = new PageImpl<>(List.of(profile), pageable, 1);
+
+        when(repository.findEligibleStudents(
+            eq(Role.USER),
+            eq(List.of(UserStatus.ACTIVE, UserStatus.PENDING)),
+            eq(excludedIds),
+            eq("Ivan"),
+            eq(pageable))).thenReturn(expectedPage);
+
+        Page<UserProfileDetails> result = userService.findEligibleStudents(search, excludedIds, pageable);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0)).isEqualTo(profile);
+
+        verify(repository).findEligibleStudents(
+            Role.USER,
+            List.of(UserStatus.ACTIVE, UserStatus.PENDING),
+            excludedIds,
+            "Ivan",
+            pageable);
+    }
+
+    @Test
+    @DisplayName("findEligibleStudents should pass null when search is blank and excludedIds is empty or null")
+    void findEligibleStudents_ShouldPassNullWhenSearchIsBlankAndExcludedIdsIsEmptyOrNull() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<UserProfileDetails> expectedPage = Page.empty(pageable);
+
+        when(repository.findEligibleStudents(
+            eq(Role.USER),
+            eq(List.of(UserStatus.ACTIVE, UserStatus.PENDING)),
+            isNull(),
+            isNull(),
+            eq(pageable))).thenReturn(expectedPage);
+
+        Page<UserProfileDetails> result = userService.findEligibleStudents("   ", List.of(), pageable);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).isEmpty();
+
+        verify(repository).findEligibleStudents(
+            Role.USER,
+            List.of(UserStatus.ACTIVE, UserStatus.PENDING),
+            null,
+            null,
+            pageable);
     }
 }

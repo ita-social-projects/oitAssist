@@ -173,7 +173,8 @@ public class InvitationController {
     @Operation(
         summary = "Get students eligible for stage invitation",
         description = "Retrieves a paginated list of students eligible to be invited to the stage. "
-            + "Excludes existing participants, students with pending invitations, and students with pending applications.")
+            + "Excludes existing participants, students with pending invitations, "
+            + "and students with pending applications.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Eligible students retrieved successfully",
             content = @Content(mediaType = "application/json",
