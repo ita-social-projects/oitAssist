@@ -4,8 +4,11 @@ import com.itasocialacademy.oitassist.user.api.dto.RegisterCommand;
 import com.itasocialacademy.oitassist.user.api.dto.UserAuthDetails;
 import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import org.springframework.modulith.NamedInterface;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Cross-module entry point into the {@code user} module.
@@ -152,4 +155,19 @@ public interface UserFacade {
      *         IDs, or {@code Optional.empty()} if the search string is null/blank.
      */
     Optional<List<Long>> findUserIdsBySearchWithinIds(String search, List<Long> candidateIds);
+
+    /**
+     * Retrieves a paginated list of eligible students (users with role {@code USER}
+     * and status {@code ACTIVE} or {@code PENDING}), excluding specified user IDs,
+     * matching the search criteria.
+     *
+     * @param search          optional search query for user's name or email
+     * @param excludedUserIds collection of user IDs to exclude
+     * @param pageable        pagination and sorting parameters
+     * @return page of {@link UserProfileDetails}
+     */
+    Page<UserProfileDetails> findEligibleStudents(
+        String search,
+        Collection<Long> excludedUserIds,
+        Pageable pageable);
 }

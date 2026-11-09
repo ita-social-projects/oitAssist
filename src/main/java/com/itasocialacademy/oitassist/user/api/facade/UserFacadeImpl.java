@@ -7,9 +7,12 @@ import com.itasocialacademy.oitassist.user.api.interfaces.UserFacade;
 import com.itasocialacademy.oitassist.user.service.interfaces.RegistrationService;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserActivationService;
 import com.itasocialacademy.oitassist.user.service.interfaces.UserService;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 /**
@@ -106,5 +109,16 @@ public class UserFacadeImpl implements UserFacade {
     @Override
     public Optional<List<Long>> findUserIdsBySearchWithinIds(String search, List<Long> candidateIds) {
         return userService.findUserIdsBySearch(search, candidateIds);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Page<UserProfileDetails> findEligibleStudents(
+        String search,
+        Collection<Long> excludedUserIds,
+        Pageable pageable) {
+        return userService.findEligibleStudents(search, excludedUserIds, pageable);
     }
 }

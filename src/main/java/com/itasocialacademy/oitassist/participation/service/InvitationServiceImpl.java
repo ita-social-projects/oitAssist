@@ -23,6 +23,7 @@ import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvita
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Invitation;
+import com.itasocialacademy.oitassist.participation.dao.repository.ApplicationRepository;
 import com.itasocialacademy.oitassist.participation.dao.repository.InvitationRepository;
 import com.itasocialacademy.oitassist.participation.dao.repository.ParticipationRepository;
 import com.itasocialacademy.oitassist.participation.exceptions.*;
@@ -59,6 +60,7 @@ public class InvitationServiceImpl implements InvitationService {
 
     private final ParticipationRepository participationRepository;
     private final InvitationRepository invitationRepository;
+    private final ApplicationRepository applicationRepository;
     private final SecurityFacade securityFacade;
     private final UserFacade userFacade;
     private final InvitationRequestsSaver invitationRequestsSaver;
@@ -220,6 +222,31 @@ public class InvitationServiceImpl implements InvitationService {
                 invitation.getStatus(),
                 userSummaryMapper.toUserSummary(user)));
         return new PageImpl<>(responses, pageable, invitations.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<EligibleStudentResponse> getEligibleStudents(
+        Long competitionId,
+        Long stageId,
+        String search,
+        Pageable pageable) {
+        validateCompetitionAndStageInfo(competitionId, stageId);
+
+        Set<Long> excludedUserIds = new HashSet<>(participationRepository.findUserIdsByStageId(stageId));
+        excludedUserIds.addAll(invitationRepository.findStudentIdsByStageIdAndStatus(stageId, PENDING_STATUS));
+        excludedUserIds.addAll(applicationRepository.findIssuedByIdsByStageIdAndStatus(stageId, PENDING_STATUS));
+
+        Page<UserProfileDetails> usersPage = userFacade.findEligibleStudents(
+            search,
+            excludedUserIds,
+            pageable);
+
+        return usersPage.map(u -> new EligibleStudentResponse(
+            u.id(),
+            u.firstName(),
+            u.surname(),
+            u.email()));
     }
 
     private Set<Long> findStudentsWithPendingInvitations(List<Long> studentIds, Long competitionId, Long stageId) {

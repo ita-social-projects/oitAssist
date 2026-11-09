@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.core.dao.dto.response.PageResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.CreateInvitationRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateInvitationResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.EligibleStudentResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.InvitationListItemResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessInvitationResponse;
 import com.itasocialacademy.oitassist.participation.service.interfaces.InvitationService;
@@ -167,5 +168,36 @@ public class InvitationController {
         @ParameterObject @PageableDefault(size = 20, sort = "issuedAt") Pageable pageable) {
         return ResponseEntity.status(HttpStatus.OK)
             .body(PageResponse.from(invitationService.getEnrollmentRequests(competitionId, stageId, search, pageable)));
+    }
+
+    @Operation(
+        summary = "Get students eligible for stage invitation",
+        description = "Retrieves a paginated list of students eligible to be invited to the stage. "
+            + "Excludes existing participants, students with pending invitations, and students with pending applications.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Eligible students retrieved successfully",
+            content = @Content(mediaType = "application/json",
+                schema = @Schema(implementation = PageResponse.class))),
+        @ApiResponse(responseCode = "400", description = """
+            The competition and stage info error. The reason: \s
+            specified stage ID does not belong to the competition ID.""",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "Access denied (requires ORG role)",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = """
+            Resource missing. Possible reasons:\s
+            - The requested competition does not exist.\s
+            - The requested stage does not exist.""",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PreAuthorize("hasRole('ORG')")
+    @GetMapping("/competitions/{competitionId}/stages/{stageId}/invitations/eligible-students")
+    public ResponseEntity<PageResponse<EligibleStudentResponse>> getEligibleStudents(
+        @PathVariable Long competitionId,
+        @PathVariable Long stageId,
+        @RequestParam(required = false) String search,
+        @ParameterObject @PageableDefault(size = 20, sort = "surname") Pageable pageable) {
+        return ResponseEntity.status(HttpStatus.OK)
+            .body(PageResponse.from(invitationService.getEligibleStudents(competitionId, stageId, search, pageable)));
     }
 }
