@@ -776,11 +776,11 @@ class UserServiceImplTest {
         Page<UserProfileDetails> expectedPage = new PageImpl<>(List.of(profile), pageable, 1);
 
         when(repository.findEligibleStudents(
-            eq(Role.USER),
-            eq(List.of(UserStatus.ACTIVE, UserStatus.PENDING)),
-            eq(excludedIds),
-            eq("Ivan"),
-            eq(pageable))).thenReturn(expectedPage);
+            Role.USER,
+            List.of(UserStatus.ACTIVE, UserStatus.PENDING),
+            excludedIds,
+            "Ivan",
+            pageable)).thenReturn(expectedPage);
 
         Page<UserProfileDetails> result = userService.findEligibleStudents(search, excludedIds, pageable);
 
