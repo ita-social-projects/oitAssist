@@ -271,4 +271,55 @@ class InvitationControllerTest extends ControllerUnitTest<InvitationController> 
             .andExpect(jsonPath("$.content").isEmpty())
             .andExpect(jsonPath("$.totalElements").value(0));
     }
+
+    @Test
+    void getEligibleStudents_shouldReturnOkWithPagedResults() throws Exception {
+        EligibleStudentResponse student = new EligibleStudentResponse(
+            105L, "Олександр", "Коваленко", "olex.koval@gmail.com");
+
+        Page<EligibleStudentResponse> page = new PageImpl<>(
+            List.of(student), PageRequest.of(0, 20), 1);
+
+        when(invitationService.getEligibleStudents(eq(2L), eq(3L), isNull(), any(Pageable.class)))
+            .thenReturn(page);
+
+        mockMvc.perform(get(COMPETITION_BASE_LINK + "/eligible-students", 2L, 3L)
+            .param("page", "0")
+            .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content[0].id").value(105L))
+            .andExpect(jsonPath("$.content[0].firstName").value("Олександр"))
+            .andExpect(jsonPath("$.content[0].surname").value("Коваленко"))
+            .andExpect(jsonPath("$.content[0].email").value("olex.koval@gmail.com"))
+            .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(invitationService).getEligibleStudents(eq(2L), eq(3L), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    void getEligibleStudents_withSearchParam_shouldPassSearchToService() throws Exception {
+        Page<EligibleStudentResponse> page = Page.empty(PageRequest.of(0, 20));
+
+        when(invitationService.getEligibleStudents(eq(2L), eq(3L), eq("Коваленко"), any(Pageable.class)))
+            .thenReturn(page);
+
+        mockMvc.perform(get(COMPETITION_BASE_LINK + "/eligible-students", 2L, 3L)
+            .param("search", "Коваленко"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isEmpty());
+
+        verify(invitationService).getEligibleStudents(eq(2L), eq(3L), eq("Коваленко"), any(Pageable.class));
+    }
+
+    @Test
+    void getEligibleStudents_noResults_shouldReturnEmptyPage() throws Exception {
+        when(invitationService.getEligibleStudents(any(), any(), any(), any(Pageable.class)))
+            .thenReturn(Page.empty());
+
+        mockMvc.perform(get(COMPETITION_BASE_LINK + "/eligible-students", 2L, 3L))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isEmpty())
+            .andExpect(jsonPath("$.totalElements").value(0));
+    }
 }

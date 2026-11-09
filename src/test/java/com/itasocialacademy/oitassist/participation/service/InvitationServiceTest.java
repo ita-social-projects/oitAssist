@@ -17,9 +17,11 @@ import com.itasocialacademy.oitassist.participation.dao.dto.response.CreateInvit
 import com.itasocialacademy.oitassist.participation.dao.dto.response.InvitationListItemResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ProcessInvitationResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.UserSummary;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.EligibleStudentResponse;
 import com.itasocialacademy.oitassist.participation.dao.enums.RequestStatus;
 import com.itasocialacademy.oitassist.participation.dao.model.Invitation;
 import com.itasocialacademy.oitassist.participation.dao.model.Participation;
+import com.itasocialacademy.oitassist.participation.dao.repository.ApplicationRepository;
 import com.itasocialacademy.oitassist.participation.dao.repository.InvitationRepository;
 import com.itasocialacademy.oitassist.participation.dao.repository.ParticipationRepository;
 import com.itasocialacademy.oitassist.participation.exceptions.InvitationNotFoundException;
@@ -53,6 +55,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiFunction;
@@ -67,6 +70,8 @@ class InvitationServiceTest {
     private ParticipationRepository participationRepository;
     @Mock
     private InvitationRepository invitationRepository;
+    @Mock
+    private ApplicationRepository applicationRepository;
     @Mock
     private SecurityFacade securityFacade;
     @Mock
@@ -702,5 +707,84 @@ class InvitationServiceTest {
 
         assertTrue(exception.getMessage().contains("does not belong to this competition"));
         verify(invitationRepository, never()).findAll(any(Specification.class));
+    }
+
+    // ---- getEligibleStudents ----
+
+    @Test
+    void getEligibleStudents_validRequest_aggregatesExcludedIdsAndReturnsMappedPage() {
+        Pageable pageable = PageRequest.of(0, 20);
+
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+
+        when(participationRepository.findUserIdsByStageId(3L)).thenReturn(List.of(101L));
+        when(invitationRepository.findStudentIdsByStageIdAndStatus(3L, RequestStatus.PENDING))
+            .thenReturn(List.of(102L));
+        when(applicationRepository.findIssuedByIdsByStageIdAndStatus(3L, RequestStatus.PENDING))
+            .thenReturn(List.of(103L));
+
+        UserProfileDetails userProfile = new UserProfileDetails(104L, "Олександр", "Коваленко", "olex@mail.com");
+        when(userFacade.findEligibleStudents(eq("Ковал"), any(), eq(pageable)))
+            .thenReturn(new PageImpl<>(List.of(userProfile), pageable, 1));
+
+        Page<EligibleStudentResponse> result = invitationService.getEligibleStudents(2L, 3L, "Ковал", pageable);
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        EligibleStudentResponse responseItem = result.getContent().getFirst();
+        assertEquals(104L, responseItem.id());
+        assertEquals("Олександр", responseItem.firstName());
+        assertEquals("Коваленко", responseItem.surname());
+        assertEquals("olex@mail.com", responseItem.email());
+
+        verify(userFacade).findEligibleStudents(
+            eq("Ковал"),
+            argThat(excluded -> excluded != null
+                && excluded.size() == 3
+                && excluded.containsAll(List.of(101L, 102L, 103L))),
+            eq(pageable));
+    }
+
+    @Test
+    void getEligibleStudents_noExcludedUsers_passesEmptyExcludedIdsToFacade() {
+        Pageable pageable = PageRequest.of(0, 20);
+
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(stageDetail));
+
+        when(participationRepository.findUserIdsByStageId(3L)).thenReturn(List.of());
+        when(invitationRepository.findStudentIdsByStageIdAndStatus(3L, RequestStatus.PENDING))
+            .thenReturn(List.of());
+        when(applicationRepository.findIssuedByIdsByStageIdAndStatus(3L, RequestStatus.PENDING))
+            .thenReturn(List.of());
+
+        when(userFacade.findEligibleStudents(isNull(), argThat(Collection::isEmpty), eq(pageable)))
+            .thenReturn(Page.empty(pageable));
+
+        Page<EligibleStudentResponse> result = invitationService.getEligibleStudents(2L, 3L, null, pageable);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        verify(userFacade).findEligibleStudents(isNull(), argThat(Collection::isEmpty), eq(pageable));
+    }
+
+    @Test
+    void getEligibleStudents_stageDoesNotBelongToCompetition_shouldThrowCompetitionHierarchyException() {
+        Pageable pageable = PageRequest.of(0, 20);
+
+        StageDetail mismatchedStage = StageDetail.builder()
+            .id(3L)
+            .competitionId(99L)
+            .scope(StageScope.DISTRICT)
+            .build();
+
+        when(competitionFacade.findCompetitionById(2L)).thenReturn(Optional.of(competitionDetail));
+        when(competitionFacade.findStageById(3L)).thenReturn(Optional.of(mismatchedStage));
+
+        assertThrows(CompetitionHierarchyValidationException.class,
+            () -> invitationService.getEligibleStudents(2L, 3L, null, pageable));
+
+        verifyNoInteractions(participationRepository, invitationRepository, applicationRepository, userFacade);
     }
 }

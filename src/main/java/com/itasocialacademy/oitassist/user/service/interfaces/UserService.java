@@ -16,6 +16,7 @@ import com.itasocialacademy.oitassist.user.exceptions.UserRoleSelfChangeExceptio
 import com.itasocialacademy.oitassist.user.exceptions.UserStatusSelfChangeException;
 import com.itasocialacademy.oitassist.user.exceptions.AdminStatusModificationException;
 import com.itasocialacademy.oitassist.user.exceptions.UserAuthorizationException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NonNull;
@@ -168,4 +169,19 @@ public interface UserService {
      *         IDs, or {@code Optional.empty()} if the search string is null/blank.
      */
     Optional<List<Long>> findUserIdsBySearch(String search, List<Long> candidateIds);
+
+    /**
+     * Retrieves a paginated list of eligible students (users with role {@code USER}
+     * and status {@code ACTIVE} or {@code PENDING}), excluding specified user IDs,
+     * matching the search criteria.
+     *
+     * @param search          optional search query for user's name or email
+     * @param excludedUserIds collection of user IDs to exclude
+     * @param pageable        pagination and sorting parameters
+     * @return page of {@link UserProfileDetails}
+     */
+    Page<UserProfileDetails> findEligibleStudents(
+        String search,
+        Collection<Long> excludedUserIds,
+        Pageable pageable);
 }

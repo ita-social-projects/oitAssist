@@ -1,7 +1,10 @@
 package com.itasocialacademy.oitassist.user.dao.repository;
 
+import com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails;
 import com.itasocialacademy.oitassist.user.dao.enums.Role;
+import com.itasocialacademy.oitassist.user.dao.enums.UserStatus;
 import com.itasocialacademy.oitassist.user.dao.model.User;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -58,4 +61,29 @@ public interface UserRepository extends JpaRepository<User, Long> {
         )
         """)
     List<Long> findIdsBySearch(@Param("search") String search, @Param("candidateIds") List<Long> candidateIds);
+
+    @Query("""
+        SELECT new com.itasocialacademy.oitassist.user.api.dto.UserProfileDetails(
+            u.id, u.firstName, u.surname, u.email
+        )
+        FROM User u
+        WHERE u.role = :role
+          AND u.userStatus IN :statuses
+          AND (:excludedIds IS NULL OR u.id NOT IN :excludedIds)
+          AND (
+              :search IS NULL
+              OR :search = ''
+              OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+              OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+              OR LOWER(u.surname) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+              OR LOWER(CONCAT(u.firstName, ' ', u.surname)) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+              OR LOWER(CONCAT(u.surname, ' ', u.firstName)) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '\\'
+          )
+        """)
+    Page<UserProfileDetails> findEligibleStudents(
+        @Param("role") Role role,
+        @Param("statuses") Collection<UserStatus> statuses,
+        @Param("excludedIds") Collection<Long> excludedIds,
+        @Param("search") String search,
+        Pageable pageable);
 }

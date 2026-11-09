@@ -34,12 +34,16 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
 @Service
 public class UserServiceImpl implements UserService {
+    private static final List<UserStatus> ELIGIBLE_INVITATION_STATUSES =
+        List.of(UserStatus.ACTIVE, UserStatus.PENDING);
+
     private final SecurityFacade securityFacade;
     private final UserRepository repository;
     private final UserMapper mapper;
@@ -290,6 +294,24 @@ public class UserServiceImpl implements UserService {
             return Optional.empty();
         }
         return Optional.of(repository.findIdsBySearch(normalizedSearch, candidateIds));
+    }
+
+    @Override
+    public Page<UserProfileDetails> findEligibleStudents(
+        String search,
+        Collection<Long> excludedUserIds,
+        Pageable pageable) {
+        String normalizedSearch = normalizeSearch(search);
+        Collection<Long> normalizedExcludedIds = (excludedUserIds == null || excludedUserIds.isEmpty())
+            ? null
+            : excludedUserIds;
+
+        return repository.findEligibleStudents(
+            Role.USER,
+            ELIGIBLE_INVITATION_STATUSES,
+            normalizedExcludedIds,
+            normalizedSearch,
+            pageable);
     }
 
     private String normalizeSearch(String search) {
