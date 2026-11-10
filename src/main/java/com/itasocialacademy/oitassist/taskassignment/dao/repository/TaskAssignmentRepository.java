@@ -24,6 +24,14 @@ public interface TaskAssignmentRepository extends JpaRepository<TaskAssignment, 
     List<Long> findTourIdsByTaskBodyId(Long taskBodyId);
 
     /**
+     * Returns IDs of the tours where the given task is visible to participants.
+     */
+    @Query("SELECT t.tourId FROM TaskAssignment t "
+        + "WHERE t.taskBodyId = :taskBodyId AND t.visibility = "
+        + "com.itasocialacademy.oitassist.taskassignment.dao.enums.AssignmentVisibility.VISIBLE")
+    List<Long> findVisibleTourIdsByTaskBodyId(Long taskBodyId);
+
+    /**
      * Returns all task assignments that belong to any of the given tours.
      */
     List<TaskAssignment> findAllByTourIdIn(Collection<Long> tourIds);
