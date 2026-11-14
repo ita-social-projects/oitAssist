@@ -105,4 +105,26 @@ public interface CompetitionFacade {
      *         present in the map
      */
     Map<Long, List<Long>> findTourIdsByCompetitionIds(Collection<Long> competitionIds);
+
+    /**
+     * Retrieves competitions by their IDs.
+     *
+     * @param competitionIds Competition IDs, must not be {@code null} (an empty
+     *                       collection yields an empty result)
+     * @return the competitions found for the given IDs, in unspecified order; IDs
+     *         with no matching competition are silently omitted, so the result may
+     *         be smaller than {@code competitionIds}
+     */
+    List<CompetitionDetail> findCompetitionsByIds(Collection<Long> competitionIds);
+
+    /**
+     * Retrieves stages by their IDs.
+     *
+     * @param stageIds Stage IDs, must not be {@code null} (an empty collection
+     *                 yields an empty result)
+     * @return the stages found for the given IDs, in unspecified order; IDs with no
+     *         matching stage are silently omitted, so the result may be smaller
+     *         than {@code stageIds}
+     */
+    List<StageDetail> findStagesByIds(Collection<Long> stageIds);
 }

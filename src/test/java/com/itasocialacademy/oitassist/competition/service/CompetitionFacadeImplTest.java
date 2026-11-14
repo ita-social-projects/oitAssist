@@ -8,12 +8,16 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dao.model.CompetitionTourView;
+import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
+import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.mapper.CompetitionMapper;
+import com.itasocialacademy.oitassist.competition.mapper.StageMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +46,12 @@ class CompetitionFacadeImplTest {
 
     @Mock
     private TourRepository tourRepository;
+
+    @Mock
+    private StageRepository stageRepository;
+
+    @Mock
+    private StageMapper stageMapper;
 
     @InjectMocks
     private CompetitionFacadeImpl competitionFacade;
@@ -131,6 +141,64 @@ class CompetitionFacadeImplTest {
         assertThrows(NullPointerException.class,
             () -> competitionFacade.findCompetitionsByIdsAndStatuses(List.of(1L), null, PAGEABLE));
         verifyNoInteractions(competitionRepository);
+    }
+
+    @Test
+    void findCompetitionsByIds_existingIds_shouldReturnMappedDetails() {
+        Competition first = Competition.builder().id(1L).build();
+        Competition second = Competition.builder().id(2L).build();
+        CompetitionDetail firstDetail = CompetitionDetail.builder().id(1L).build();
+        CompetitionDetail secondDetail = CompetitionDetail.builder().id(2L).build();
+        when(competitionRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(first, second));
+        when(competitionMapper.toCompetitionDetail(first)).thenReturn(firstDetail);
+        when(competitionMapper.toCompetitionDetail(second)).thenReturn(secondDetail);
+
+        List<CompetitionDetail> result = competitionFacade.findCompetitionsByIds(List.of(1L, 2L));
+
+        assertEquals(List.of(firstDetail, secondDetail), result);
+    }
+
+    @Test
+    void findCompetitionsByIds_emptyIds_shouldReturnEmptyListWithoutQuerying() {
+        List<CompetitionDetail> result = competitionFacade.findCompetitionsByIds(List.of());
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(competitionRepository, competitionMapper);
+    }
+
+    @Test
+    void findCompetitionsByIds_nullIds_shouldThrowNullPointerException() {
+        assertThrows(NullPointerException.class, () -> competitionFacade.findCompetitionsByIds(null));
+        verifyNoInteractions(competitionRepository, competitionMapper);
+    }
+
+    @Test
+    void findStagesByIds_existingIds_shouldReturnMappedDetails() {
+        Stage first = Stage.builder().id(1L).build();
+        Stage second = Stage.builder().id(2L).build();
+        StageDetail firstDetail = StageDetail.builder().id(1L).build();
+        StageDetail secondDetail = StageDetail.builder().id(2L).build();
+        when(stageRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(first, second));
+        when(stageMapper.toStageDetail(first)).thenReturn(firstDetail);
+        when(stageMapper.toStageDetail(second)).thenReturn(secondDetail);
+
+        List<StageDetail> result = competitionFacade.findStagesByIds(List.of(1L, 2L));
+
+        assertEquals(List.of(firstDetail, secondDetail), result);
+    }
+
+    @Test
+    void findStagesByIds_emptyIds_shouldReturnEmptyListWithoutQuerying() {
+        List<StageDetail> result = competitionFacade.findStagesByIds(List.of());
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(stageRepository, stageMapper);
+    }
+
+    @Test
+    void findStagesByIds_nullIds_shouldThrowNullPointerException() {
+        assertThrows(NullPointerException.class, () -> competitionFacade.findStagesByIds(null));
+        verifyNoInteractions(stageRepository, stageMapper);
     }
 
     private static CompetitionTourView view(Long competitionId, Long tourId) {
