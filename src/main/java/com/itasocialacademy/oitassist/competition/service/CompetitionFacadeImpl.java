@@ -3,10 +3,13 @@ package com.itasocialacademy.oitassist.competition.service;
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.CompetitionTreeDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.EnrollmentCompetitionStageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.StageTreeDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
+import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
+import com.itasocialacademy.oitassist.competition.dao.enums.StageStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dao.model.CompetitionTourView;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
@@ -35,6 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 class CompetitionFacadeImpl implements CompetitionFacade {
     private static final String COMPETITION_ID_MUST_NOT_BE_NULL = "competitionId must not be null";
+    private static final Set<StageScope> ENROLLMENT_STAGE_SCOPES =
+        Set.of(StageScope.DISTRICT, StageScope.CITY);
     private final CompetitionRepository competitionRepository;
     private final StageRepository stageRepository;
     private final TourRepository tourRepository;
@@ -151,5 +156,42 @@ class CompetitionFacadeImpl implements CompetitionFacade {
             .toList();
 
         return new CompetitionTreeDetail(competitionDetail, stageTrees);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EnrollmentCompetitionStageDetail> findOpenEnrollmentCompetitions() {
+        List<Competition> openCompetitions =
+            competitionRepository.findAllByCompetitionStatus(CompetitionStatus.ENROLLMENT);
+        if (openCompetitions.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> competitionIds = openCompetitions.stream()
+            .map(Competition::getId)
+            .toList();
+
+        List<Stage> stages = stageRepository
+            .findAllByCompetitionIdInAndScopeInAndStatusOrderBySortPositionAsc(
+                competitionIds,
+                ENROLLMENT_STAGE_SCOPES,
+                StageStatus.SCHEDULED);
+
+        if (stages.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Stage> initialStageByCompetitionId = stages.stream()
+            .collect(Collectors.toMap(
+                Stage::getCompetitionId,
+                stage -> stage,
+                (existing, replacement) -> existing));
+
+        return openCompetitions.stream()
+            .filter(competition -> initialStageByCompetitionId.containsKey(competition.getId()))
+            .map(competition -> new EnrollmentCompetitionStageDetail(
+                competitionMapper.toCompetitionDetail(competition),
+                stageMapper.toStageDetail(initialStageByCompetitionId.get(competition.getId()))))
+            .toList();
     }
 }

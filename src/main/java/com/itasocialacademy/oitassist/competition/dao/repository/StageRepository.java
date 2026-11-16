@@ -1,7 +1,9 @@
 package com.itasocialacademy.oitassist.competition.dao.repository;
 
 import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
+import com.itasocialacademy.oitassist.competition.dao.enums.StageStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Stage;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -33,6 +35,11 @@ public interface StageRepository extends JpaRepository<Stage, Long> {
      * to largest).
      */
     List<Stage> findAllByCompetitionIdOrderBySortPositionAsc(Long competitionId);
+
+    List<Stage> findAllByCompetitionIdInAndScopeInAndStatusOrderBySortPositionAsc(
+        Collection<Long> competitionIds,
+        Collection<StageScope> scopes,
+        StageStatus status);
 
     /**
      * Find the stage with the maximum sort_position within the Competition.

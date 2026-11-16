@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.competition.api;
 
 import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.CompetitionTreeDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.EnrollmentCompetitionStageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.TourDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
@@ -105,4 +106,12 @@ public interface CompetitionFacade {
      *         present in the map
      */
     Map<Long, List<Long>> findTourIdsByCompetitionIds(Collection<Long> competitionIds);
+
+    /**
+     * Retrieves all competitions currently open for enrollment along with their
+     * eligible entry-level stage (DISTRICT or CITY).
+     *
+     * @return a list of open enrollment competition stage details
+     */
+    List<EnrollmentCompetitionStageDetail> findOpenEnrollmentCompetitions();
 }
