@@ -946,7 +946,8 @@ public class FileServiceImpl implements FileService {
         }
 
         FileAccessValidator validator = accessValidatorResolver.resolve(file.getRelatedEntityType());
-        if (!validator.canAccess(file.getRelatedEntityId(), currentUserId, securityFacade::hasRole)) {
+        if (!validator.canAccess(file.getRelatedEntityId(), file.getFileRole(), currentUserId,
+            securityFacade::hasRole)) {
             log.warn("Security Breach: user {} attempted to access file {} without permission",
                 currentUserId, file.getId());
             throw new AuthorizationException("Access denied to this file", ErrorCode.ACCESS_DENIED);

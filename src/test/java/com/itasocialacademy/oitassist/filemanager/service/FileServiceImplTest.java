@@ -1578,7 +1578,7 @@ class FileServiceImplTest {
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(accessValidatorResolver.resolve(RelatedEntityType.NEWS)).thenReturn(accessValidator);
-        when(accessValidator.canAccess(eq(100L), eq(userId), any())).thenReturn(true);
+        when(accessValidator.canAccess(eq(100L), any(), eq(userId), any())).thenReturn(true);
         when(providerResolver.resolve(StorageProviderType.LOCAL)).thenReturn(storageProvider);
         when(storageProvider.getResource("news/100/article.pdf")).thenReturn(mockResource);
 
@@ -1607,7 +1607,7 @@ class FileServiceImplTest {
         when(fileRepository.findById(fileId)).thenReturn(Optional.of(existingFile));
         when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
         when(accessValidatorResolver.resolve(RelatedEntityType.NEWS)).thenReturn(accessValidator);
-        when(accessValidator.canAccess(eq(100L), eq(userId), any())).thenReturn(false);
+        when(accessValidator.canAccess(eq(100L), any(), eq(userId), any())).thenReturn(false);
 
         assertThrows(AuthorizationException.class, () -> fileService.getFileResource(fileId));
     }
