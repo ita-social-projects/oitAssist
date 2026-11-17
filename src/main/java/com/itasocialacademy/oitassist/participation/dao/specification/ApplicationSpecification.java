@@ -22,8 +22,9 @@ public class ApplicationSpecification {
     }
 
     public static Specification<Application> hasStatus(RequestStatus status) {
-        return (root, query, cb) -> cb.and(
-            cb.equal(root.get("status"), status));
+        return (root, query, cb) -> status == null
+            ? cb.conjunction()
+            : cb.equal(root.get("status"), status);
     }
 
     public static Specification<Application> applicationIdIn(List<Long> applicationIds) {

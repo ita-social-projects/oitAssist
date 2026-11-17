@@ -208,6 +208,64 @@ class CompetitionFacadeImplTest {
         verify(stageMapper).toStageDetail(firstStage);
         verifyNoInteractions(tourRepository);
     }
+  
+    @Test 
+    void findCompetitionsByIds_existingIds_shouldReturnMappedDetails() {
+        Competition first = Competition.builder().id(1L).build();
+        Competition second = Competition.builder().id(2L).build();
+        CompetitionDetail firstDetail = CompetitionDetail.builder().id(1L).build();
+        CompetitionDetail secondDetail = CompetitionDetail.builder().id(2L).build();
+        when(competitionRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(first, second));
+        when(competitionMapper.toCompetitionDetail(first)).thenReturn(firstDetail);
+        when(competitionMapper.toCompetitionDetail(second)).thenReturn(secondDetail);
+
+        List<CompetitionDetail> result = competitionFacade.findCompetitionsByIds(List.of(1L, 2L));
+
+        assertEquals(List.of(firstDetail, secondDetail), result);
+    }
+
+    @Test
+    void findCompetitionsByIds_emptyIds_shouldReturnEmptyListWithoutQuerying() {
+        List<CompetitionDetail> result = competitionFacade.findCompetitionsByIds(List.of());
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(competitionRepository, competitionMapper);
+    }
+
+    @Test
+    void findCompetitionsByIds_nullIds_shouldThrowNullPointerException() {
+        assertThrows(NullPointerException.class, () -> competitionFacade.findCompetitionsByIds(null));
+        verifyNoInteractions(competitionRepository, competitionMapper);
+    }
+
+    @Test
+    void findStagesByIds_existingIds_shouldReturnMappedDetails() {
+        Stage first = Stage.builder().id(1L).build();
+        Stage second = Stage.builder().id(2L).build();
+        StageDetail firstDetail = StageDetail.builder().id(1L).build();
+        StageDetail secondDetail = StageDetail.builder().id(2L).build();
+        when(stageRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(first, second));
+        when(stageMapper.toStageDetail(first)).thenReturn(firstDetail);
+        when(stageMapper.toStageDetail(second)).thenReturn(secondDetail);
+
+        List<StageDetail> result = competitionFacade.findStagesByIds(List.of(1L, 2L));
+
+        assertEquals(List.of(firstDetail, secondDetail), result);
+    }
+
+    @Test
+    void findStagesByIds_emptyIds_shouldReturnEmptyListWithoutQuerying() {
+        List<StageDetail> result = competitionFacade.findStagesByIds(List.of());
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(stageRepository, stageMapper);
+    }
+
+    @Test
+    void findStagesByIds_nullIds_shouldThrowNullPointerException() {
+        assertThrows(NullPointerException.class, () -> competitionFacade.findStagesByIds(null));
+        verifyNoInteractions(stageRepository, stageMapper);
+    }
 
     private static CompetitionTourView view(Long competitionId, Long tourId) {
         CompetitionTourView view = mock(CompetitionTourView.class);
