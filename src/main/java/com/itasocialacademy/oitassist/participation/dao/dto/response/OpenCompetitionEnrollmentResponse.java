@@ -13,7 +13,7 @@ public record OpenCompetitionEnrollmentResponse(
     @Schema(description = "Дані початкового етапу, на який відкрита реєстрація") StageDetail stage,
 
     @Schema(
-        description = "Інформація про подану заявку учня (null, якщо учень ще не подавав заявку)") UserApplicationSummary userApplication,
+        description = "Інформація про подану заявку учня") UserApplicationSummary userApplication,
 
     @Schema(description = "Чи зарахований учень як офіційний учасник цього етапу",
         example = "false") boolean isParticipant) {
