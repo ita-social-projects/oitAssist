@@ -331,8 +331,8 @@ public class ApplicationServiceImpl implements ApplicationService {
             .collect(Collectors.toMap(
                 Application::getStageId,
                 app -> app,
-                (existing, replacement) ->
-                    existing.getIssuedAt().isAfter(replacement.getIssuedAt()) ? existing : replacement));
+                (existing, replacement) -> existing.getIssuedAt().isAfter(replacement.getIssuedAt()) ? existing
+                    : replacement));
 
         Set<Long> participatingStageIds =
             participationRepository.findAllByUserIdAndStageIdIn(currentUserId, stageIds)

@@ -7,10 +7,7 @@ import lombok.Builder;
 @Schema(description = "Інформація про заявку поточного учня")
 @Builder
 public record UserApplicationSummary(
-    @Schema(description = "ID заявки (використовується для скасування)", example = "42")
-    Long id,
+    @Schema(description = "ID заявки (використовується для скасування)", example = "42") Long id,
 
-    @Schema(description = "Поточний статус заявки", example = "PENDING")
-    RequestStatus status) {
+    @Schema(description = "Поточний статус заявки", example = "PENDING") RequestStatus status) {
 }
-

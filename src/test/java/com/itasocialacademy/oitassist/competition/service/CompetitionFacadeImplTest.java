@@ -208,8 +208,8 @@ class CompetitionFacadeImplTest {
         verify(stageMapper).toStageDetail(firstStage);
         verifyNoInteractions(tourRepository);
     }
-  
-    @Test 
+
+    @Test
     void findCompetitionsByIds_existingIds_shouldReturnMappedDetails() {
         Competition first = Competition.builder().id(1L).build();
         Competition second = Competition.builder().id(2L).build();

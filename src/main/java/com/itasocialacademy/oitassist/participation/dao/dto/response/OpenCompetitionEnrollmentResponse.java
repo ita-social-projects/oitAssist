@@ -8,16 +8,13 @@ import lombok.Builder;
 @Schema(description = "Олімпіада, відкрита для реєстрації учнів")
 @Builder
 public record OpenCompetitionEnrollmentResponse(
-    @Schema(description = "Дані олімпіади")
-    CompetitionDetail competition,
+    @Schema(description = "Дані олімпіади") CompetitionDetail competition,
 
-    @Schema(description = "Дані початкового етапу, на який відкрита реєстрація")
-    StageDetail stage,
+    @Schema(description = "Дані початкового етапу, на який відкрита реєстрація") StageDetail stage,
 
-    @Schema(description = "Інформація про подану заявку учня (null, якщо учень ще не подавав заявку)")
-    UserApplicationSummary userApplication,
+    @Schema(
+        description = "Інформація про подану заявку учня (null, якщо учень ще не подавав заявку)") UserApplicationSummary userApplication,
 
-    @Schema(description = "Чи зарахований учень як офіційний учасник цього етапу", example = "false")
-    boolean isParticipant) {
+    @Schema(description = "Чи зарахований учень як офіційний учасник цього етапу",
+        example = "false") boolean isParticipant) {
 }
-

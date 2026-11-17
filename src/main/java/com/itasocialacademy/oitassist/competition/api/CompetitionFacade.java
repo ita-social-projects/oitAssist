@@ -114,7 +114,7 @@ public interface CompetitionFacade {
      * @return a list of open enrollment competition stage details
      */
     List<EnrollmentCompetitionStageDetail> findOpenEnrollmentCompetitions();
-  
+
     /**
      * Retrieves competitions by their IDs.
      *
