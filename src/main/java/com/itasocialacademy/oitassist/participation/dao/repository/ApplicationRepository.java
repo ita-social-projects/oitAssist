@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -21,4 +22,6 @@ public interface ApplicationRepository extends JpaRepository<Application, Long>,
     List<Long> findIssuedByIdsByStageIdAndStatus(
         @Param("stageId") Long stageId,
         @Param("status") RequestStatus status);
+
+    List<Application> findByIssuedByAndStageIdIn(Long issuedBy, Collection<Long> stageIds);
 }

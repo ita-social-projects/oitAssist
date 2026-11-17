@@ -4,6 +4,7 @@ import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import jakarta.persistence.LockModeType;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CompetitionRepository extends JpaRepository<Competition, Long>, JpaSpecificationExecutor<Competition> {
+    List<Competition> findAllByCompetitionStatus(CompetitionStatus status);
+
     Page<Competition> findAllByCompetitionStatus(CompetitionStatus status, Pageable pageable);
 
     /**

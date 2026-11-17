@@ -1,6 +1,8 @@
 package com.itasocialacademy.oitassist.participation.controller;
 
 import com.itasocialacademy.oitassist.ControllerUnitTest;
+import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.AcceptApplicationListRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplicationListRequest;
 import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectEnrollmentRequest;
@@ -365,5 +367,29 @@ class ApplicationControllerTest extends ControllerUnitTest<ApplicationController
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content").isEmpty())
             .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    void getOpenCompetitionsForEnrollment_shouldReturnOkWithResults() throws Exception {
+        OpenCompetitionEnrollmentResponse response = OpenCompetitionEnrollmentResponse.builder()
+            .competition(CompetitionDetail.builder().id(1L).title("Olympiad 2026").build())
+            .stage(StageDetail.builder().id(10L).title("Stage 1").build())
+            .userApplication(new UserApplicationSummary(42L, RequestStatus.PENDING))
+            .isParticipant(false)
+            .build();
+
+        when(applicationService.getOpenCompetitionsForEnrollment()).thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/v1/competitions/enrollment-open"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].competition.id").value(1))
+            .andExpect(jsonPath("$[0].competition.title").value("Olympiad 2026"))
+            .andExpect(jsonPath("$[0].stage.id").value(10))
+            .andExpect(jsonPath("$[0].stage.title").value("Stage 1"))
+            .andExpect(jsonPath("$[0].userApplication.id").value(42))
+            .andExpect(jsonPath("$[0].userApplication.status").value("PENDING"))
+            .andExpect(jsonPath("$[0].isParticipant").value(false));
+
+        verify(applicationService).getOpenCompetitionsForEnrollment();
     }
 }

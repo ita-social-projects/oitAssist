@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.participation.service;
 
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.EnrollmentCompetitionStageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
@@ -307,6 +308,44 @@ public class ApplicationServiceImpl implements ApplicationService {
                 application.getStatus(),
                 userSummaryMapper.toUserSummary(user)));
         return new PageImpl<>(responses, pageable, applications.getTotalElements());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OpenCompetitionEnrollmentResponse> getOpenCompetitionsForEnrollment() {
+        Long currentUserId = getCurrentUserIdOrThrow();
+
+        List<EnrollmentCompetitionStageDetail> openCompetitions =
+            competitionFacade.findOpenEnrollmentCompetitions();
+        if (openCompetitions.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> stageIds = openCompetitions.stream()
+            .map(item -> item.stage().id())
+            .toList();
+
+        List<Application> userApplications =
+            applicationRepository.findByIssuedByAndStageIdIn(currentUserId, stageIds);
+        Map<Long, Application> applicationByStageId = userApplications.stream()
+            .collect(Collectors.toMap(
+                Application::getStageId,
+                app -> app,
+                (existing, replacement) -> existing.getIssuedAt().isAfter(replacement.getIssuedAt()) ? existing
+                    : replacement));
+
+        Set<Long> participatingStageIds =
+            participationRepository.findAllByUserIdAndStageIdIn(currentUserId, stageIds)
+                .stream()
+                .map(Participation::getStageId)
+                .collect(Collectors.toSet());
+
+        return openCompetitions.stream()
+            .map(item -> applicationMapper.toOpenCompetitionEnrollmentResponse(
+                item,
+                applicationByStageId.get(item.stage().id()),
+                participatingStageIds.contains(item.stage().id())))
+            .toList();
     }
 
     private void validateUserCanApply(Long userId, Long competitionId, Long stageId) {

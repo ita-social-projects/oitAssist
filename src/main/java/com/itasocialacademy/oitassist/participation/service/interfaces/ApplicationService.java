@@ -5,7 +5,9 @@ import com.itasocialacademy.oitassist.participation.dao.dto.request.RejectApplic
 import com.itasocialacademy.oitassist.participation.dao.dto.response.AcceptedApplicationListResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.ApplicationListItemResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.EnrollmentResponse;
+import com.itasocialacademy.oitassist.participation.dao.dto.response.OpenCompetitionEnrollmentResponse;
 import com.itasocialacademy.oitassist.participation.dao.dto.response.RejectedApplicationListResponse;
+import java.util.List;
 
 public interface ApplicationService extends EnrollmentService<ApplicationListItemResponse> {
     EnrollmentResponse sendApplicationRequest(Long competitionId, Long stageId);
@@ -13,4 +15,6 @@ public interface ApplicationService extends EnrollmentService<ApplicationListIte
     AcceptedApplicationListResponse acceptApplicationList(AcceptApplicationListRequest request);
 
     RejectedApplicationListResponse rejectApplicationList(RejectApplicationListRequest request);
+
+    List<OpenCompetitionEnrollmentResponse> getOpenCompetitionsForEnrollment();
 }

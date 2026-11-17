@@ -1,9 +1,9 @@
 package com.itasocialacademy.oitassist.competition.mapper;
 
 import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
+import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dto.request.CreateCompetitionRequest;
 import com.itasocialacademy.oitassist.competition.dto.response.CompetitionResponse;
-import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 

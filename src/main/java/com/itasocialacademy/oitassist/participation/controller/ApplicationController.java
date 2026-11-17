@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -222,5 +223,20 @@ public class ApplicationController {
         return ResponseEntity.status(HttpStatus.OK)
             .body(PageResponse.from(applicationService.getEnrollmentRequests(
                 competitionId, stageId, search, pageable)));
+    }
+
+    @Operation(
+        summary = "Get competitions open for enrollment",
+        description = "Retrieves a list of competitions currently in ENROLLMENT status along with their "
+            + "eligible stage (DISTRICT or CITY) and the current student's application / participation status.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Open competitions retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Access denied (requires USER role)")
+    })
+    @PreAuthorize("hasRole('USER')")
+    @GetMapping("/competitions/enrollment-open")
+    public ResponseEntity<List<OpenCompetitionEnrollmentResponse>> getOpenCompetitionsForEnrollment() {
+        return ResponseEntity.ok(applicationService.getOpenCompetitionsForEnrollment());
     }
 }

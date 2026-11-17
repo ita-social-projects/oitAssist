@@ -2,6 +2,7 @@ package com.itasocialacademy.oitassist.participation.service;
 
 import com.itasocialacademy.oitassist.competition.api.CompetitionFacade;
 import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.EnrollmentCompetitionStageDetail;
 import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
 import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
@@ -867,5 +868,68 @@ class ApplicationServiceTest {
 
         assertTrue(exception.getMessage().contains("does not belong to this competition"));
         verify(applicationRepository, never()).findAll(any(Specification.class));
+    }
+
+    @Test
+    void getOpenCompetitionsForEnrollment_withCompetitions_shouldMapApplicationAndParticipantStatus() {
+        Long userId = 10L;
+        when(securityFacade.getCurrentUserId()).thenReturn(Optional.of(userId));
+
+        EnrollmentCompetitionStageDetail compDetail1 = EnrollmentCompetitionStageDetail.builder()
+            .competition(CompetitionDetail.builder().id(1L).build())
+            .stage(StageDetail.builder().id(100L).build())
+            .build();
+        EnrollmentCompetitionStageDetail compDetail2 = EnrollmentCompetitionStageDetail.builder()
+            .competition(CompetitionDetail.builder().id(2L).build())
+            .stage(StageDetail.builder().id(101L).build())
+            .build();
+        when(competitionFacade.findOpenEnrollmentCompetitions()).thenReturn(List.of(compDetail1, compDetail2));
+
+        Instant now = Instant.now();
+        Application olderApp = new Application();
+        olderApp.setId(50L);
+        olderApp.setStageId(100L);
+        olderApp.setStatus(RequestStatus.PENDING);
+        olderApp.setIssuedAt(now.minusSeconds(60));
+
+        Application newerApp = new Application();
+        newerApp.setId(51L);
+        newerApp.setStageId(100L);
+        newerApp.setStatus(RequestStatus.PENDING);
+        newerApp.setIssuedAt(now);
+
+        when(applicationRepository.findByIssuedByAndStageIdIn(userId, List.of(100L, 101L)))
+            .thenReturn(List.of(olderApp, newerApp));
+
+        Participation participation = new Participation();
+        participation.setStageId(101L);
+        participation.setUserId(userId);
+        when(participationRepository.findAllByUserIdAndStageIdIn(userId, List.of(100L, 101L)))
+            .thenReturn(List.of(participation));
+
+        OpenCompetitionEnrollmentResponse response1 = OpenCompetitionEnrollmentResponse.builder()
+            .competition(compDetail1.competition())
+            .stage(compDetail1.stage())
+            .isParticipant(false)
+            .build();
+        OpenCompetitionEnrollmentResponse response2 = OpenCompetitionEnrollmentResponse.builder()
+            .competition(compDetail2.competition())
+            .stage(compDetail2.stage())
+            .isParticipant(true)
+            .build();
+
+        when(applicationMapper.toOpenCompetitionEnrollmentResponse(compDetail1, newerApp, false))
+            .thenReturn(response1);
+        when(applicationMapper.toOpenCompetitionEnrollmentResponse(compDetail2, null, true))
+            .thenReturn(response2);
+
+        List<OpenCompetitionEnrollmentResponse> result =
+            applicationService.getOpenCompetitionsForEnrollment();
+
+        assertEquals(2, result.size());
+        assertEquals(response1, result.get(0));
+        assertEquals(response2, result.get(1));
+        verify(applicationMapper).toOpenCompetitionEnrollmentResponse(compDetail1, newerApp, false);
+        verify(applicationMapper).toOpenCompetitionEnrollmentResponse(compDetail2, null, true);
     }
 }
