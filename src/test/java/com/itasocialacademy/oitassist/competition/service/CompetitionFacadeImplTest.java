@@ -4,16 +4,24 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.itasocialacademy.oitassist.competition.api.dto.CompetitionDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.EnrollmentCompetitionStageDetail;
+import com.itasocialacademy.oitassist.competition.api.dto.StageDetail;
 import com.itasocialacademy.oitassist.competition.dao.enums.CompetitionStatus;
+import com.itasocialacademy.oitassist.competition.dao.enums.StageScope;
+import com.itasocialacademy.oitassist.competition.dao.enums.StageStatus;
 import com.itasocialacademy.oitassist.competition.dao.model.Competition;
 import com.itasocialacademy.oitassist.competition.dao.model.CompetitionTourView;
+import com.itasocialacademy.oitassist.competition.dao.model.Stage;
 import com.itasocialacademy.oitassist.competition.dao.repository.CompetitionRepository;
+import com.itasocialacademy.oitassist.competition.dao.repository.StageRepository;
 import com.itasocialacademy.oitassist.competition.dao.repository.TourRepository;
 import com.itasocialacademy.oitassist.competition.mapper.CompetitionMapper;
+import com.itasocialacademy.oitassist.competition.mapper.StageMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +50,12 @@ class CompetitionFacadeImplTest {
 
     @Mock
     private TourRepository tourRepository;
+
+    @Mock
+    private StageRepository stageRepository;
+
+    @Mock
+    private StageMapper stageMapper;
 
     @InjectMocks
     private CompetitionFacadeImpl competitionFacade;
@@ -131,6 +145,68 @@ class CompetitionFacadeImplTest {
         assertThrows(NullPointerException.class,
             () -> competitionFacade.findCompetitionsByIdsAndStatuses(List.of(1L), null, PAGEABLE));
         verifyNoInteractions(competitionRepository);
+    }
+
+    @Test
+    void findOpenEnrollmentCompetitions_noEnrollmentCompetitions_shouldReturnEmptyList() {
+        when(competitionRepository.findAllByCompetitionStatus(CompetitionStatus.ENROLLMENT))
+            .thenReturn(List.of());
+
+        List<EnrollmentCompetitionStageDetail> result = competitionFacade.findOpenEnrollmentCompetitions();
+
+        assertTrue(result.isEmpty());
+        verifyNoInteractions(stageRepository);
+        verifyNoInteractions(competitionMapper);
+        verifyNoInteractions(stageMapper);
+    }
+
+    @Test
+    void findOpenEnrollmentCompetitions_validCompetitions_shouldTakeFirstInitialStageAndMapDetail() {
+        Competition competition = Competition.builder()
+            .id(1L)
+            .competitionStatus(CompetitionStatus.ENROLLMENT)
+            .build();
+        Stage firstStage = Stage.builder()
+            .id(10L)
+            .competitionId(1L)
+            .sortPosition((short) 1)
+            .scope(StageScope.DISTRICT)
+            .status(StageStatus.SCHEDULED)
+            .build();
+        Stage secondStage = Stage.builder()
+            .id(11L)
+            .competitionId(1L)
+            .sortPosition((short) 2)
+            .scope(StageScope.CITY)
+            .status(StageStatus.SCHEDULED)
+            .build();
+
+        CompetitionDetail competitionDetail = CompetitionDetail.builder()
+            .id(1L)
+            .competitionStatus(CompetitionStatus.ENROLLMENT)
+            .build();
+        StageDetail stageDetail = StageDetail.builder()
+            .id(10L)
+            .competitionId(1L)
+            .scope(StageScope.DISTRICT)
+            .build();
+
+        when(competitionRepository.findAllByCompetitionStatus(CompetitionStatus.ENROLLMENT))
+            .thenReturn(List.of(competition));
+        when(stageRepository.findAllByCompetitionIdInAndScopeInAndStatusOrderBySortPositionAsc(
+            List.of(1L), Set.of(StageScope.DISTRICT, StageScope.CITY), StageStatus.SCHEDULED))
+            .thenReturn(List.of(firstStage, secondStage));
+        when(competitionMapper.toCompetitionDetail(competition)).thenReturn(competitionDetail);
+        when(stageMapper.toStageDetail(firstStage)).thenReturn(stageDetail);
+
+        List<EnrollmentCompetitionStageDetail> result = competitionFacade.findOpenEnrollmentCompetitions();
+
+        assertEquals(1, result.size());
+        assertEquals(competitionDetail, result.get(0).competition());
+        assertEquals(stageDetail, result.get(0).stage());
+        verify(competitionMapper).toCompetitionDetail(competition);
+        verify(stageMapper).toStageDetail(firstStage);
+        verifyNoInteractions(tourRepository);
     }
 
     private static CompetitionTourView view(Long competitionId, Long tourId) {
