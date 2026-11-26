@@ -7,7 +7,9 @@ import com.itasocialacademy.oitassist.school.mapper.SchoolMapper;
 import com.itasocialacademy.oitassist.school.service.interfaces.SchoolService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +23,11 @@ public class SchoolServiceImpl implements SchoolService {
     @Transactional(readOnly = true)
     public Page<SchoolResponse> searchSchools(String districtCode, String search, Pageable pageable) {
         String normalizedSearch = (search == null) ? "" : search.trim();
-        return schoolRepository.searchByDistrictAndText(districtCode, normalizedSearch, pageable)
+        Pageable stablePageable = PageRequest.of(
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            pageable.getSort().and(Sort.by(Sort.Direction.ASC, "id")));
+        return schoolRepository.searchByDistrictAndText(districtCode, normalizedSearch, stablePageable)
             .map(schoolMapper::toResponse);
     }
 
