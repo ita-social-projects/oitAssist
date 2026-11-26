@@ -1,0 +1,722 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-districts-table" author="AnastasiaRakuta">
+        <createTable tableName="districts">
+            <column name="code" type="VARCHAR(10)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="region_code" type="VARCHAR(10)">
+                <constraints nullable="false"
+                             foreignKeyName="fk_districts_region"
+                             references="regions(code)"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_districts_region_code" tableName="districts">
+            <column name="region_code"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="districts"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="insert-districts-data" author="AnastasiaRakuta">
+        <!-- місто Київ -->
+        <insert tableName="districts">
+            <column name="code" value="UA8000"/>
+            <column name="name" value="місто Київ"/>
+            <column name="region_code" value="UA80"/>
+        </insert>
+
+        <!-- Вінницька область -->
+        <insert tableName="districts">
+            <column name="code" value="UA0502"/>
+            <column name="name" value="Вінницький район"/>
+            <column name="region_code" value="UA05"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA0504"/>
+            <column name="name" value="Гайсинський район"/>
+            <column name="region_code" value="UA05"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA0506"/>
+            <column name="name" value="Жмеринський район"/>
+            <column name="region_code" value="UA05"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA0508"/>
+            <column name="name" value="Могилів-Подільський район"/>
+            <column name="region_code" value="UA05"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA0510"/>
+            <column name="name" value="Тульчинський район"/>
+            <column name="region_code" value="UA05"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA0512"/>
+            <column name="name" value="Хмільницький район"/>
+            <column name="region_code" value="UA05"/>
+        </insert>
+
+        <!-- Волинська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA0702"/>
+            <column name="name" value="Володимирський район"/>
+            <column name="region_code" value="UA07"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA0704"/>
+            <column name="name" value="Камінь-Каширський район"/>
+            <column name="region_code" value="UA07"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA0706"/>
+            <column name="name" value="Ковельський район"/>
+            <column name="region_code" value="UA07"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA0708"/>
+            <column name="name" value="Луцький район"/>
+            <column name="region_code" value="UA07"/>
+        </insert>
+
+        <!-- Дніпропетровська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA1202"/>
+            <column name="name" value="Дніпровський район"/>
+            <column name="region_code" value="UA12"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1204"/>
+            <column name="name" value="Кам'янський район"/>
+            <column name="region_code" value="UA12"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1206"/>
+            <column name="name" value="Криворізький район"/>
+            <column name="region_code" value="UA12"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1208"/>
+            <column name="name" value="Нікопольський район"/>
+            <column name="region_code" value="UA12"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1210"/>
+            <column name="name" value="Самарівський район"/>
+            <column name="region_code" value="UA12"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1212"/>
+            <column name="name" value="Павлоградський район"/>
+            <column name="region_code" value="UA12"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1214"/>
+            <column name="name" value="Синельниківський район"/>
+            <column name="region_code" value="UA12"/>
+        </insert>
+
+        <!-- Донецька область -->
+        <insert tableName="districts">
+            <column name="code" value="UA1402"/>
+            <column name="name" value="Бахмутський район"/>
+            <column name="region_code" value="UA14"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1404"/>
+            <column name="name" value="Волноваський район"/>
+            <column name="region_code" value="UA14"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1406"/>
+            <column name="name" value="Горлівський район"/>
+            <column name="region_code" value="UA14"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1408"/>
+            <column name="name" value="Донецький район"/>
+            <column name="region_code" value="UA14"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1410"/>
+            <column name="name" value="Кальміуський район"/>
+            <column name="region_code" value="UA14"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1412"/>
+            <column name="name" value="Краматорський район"/>
+            <column name="region_code" value="UA14"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1414"/>
+            <column name="name" value="Маріупольський район"/>
+            <column name="region_code" value="UA14"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1416"/>
+            <column name="name" value="Покровський район"/>
+            <column name="region_code" value="UA14"/>
+        </insert>
+
+        <!-- Житомирська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA1802"/>
+            <column name="name" value="Бердичівський район"/>
+            <column name="region_code" value="UA18"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1804"/>
+            <column name="name" value="Житомирський район"/>
+            <column name="region_code" value="UA18"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1806"/>
+            <column name="name" value="Коростенський район"/>
+            <column name="region_code" value="UA18"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA1808"/>
+            <column name="name" value="Звягельський район"/>
+            <column name="region_code" value="UA18"/>
+        </insert>
+
+        <!-- Закарпатська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA2102"/>
+            <column name="name" value="Берегівський район"/>
+            <column name="region_code" value="UA21"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2104"/>
+            <column name="name" value="Мукачівський район"/>
+            <column name="region_code" value="UA21"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2106"/>
+            <column name="name" value="Рахівський район"/>
+            <column name="region_code" value="UA21"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2108"/>
+            <column name="name" value="Тячівський район"/>
+            <column name="region_code" value="UA21"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2110"/>
+            <column name="name" value="Ужгородський район"/>
+            <column name="region_code" value="UA21"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2112"/>
+            <column name="name" value="Хустський район"/>
+            <column name="region_code" value="UA21"/>
+        </insert>
+
+        <!-- Запорізька область -->
+        <insert tableName="districts">
+            <column name="code" value="UA2302"/>
+            <column name="name" value="Бердянський район"/>
+            <column name="region_code" value="UA23"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2304"/>
+            <column name="name" value="Василівський район"/>
+            <column name="region_code" value="UA23"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2306"/>
+            <column name="name" value="Запорізький район"/>
+            <column name="region_code" value="UA23"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2308"/>
+            <column name="name" value="Мелітопольський район"/>
+            <column name="region_code" value="UA23"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2310"/>
+            <column name="name" value="Пологівський район"/>
+            <column name="region_code" value="UA23"/>
+        </insert>
+
+        <!-- Івано-Франківська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA2602"/>
+            <column name="name" value="Верховинський район"/>
+            <column name="region_code" value="UA26"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2604"/>
+            <column name="name" value="Івано-Франківський район"/>
+            <column name="region_code" value="UA26"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2606"/>
+            <column name="name" value="Калуський район"/>
+            <column name="region_code" value="UA26"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2608"/>
+            <column name="name" value="Коломийський район"/>
+            <column name="region_code" value="UA26"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2610"/>
+            <column name="name" value="Косівський район"/>
+            <column name="region_code" value="UA26"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA2612"/>
+            <column name="name" value="Надвірнянський район"/>
+            <column name="region_code" value="UA26"/>
+        </insert>
+
+        <!-- Київська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA3202"/>
+            <column name="name" value="Білоцерківський район"/>
+            <column name="region_code" value="UA32"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA3204"/>
+            <column name="name" value="Бориспільський район"/>
+            <column name="region_code" value="UA32"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA3206"/>
+            <column name="name" value="Броварський район"/>
+            <column name="region_code" value="UA32"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA3208"/>
+            <column name="name" value="Бучанський район"/>
+            <column name="region_code" value="UA32"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA3210"/>
+            <column name="name" value="Вишгородський район"/>
+            <column name="region_code" value="UA32"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA3212"/>
+            <column name="name" value="Обухівський район"/>
+            <column name="region_code" value="UA32"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA3214"/>
+            <column name="name" value="Фастівський район"/>
+            <column name="region_code" value="UA32"/>
+        </insert>
+
+        <!-- Кіровоградська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA3502"/>
+            <column name="name" value="Голованівський район"/>
+            <column name="region_code" value="UA35"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA3504"/>
+            <column name="name" value="Кропивницький район"/>
+            <column name="region_code" value="UA35"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA3506"/>
+            <column name="name" value="Новоукраїнський район"/>
+            <column name="region_code" value="UA35"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA3508"/>
+            <column name="name" value="Олександрійський район"/>
+            <column name="region_code" value="UA35"/>
+        </insert>
+
+        <!-- Луганська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA4402"/>
+            <column name="name" value="Алчевський район"/>
+            <column name="region_code" value="UA44"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4404"/>
+            <column name="name" value="Довжанський район"/>
+            <column name="region_code" value="UA44"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4406"/>
+            <column name="name" value="Луганський район"/>
+            <column name="region_code" value="UA44"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4408"/>
+            <column name="name" value="Ровеньківський район"/>
+            <column name="region_code" value="UA44"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4410"/>
+            <column name="name" value="Сватівський район"/>
+            <column name="region_code" value="UA44"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4412"/>
+            <column name="name" value="Сєвєродонецький район"/>
+            <column name="region_code" value="UA44"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4414"/>
+            <column name="name" value="Старобільський район"/>
+            <column name="region_code" value="UA44"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4416"/>
+            <column name="name" value="Щастинський район"/>
+            <column name="region_code" value="UA44"/>
+        </insert>
+
+        <!-- Львівська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA4602"/>
+            <column name="name" value="Дрогобицький район"/>
+            <column name="region_code" value="UA46"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4604"/>
+            <column name="name" value="Золочівський район"/>
+            <column name="region_code" value="UA46"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4606"/>
+            <column name="name" value="Львівський район"/>
+            <column name="region_code" value="UA46"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4608"/>
+            <column name="name" value="Самбірський район"/>
+            <column name="region_code" value="UA46"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4610"/>
+            <column name="name" value="Стрийський район"/>
+            <column name="region_code" value="UA46"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4612"/>
+            <column name="name" value="Шептицький район"/>
+            <column name="region_code" value="UA46"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4614"/>
+            <column name="name" value="Яворівський район"/>
+            <column name="region_code" value="UA46"/>
+        </insert>
+
+        <!-- Миколаївська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA4802"/>
+            <column name="name" value="Баштанський район"/>
+            <column name="region_code" value="UA48"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4804"/>
+            <column name="name" value="Вознесенський район"/>
+            <column name="region_code" value="UA48"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4806"/>
+            <column name="name" value="Миколаївський район"/>
+            <column name="region_code" value="UA48"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA4808"/>
+            <column name="name" value="Первомайський район"/>
+            <column name="region_code" value="UA48"/>
+        </insert>
+
+        <!-- Одеська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA5102"/>
+            <column name="name" value="Березівський район"/>
+            <column name="region_code" value="UA51"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5104"/>
+            <column name="name" value="Білгород-Дністровський район"/>
+            <column name="region_code" value="UA51"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5106"/>
+            <column name="name" value="Болградський район"/>
+            <column name="region_code" value="UA51"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5108"/>
+            <column name="name" value="Ізмаїльський район"/>
+            <column name="region_code" value="UA51"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5110"/>
+            <column name="name" value="Одеський район"/>
+            <column name="region_code" value="UA51"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5112"/>
+            <column name="name" value="Подільський район"/>
+            <column name="region_code" value="UA51"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5114"/>
+            <column name="name" value="Роздільнянський район"/>
+            <column name="region_code" value="UA51"/>
+        </insert>
+
+        <!-- Полтавська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA5302"/>
+            <column name="name" value="Кременчуцький район"/>
+            <column name="region_code" value="UA53"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5304"/>
+            <column name="name" value="Лубенський район"/>
+            <column name="region_code" value="UA53"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5306"/>
+            <column name="name" value="Миргородський район"/>
+            <column name="region_code" value="UA53"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5308"/>
+            <column name="name" value="Полтавський район"/>
+            <column name="region_code" value="UA53"/>
+        </insert>
+
+        <!-- Рівненська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA5602"/>
+            <column name="name" value="Вараський район"/>
+            <column name="region_code" value="UA56"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5604"/>
+            <column name="name" value="Дубенський район"/>
+            <column name="region_code" value="UA56"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5606"/>
+            <column name="name" value="Рівненський район"/>
+            <column name="region_code" value="UA56"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5608"/>
+            <column name="name" value="Сарненський район"/>
+            <column name="region_code" value="UA56"/>
+        </insert>
+
+        <!-- Сумська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA5902"/>
+            <column name="name" value="Конотопський район"/>
+            <column name="region_code" value="UA59"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5904"/>
+            <column name="name" value="Охтирський район"/>
+            <column name="region_code" value="UA59"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5906"/>
+            <column name="name" value="Роменський район"/>
+            <column name="region_code" value="UA59"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5908"/>
+            <column name="name" value="Сумський район"/>
+            <column name="region_code" value="UA59"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA5910"/>
+            <column name="name" value="Шосткинський район"/>
+            <column name="region_code" value="UA59"/>
+        </insert>
+
+        <!-- Тернопільська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA6102"/>
+            <column name="name" value="Кременецький район"/>
+            <column name="region_code" value="UA61"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6104"/>
+            <column name="name" value="Тернопільський район"/>
+            <column name="region_code" value="UA61"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6106"/>
+            <column name="name" value="Чортківський район"/>
+            <column name="region_code" value="UA61"/>
+        </insert>
+
+        <!-- Харківська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA6302"/>
+            <column name="name" value="Богодухівський район"/>
+            <column name="region_code" value="UA63"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6304"/>
+            <column name="name" value="Ізюмський район"/>
+            <column name="region_code" value="UA63"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6306"/>
+            <column name="name" value="Берестинський район"/>
+            <column name="region_code" value="UA63"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6308"/>
+            <column name="name" value="Куп'янський район"/>
+            <column name="region_code" value="UA63"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6310"/>
+            <column name="name" value="Лозівський район"/>
+            <column name="region_code" value="UA63"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6312"/>
+            <column name="name" value="Харківський район"/>
+            <column name="region_code" value="UA63"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6314"/>
+            <column name="name" value="Чугуївський район"/>
+            <column name="region_code" value="UA63"/>
+        </insert>
+
+        <!-- Херсонська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA6502"/>
+            <column name="name" value="Бериславський район"/>
+            <column name="region_code" value="UA65"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6504"/>
+            <column name="name" value="Генічеський район"/>
+            <column name="region_code" value="UA65"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6506"/>
+            <column name="name" value="Каховський район"/>
+            <column name="region_code" value="UA65"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6508"/>
+            <column name="name" value="Скадовський район"/>
+            <column name="region_code" value="UA65"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6510"/>
+            <column name="name" value="Херсонський район"/>
+            <column name="region_code" value="UA65"/>
+        </insert>
+
+        <!-- Хмельницька область -->
+        <insert tableName="districts">
+            <column name="code" value="UA6802"/>
+            <column name="name" value="Кам'янець-Подільський район"/>
+            <column name="region_code" value="UA68"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6804"/>
+            <column name="name" value="Хмельницький район"/>
+            <column name="region_code" value="UA68"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA6806"/>
+            <column name="name" value="Шепетівський район"/>
+            <column name="region_code" value="UA68"/>
+        </insert>
+
+        <!-- Черкаська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA7102"/>
+            <column name="name" value="Звенигородський район"/>
+            <column name="region_code" value="UA71"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA7104"/>
+            <column name="name" value="Золотоніський район"/>
+            <column name="region_code" value="UA71"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA7106"/>
+            <column name="name" value="Уманський район"/>
+            <column name="region_code" value="UA71"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA7108"/>
+            <column name="name" value="Черкаський район"/>
+            <column name="region_code" value="UA71"/>
+        </insert>
+
+        <!-- Чернівецька область -->
+        <insert tableName="districts">
+            <column name="code" value="UA7302"/>
+            <column name="name" value="Вижницький район"/>
+            <column name="region_code" value="UA73"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA7304"/>
+            <column name="name" value="Дністровський район"/>
+            <column name="region_code" value="UA73"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA7306"/>
+            <column name="name" value="Чернівецький район"/>
+            <column name="region_code" value="UA73"/>
+        </insert>
+
+        <!-- Чернігівська область -->
+        <insert tableName="districts">
+            <column name="code" value="UA7402"/>
+            <column name="name" value="Корюківський район"/>
+            <column name="region_code" value="UA74"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA7404"/>
+            <column name="name" value="Ніжинський район"/>
+            <column name="region_code" value="UA74"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA7406"/>
+            <column name="name" value="Новгород-Сіверський район"/>
+            <column name="region_code" value="UA74"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA7408"/>
+            <column name="name" value="Прилуцький район"/>
+            <column name="region_code" value="UA74"/>
+        </insert>
+        <insert tableName="districts">
+            <column name="code" value="UA7410"/>
+            <column name="name" value="Чернігівський район"/>
+            <column name="region_code" value="UA74"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="districts"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
