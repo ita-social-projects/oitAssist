@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-regions-table" author="AnastasiaRakuta">
+        <createTable tableName="regions">
+            <column name="code" type="VARCHAR(10)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="regions"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="insert-regions-data" author="AnastasiaRakuta">
+        <insert tableName="regions">
+            <column name="code" value="UA80"/>
+            <column name="name" value="місто Київ"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA05"/>
+            <column name="name" value="Вінницька область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA07"/>
+            <column name="name" value="Волинська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA12"/>
+            <column name="name" value="Дніпропетровська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA14"/>
+            <column name="name" value="Донецька область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA18"/>
+            <column name="name" value="Житомирська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA21"/>
+            <column name="name" value="Закарпатська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA23"/>
+            <column name="name" value="Запорізька область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA26"/>
+            <column name="name" value="Івано-Франківська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA32"/>
+            <column name="name" value="Київська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA35"/>
+            <column name="name" value="Кіровоградська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA44"/>
+            <column name="name" value="Луганська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA46"/>
+            <column name="name" value="Львівська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA48"/>
+            <column name="name" value="Миколаївська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA51"/>
+            <column name="name" value="Одеська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA53"/>
+            <column name="name" value="Полтавська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA56"/>
+            <column name="name" value="Рівненська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA59"/>
+            <column name="name" value="Сумська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA61"/>
+            <column name="name" value="Тернопільська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA63"/>
+            <column name="name" value="Харківська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA65"/>
+            <column name="name" value="Херсонська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA68"/>
+            <column name="name" value="Хмельницька область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA71"/>
+            <column name="name" value="Черкаська область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA73"/>
+            <column name="name" value="Чернівецька область"/>
+        </insert>
+        <insert tableName="regions">
+            <column name="code" value="UA74"/>
+            <column name="name" value="Чернігівська область"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="regions"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

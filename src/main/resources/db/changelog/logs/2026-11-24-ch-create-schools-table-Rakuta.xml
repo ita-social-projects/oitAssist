@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="create-schools-table" author="AnastasiaRakuta">
+        <createTable tableName="schools">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="edbo_id" type="VARCHAR(50)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="short_name" type="VARCHAR(255)"/>
+            <column name="district_code" type="VARCHAR(10)">
+                <constraints nullable="false"
+                             foreignKeyName="fk_schools_district"
+                             references="districts(code)"/>
+            </column>
+            <column name="settlement" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_schools_district_code" tableName="schools">
+            <column name="district_code"/>
+        </createIndex>
+
+        <createIndex indexName="idx_schools_name" tableName="schools">
+            <column name="name"/>
+        </createIndex>
+
+        <createIndex indexName="idx_schools_settlement" tableName="schools">
+            <column name="settlement"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="schools"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="load-schools-data" author="AnastasiaRakuta">
+        <loadData file="db/changelog/data/schools.csv"
+                  tableName="schools"
+                  separator=","
+                  encoding="UTF-8">
+            <column name="name" type="STRING"/>
+            <column name="edbo_id" type="STRING"/>
+            <column name="short_name" type="STRING"/>
+            <column name="settlement" type="STRING"/>
+            <column name="district_code" type="STRING"/>
+        </loadData>
+
+        <rollback>
+            <delete tableName="schools"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
